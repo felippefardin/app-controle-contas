@@ -1,0 +1,148 @@
+/* Estilo geral em modo dark */
+body {
+  background-color: #121212;
+  color: #eee;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  font-size: 16px;
+  transition: background-color 0.3s, color 0.3s, font-size 0.2s;
+}
+
+/* Containers principais */
+form, .container, table {
+  background-color: #222;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 800px;
+  margin: 20px auto;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+/* Inputs e campos */
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: #333;
+  color: #eee;
+}
+
+/* Botões */
+button, .btn {
+  background-color: #0af;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+button:hover, .btn:hover {
+  background-color: #08c;
+}
+
+/* Tabelas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #ddd;
+}
+table th, table td {
+  padding: 12px;
+  border-bottom: 1px solid #444;
+  text-align: left;
+}
+table th {
+  background-color: #333;
+}
+table tr:hover {
+  background-color: #1e1e1e;
+}
+
+/* Contas vencidas destacadas */
+.vencida {
+  background-color: #400000 !important;
+  color: #fff !important;
+}
+
+/* Mensagens */
+.mensagem {
+  background-color: #28a745;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+.erro {
+  background-color: #cc4444;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+/* Links */
+a {
+  color: #0af;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Controles de fonte */
+.font-controls {
+  text-align: center;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+.font-controls button {
+  background-color: #444;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  margin: 0 5px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.font-controls button:hover {
+  background-color: #666;
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+    font-size: 15px;
+  }
+  form, .container, table {
+    width: 100%;
+    padding: 15px;
+  }
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+  table tr {
+    margin-bottom: 15px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 10px;
+  }
+  table td {
+    text-align: right;
+    position: relative;
+    padding-left: 50%;
+  }
+  table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 15px;
+    font-weight: bold;
+    text-transform: capitalize;
+  }
+}
