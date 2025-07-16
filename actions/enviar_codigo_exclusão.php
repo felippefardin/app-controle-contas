@@ -40,8 +40,8 @@ try {
     $mail->isSMTP();
     $mail->Host       = 'smtp.gmail.com';
     $mail->SMTPAuth   = true;
-    $mail->Username   = 'felippefardin@gmail.com';      // Seu e-mail Gmail aqui
-    $mail->Password   = 'ejlg wslz aulp zzgw';          // Senha de app do Gmail (não sua senha normal)
+    $mail->Username   = 'felippefardin@gmail.com';      
+    $mail->Password   = 'ejlg wslz aulp zzgw';         
     $mail->SMTPSecure = 'tls';
     $mail->Port       = 587;
 

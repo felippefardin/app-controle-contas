@@ -1,12 +1,17 @@
 <script>
+  const defaultFontSize = 16; // Fonte padrão em pixels
+
   function adjustFontSize(change) {
     const body = document.body;
-    const style = window.getComputedStyle(body, null).getPropertyValue('font-size');
-    let fontSize = parseFloat(style);
-    fontSize += change;
-    if (fontSize < 12) fontSize = 12;
-    if (fontSize > 24) fontSize = 24;
-    body.style.fontSize = fontSize + 'px';
+    let currentSize = parseFloat(window.getComputedStyle(body).getPropertyValue('font-size'));
+    let newSize = currentSize + change;
+    if (newSize < 12) newSize = 12;
+    if (newSize > 24) newSize = 24;
+    body.style.fontSize = newSize + 'px';
+  }
+
+  function resetFontSize() {
+    document.body.style.fontSize = defaultFontSize + 'px';
   }
 </script>
 

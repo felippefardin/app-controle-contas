@@ -1,5 +1,6 @@
 <?php
 session_start();
+include('../database.php');
 
 if (!isset($_SESSION['usuario'])) {
     header('Location: login.php');
@@ -70,139 +71,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <link rel="stylesheet" href="../css/style.css" />
+
   <title>Editar Perfil - App Controle de Contas</title>
   <style>
-    /* Reset box-sizing para facilitar o layout */
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-
     body {
       background-color: #121212;
       color: #eee;
       font-family: Arial, sans-serif;
-      margin: 0;
       padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
     }
-
-    h2 {
-      text-align: center;
-      color: #0af;
-      margin-bottom: 20px;
-      width: 100%;
-      max-width: 400px;
-    }
-
     form {
       background-color: #222;
-      padding: 20px 25px;
+      padding: 20px;
       border-radius: 8px;
       max-width: 400px;
-      width: 100%;
-      box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
     }
-
-    label {
+    input, label {
       display: block;
-      margin-top: 15px;
-      margin-bottom: 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
+      width: 100%;
+      margin-bottom: 10px;
     }
-
     input {
-      width: 100%;
-      padding: 10px;
-      border-radius: 5px;
+      padding: 8px;
+      border-radius: 4px;
       border: none;
-      font-size: 1rem;
-      background-color: #333;
-      color: #eee;
-      transition: background-color 0.3s ease;
     }
-
-    input:focus {
-      background-color: #444;
-      outline: 2px solid #0af;
-      color: #fff;
-    }
-
     button {
-      margin-top: 25px;
-      width: 100%;
-      padding: 12px;
+      padding: 10px;
       background-color: #0af;
       border: none;
-      border-radius: 5px;
-      color: #eee;
+      border-radius: 4px;
+      color: white;
       font-weight: bold;
-      font-size: 1.1rem;
       cursor: pointer;
-      transition: background-color 0.3s ease;
     }
-
-    button:hover, button:focus {
-      background-color: #0088ff;
-      outline: none;
-    }
-
-    .mensagem, .erro {
-      max-width: 400px;
-      width: 100%;
-      margin: 0 auto 15px;
-      padding: 12px;
-      border-radius: 6px;
-      font-weight: 600;
-      text-align: center;
-    }
-
     .mensagem {
       background-color: #28a745;
-      color: #e6ffe6;
-      box-shadow: 0 0 10px #28a745cc;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      max-width: 400px;
     }
-
     .erro {
       background-color: #cc4444;
-      color: #ffe6e6;
-      box-shadow: 0 0 10px #cc4444cc;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      max-width: 400px;
     }
-
     a {
-      display: inline-block;
-      margin-top: 20px;
       color: #0af;
       text-decoration: none;
-      font-weight: 600;
-      transition: color 0.3s ease;
-    }
-
-    a:hover, a:focus {
-      color: #0088ff;
-      text-decoration: underline;
-      outline: none;
-    }
-
-    /* Responsividade */
-    @media (max-width: 440px) {
-      body {
-        padding: 15px 10px;
-        align-items: center;
-      }
-      form, h2, .mensagem, .erro {
-        max-width: 100%;
-      }
-      button {
-        font-size: 1rem;
-      }
+      margin-top: 10px;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
+    
 
   <h2>Editar Perfil</h2>
 
@@ -214,29 +141,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="erro"><?= htmlspecialchars($erro) ?></div>
   <?php endif; ?>
 
-  <form method="POST" novalidate>
-    <label for="nome">Nome Completo:</label>
-    <input type="text" id="nome" name="nome" value="<?= htmlspecialchars($nome) ?>" required>
+  <div class="font-controls">
+  <button type="button" onclick="adjustFontSize(-1)">A-</button>
+  <button type="button" onclick="adjustFontSize(1)">A+</button>
+</div>
 
-    <label for="cpf">CPF:</label>
-    <input type="text" id="cpf" name="cpf" value="<?= htmlspecialchars($cpf) ?>" required>
 
-    <label for="telefone">Telefone:</label>
-    <input type="text" id="telefone" name="telefone" value="<?= htmlspecialchars($telefone) ?>" required>
+  <form method="POST">
+    <label>Nome Completo:</label>
+    <input type="text" name="nome" value="<?= htmlspecialchars($nome) ?>" required>
 
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
+    <label>CPF:</label>
+    <input type="text" name="cpf" value="<?= htmlspecialchars($cpf) ?>" required>
 
-    <label for="senha">Nova Senha (deixe em branco para manter a atual):</label>
-    <input type="password" id="senha" name="senha" autocomplete="new-password">
+    <label>Telefone:</label>
+    <input type="text" name="telefone" value="<?= htmlspecialchars($telefone) ?>" required>
 
-    <label for="senha_confirmar">Confirmar Nova Senha:</label>
-    <input type="password" id="senha_confirmar" name="senha_confirmar" autocomplete="new-password">
+    <label>Email:</label>
+    <input type="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
+
+    <label>Nova Senha (deixe em branco para manter a atual):</label>
+    <input type="password" name="senha">
+
+    <label>Confirmar Nova Senha:</label>
+    <input type="password" name="senha_confirmar">
 
     <button type="submit">Salvar Alterações</button>
   </form>
 
-  <a href="home.php">Voltar para Home</a>
+  <p><a href="home.php">Voltar para Home</a></p>
+
+  <script>
+  function adjustFontSize(change) {
+    const body = document.body;
+    const style = window.getComputedStyle(body, null).getPropertyValue('font-size');
+    let fontSize = parseFloat(style);
+    fontSize += change;
+    if (fontSize < 12) fontSize = 12;
+    if (fontSize > 24) fontSize = 24;
+    body.style.fontSize = fontSize + 'px';
+  }
+</script>
+
 
 </body>
 </html>

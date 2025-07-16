@@ -1,0 +1,51 @@
+CREATE DATABASE app_controle_contas;
+USE app_controle_contas;
+
+-- Tabela de usuários
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100),
+    cpf VARCHAR(14),
+    telefone VARCHAR(20),
+    email VARCHAR(100) UNIQUE,
+    senha VARCHAR(255),
+    perfil ENUM('padrao', 'admin') DEFAULT 'padrao',
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de contas a pagar
+CREATE TABLE contas_pagar (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fornecedor VARCHAR(100),
+    data_vencimento DATE,
+    numero VARCHAR(20),
+    valor DECIMAL(10,2),
+    status ENUM('pendente', 'baixada') DEFAULT 'pendente',
+    forma_pagamento VARCHAR(50),
+    data_baixa DATE,
+    baixado_por INT,
+    FOREIGN KEY (baixado_por) REFERENCES usuarios(id)
+);
+
+-- Tabela de contas a receber
+CREATE TABLE contas_receber (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    responsavel VARCHAR(100),
+    data_vencimento DATE,
+    numero VARCHAR(20),
+    valor DECIMAL(10,2),
+    status ENUM('pendente', 'baixada') DEFAULT 'pendente',
+    forma_pagamento VARCHAR(50),
+    data_baixa DATE,
+    baixado_por INT,
+    FOREIGN KEY (baixado_por) REFERENCES usuarios(id)
+);
+
+-- Tabela de códigos de confirmação
+CREATE TABLE codigos_confirmacao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(10),
+    email_admin VARCHAR(100),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    usado BOOLEAN DEFAULT FALSE
+);

@@ -145,7 +145,7 @@ while ($usuario = $result->fetch_assoc()) {
             <a href='editar_usuario.php?id={$usuario['id']}'>Editar</a> |
             <a href='excluir_usuario.php?id={$usuario['id']}' onclick=\"return confirm('Deseja realmente excluir este usuário?')\">Excluir</a>
           </td>";
-    echo "</tr>";
+    echo "</tr>"; 
 }
 ?>
   </tbody>
