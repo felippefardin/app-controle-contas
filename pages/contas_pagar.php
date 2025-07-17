@@ -231,7 +231,7 @@ include('../includes/footer.php');
 }
 
 .export-buttons .btn-pdf {
-  background-color: #e74c3c;
+  background-color: #27ae60;
   color: #fff;
 }
 
@@ -241,13 +241,31 @@ include('../includes/footer.php');
 }
 
 .export-buttons .btn-csv {
-  background-color: #3498db;
+  background-color: #27ae60;
   color: #fff;
 }
 
 .export-buttons a button:hover {
   opacity: 0.9;
 }
+
+.btn-acao {
+  width: 160px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 14px;
+  background-color: #00bfff;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-acao:hover {
+  background-color: #0099cc;
+}
+
         
 
   </style>
@@ -259,24 +277,26 @@ include('../includes/footer.php');
 <!-- Busca unificada -->
 <form method="GET" class="search-bar">
   <div class="input-group">
-    <!-- <i class="fa fa-user"></i> -->
+    <i class="fa fa-user"></i>
     <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?= htmlspecialchars($_GET['fornecedor'] ?? '') ?>">
   </div>
   <div class="input-group">
-    <!-- <i class="fa fa-file"></i> -->
+    <i class="fa fa-file"></i>
     <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
   </div>
   <div class="input-group">
-    <!-- <i class="fa fa-money-bill"></i> -->
+    <i class="fa fa-money-bill"></i>
     <input type="number" step="0.01" name="valor" placeholder="Valor" value="<?= htmlspecialchars($_GET['valor'] ?? '') ?>">
   </div>
   <div class="input-group">
-    <!-- <i class="fa fa-calendar"></i> -->
+    <i class="fa fa-calendar"></i>
     <input type="date" name="data_vencimento" value="<?= htmlspecialchars($_GET['data_vencimento'] ?? '') ?>">
   </div>
-  <button type="submit">Buscar</button>
-  <a href="contas_pagar.php"><button type="button">Limpar Filtros</button></a>
+
+  <button type="submit" class="btn-acao">Buscar</button>
+  <a href="contas_pagar.php"><button type="button" class="btn-acao">Limpar Filtros</button></a>
 </form>
+
 
 <!-- Botões de Exportação - Estilo Moderno -->
 <div class="export-buttons">

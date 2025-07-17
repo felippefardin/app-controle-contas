@@ -2,7 +2,10 @@
 session_start();
 include('../includes/header.php');
 include('../database.php');
-if (!isset($_SESSION['usuario'])) { header('Location: login.php'); exit; }
+if (!isset($_SESSION['usuario'])) {
+  header('Location: login.php');
+  exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -23,6 +26,26 @@ if (!isset($_SESSION['usuario'])) { header('Location: login.php'); exit; }
     h2, h3 {
       text-align: center;
       color: #00bfff;
+    }
+
+    .export-buttons {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .export-buttons a button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #00bfff;
+      color: white;
+      cursor: pointer;
+    }
+
+    .export-buttons a button:hover {
+      background-color: #0095cc;
     }
 
     table {
@@ -144,6 +167,14 @@ if (!isset($_SESSION['usuario'])) { header('Location: login.php'); exit; }
 
 <h2>Contas a Receber</h2>
 
+
+
+<div class="export-buttons">
+  <a href="exportar.php?tipo=pdf&status=receber"><button>Exportar PDF</button></a>
+  <a href="exportar.php?tipo=csv&status=receber"><button>Exportar CSV</button></a>
+  <a href="exportar.php?tipo=excel&status=receber"><button>Exportar Excel</button></a>
+</div>
+
 <?php
 $sql = "SELECT * FROM contas_receber WHERE status = 'pendente' ORDER BY data_vencimento ASC";
 $result = $conn->query($sql);
@@ -169,7 +200,7 @@ while ($row = $result->fetch_assoc()) {
 echo "</table>";
 ?>
 
-<h3>Nova Conta</h3>
+<h3>Nova Conta a Receber</h3>
 <form action="../actions/add_conta_receber.php" method="POST">
   <input type="text" name="responsavel" placeholder="Responsável" required>
   <input type="date" name="data_vencimento" required>
@@ -179,7 +210,7 @@ echo "</table>";
 </form>
 
 <p><a href="contas_receber_baixadas.php">Ver contas baixadas</a></p>
-<p><a href="home.php">Voltar</a></p>
+<p><a href="home.php">← Voltar para a Home</a></p>
 
 </body>
 </html>
