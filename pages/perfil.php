@@ -1,5 +1,6 @@
 <?php
 session_start();
+include('../includes/header.php'); 
 include('../database.php');
 
 if (!isset($_SESSION['usuario'])) {
@@ -28,7 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $senha_nova = $_POST['senha'];
     $senha_confirmar = $_POST['senha_confirmar'];
 
-    // Validar campos básicos
     if (empty($nome_novo) || empty($cpf_novo) || empty($telefone_novo) || empty($email_novo)) {
         $erro = "Preencha todos os campos obrigatórios.";
     } else if (!filter_var($email_novo, FILTER_VALIDATE_EMAIL)) {
@@ -36,15 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else if (!empty($senha_nova) && $senha_nova !== $senha_confirmar) {
         $erro = "Senhas não conferem.";
     } else {
-        // Verificar se o e-mail já existe para outro usuário
         $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
         $stmt_check->bind_param("si", $email_novo, $id_usuario);
         $stmt_check->execute();
         $stmt_check->store_result();
+
         if ($stmt_check->num_rows > 0) {
             $erro = "Este e-mail já está em uso por outro usuário.";
         } else {
-            // Atualizar dados
             if (!empty($senha_nova)) {
                 $senha_hash = password_hash($senha_nova, PASSWORD_DEFAULT);
                 $stmt_update = $conn->prepare("UPDATE usuarios SET nome=?, cpf=?, telefone=?, email=?, senha=? WHERE id=?");
@@ -56,24 +55,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($stmt_update->execute()) {
                 $mensagem = "Dados atualizados com sucesso!";
-                // Atualizar sessão
                 $_SESSION['usuario']['nome'] = $nome_novo;
                 $_SESSION['usuario']['email'] = $email_novo;
             } else {
                 $erro = "Erro ao atualizar os dados.";
             }
         }
+        $stmt_check->close();
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <link rel="stylesheet" href="../css/style.css" />
-
   <title>Editar Perfil - App Controle de Contas</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  
+  <!-- FontAwesome CDN para ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
   <style>
     body {
       background-color: #121212;
@@ -81,55 +82,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-family: Arial, sans-serif;
       padding: 20px;
     }
+    .container {
+      max-width: 600px;
+      margin: 30px auto;
+    }
     form {
       background-color: #222;
       padding: 20px;
       border-radius: 8px;
-      max-width: 400px;
     }
-    input, label {
+    label {
       display: block;
-      width: 100%;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
+      font-weight: bold;
     }
-    input {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
       padding: 8px;
       border-radius: 4px;
       border: none;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+      font-size: 16px;
+      background-color: #333;
+      color: #eee;
     }
-    button {
-      padding: 10px;
-      background-color: #0af;
+    .input-with-icon {
+      position: relative;
+    }
+    .input-with-icon button {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
       border: none;
-      border-radius: 4px;
-      color: white;
-      font-weight: bold;
+      color: #0af;
       cursor: pointer;
+      font-size: 18px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+    }
+    button[type="submit"] {
+      background-color: #0af;
+      color: white;
+      padding: 10px;
+      font-weight: bold;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
     }
     .mensagem {
       background-color: #28a745;
       padding: 10px;
-      margin-bottom: 15px;
       border-radius: 6px;
-      max-width: 400px;
+      margin-bottom: 15px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
     .erro {
       background-color: #cc4444;
       padding: 10px;
-      margin-bottom: 15px;
       border-radius: 6px;
-      max-width: 400px;
+      margin-bottom: 15px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
     a {
       color: #0af;
       text-decoration: none;
-      margin-top: 10px;
+      margin-top: 20px;
       display: inline-block;
+    }
+    .font-controls {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .font-controls button {
+      padding: 6px 12px;
+      margin: 0 5px;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+      border: none;
+      background-color: #0af;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+    .font-controls button:hover {
+      background-color: #0088cc;
     }
   </style>
 </head>
 <body>
-    
+
+<div class="container">
 
   <h2>Editar Perfil</h2>
 
@@ -141,48 +198,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="erro"><?= htmlspecialchars($erro) ?></div>
   <?php endif; ?>
 
-  <div class="font-controls">
-  <button type="button" onclick="adjustFontSize(-1)">A-</button>
-  <button type="button" onclick="adjustFontSize(1)">A+</button>
-</div>
 
+  <form method="POST" autocomplete="off" class="form-editar-perfil">
+    <label for="nome">Nome Completo:</label>
+    <input id="nome" type="text" name="nome" value="<?= htmlspecialchars($nome) ?>" required>
 
-  <form method="POST">
-    <label>Nome Completo:</label>
-    <input type="text" name="nome" value="<?= htmlspecialchars($nome) ?>" required>
+    <label for="cpf">CPF:</label>
+    <input id="cpf" type="text" name="cpf" value="<?= htmlspecialchars($cpf) ?>" required>
 
-    <label>CPF:</label>
-    <input type="text" name="cpf" value="<?= htmlspecialchars($cpf) ?>" required>
+    <label for="telefone">Telefone:</label>
+    <input id="telefone" type="text" name="telefone" value="<?= htmlspecialchars($telefone) ?>" required>
 
-    <label>Telefone:</label>
-    <input type="text" name="telefone" value="<?= htmlspecialchars($telefone) ?>" required>
+    <label for="email">Email:</label>
+    <input id="email" type="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
 
-    <label>Email:</label>
-    <input type="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
+    <label for="senha">Nova Senha (deixe em branco para manter a atual):</label>
+    <div class="input-with-icon">
+      <input id="senha" type="password" name="senha" >
+      <button type="button" tabindex="-1" onclick="togglePasswordVisibility('senha')">
+        <i class="fa-solid fa-eye" id="icon-senha"></i>
+      </button>
+    </div>
 
-    <label>Nova Senha (deixe em branco para manter a atual):</label>
-    <input type="password" name="senha">
-
-    <label>Confirmar Nova Senha:</label>
-    <input type="password" name="senha_confirmar">
+    <label for="senha_confirmar">Confirmar Nova Senha:</label>
+    <div class="input-with-icon">
+      <input id="senha_confirmar" type="password" name="senha_confirmar" >
+      <button type="button" tabindex="-1" onclick="togglePasswordVisibility('senha_confirmar')">
+        <i class="fa-solid fa-eye" id="icon-senha_confirmar"></i>
+      </button>
+    </div>
 
     <button type="submit">Salvar Alterações</button>
   </form>
 
   <p><a href="home.php">Voltar para Home</a></p>
 
-  <script>
-  function adjustFontSize(change) {
-    const body = document.body;
-    const style = window.getComputedStyle(body, null).getPropertyValue('font-size');
-    let fontSize = parseFloat(style);
-    fontSize += change;
-    if (fontSize < 12) fontSize = 12;
-    if (fontSize > 24) fontSize = 24;
-    body.style.fontSize = fontSize + 'px';
-  }
-</script>
+</div>
 
-
-</body>
-</html>
+<?php include('../includes/footer.php'); ?>

@@ -1,24 +1,26 @@
 <?php
 session_start();
+include('../includes/header.php');
+include('../database.php');
+
 if (!isset($_SESSION['usuario'])) {
     header('Location: login.php');
     exit;
 }
-include('../database.php');
-include('../includes/header.php');
-include('../includes/footer.php');
 ?>
 
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Contas a Pagar</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
-    * { box-sizing: border-box; }
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <style>
+    /* RESET & BASE */
+    * {
+      box-sizing: border-box;
+    }
     body {
       background-color: #121212;
       color: #eee;
@@ -26,304 +28,281 @@ include('../includes/footer.php');
       margin: 0;
       padding: 20px;
     }
-
     h2, h3 {
-      color: #00bfff;
       text-align: center;
+      color: #00bfff;
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    p {
+      text-align: center;
+      margin-top: 20px;
     }
 
+    /* Formulário de Busca */
+    form.search-form {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 25px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    form.search-form input[type="text"],
+    form.search-form input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background-color: #333;
+      color: #eee;
+      min-width: 180px;
+    }
+    form.search-form input::placeholder {
+      color: #aaa;
+    }
+    form.search-form button {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      min-width: 100px;
+    }
+    form.search-form button:hover {
+      background-color: #1e874b;
+    }
+    form.search-form a.clear-filters {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #cc3333;
+      color: white;
+      padding: 10px 18px;
+      font-weight: bold;
+      border-radius: 5px;
+      text-decoration: none;
+      cursor: pointer;
+      min-width: 100px;
+      transition: background-color 0.3s ease;
+    }
+    form.search-form a.clear-filters:hover {
+      background-color: #a02a2a;
+    }
+
+    /* Botões exportar e adicionar */
+    .export-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .export-buttons a button {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .export-buttons a button:hover {
+      background-color: #1e874b;
+    }
+    .btn-add {
+      background-color: #00bfff;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      display: block;
+      margin: 0 auto 25px auto;
+      transition: background-color 0.3s ease;
+    }
+    .btn-add:hover {
+      background-color: #0099cc;
+    }
+
+    /* Tabela */
     table {
       width: 100%;
       border-collapse: collapse;
       background-color: #1f1f1f;
       border-radius: 8px;
       overflow: hidden;
-      margin-top: 20px;
+      margin-top: 10px;
     }
-
     th, td {
       padding: 12px 10px;
       text-align: left;
       border-bottom: 1px solid #333;
     }
-
     th {
       background-color: #222;
       color: #00bfff;
     }
-
-    tr:nth-child(even) { background-color: #262626; }
-    tr:hover { background-color: #333; }
-
-    .search-bar {
-      max-width: 1000px;
-      margin: 20px auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
+    tr:nth-child(even) {
+      background-color: #2a2a2a;
     }
-
-    .search-bar .input-group {
-      position: relative;
-    }
-
-    .search-bar .input-group i {
-      position: absolute;
-      top: 12px;
-      left: 10px;
-      color: #aaa;
-    }
-
-    .search-bar input[type="text"],
-    .search-bar input[type="number"],
-    .search-bar input[type="date"] {
-      padding: 10px 10px 10px 32px;
-      border-radius: 5px;
-      border: none;
+    tr:hover {
       background-color: #333;
-      color: #eee;
-      width: 180px;
-      font-size: 14px;
+    }
+    /* Linhas vencidas */
+    tr.vencido {
+      background-color: #662222 !important;
     }
 
-    .search-bar button {
-      background-color: #00bfff;
-      color: white;
-      padding: 10px 18px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .search-bar button:hover {
-      background-color: #0099cc;
-    }
-
-    .export-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .export-buttons a button {
-      background-color: #444;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .export-buttons a button:hover {
-      background-color: #222;
-    }
-
-    form.add-form {
-      margin-top: 30px;
+    /* Formulário de Adição */
+    #form-container {
+      max-width: 800px;
+      margin: 0 auto 30px auto;
       background-color: #1f1f1f;
       padding: 20px;
       border-radius: 8px;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-      display: flex;
+      display: none;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
     }
-
-    form.add-form input, select, button {
-      width: 100%;
+    #form-container h3 {
+      margin-top: 0;
+      color: #00bfff;
+      text-align: center;
+    }
+    #form-container form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+    #form-container form input[type="text"],
+    #form-container form input[type="date"] {
+      flex: 1 1 180px;
       padding: 12px;
-      border: none;
-      border-radius: 5px;
       font-size: 16px;
-    }
-
-    form.add-form input, select {
+      border-radius: 5px;
+      border: 1px solid #444;
       background-color: #333;
       color: #eee;
+      box-sizing: border-box;
     }
-
-    form.add-form input::placeholder {
+    #form-container form input::placeholder {
       color: #aaa;
     }
-
-    form.add-form button {
+    #form-container form button {
       background-color: #00bfff;
       color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
       font-weight: bold;
+      border-radius: 5px;
       cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.3s ease;
     }
-
-    form.add-form button:hover {
+    #form-container form button:hover {
       background-color: #0099cc;
     }
 
-    a {
-      color: #00bfff;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    a:hover { text-decoration: underline; }
-
-    p {
-      text-align: center;
-      margin-top: 20px;
-    }
-
+    /* Responsivo */
     @media (max-width: 768px) {
-      .search-bar {
+      form.search-form,
+      #form-container form {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
       }
-
+      form.search-form button,
+      form.search-form a.clear-filters,
+      #form-container form button {
+        min-width: auto;
+        width: 100%;
+      }
       table, thead, tbody, th, td, tr {
         display: block;
       }
-
-      th { display: none; }
-
+      th {
+        display: none;
+      }
       tr {
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         border: 1px solid #333;
         border-radius: 8px;
         padding: 10px;
       }
-
       td {
         position: relative;
         padding-left: 50%;
+        margin-bottom: 10px;
       }
-
       td::before {
-        content: attr(data-label);
         position: absolute;
+        top: 10px;
         left: 10px;
-        top: 12px;
         font-weight: bold;
-        color: #aaa;
+        color: #999;
       }
+      td:nth-of-type(1)::before { content: "Fornecedor"; }
+      td:nth-of-type(2)::before { content: "Vencimento"; }
+      td:nth-of-type(3)::before { content: "Número"; }
+      td:nth-of-type(4)::before { content: "Valor"; }
+      td:nth-of-type(5)::before { content: "Ações"; }
     }
-
-    /* Botão exporta */
-    .export-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin: 20px 0;
-  flex-wrap: wrap;
-}
-
-.export-buttons a button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.export-buttons .btn-pdf {
-  background-color: #27ae60;
-  color: #fff;
-}
-
-.export-buttons .btn-excel {
-  background-color: #27ae60;
-  color: #fff;
-}
-
-.export-buttons .btn-csv {
-  background-color: #27ae60;
-  color: #fff;
-}
-
-.export-buttons a button:hover {
-  opacity: 0.9;
-}
-
-.btn-acao {
-  width: 160px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 5px;
-  font-weight: bold;
-  font-size: 14px;
-  background-color: #00bfff;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.btn-acao:hover {
-  background-color: #0099cc;
-}
-
-        
-
   </style>
+
+  <script>
+    function toggleForm() {
+      const form = document.getElementById('form-container');
+      form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
+    }
+  </script>
 </head>
 <body>
 
 <h2>Contas a Pagar</h2>
 
-<!-- Busca unificada -->
-<form method="GET" class="search-bar">
-  <div class="input-group">
-    <i class="fa fa-user"></i>
-    <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?= htmlspecialchars($_GET['fornecedor'] ?? '') ?>">
-  </div>
-  <div class="input-group">
-    <i class="fa fa-file"></i>
-    <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
-  </div>
-  <div class="input-group">
-    <i class="fa fa-money-bill"></i>
-    <input type="number" step="0.01" name="valor" placeholder="Valor" value="<?= htmlspecialchars($_GET['valor'] ?? '') ?>">
-  </div>
-  <div class="input-group">
-    <i class="fa fa-calendar"></i>
-    <input type="date" name="data_vencimento" value="<?= htmlspecialchars($_GET['data_vencimento'] ?? '') ?>">
-  </div>
-
-  <button type="submit" class="btn-acao">Buscar</button>
-  <a href="contas_pagar.php"><button type="button" class="btn-acao">Limpar Filtros</button></a>
+<!-- Formulário de Busca -->
+<form class="search-form" method="GET" action="">
+  <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($_GET['fornecedor'] ?? ''); ?>">
+  <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
+  <input type="date" name="data_vencimento" placeholder="Data Vencimento" value="<?php echo htmlspecialchars($_GET['data_vencimento'] ?? ''); ?>">
+  <button type="submit">Buscar</button>
+  <a href="contas_pagar.php" class="clear-filters">Limpar</a>
 </form>
 
-
-<!-- Botões de Exportação - Estilo Moderno -->
+<!-- Botões Exportar -->
 <div class="export-buttons">
-  <a href="../pages/exportar.php?tipo=pdf">
-    <button type="button" class="btn-pdf">Exportar PDF</button>
-  </a>
-  <a href="../pages/exportar.php?tipo=excel">
-    <button type="button" class="btn-excel">Exportar Excel</button>
-  </a>
-  <a href="../pages/exportar.php?tipo=csv">
-    <button type="button" class="btn-csv">Exportar CSV</button>
-  </a>
+  <a href="exportar.php?tipo=pdf&status=pagar"><button type="button">Exportar PDF</button></a>
+  <a href="exportar.php?tipo=csv&status=pagar"><button type="button">Exportar CSV</button></a>
+  <a href="exportar.php?tipo=excel&status=pagar"><button type="button">Exportar Excel</button></a>
 </div>
 
+<!-- Botão Adicionar Conta -->
+<button class="btn-add" onclick="toggleForm()">
+  <i class="fa fa-plus"></i> Adicionar Nova Conta
+</button>
 
-
-
-<div style="text-align: center; margin-top: 20px;">
-  <button onclick="toggleForm()" style="background-color:#00bfff; color:#fff; padding:10px 20px; border:none; border-radius:5px; font-size:16px; cursor:pointer;">
-    <i class="fa fa-plus"></i> Adicionar Nova Conta
-  </button>
-</div>
-
-<!-- Formulário escondido inicialmente -->
-<div id="form-container" style="display: none;">
+<!-- Formulário de Adição -->
+<div id="form-container">
   <h3>Nova Conta</h3>
-  <form class="add-form" action="../actions/add_conta_pagar.php" method="POST">
+  <form action="../actions/add_conta_pagar.php" method="POST">
     <input type="text" name="fornecedor" placeholder="Fornecedor" required>
     <input type="text" name="numero" placeholder="Número" required>
     <input type="text" name="valor" placeholder="Valor" required oninput="this.value = this.value.replace(/[^0-9.,]/g, '')">
@@ -333,49 +312,57 @@ include('../includes/footer.php');
 </div>
 
 <?php
-$where = [];
-if (!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";
-if (!empty($_GET['numero'])) $where[] = "numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";
-if (!empty($_GET['valor'])) $where[] = "valor = " . floatval($_GET['valor']);
-if (!empty($_GET['data_vencimento'])) $where[] = "data_vencimento = '" . $conn->real_escape_string($_GET['data_vencimento']) . "'";
+// Monta os filtros na consulta SQL com segurança
+$where = ["status = 'pendente'"];
 
-$where[] = "status = 'pendente'";
+if (!empty($_GET['fornecedor'])) {
+    $fornecedor = $conn->real_escape_string($_GET['fornecedor']);
+    $where[] = "fornecedor LIKE '%$fornecedor%'";
+}
+if (!empty($_GET['numero'])) {
+    $numero = $conn->real_escape_string($_GET['numero']);
+    $where[] = "numero LIKE '%$numero%'";
+}
+if (!empty($_GET['data_vencimento'])) {
+    $data_vencimento = $conn->real_escape_string($_GET['data_vencimento']);
+    $where[] = "data_vencimento = '$data_vencimento'";
+}
+
 $sql = "SELECT * FROM contas_pagar WHERE " . implode(" AND ", $where) . " ORDER BY data_vencimento ASC";
 $result = $conn->query($sql);
 
 echo "<table>";
 echo "<tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr>";
-
 $hoje = date('Y-m-d');
 while ($row = $result->fetch_assoc()) {
-    $vencido = ($row['data_vencimento'] < $hoje) ? "style='background-color:#802020'" : "";
-    $data_formatada = date('d/m/Y', strtotime($row['data_vencimento']));
-    echo "<tr $vencido>";
-    echo "<td data-label='Fornecedor'>" . htmlspecialchars($row['fornecedor']) . "</td>";
-    echo "<td data-label='Vencimento'>" . $data_formatada . "</td>";
-    echo "<td data-label='Número'>" . htmlspecialchars($row['numero']) . "</td>";
-    echo "<td data-label='Valor'>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
-    echo "<td data-label='Ações'>
-        <a href='../actions/baixar_conta.php?id={$row['id']}'>Baixar</a> |
-        <a href='../actions/editar_conta_pagar.php?id={$row['id']}'>Editar</a> |
-        <a href='../actions/excluir_conta_pagar.php?id={$row['id']}' onclick=\"return confirm('Deseja realmente excluir esta conta?')\">Excluir</a>
-    </td>";
+    $vencidoClass = ($row['data_vencimento'] < $hoje) ? "vencido" : "";
+    echo "<tr class='{$vencidoClass}'>";
+    echo "<td>" . htmlspecialchars($row['fornecedor']) . "</td>";
+    echo "<td>" . date('d/m/Y', strtotime($row['data_vencimento'])) . "</td>";
+    echo "<td>" . htmlspecialchars($row['numero']) . "</td>";
+    echo "<td>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
+    echo "<td>";
+    echo "<a href='../actions/baixar_conta.php?id={$row['id']}'>Baixar</a> | ";
+    echo "<a href='../actions/editar_conta_pagar.php?id={$row['id']}'>Editar</a> | ";
+    echo "<a href='../actions/excluir_conta_pagar.php?id={$row['id']}' onclick=\"return confirm('Deseja realmente excluir esta conta?')\">Excluir</a>";
+    echo "</td>";
     echo "</tr>";
 }
 echo "</table>";
 ?>
 
+<p><a href="contas_pagar_baixadas.php">Ver contas pagas</a></p>
+<p><a href="home.php">← Voltar para a Home</a></p>
 
-<!-- Script para alternar visibilidade -->
 <script>
+  // Toggle formulário adicionar conta
   function toggleForm() {
     const form = document.getElementById('form-container');
-    form.style.display = (form.style.display === 'none') ? 'block' : 'none';
+    form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
   }
 </script>
 
-<p><a href="home.php">Voltar</a></p>
-<p><a href="contas_pagar_baixadas.php">Ver contas baixadas</a></p>
-
 </body>
 </html>
+
+<?php include('../includes/footer.php'); ?>

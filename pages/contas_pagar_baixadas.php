@@ -12,142 +12,164 @@ include('../database.php');
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Contas a Pagar - Baixadas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
   <style>
+    /* RESET & BASE */
+    * {
+      box-sizing: border-box;
+    }
     body {
       background-color: #121212;
-      color: #f0f0f0;
+      color: #eee;
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
     }
-
     h2 {
       text-align: center;
-      margin-bottom: 20px;
       color: #00bfff;
+      margin-bottom: 20px;
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      text-decoration: underline;
     }
 
-    .search-bar {
-      max-width: 1000px;
-      margin: 20px auto;
+    /* Formulário de Busca */
+    form.search-form {
+      max-width: 900px;
+      margin: 0 auto 25px auto;
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       justify-content: center;
     }
-
-    .search-bar input[type="text"],
-    .search-bar input[type="number"],
-    .search-bar input[type="date"] {
-      padding: 10px 10px 10px 32px;
+    form.search-form input[type="text"],
+    form.search-form input[type="number"],
+    form.search-form input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
       border-radius: 5px;
-      border: none;
+      border: 1px solid #444;
       background-color: #333;
       color: #eee;
-      width: 180px;
-      font-size: 14px;
+      min-width: 180px;
+      box-sizing: border-box;
+    }
+    form.search-form input::placeholder {
+      color: #aaa;
+    }
+    form.search-form button,
+    form.search-form a.clear-filters {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      min-width: 120px;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+    form.search-form button:hover,
+    form.search-form a.clear-filters:hover {
+      background-color: #1e874b;
+    }
+    form.search-form a.clear-filters {
+      background-color: #cc3333;
+    }
+    form.search-form a.clear-filters:hover {
+      background-color: #a02a2a;
     }
 
-    .search-bar button {
-      background-color: #00bfff;
+    /* Botões Exportar */
+    .export-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .export-buttons a button {
+      background-color: #27ae60;
       color: white;
-      padding: 10px 18px;
       border: none;
-      border-radius: 5px;
+      padding: 10px 20px;
+      border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
-      width: 150px;
+      transition: background-color 0.3s ease;
+    }
+    .export-buttons a button:hover {
+      background-color: #1e874b;
     }
 
-    .search-bar button:hover {
-      background-color: #0099cc;
-    }
-
+    /* Tabela */
     table {
       width: 100%;
       border-collapse: collapse;
       background-color: #1f1f1f;
       border-radius: 8px;
       overflow: hidden;
-      margin-top: 20px;
+      margin-top: 10px;
     }
-
     th, td {
       padding: 12px 10px;
       text-align: left;
       border-bottom: 1px solid #333;
     }
-
     th {
       background-color: #222;
       color: #00bfff;
     }
-
     tr:nth-child(even) {
       background-color: #262626;
     }
-
     tr:hover {
       background-color: #333;
     }
 
-    a {
-      color: #00bfff;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    .export-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin: 20px 0;
-      flex-wrap: wrap;
-    }
-
-    .export-buttons a button {
-      background-color: #27ae60;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .export-buttons a button:hover {
-      background-color: #1e874b;
-    }
-
+    /* Responsivo */
     @media (max-width: 768px) {
+      form.search-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      form.search-form button,
+      form.search-form a.clear-filters {
+        width: 100%;
+        min-width: auto;
+      }
       table, thead, tbody, th, td, tr {
         display: block;
       }
-
       th {
         display: none;
       }
-
       tr {
         margin-bottom: 20px;
         border: 1px solid #333;
         border-radius: 8px;
         padding: 10px;
       }
-
       td {
         position: relative;
         padding-left: 50%;
+        margin-bottom: 10px;
       }
-
       td::before {
         content: attr(data-label);
         position: absolute;
@@ -163,18 +185,18 @@ include('../database.php');
 
 <h2>Contas a Pagar - Baixadas</h2>
 
-<!-- Barra de busca -->
-<form method="GET" class="search-bar">
+<!-- Formulário de Busca -->
+<form method="GET" class="search-form" action="">
   <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?= htmlspecialchars($_GET['fornecedor'] ?? '') ?>">
   <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
   <input type="number" step="0.01" name="valor" placeholder="Valor" value="<?= htmlspecialchars($_GET['valor'] ?? '') ?>">
   <input type="date" name="data_vencimento" value="<?= htmlspecialchars($_GET['data_vencimento'] ?? '') ?>">
   <button type="submit">Buscar</button>
-  <a href="contas_pagar_baixadas.php"><button type="button">Limpar Filtros</button></a>
+  <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar Filtros</a>
 </form>
 
 <!-- Botões de Exportação -->
-<div class="export-buttons">  
+<div class="export-buttons">
   <a href="../pages/exportar.php?tipo=pdf&status=baixada"><button type="button">Exportar PDF</button></a>
   <a href="../pages/exportar.php?tipo=excel&status=baixada"><button type="button">Exportar Excel</button></a>
   <a href="../pages/exportar.php?tipo=csv&status=baixada"><button type="button">Exportar CSV</button></a>
@@ -204,11 +226,11 @@ if (!$result) {
     while ($row = $result->fetch_assoc()) {
         echo "<tr>";
         echo "<td data-label='Fornecedor'>" . htmlspecialchars($row['fornecedor']) . "</td>";
-        echo "<td data-label='Vencimento'>" . htmlspecialchars($row['data_vencimento']) . "</td>";
+        echo "<td data-label='Vencimento'>" . date('d/m/Y', strtotime($row['data_vencimento'])) . "</td>";
         echo "<td data-label='Número'>" . htmlspecialchars($row['numero']) . "</td>";
         echo "<td data-label='Valor'>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
         echo "<td data-label='Forma de Pagamento'>" . htmlspecialchars($row['forma_pagamento']) . "</td>";
-        echo "<td data-label='Data de Baixa'>" . htmlspecialchars($row['data_baixa']) . "</td>";
+        echo "<td data-label='Data de Baixa'>" . date('d/m/Y', strtotime($row['data_baixa'])) . "</td>";
         echo "<td data-label='Usuário'>" . htmlspecialchars($row['usuario_baixou']) . "</td>";
         echo "<td data-label='Ações'>
                 <a href='../actions/excluir_conta_pagar.php?id={$row['id']}' onclick=\"return confirm('Deseja excluir esta conta baixada?')\">Excluir</a>
