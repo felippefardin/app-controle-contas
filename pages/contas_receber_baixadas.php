@@ -18,7 +18,6 @@ include('../database.php');
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <style>
-    /* RESET & BASE */
     * {
       box-sizing: border-box;
     }
@@ -43,7 +42,6 @@ include('../database.php');
       text-decoration: underline;
     }
 
-    /* Formulário de Busca */
     form.search-form {
       max-width: 900px;
       margin: 0 auto 25px auto;
@@ -62,7 +60,6 @@ include('../database.php');
       background-color: #333;
       color: #eee;
       min-width: 180px;
-      box-sizing: border-box;
     }
     form.search-form input::placeholder {
       color: #aaa;
@@ -95,7 +92,6 @@ include('../database.php');
       background-color: #a02a2a;
     }
 
-    /* Botões Exportar */
     .export-buttons {
       display: flex;
       justify-content: center;
@@ -117,7 +113,6 @@ include('../database.php');
       background-color: #1e874b;
     }
 
-    /* Tabela */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -142,7 +137,6 @@ include('../database.php');
       background-color: #333;
     }
 
-    /* Responsivo */
     @media (max-width: 768px) {
       form.search-form {
         flex-direction: column;
@@ -179,13 +173,80 @@ include('../database.php');
         color: #aaa;
       }
     }
+    /* Botão export */
+
+ .btn-export-green {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .btn-export-green:hover {
+    background-color: #218838;
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+  }
+
+  .modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 30px;
+    border: 1px solid #888;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 8px;
+  }
+
+  .modal-content label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+
+  .modal-content input,
+  .modal-content select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+
+  .close {
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #999;
+  }
+
+  .close:hover {
+    color: black;
+  }
   </style>
 </head>
 <body>
 
 <h2>Contas a Receber Baixadas</h2>
 
-<!-- Formulário de Busca -->
 <form method="GET" class="search-form" action="">
   <input type="text" name="responsavel" placeholder="Responsável" value="<?= htmlspecialchars($_GET['responsavel'] ?? '') ?>">
   <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
@@ -195,12 +256,17 @@ include('../database.php');
   <a href="contas_receber_baixadas.php" class="clear-filters">Limpar Filtros</a>
 </form>
 
-<!-- Botões de Exportação -->
-<div class="export-buttons">
+<!-- <div class="export-buttons">
   <a href="../pages/exportar.php?tipo=pdf&status=baixada"><button type="button">Exportar PDF</button></a>
   <a href="../pages/exportar.php?tipo=excel&status=baixada"><button type="button">Exportar Excel</button></a>
   <a href="../pages/exportar.php?tipo=csv&status=baixada"><button type="button">Exportar CSV</button></a>
+</div> -->
+
+<!-- Botão para abrir o modal -->
+<div class="export-buttons">
+  <button type="button" class="btn-export-green" onclick="document.getElementById('export_receber_baixadas').style.display='block'">Exportar Baixadas</button>
 </div>
+
 
 <?php
 $where = ["cr.status = 'baixada'"];
@@ -229,26 +295,67 @@ if (!$result) {
             <th>Forma</th>
             <th>Data de Baixa</th>
             <th>Baixado por</th>
+            <th>Ações</th>
           </tr></thead>";
         echo "<tbody>";
         while ($row = $result->fetch_assoc()) {
             echo "<tr>";
-            echo "<td data-label='Responsável'>" . htmlspecialchars($row['responsavel']) . "</td>";
-            echo "<td data-label='Número'>" . htmlspecialchars($row['numero']) . "</td>";
-            echo "<td data-label='Valor'>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
-            echo "<td data-label='Forma'>" . htmlspecialchars($row['forma_pagamento']) . "</td>";
-            echo "<td data-label='Data de Baixa'>" . date('d/m/Y', strtotime($row['data_baixa'])) . "</td>";
-            echo "<td data-label='Baixado por'>" . htmlspecialchars($row['usuario']) . "</td>";
+            echo "<td data-label='Responsável'>" . htmlspecialchars($row['responsavel'] ?? '') . "</td>";
+            echo "<td data-label='Número'>" . htmlspecialchars($row['numero'] ?? '') . "</td>";
+            echo "<td data-label='Valor'>R$ " . number_format(floatval($row['valor'] ?? 0), 2, ',', '.') . "</td>";
+            echo "<td data-label='Forma'>" . htmlspecialchars($row['forma_pagamento'] ?? '') . "</td>";
+
+            $data_baixa = $row['data_baixa'] ?? null;
+            echo "<td data-label='Data de Baixa'>" . ($data_baixa ? date('d/m/Y', strtotime($data_baixa)) : '-') . "</td>";
+
+            echo "<td data-label='Baixado por'>" . htmlspecialchars($row['usuario'] ?? '') . "</td>";
+
+            echo "<td data-label='Ações'>";
+            echo "<a href='../actions/excluir_conta_receber.php?id=" . htmlspecialchars($row['id'] ?? '') . "' ";
+            echo "onclick=\"return confirm('Deseja excluir esta conta baixada?')\">Excluir</a>";
+            echo "</td>";
             echo "</tr>";
-        }
-        echo "</tbody></table>";
+        } // ← CHAVE FECHANDO O while
+        echo "</tbody>";
+        echo "</table>";
     } else {
-        echo "<p style='text-align:center; margin-top:30px;'>Nenhuma conta baixada encontrada.</p>";
+        echo "<p>Nenhuma conta baixada encontrada.</p>";
     }
 }
 ?>
-
 <p><a href="contas_receber.php">← Voltar para Contas a Receber</a></p>
+
+<!-- Modal Exportar Baixadas -->
+<div id="export_receber_baixadas" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="document.getElementById('export_receber_baixadas').style.display='none'">&times;</span>
+    <h2>Exportar Contas Baixadas</h2>
+
+    <form action="../pages/export_receber.php" method="get">
+      <!-- tipo do formato -->
+      <label for="tipo">Formato:</label>
+      <select name="tipo" id="tipo" required>
+        <option value="pdf">PDF</option>
+        <option value="csv">CSV</option>
+        <option value="excel">Excel</option>
+      </select>
+
+      <!-- status fixo como "baixada" -->
+      <input type="hidden" name="status" value="baixada">
+
+      <!-- data início -->
+      <label for="data_inicio">Data Início:</label>
+      <input type="date" name="data_inicio" id="data_inicio" required />
+
+      <!-- data fim -->
+      <label for="data_fim">Data Fim:</label>
+      <input type="date" name="data_fim" id="data_fim" required />
+
+      <br><br>
+      <button type="submit" class="btn-export-green">Exportar</button>
+    </form>
+  </div>
+</div>
 
 </body>
 </html>

@@ -179,6 +179,26 @@ include('../database.php');
         color: #aaa;
       }
     }
+
+    /* Botão export */
+    .btn-export {
+  background-color: #28a745; /* Verde */
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.btn-export:hover {
+  background-color: #218838;
+}
+
+
   </style>
 </head>
 <body>
@@ -195,11 +215,16 @@ include('../database.php');
   <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar Filtros</a>
 </form>
 
-<!-- Botões de Exportação -->
+<!-- Botões de Exportação
 <div class="export-buttons">
   <a href="../pages/exportar.php?tipo=pdf&status=baixada"><button type="button">Exportar PDF</button></a>
   <a href="../pages/exportar.php?tipo=excel&status=baixada"><button type="button">Exportar Excel</button></a>
   <a href="../pages/exportar.php?tipo=csv&status=baixada"><button type="button">Exportar CSV</button></a>
+</div> -->
+
+<!-- Botão que abre o modal export -->
+<div class="export-buttons">
+  <button type="button" class="btn-export" onclick="document.getElementById('exportModal').style.display='block'">Exportar</button>
 </div>
 
 <?php
@@ -242,6 +267,39 @@ if (!$result) {
 ?>
 
 <p><a href="contas_pagar.php">← Voltar para a Home</a></p>
+
+<!-- Modal de Exportação -->
+<div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999;">
+  <div style="background:#222; padding:30px; max-width:400px; margin:100px auto; border-radius:10px; color:white; position:relative;">
+    <h3 style="margin-top:0;">Exportar Dados</h3>
+    <form method="GET" action="../pages/exportar.php">
+      <input type="hidden" name="status" value="baixada">
+      <label for="tipo">Tipo de Exportação:</label>
+      <select name="tipo" id="tipo" required style="width:100%; padding:8px; margin-bottom:15px;">
+        <option value="pdf">PDF</option>
+        <option value="excel">Excel</option>
+        <option value="csv">CSV</option>
+      </select>
+
+      <label for="data_inicio">Data Início:</label>
+      <input type="date" name="data_inicio" style="width:100%; padding:8px; margin-bottom:10px;">
+
+      <label for="data_fim">Data Fim:</label>
+      <input type="date" name="data_fim" style="width:100%; padding:8px; margin-bottom:20px;">
+
+      <button type="submit" style="padding:10px 20px; background-color:#27ae60; color:white; border:none; border-radius:5px;">Exportar</button>
+      <button type="button" onclick="document.getElementById('exportModal').style.display='none'" style="padding:10px 20px; background-color:#cc3333; color:white; border:none; border-radius:5px; margin-left:10px;">Cancelar</button>
+    </form>
+  </div>
+</div>
+<script>
+ window.onclick = function(event) {
+    var modal = document.getElementById('exportModal');
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  } 
+  </script>
 
 </body>
 </html>

@@ -265,6 +265,75 @@ if (!isset($_SESSION['usuario'])) {
       td:nth-of-type(4)::before { content: "Valor"; }
       td:nth-of-type(5)::before { content: "Ações"; }
     }
+
+/* Botão export */
+
+ .btn-export-green {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .btn-export-green:hover {
+    background-color: #218838;
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+  }
+
+  .modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 30px;
+    border: 1px solid #888;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 8px;
+  }
+
+  .modal-content label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+
+  .modal-content input,
+  .modal-content select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+
+  .close {
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #999;
+  }
+
+  .close:hover {
+    color: black;
+  }
   </style>
 
   <script>
@@ -287,11 +356,17 @@ if (!isset($_SESSION['usuario'])) {
   <a href="contas_receber.php" class="clear-filters">Limpar</a>
 </form>
 
+
 <!-- Botões Exportar -->
-<div class="export-buttons">
+<!-- <div class="export-buttons">
   <a href="exportar.php?tipo=pdf&status=receber"><button type="button">Exportar PDF</button></a>
   <a href="exportar.php?tipo=csv&status=receber"><button type="button">Exportar CSV</button></a>
   <a href="exportar.php?tipo=excel&status=receber"><button type="button">Exportar Excel</button></a>
+</div> -->
+
+<!-- Botão Exportar -->
+<div class="export-buttons">
+  <button type="button" class="btn-export-green" onclick="document.getElementById('export_receber').style.display='block'">Exportar</button>
 </div>
 
 <!-- Botão Adicionar Conta -->
@@ -303,7 +378,7 @@ if (!isset($_SESSION['usuario'])) {
 <div id="form-container">
   <h3>Nova Conta</h3>
   <form action="../actions/add_conta_receber.php" method="POST">
-    <input type="text" name="fornecedor" placeholder="Responsável" required>
+    <input type="text" name="responsavel" placeholder="Responsável" required>
     <input type="text" name="numero" placeholder="Número" required>
     <input type="text" name="valor" placeholder="Valor" required oninput="this.value = this.value.replace(/[^0-9.,]/g, '')">
     <input type="date" name="data_vencimento" required>
@@ -335,26 +410,41 @@ echo "<table>";
 echo "<tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr>";
 $hoje = date('Y-m-d');
 while ($row = $result->fetch_assoc()) {
-    $vencidoClass = ($row['data_vencimento'] < $hoje) ? "vencido" : "";
+    // Valores protegidos para evitar null
+    $responsavel = $row['responsavel'] ?? '';
+    $data_vencimento = $row['data_vencimento'] ?? '';
+    $numero = $row['numero'] ?? '';
+    $valor = $row['valor'] ?? 0;
+
+    $vencidoClass = ($data_vencimento !== '' && $data_vencimento < $hoje) ? "vencido" : "";
+
     echo "<tr class='{$vencidoClass}'>";
-    echo "<td>" . htmlspecialchars($row['responsavel']) . "</td>";
-    echo "<td>" . date('d/m/Y', strtotime($row['data_vencimento'])) . "</td>";
-    echo "<td>" . htmlspecialchars($row['numero']) . "</td>";
-    echo "<td>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
-    echo "<td>";
-    echo "<a href='../actions/baixar_conta_receber.php?id={$row['id']}'>Baixar</a> | ";
-    echo "<a href='../actions/editar_conta_receber.php?id={$row['id']}'>Editar</a>";
-    if ($_SESSION['usuario']['perfil'] === 'admin') {
-      echo " | <a href='../actions/enviar_codigo_exclusao.php?id={$row['id']}' onclick=\"return confirm('Deseja excluir esta conta? Um código será enviado para o e-mail do administrador.')\">Excluir</a>";
+    echo "<td>" . htmlspecialchars($responsavel) . "</td>";
+
+    if ($data_vencimento !== '') {
+        echo "<td>" . date('d/m/Y', strtotime($data_vencimento)) . "</td>";
+    } else {
+        echo "<td> - </td>";
     }
+
+    echo "<td>" . htmlspecialchars($numero) . "</td>";
+    echo "<td>R$ " . number_format((float)$valor, 2, ',', '.') . "</td>";
+
+    echo "<td>";
+    echo "<a href='../actions/baixar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "'>Baixar</a> | ";
+    echo "<a href='../actions/editar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "'>Editar</a>";
+
+    if ($_SESSION['usuario']['perfil'] === 'admin') {
+        echo " | <a href='../actions/enviar_codigo_exclusao.php?id=" . htmlspecialchars($row['id']) . "' onclick=\"return confirm('Deseja excluir esta conta? Um código será enviado para o e-mail do administrador.')\">Excluir</a>";
+    }
+
     echo "</td>";
     echo "</tr>";
-}
-echo "</table>";
+} 
 ?>
 
 <p><a href="contas_receber_baixadas.php">Ver contas baixadas</a></p>
-<p><a href="home.php">← Voltar para a Home</a></p>
+<!-- <p><a href="home.php">← Voltar para a Home</a></p> -->
 
 <script>
   // Toggle formulário adicionar conta
@@ -362,7 +452,61 @@ echo "</table>";
     const form = document.getElementById('form-container');
     form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
   }
+
+
+   let tipoExportacaoSelecionado = '';
+
+  function abrirModal(tipo) {
+    tipoExportacaoSelecionado = tipo;
+    document.getElementById('modal-exportar').style.display = 'flex';
+  }
+
+  function fecharModal() {
+    document.getElementById('modal-exportar').style.display = 'none';
+    document.getElementById('dataExportacao').value = '';
+  }
+
+  window.onclick = function(event) {
+    var modal = document.getElementById('exportModal');
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  } 
 </script>
+
+<!-- Modal Exportar -->
+<div id="export_receber" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="document.getElementById('export_receber').style.display='none'">&times;</span>
+    <h2>Exportar</h2>
+    <form action="../pages/export_receber.php" method="get">
+      <label for="tipo">Tipo:</label>
+      <select name="tipo" id="tipo" required>
+        <option value="pdf">PDF</option>
+        <option value="csv">CSV</option>
+        <option value="excel">Excel</option>
+      </select>
+
+      <label for="status">Status:</label>
+      <select name="status" id="status">
+        <option value="">Todos</option>
+        <!-- <option value="pendente">Pendente</option>
+        <option value="recebido">Recebido</option> -->
+      </select>
+
+      <label for="data_inicio">Data Início:</label>
+      <input type="date" name="data_inicio" id="data_inicio" />
+
+      <label for="data_fim">Data Fim:</label>
+      <input type="date" name="data_fim" id="data_fim" />
+
+      <br><br>
+      <button type="submit" class="btn-export-green">Exportar</button>
+    </form>
+  </div>
+</div>
+
+
 
 </body>
 </html>

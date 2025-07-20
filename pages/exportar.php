@@ -1,4 +1,5 @@
 <?php
+
 require '../vendor/autoload.php';
 
 use Dompdf\Dompdf;
@@ -8,34 +9,65 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 include('../database.php');
 
 $tipo = $_GET['tipo'] ?? '';
-$status = $_GET['status'] ?? 'pendente'; // padrão: pendente
+$status = $_GET['status'] ?? 'pendente';
+$data = $_GET['data'] ?? '';
 
-header('Content-Type: text/html; charset=utf-8');
+if (!in_array($tipo, ['pdf', 'excel', 'csv'])) {
+    die("Tipo de exportação inválido.");
+}
 
-// Consulta separando por status
-$sql = "SELECT fornecedor, numero, valor, data_vencimento FROM contas_pagar WHERE status = ? ORDER BY data_vencimento ASC";
+// Montar consulta
+$sql = "SELECT fornecedor, numero, valor, data_vencimento FROM contas_pagar WHERE status = ?";
+$params = [$status];
+$types = "s";
+
+if (!empty($data)) {
+    $sql .= " AND data_vencimento = ?";
+    $params[] = $data;
+    $types .= "s";
+}
+
+$sql .= " ORDER BY data_vencimento ASC";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('s', $status);
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
+$dados = $result->fetch_all(MYSQLI_ASSOC);
 
-if ($result->num_rows === 0) {
-    die("Nenhum dado para exportar.");
+// Nome do arquivo
+$nomeArquivo = "contas_{$status}" . (!empty($data) ? "_{$data}" : "") . "_" . date("YmdHis");
+
+// Exportar para Excel
+if ($tipo === 'excel') {
+    header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    header("Content-Disposition: attachment; filename={$nomeArquivo}.xlsx");
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+
+    // Cabeçalhos
+    $sheet->fromArray(['Fornecedor', 'Número', 'Valor', 'Data de Vencimento'], NULL, 'A1');
+
+    // Dados
+    $linha = 2;
+    foreach ($dados as $linhaDados) {
+        $sheet->fromArray(array_values($linhaDados), NULL, "A{$linha}");
+        $linha++;
+    }
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save("php://output");
+    exit;
 }
 
-$dados = [];
-while ($row = $result->fetch_assoc()) {
-    $dados[] = $row;
-}
-
-$nomeArquivo = "contas_{$status}";
-
+// Exportar para CSV
 if ($tipo === 'csv') {
-    header('Content-Type: text/csv');
-    header("Content-Disposition: attachment; filename=\"{$nomeArquivo}.csv\"");
+    header("Content-Type: text/csv");
+    header("Content-Disposition: attachment; filename={$nomeArquivo}.csv");
 
     $f = fopen('php://output', 'w');
     fputcsv($f, ['Fornecedor', 'Número', 'Valor', 'Data de Vencimento']);
+
     foreach ($dados as $linha) {
         fputcsv($f, $linha);
     }
@@ -43,33 +75,17 @@ if ($tipo === 'csv') {
     exit;
 }
 
-if ($tipo === 'excel') {
-    header("Content-Type: application/vnd.ms-excel");
-    header("Content-Disposition: attachment; filename={$nomeArquivo}.xls");
-
-    echo "<table border='1'>";
-    echo "<tr><th>Fornecedor</th><th>Número</th><th>Valor</th><th>Data de Vencimento</th></tr>";
-    foreach ($dados as $linha) {
-        echo "<tr>";
-        foreach ($linha as $valor) {
-            echo "<td>" . htmlspecialchars($valor) . "</td>";
-        }
-        echo "</tr>";
-    }
-    echo "</table>";
-    exit;
-}
-
+// Exportar para PDF
 if ($tipo === 'pdf') {
     $html = "<h2>Contas " . ucfirst($status) . "</h2><table border='1' cellpadding='5'><tr><th>Fornecedor</th><th>Número</th><th>Valor</th><th>Data de Vencimento</th></tr>";
     foreach ($dados as $linha) {
-        $html .= '<tr>';
+        $html .= "<tr>";
         foreach ($linha as $valor) {
-            $html .= '<td>' . htmlspecialchars($valor) . '</td>';
+            $html .= "<td>" . htmlspecialchars($valor) . "</td>";
         }
-        $html .= '</tr>';
+        $html .= "</tr>";
     }
-    $html .= '</table>';
+    $html .= "</table>";
 
     $dompdf = new Dompdf();
     $dompdf->loadHtml($html);
@@ -79,6 +95,4 @@ if ($tipo === 'pdf') {
     exit;
 }
 
-
-
-echo "Tipo de exportação inválido.";
+echo "Tipo de exportação não suportado.";

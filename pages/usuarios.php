@@ -190,49 +190,51 @@ if (!$result) {
     background-color: #1e874b;
   }
 
-  /* Inputs formulário */
-  form#addUserForm label {
-    display: block;
-    margin-top: 10px;
-    margin-bottom: 5px;
-  }
-  form#addUserForm input {
-    width: 100%;
-    padding: 8px;
-    border-radius: 4px;
-    border: none;
-    background-color: #333;
-    color: #eee;
-    font-size: 14px;
-  }
-  form#addUserForm input::placeholder {
-    color: #bbb;
-  }
+ /* Inputs formulário */
+form#addUserForm label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
 
-  /* Wrapper para senha e botão */
-  .password-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  .password-wrapper input {
-    flex: 1;
-    padding-right: 40px;
-  }
-  .toggle-password {
-    position: absolute;
-    right: 5px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: #00bfff;
-    font-size: 18px;
-    padding: 0 8px;
-    user-select: none;
-  }
-  .toggle-password:focus {
-    outline: none;
-  }
+form#addUserForm input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: none;
+  background-color: #333;
+  color: #eee;
+  font-size: 14px;
+}
+
+form#addUserForm input::placeholder {
+  color: #bbb;
+}
+/* Wrapper para senha e botão */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%; /* 👈 Adicionado */
+}
+
+.password-wrapper input {
+  flex: 1;
+  width: 100%; /* 👈 Adicionado */
+  padding-right: 40px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #00bfff;
+  font-size: 18px;
+  padding: 0 8px;
+  user-select: none;
+}
 </style>
 
 <script>
