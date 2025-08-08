@@ -182,23 +182,73 @@ include('../database.php');
 
     /* Botão export */
     .btn-export {
-  background-color: #28a745; /* Verde */
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease;
-}
+      background-color: #28a745; /* Verde */
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s ease;
+    }
 
-.btn-export:hover {
-  background-color: #218838;
-}
+    .btn-export:hover {
+      background-color: #218838;
+    }
 
+    /* Modal de exclusão */
+    .modal {
+      display: none; 
+      position: fixed; 
+      z-index: 10000; 
+      left: 0; top: 0; 
+      width: 100%; height: 100%; 
+      overflow: auto; 
+      background-color: rgba(0,0,0,0.7);
+    }
 
+    .modal-content {
+      background-color: #222;
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 400px;
+      color: #eee;
+      position: relative;
+      box-shadow: 0 0 15px rgba(0, 191, 255, 0.6);
+    }
+
+    .close {
+      color: #aaa;
+      position: absolute;
+      top: 12px;
+      right: 20px;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #00bfff;
+    }
+
+    .btn-delete {
+      background-color: transparent;
+      border: none;
+      color: #cc3333;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: underline;
+      font-size: 1em;
+      padding: 0;
+    }
+
+    .btn-delete:hover {
+      color: #a02a2a;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -214,13 +264,6 @@ include('../database.php');
   <button type="submit">Buscar</button>
   <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar Filtros</a>
 </form>
-
-<!-- Botões de Exportação
-<div class="export-buttons">
-  <a href="../pages/exportar.php?tipo=pdf&status=baixada"><button type="button">Exportar PDF</button></a>
-  <a href="../pages/exportar.php?tipo=excel&status=baixada"><button type="button">Exportar Excel</button></a>
-  <a href="../pages/exportar.php?tipo=csv&status=baixada"><button type="button">Exportar CSV</button></a>
-</div> -->
 
 <!-- Botão que abre o modal export -->
 <div class="export-buttons">
@@ -258,15 +301,13 @@ if (!$result) {
         echo "<td data-label='Data de Baixa'>" . date('d/m/Y', strtotime($row['data_baixa'])) . "</td>";
         echo "<td data-label='Usuário'>" . htmlspecialchars($row['usuario_baixou']) . "</td>";
         echo "<td data-label='Ações'>
-                <a href='../actions/excluir_conta_pagar.php?id={$row['id']}' onclick=\"return confirm('Deseja excluir esta conta baixada?')\">Excluir</a>
+                <button class='btn-delete' onclick='openDeleteModal({$row['id']})'>Excluir</button>
               </td>";
         echo "</tr>";
     }
     echo "</tbody></table>";
 }
 ?>
-
-<p><a href="contas_pagar.php">← Voltar para a Home</a></p>
 
 <!-- Modal de Exportação -->
 <div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999;">
@@ -292,16 +333,41 @@ if (!$result) {
     </form>
   </div>
 </div>
+
+<!-- Modal de confirmação de exclusão -->
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeDeleteModal()">&times;</span>
+    <h3>Confirmar Exclusão</h3>
+    <p>Tem certeza que deseja excluir esta conta baixada?</p>
+    <div style="margin-top:20px; text-align: right;">
+      <button onclick="closeDeleteModal()" style="background-color:#cc3333; color:white; border:none; padding:10px 20px; border-radius:5px; margin-right:10px; cursor:pointer;">Cancelar</button>
+      <a id="confirmDeleteBtn" href="#" style="background-color:#27ae60; color:white; padding:10px 20px; border-radius:5px; text-decoration:none; font-weight:bold;">Confirmar</a>
+    </div>
+  </div>
+</div>
+
 <script>
- window.onclick = function(event) {
-    var modal = document.getElementById('exportModal');
+  let deleteId = null;
+
+  function openDeleteModal(id) {
+    deleteId = id;
+    document.getElementById('confirmDeleteBtn').href = `../actions/excluir_conta_pagar.php?id=${id}`;
+    document.getElementById('deleteModal').style.display = 'block';
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+    deleteId = null;
+  }
+
+  // Fecha o modal se clicar fora da caixa
+  window.onclick = function(event) {
+    const modal = document.getElementById('deleteModal');
     if (event.target == modal) {
-      modal.style.display = "none";
+      closeDeleteModal();
     }
-  } 
-  </script>
+  };
+</script>
 
 </body>
-</html>
-
-<?php include('../includes/footer.php'); ?>

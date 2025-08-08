@@ -266,82 +266,91 @@ if (!isset($_SESSION['usuario'])) {
       td:nth-of-type(5)::before { content: "Ações"; }
     }
 
-/* Botão export */
-
- .btn-export-green {
-    background-color: #28a745;
-    color: white;
-    border: none;
-    padding: 10px 14px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-
-  .btn-export-green:hover {
-    background-color: #218838;
-  }
-
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 999;
-    padding-top: 100px;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4);
-  }
-
-  .modal-content {
-    background-color: #fefefe;
-    margin: auto;
-    padding: 30px;
-    border: 1px solid #888;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 8px;
-  }
-
-  .modal-content label {
-    display: block;
-    margin-top: 10px;
-    font-weight: bold;
-  }
-
-  .modal-content input,
-  .modal-content select {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-  }
-
-  .close {
-    float: right;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #999;
-  }
-
-  .close:hover {
-    color: black;
-  }
-  </style>
-
-  <script>
-    function toggleForm() {
-      const form = document.getElementById('form-container');
-      form.style.display = form.style.display === 'none' || form.style.display === '' ? 'flex' : 'none';
+    /* Botão export */
+    .btn-export-green {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-  </script>
+
+    .btn-export-green:hover {
+      background-color: #218838;
+    }
+
+    /* Botão Excluir vermelho */
+    .btn-excluir {
+      background: none;
+      border: none;
+      color: #cc3333;
+      cursor: pointer;
+      padding: 0;
+      font-weight: bold;
+      font-size: 1em;
+      transition: color 0.3s ease;
+    }
+    .btn-excluir:hover {
+      color: #a02a2a;
+      text-decoration: underline;
+    }
+
+    /* Modal de exclusão */
+    #deleteModal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      align-items: center;
+      justify-content: center;
+    }
+    #deleteModal .modal-content {
+      background-color: #222;
+      padding: 30px;
+      max-width: 400px;
+      margin: 100px auto;
+      border-radius: 10px;
+      text-align: center;
+      position: relative;
+    }
+    #deleteModal h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #00bfff;
+    }
+    #deleteModal button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0 10px;
+      min-width: 100px;
+      font-size: 16px;
+    }
+    #deleteModal button.confirm {
+      background-color: #27ae60;
+      color: white;
+    }
+    #deleteModal button.confirm:hover {
+      background-color: #1e874b;
+    }
+    #deleteModal button.cancel {
+      background-color: #cc3333;
+      color: white;
+    }
+    #deleteModal button.cancel:hover {
+      background-color: #a02a2a;
+    }
+  </style>
 </head>
 <body>
 
@@ -355,14 +364,6 @@ if (!isset($_SESSION['usuario'])) {
   <button type="submit">Buscar</button>
   <a href="contas_receber.php" class="clear-filters">Limpar</a>
 </form>
-
-
-<!-- Botões Exportar -->
-<!-- <div class="export-buttons">
-  <a href="exportar.php?tipo=pdf&status=receber"><button type="button">Exportar PDF</button></a>
-  <a href="exportar.php?tipo=csv&status=receber"><button type="button">Exportar CSV</button></a>
-  <a href="exportar.php?tipo=excel&status=receber"><button type="button">Exportar Excel</button></a>
-</div> -->
 
 <!-- Botão Exportar -->
 <div class="export-buttons">
@@ -387,7 +388,6 @@ if (!isset($_SESSION['usuario'])) {
 </div>
 
 <?php
-// Monta os filtros na consulta SQL com segurança
 $where = ["status = 'pendente'"];
 
 if (!empty($_GET['responsavel'])) {
@@ -410,7 +410,6 @@ echo "<table>";
 echo "<tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr>";
 $hoje = date('Y-m-d');
 while ($row = $result->fetch_assoc()) {
-    // Valores protegidos para evitar null
     $responsavel = $row['responsavel'] ?? '';
     $data_vencimento = $row['data_vencimento'] ?? '';
     $numero = $row['numero'] ?? '';
@@ -435,48 +434,29 @@ while ($row = $result->fetch_assoc()) {
     echo "<a href='../actions/editar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "'>Editar</a>";
 
     if ($_SESSION['usuario']['perfil'] === 'admin') {
-        echo " | <a href='../actions/enviar_codigo_exclusao.php?id=" . htmlspecialchars($row['id']) . "' onclick=\"return confirm('Deseja excluir esta conta? Um código será enviado para o e-mail do administrador.')\">Excluir</a>";
+        // Botão excluir agora abre modal e passa ID para exclusão
+        echo " | <button class='btn-excluir' data-id='" . htmlspecialchars($row['id']) . "'>Excluir</button>";
     }
 
     echo "</td>";
     echo "</tr>";
-} 
+}
+echo "</table>";
 ?>
 
-<p><a href="contas_receber_baixadas.php">Ver contas baixadas</a></p>
-<!-- <p><a href="home.php">← Voltar para a Home</a></p> -->
-
-<script>
-  // Toggle formulário adicionar conta
-  function toggleForm() {
-    const form = document.getElementById('form-container');
-    form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
-  }
-
-
-   let tipoExportacaoSelecionado = '';
-
-  function abrirModal(tipo) {
-    tipoExportacaoSelecionado = tipo;
-    document.getElementById('modal-exportar').style.display = 'flex';
-  }
-
-  function fecharModal() {
-    document.getElementById('modal-exportar').style.display = 'none';
-    document.getElementById('dataExportacao').value = '';
-  }
-
-  window.onclick = function(event) {
-    var modal = document.getElementById('exportModal');
-    if (event.target == modal) {
-      modal.style.display = "none";
-    }
-  } 
-</script>
+<!-- Modal Excluir simples sem código -->
+<div id="deleteModal">
+  <div class="modal-content">
+    <h3>Confirmar Exclusão</h3>
+    <p>Tem certeza que deseja excluir esta conta? Essa ação não poderá ser desfeita.</p>
+    <button class="confirm">Sim, excluir</button>
+    <button class="cancel">Cancelar</button>
+  </div>
+</div>
 
 <!-- Modal Exportar -->
-<div id="export_receber" class="modal">
-  <div class="modal-content">
+<div id="export_receber" class="modal" style="display:none;">
+  <div class="modal-content" style="color:black;">
     <span class="close" onclick="document.getElementById('export_receber').style.display='none'">&times;</span>
     <h2>Exportar</h2>
     <form action="../pages/export_receber.php" method="get">
@@ -490,8 +470,6 @@ while ($row = $result->fetch_assoc()) {
       <label for="status">Status:</label>
       <select name="status" id="status">
         <option value="">Todos</option>
-        <!-- <option value="pendente">Pendente</option>
-        <option value="recebido">Recebido</option> -->
       </select>
 
       <label for="data_inicio">Data Início:</label>
@@ -506,7 +484,46 @@ while ($row = $result->fetch_assoc()) {
   </div>
 </div>
 
+<script>
+  // Toggle formulário adicionar conta
+  function toggleForm() {
+    const form = document.getElementById('form-container');
+    form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
+  }
 
+  // Modal de exclusão simples
+  const deleteModal = document.getElementById('deleteModal');
+  const confirmBtn = deleteModal.querySelector('button.confirm');
+  const cancelBtn = deleteModal.querySelector('button.cancel');
+  let deleteId = null;
+
+  document.querySelectorAll('.btn-excluir').forEach(btn => {
+    btn.addEventListener('click', () => {
+      deleteId = btn.getAttribute('data-id');
+      deleteModal.style.display = 'flex';
+    });
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (deleteId) {
+      // Redireciona para ação de exclusão diretamente, sem pedir código
+      window.location.href = `../actions/excluir_conta_receber.php?id=${deleteId}`;
+    }
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    deleteModal.style.display = 'none';
+    deleteId = null;
+  });
+
+  // Fechar modal clicando fora
+  window.addEventListener('click', e => {
+    if (e.target === deleteModal) {
+      deleteModal.style.display = 'none';
+      deleteId = null;
+    }
+  });
+</script>
 
 </body>
 </html>

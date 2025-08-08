@@ -6,18 +6,15 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-$nome = $_SESSION['usuario']['nome'];
-$perfil = $_SESSION['usuario']['perfil'];
+$usuario = $_SESSION['usuario'];
+$nome = $usuario['nome'];
+$perfil = $usuario['perfil'];
+$tipo = $usuario['tipo'];
+$foto = $usuario['foto'] ?? null;
 
-// Mostrar mensagem de sucesso se existir
-if (isset($_SESSION['mensagem'])) {
-    $mensagem = $_SESSION['mensagem'];
-    unset($_SESSION['mensagem']);
-} else {
-    $mensagem = null;
-}
+$mensagem = $_SESSION['mensagem'] ?? null;
+unset($_SESSION['mensagem']);
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -137,10 +134,12 @@ if (isset($_SESSION['mensagem'])) {
 
   <nav>
     <a href="contas_pagar.php">Contas a Pagar</a>
+    <a href="contas_pagar_baixadas.php">Contas a pagar baixadas</a>
     <a href="contas_receber.php">Contas a Receber</a>
+    <a href="contas_receber_baixadas.php">Contas a receber baixadas</a>
     <a href="usuarios.php">Usuários</a>
     <a href="perfil.php">Perfil</a>
-    <a href="logout.php">Sair</a>
+    <a style="background-color: red;" href="logout.php">Sair</a>
   </nav>
 
   <p>Bem-vindo ao sistema!</p>

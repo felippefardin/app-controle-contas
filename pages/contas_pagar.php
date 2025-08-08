@@ -265,31 +265,107 @@ if (!isset($_SESSION['usuario'])) {
       td:nth-of-type(4)::before { content: "Valor"; }
       td:nth-of-type(5)::before { content: "Ações"; }
     }
-/* Botão export */
-.btn-export {
-  background-color: #28a745; /* Verde */
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease;
-}
+    /* Botão export */
+    .btn-export {
+      background-color: #28a745; /* Verde */
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s ease;
+    }
 
-.btn-export:hover {
-  background-color: #218838;
-}
+    .btn-export:hover {
+      background-color: #218838;
+    }
 
-
+    /* Modal de exclusão (igual padrão do export) */
+    #deleteModal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      align-items: center;
+      justify-content: center;
+    }
+    #deleteModal .modal-content {
+      background-color: #222;
+      padding: 30px;
+      max-width: 400px;
+      margin: 100px auto;
+      border-radius: 10px;
+      text-align: center;
+      position: relative;
+    }
+    #deleteModal h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #00bfff;
+    }
+    #deleteModal button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0 10px;
+      min-width: 100px;
+      font-size: 16px;
+    }
+    #deleteModal button.confirm {
+      background-color: #27ae60;
+      color: white;
+    }
+    #deleteModal button.confirm:hover {
+      background-color: #1e874b;
+    }
+    #deleteModal button.cancel {
+      background-color: #cc3333;
+      color: white;
+    }
+    #deleteModal button.cancel:hover {
+      background-color: #a02a2a;
+    }
   </style>
 
   <script>
     function toggleForm() {
       const form = document.getElementById('form-container');
       form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
+    }
+
+    // Modal exclusão
+    let deleteId = null;
+    function openDeleteModal(id) {
+      deleteId = id;
+      document.getElementById('deleteModal').style.display = 'flex';
+    }
+    function closeDeleteModal() {
+      deleteId = null;
+      document.getElementById('deleteModal').style.display = 'none';
+    }
+    function confirmDelete() {
+      if (deleteId) {
+        window.location.href = '../actions/excluir_conta_pagar.php?id=' + deleteId;
+      }
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('exportModal');
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+      const deleteModal = document.getElementById('deleteModal');
+      if (event.target === deleteModal) {
+        closeDeleteModal();
+      }
     }
   </script>
 </head>
@@ -307,22 +383,14 @@ if (!isset($_SESSION['usuario'])) {
 </form>
 
 <!-- Botões Exportar -->
-<!-- <div class="export-buttons">
-  <button type="button" onclick="abrirModal('pdf')">Exportar PDF</button>
-  <button type="button" onclick="abrirModal('csv')">Exportar CSV</button>
-  <button type="button" onclick="abrirModal('excel')">Exportar Excel</button>
-</div> -->
-
 <div class="export-buttons">
   <button type="button" class="btn-export" onclick="document.getElementById('exportModal').style.display='block'">Exportar</button>
 </div>
-
 
 <!-- Botão Adicionar Conta -->
 <button class="btn-add" onclick="toggleForm()">
   <i class="fa fa-plus"></i> Adicionar Nova Conta
 </button>
-
 
 <!-- Formulário de Adição -->
 <div id="form-container">
@@ -369,43 +437,13 @@ while ($row = $result->fetch_assoc()) {
     echo "<td>";
     echo "<a href='../actions/baixar_conta.php?id={$row['id']}'>Baixar</a> | ";
     echo "<a href='../actions/editar_conta_pagar.php?id={$row['id']}'>Editar</a> | ";
-    echo "<a href='../actions/excluir_conta_pagar.php?id={$row['id']}' onclick=\"return confirm('Deseja realmente excluir esta conta?')\">Excluir</a>";
+    // Alterado para abrir modal
+    echo "<a href='#' onclick='openDeleteModal({$row['id']}); return false;' style='color:#cc3333; font-weight:bold;'>Excluir</a>";
     echo "</td>";
     echo "</tr>";
 }
 echo "</table>";
 ?>
-
-<p><a href="contas_pagar_baixadas.php">Ver contas pagas</a></p>
-<!-- <p><a href="home.php">← Voltar para a Home</a></p> -->
-
-<script> 
-  function toggleForm() {
-    const form = document.getElementById('form-container');
-    form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'flex' : 'none';
-  }
-
- 
-  let tipoExportacaoSelecionado = '';
-
-  function abrirModal(tipo) {
-    tipoExportacaoSelecionado = tipo;
-    document.getElementById('modal-exportar').style.display = 'flex';
-  }
-
-  function fecharModal() {
-    document.getElementById('modal-exportar').style.display = 'none';
-    document.getElementById('dataExportacao').value = '';
-  }
-
-  window.onclick = function(event) {
-    var modal = document.getElementById('exportModal');
-    if (event.target == modal) {
-      modal.style.display = "none";
-    }
-  } 
-
-</script>
 
 <!-- Modal de Exportação -->
 <div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999;">
@@ -432,9 +470,15 @@ echo "</table>";
   </div>
 </div>
 
-
-  
-
+<!-- Modal de Exclusão -->
+<div id="deleteModal">
+  <div class="modal-content">
+    <h3>Confirmar Exclusão</h3>
+    <p>Deseja realmente excluir esta conta? Essa ação não poderá ser desfeita.</p>
+    <button class="confirm" onclick="confirmDelete()">Sim, excluir</button>
+    <button class="cancel" onclick="closeDeleteModal()">Cancelar</button>
+  </div>
+</div>
 
 </body>
 </html>

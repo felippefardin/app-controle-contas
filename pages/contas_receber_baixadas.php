@@ -323,7 +323,7 @@ if (!$result) {
     }
 }
 ?>
-<p><a href="contas_receber.php">← Voltar para Contas a Receber</a></p>
+<!-- <p><a href="contas_receber.php">← Voltar para Contas a Receber</a></p> -->
 
 <!-- Modal Exportar Baixadas -->
 <div id="export_receber_baixadas" class="modal">

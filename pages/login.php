@@ -2,38 +2,46 @@
 session_start();
 include('../database.php');
 
+$erro = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = $_POST['email'];
-    $senha = $_POST['senha'];
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $senha = $_POST['senha'] ?? '';
 
-    $stmt = $conn->prepare("SELECT id, nome, email, senha, perfil FROM usuarios WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $stmt->store_result();
-
-    if ($stmt->num_rows == 1) {
-        $stmt->bind_result($id, $nome, $email_db, $senha_hash, $perfil);
-        $stmt->fetch();
-
-        if (password_verify($senha, $senha_hash)) {
-            $_SESSION['usuario'] = [
-                'id' => $id,
-                'nome' => $nome,
-                'email' => $email_db,
-                'perfil' => $perfil
-            ];
-            $_SESSION['mensagem'] = "Usuário logado com sucesso!";
-            header('Location: home.php');
-            exit;
-        } else {
-            $erro = "Senha incorreta.";
-        }
+    if (!$email || !$senha) {
+        $erro = "Preencha e-mail e senha.";
     } else {
-        $erro = "Usuário não encontrado.";
+        $stmt = $conn->prepare("SELECT id, nome, email, senha, perfil, tipo, foto FROM usuarios WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows == 1) {
+            $stmt->bind_result($id, $nome, $email_db, $senha_hash, $perfil, $tipo, $foto);
+            $stmt->fetch();
+
+            if (password_verify($senha, $senha_hash)) {
+                $_SESSION['usuario'] = [
+                    'id' => $id,
+                    'nome' => $nome,
+                    'email' => $email_db,
+                    'perfil' => $perfil,
+                    'tipo' => $tipo,
+                    'foto' => $foto,
+                ];
+                $_SESSION['mensagem'] = "Usuário logado com sucesso!";
+                header('Location: home.php');
+                exit;
+            } else {
+                $erro = "Senha incorreta.";
+            }
+        } else {
+            $erro = "Usuário não encontrado.";
+        }
+        $stmt->close();
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -153,6 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <p style="margin-top:10px; text-align:center;">
       <a href="registro.php" style="color:#0af; text-decoration:none;">Não tem conta? Cadastre-se</a>
+      <p style="text-align:center; margin-top: 10px;">
+  <a href="esqueci_senha.php" style="color:#0af; text-decoration:none;">Esqueci minha senha</a>
+</p>
+
     </p>
   </form>
 </body>
