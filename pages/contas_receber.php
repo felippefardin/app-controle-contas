@@ -350,6 +350,121 @@ if (!isset($_SESSION['usuario'])) {
     #deleteModal button.cancel:hover {
       background-color: #a02a2a;
     }
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+      color: #00bfff;
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Formulário de Busca */
+    form.search-form {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 25px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    form.search-form input[type="text"],
+    form.search-form input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background-color: #333;
+      color: #eee;
+      min-width: 180px;
+    }
+    form.search-form button {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    form.search-form button:hover {
+      background-color: #1e874b;
+    }
+    form.search-form a.clear-filters {
+      background-color: #cc3333;
+      color: white;
+      padding: 10px 18px;
+      font-weight: bold;
+      border-radius: 5px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    form.search-form a.clear-filters:hover {
+      background-color: #a02a2a;
+    }
+
+    /* Botões exportar */
+    .export-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .btn-export {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .btn-export:hover {
+      background-color: #218838;
+    }
+
+    /* Tabela */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #1f1f1f;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #333;
+      text-align: left;
+    }
+    th {
+      background-color: #222;
+      color: #00bfff;
+    }
+    tr:nth-child(even) {
+      background-color: #2a2a2a;
+    }
+    tr:hover {
+      background-color: #333;
+    }
   </style>
 </head>
 <body>
@@ -367,7 +482,7 @@ if (!isset($_SESSION['usuario'])) {
 
 <!-- Botão Exportar -->
 <div class="export-buttons">
-  <button type="button" class="btn-export-green" onclick="document.getElementById('export_receber').style.display='block'">Exportar</button>
+  <button type="button" class="btn-export" onclick="document.getElementById('exportModal').style.display='block'">Exportar</button>
 </div>
 
 <!-- Botão Adicionar Conta -->
@@ -454,32 +569,32 @@ echo "</table>";
   </div>
 </div>
 
-<!-- Modal Exportar -->
-<div id="export_receber" class="modal" style="display:none;">
-  <div class="modal-content" style="color:black;">
-    <span class="close" onclick="document.getElementById('export_receber').style.display='none'">&times;</span>
-    <h2>Exportar</h2>
-    <form action="../pages/export_receber.php" method="get">
-      <label for="tipo">Tipo:</label>
-      <select name="tipo" id="tipo" required>
+
+<!-- Modal de Exportação -->
+<div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999;">
+  <div style="background:#222; padding:30px; max-width:400px; margin:100px auto; border-radius:10px; color:white; position:relative;">
+    <h3 style="margin-top:0;">Exportar Dados</h3>
+    <form method="GET" action="../pages/exportar_contas_receber.php">
+      <!-- Tipo de exportação -->
+      <label for="tipo">Tipo de Exportação:</label>
+      <select name="tipo" id="tipo" required style="width:100%; padding:8px; margin-bottom:15px;">
         <option value="pdf">PDF</option>
-        <option value="csv">CSV</option>
         <option value="excel">Excel</option>
+        <option value="csv">CSV</option>
       </select>
 
-      <label for="status">Status:</label>
-      <select name="status" id="status">
-        <option value="">Todos</option>
-      </select>
-
+      <!-- Data início/fim -->
       <label for="data_inicio">Data Início:</label>
-      <input type="date" name="data_inicio" id="data_inicio" />
-
+      <input type="date" name="data_inicio" style="width:100%; padding:8px; margin-bottom:10px;">
       <label for="data_fim">Data Fim:</label>
-      <input type="date" name="data_fim" id="data_fim" />
+      <input type="date" name="data_fim" style="width:100%; padding:8px; margin-bottom:15px;">
 
-      <br><br>
-      <button type="submit" class="btn-export-green">Exportar</button>
+      <!-- Campos de filtro atuais enviados automaticamente -->
+      <input type="hidden" name="responsavel" value="<?php echo htmlspecialchars($_GET['responsavel'] ?? ''); ?>">
+      <input type="hidden" name="numero" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
+
+      <button type="submit" style="padding:10px 20px; background-color:#27ae60; color:white; border:none; border-radius:5px;">Exportar</button>
+      <button type="button" onclick="document.getElementById('exportModal').style.display='none'" style="padding:10px 20px; background-color:#cc3333; color:white; border:none; border-radius:5px; margin-left:10px;">Cancelar</button>
     </form>
   </div>
 </div>

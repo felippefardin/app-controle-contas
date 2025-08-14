@@ -367,15 +367,57 @@ if (!isset($_SESSION['usuario'])) {
         closeDeleteModal();
       }
     }
+    window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('excluido') === '1') {
+        const msg = document.getElementById('successMsg');
+        msg.style.display = 'block';
+        setTimeout(() => {
+            msg.style.opacity = '1';
+        }, 50);
+
+        // Some depois de 3 segundos
+        setTimeout(() => {
+            msg.style.opacity = '0';
+            setTimeout(() => msg.style.display = 'none', 500);
+        }, 3000);
+
+        // Remove o parâmetro da URL
+        urlParams.delete('excluido');
+        window.history.replaceState({}, '', `${location.pathname}?${urlParams}`);
+    }
+}
   </script>
 </head>
 <body>
+  <!-- Mensagem Sobreposta -->
+<div id="successMsg" style="
+    display:none;
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    background-color:#27ae60;
+    color:white;
+    padding:20px 35px;
+    border-radius:8px;
+    z-index:10000;
+    box-shadow:0 2px 10px rgba(0,0,0,0.3);
+    font-weight:bold;
+    font-size:18px;
+    opacity:0;
+    transition:opacity 0.5s ease;
+    ">
+    ✅ Conta excluída com sucesso!
+</div>
+
 
 <h2>Contas a Pagar</h2>
 
+
 <!-- Formulário de Busca -->
 <form class="search-form" method="GET" action="">
-  <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($_GET['fornecedor'] ?? ''); ?>">
+  <input type="text" name="responsavel" placeholder="Responsável" value="<?php echo htmlspecialchars($_GET['responsavel'] ?? ''); ?>">
   <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
   <input type="date" name="data_vencimento" placeholder="Data Vencimento" value="<?php echo htmlspecialchars($_GET['data_vencimento'] ?? ''); ?>">
   <button type="submit">Buscar</button>
@@ -416,9 +458,16 @@ if (!empty($_GET['numero'])) {
     $numero = $conn->real_escape_string($_GET['numero']);
     $where[] = "numero LIKE '%$numero%'";
 }
-if (!empty($_GET['data_vencimento'])) {
-    $data_vencimento = $conn->real_escape_string($_GET['data_vencimento']);
-    $where[] = "data_vencimento = '$data_vencimento'";
+if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
+    $data_inicio = $conn->real_escape_string($_GET['data_inicio']);
+    $data_fim = $conn->real_escape_string($_GET['data_fim']);
+    $where[] = "data_vencimento BETWEEN '$data_inicio' AND '$data_fim'";
+} elseif (!empty($_GET['data_inicio'])) {
+    $data_inicio = $conn->real_escape_string($_GET['data_inicio']);
+    $where[] = "data_vencimento >= '$data_inicio'";
+} elseif (!empty($_GET['data_fim'])) {
+    $data_fim = $conn->real_escape_string($_GET['data_fim']);
+    $where[] = "data_vencimento <= '$data_fim'";
 }
 
 $sql = "SELECT * FROM contas_pagar WHERE " . implode(" AND ", $where) . " ORDER BY data_vencimento ASC";
@@ -437,7 +486,6 @@ while ($row = $result->fetch_assoc()) {
     echo "<td>";
     echo "<a href='../actions/baixar_conta.php?id={$row['id']}'>Baixar</a> | ";
     echo "<a href='../actions/editar_conta_pagar.php?id={$row['id']}'>Editar</a> | ";
-    // Alterado para abrir modal
     echo "<a href='#' onclick='openDeleteModal({$row['id']}); return false;' style='color:#cc3333; font-weight:bold;'>Excluir</a>";
     echo "</td>";
     echo "</tr>";
@@ -449,8 +497,9 @@ echo "</table>";
 <div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999;">
   <div style="background:#222; padding:30px; max-width:400px; margin:100px auto; border-radius:10px; color:white; position:relative;">
     <h3 style="margin-top:0;">Exportar Dados</h3>
-    <form method="GET" action="../pages/exportar.php">
+    <form method="GET" action="../pages/exportar_contas_pagar.php">
       <input type="hidden" name="status" value="pendente">
+
       <label for="tipo">Tipo de Exportação:</label>
       <select name="tipo" id="tipo" required style="width:100%; padding:8px; margin-bottom:15px;">
         <option value="pdf">PDF</option>
@@ -459,10 +508,10 @@ echo "</table>";
       </select>
 
       <label for="data_inicio">Data Início:</label>
-      <input type="date" name="data_inicio" style="width:100%; padding:8px; margin-bottom:10px;">
+      <input type="date" name="data_inicio" id="data_inicio" style="width:100%; padding:8px; margin-bottom:10px;" value="<?php echo htmlspecialchars($_GET['data_inicio'] ?? ''); ?>">
 
       <label for="data_fim">Data Fim:</label>
-      <input type="date" name="data_fim" style="width:100%; padding:8px; margin-bottom:20px;">
+      <input type="date" name="data_fim" id="data_fim" style="width:100%; padding:8px; margin-bottom:20px;" value="<?php echo htmlspecialchars($_GET['data_fim'] ?? ''); ?>">
 
       <button type="submit" style="padding:10px 20px; background-color:#27ae60; color:white; border:none; border-radius:5px;">Exportar</button>
       <button type="button" onclick="document.getElementById('exportModal').style.display='none'" style="padding:10px 20px; background-color:#cc3333; color:white; border:none; border-radius:5px; margin-left:10px;">Cancelar</button>
@@ -474,9 +523,9 @@ echo "</table>";
 <div id="deleteModal">
   <div class="modal-content">
     <h3>Confirmar Exclusão</h3>
-    <p>Deseja realmente excluir esta conta? Essa ação não poderá ser desfeita.</p>
-    <button class="confirm" onclick="confirmDelete()">Sim, excluir</button>
-    <button class="cancel" onclick="closeDeleteModal()">Cancelar</button>
+    <p>Tem certeza que deseja excluir esta conta?</p>
+    <button class="confirm" onclick="confirmDelete()">Sim</button>
+    <button class="cancel" onclick="closeDeleteModal()">Não</button>
   </div>
 </div>
 

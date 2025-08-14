@@ -47,8 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8" />
   <title>Login - App Controle de Contas</title>
+  <!-- Link Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
   <style>
-    /* básico para centralizar e escuro */
     * {
       box-sizing: border-box;
     }
@@ -130,7 +132,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       text-align: center;
     }
 
-    /* Responsividade */
+    /* Campo com ícone */
+    .password-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .password-container input {
+      padding-right: 35px;
+    }
+
+    .password-container .toggle-password {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: black;
+      font-size: 1.1rem;
+    }
+
+    .password-container .toggle-password:hover {
+      color: #222;
+    }
+
     @media (max-width: 400px) {
       form {
         width: 100%;
@@ -155,17 +180,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="email" id="email" name="email" required autofocus />
 
     <label for="senha">Senha</label>
-    <input type="password" id="senha" name="senha" required />
+    <div class="password-container">
+      <input type="password" id="senha" name="senha" required />
+      <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
+    </div>
 
     <button type="submit">Entrar</button>
 
     <p style="margin-top:10px; text-align:center;">
       <a href="registro.php" style="color:#0af; text-decoration:none;">Não tem conta? Cadastre-se</a>
-      <p style="text-align:center; margin-top: 10px;">
-  <a href="esqueci_senha.php" style="color:#0af; text-decoration:none;">Esqueci minha senha</a>
-</p>
-
+    </p>
+    <p style="text-align:center; margin-top: 10px;">
+      <a href="esqueci_senha.php" style="color:#0af; text-decoration:none;">Esqueci minha senha</a>
     </p>
   </form>
+
+  <script>
+    const toggleSenha = document.getElementById('toggleSenha');
+    const inputSenha = document.getElementById('senha');
+
+    toggleSenha.addEventListener('click', () => {
+      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
+      inputSenha.setAttribute('type', tipo);
+      toggleSenha.classList.toggle('fa-eye');
+      toggleSenha.classList.toggle('fa-eye-slash');
+    });
+  </script>
 </body>
 </html>

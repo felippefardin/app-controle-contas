@@ -15,6 +15,14 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     echo "ID inválido.";
     exit;
 }
+if (isset($_GET['id'])) {
+    $id = (int) $_GET['id'];
+    $conn->query("DELETE FROM contas_pagar WHERE id = $id");
+}
+
+// Redireciona de volta com parâmetro de sucesso
+header("Location: ../pages/contas_pagar_baixadas.php?excluido=1");
+exit;
 
 $id = intval($_GET['id']);
 

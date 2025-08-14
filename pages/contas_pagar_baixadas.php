@@ -252,17 +252,37 @@ include('../database.php');
   </style>
 </head>
 <body>
+   <!-- Mensagem Sobreposta -->
+<div id="successMsg" style="
+    display:none;
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    background-color:#27ae60;
+    color:white;
+    padding:20px 35px;
+    border-radius:8px;
+    z-index:10000;
+    box-shadow:0 2px 10px rgba(0,0,0,0.3);
+    font-weight:bold;
+    font-size:18px;
+    opacity:0;
+    transition:opacity 0.5s ease;
+    ">
+    ✅ Conta excluída com sucesso!
+</div>
 
 <h2>Contas a Pagar - Baixadas</h2>
 
+
 <!-- Formulário de Busca -->
-<form method="GET" class="search-form" action="">
-  <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?= htmlspecialchars($_GET['fornecedor'] ?? '') ?>">
-  <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
-  <input type="number" step="0.01" name="valor" placeholder="Valor" value="<?= htmlspecialchars($_GET['valor'] ?? '') ?>">
-  <input type="date" name="data_vencimento" value="<?= htmlspecialchars($_GET['data_vencimento'] ?? '') ?>">
+<form class="search-form" method="GET" action="">
+  <input type="text" name="responsavel" placeholder="Responsável" value="<?php echo htmlspecialchars($_GET['responsavel'] ?? ''); ?>">
+  <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
+  <input type="date" name="data_vencimento" placeholder="Data Vencimento" value="<?php echo htmlspecialchars($_GET['data_vencimento'] ?? ''); ?>">
   <button type="submit">Buscar</button>
-  <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar Filtros</a>
+  <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar</a>
 </form>
 
 <!-- Botão que abre o modal export -->
@@ -368,6 +388,26 @@ if (!$result) {
       closeDeleteModal();
     }
   };
+  window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('excluido') === '1') {
+        const msg = document.getElementById('successMsg');
+        msg.style.display = 'block';
+        setTimeout(() => {
+            msg.style.opacity = '1';
+        }, 50);
+
+        // Some depois de 3 segundos
+        setTimeout(() => {
+            msg.style.opacity = '0';
+            setTimeout(() => msg.style.display = 'none', 500);
+        }, 3000);
+
+        // Remove o parâmetro da URL
+        urlParams.delete('excluido');
+        window.history.replaceState({}, '', `${location.pathname}?${urlParams}`);
+    }
+}
 </script>
 
 </body>
