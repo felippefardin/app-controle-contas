@@ -8,7 +8,16 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-$conn = getConnPrincipal();
+// 🔹 Conexão com o banco (mesma de contas_pagar.php)
+$servername = "localhost";
+$username   = "root";
+$password   = "";
+$database   = "app_controle_contas";
+
+$conn = new mysqli($servername, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Falha na conexão: " . $conn->connect_error);
+}
 
 $id_usuario = $_SESSION['usuario']['id'];
 
