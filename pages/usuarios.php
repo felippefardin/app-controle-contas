@@ -8,6 +8,8 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
+$conn = getConnPrincipal();
+
 // Mensagens
 $mensagem_sucesso = '';
 $mensagem_erro = '';

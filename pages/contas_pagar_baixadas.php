@@ -7,6 +7,22 @@ if (!isset($_SESSION['usuario'])) {
 
 include('../includes/header.php');
 include('../database.php');
+
+
+
+// ADICIONE ISTO: inicializa $conn se ainda não existir
+if (!isset($conn)) {
+    $servername = "localhost";
+    $username = "root";
+    $password = "";
+    $database = "app_controle_contas";
+
+    $conn = new mysqli($servername, $username, $password, $database);
+
+    if ($conn->connect_error) {
+        die("Conexão falhou: " . $conn->connect_error);
+    }
+}
 ?>
 
 <!DOCTYPE html>

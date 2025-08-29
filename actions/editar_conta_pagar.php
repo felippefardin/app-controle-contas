@@ -8,6 +8,9 @@ if (!isset($_SESSION['usuario'])) {
 include('../database.php');
 include('../includes/header.php');
 
+// Inicializa a conexão
+$conn = getConnPrincipal(); // conecta ao banco principal
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Mostrar formulário para edição
     if (!isset($_GET['id'])) {
@@ -108,6 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } else {
         echo "Erro ao atualizar: " . $conn->error;
     }
+
+    $stmt->close();
+    $conn->close();
 } else {
     echo "Método HTTP não suportado.";
 }

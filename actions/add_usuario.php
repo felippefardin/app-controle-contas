@@ -7,12 +7,16 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-$nome = trim($_POST['nome']);
-$email = trim($_POST['email']);
-$cpf = trim($_POST['cpf']);
-$telefone = trim($_POST['telefone']);
-$senha = $_POST['senha'];
-$senha_confirmar = $_POST['senha_confirmar'];
+// Conexão com o banco principal
+$conn = getConnPrincipal();
+
+// Coleta e sanitiza os dados, usando null coalescing para evitar undefined index
+$nome = isset($_POST['nome']) ? trim($_POST['nome']) : '';
+$email = isset($_POST['email']) ? trim($_POST['email']) : '';
+$cpf = isset($_POST['cpf']) ? trim($_POST['cpf']) : '';
+$telefone = isset($_POST['telefone']) ? trim($_POST['telefone']) : '';
+$senha = $_POST['senha'] ?? '';
+$senha_confirmar = $_POST['senha_confirmar'] ?? '';
 
 if ($senha !== $senha_confirmar) {
     header("Location: ../pages/usuarios.php?erro=senha");

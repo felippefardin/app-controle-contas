@@ -1,12 +1,28 @@
 <?php
 session_start();
 if (!isset($_SESSION['usuario'])) {
-    header('Location: login.php');
+    header("Location: login.php");
     exit;
 }
 
 include('../includes/header.php');
 include('../database.php');
+
+
+
+// ADICIONE ISTO: inicializa $conn se ainda não existir
+if (!isset($conn)) {
+    $servername = "localhost";
+    $username = "root";
+    $password = "";
+    $database = "app_controle_contas";
+
+    $conn = new mysqli($servername, $username, $password, $database);
+
+    if ($conn->connect_error) {
+        die("Conexão falhou: " . $conn->connect_error);
+    }
+}
 ?>
 
 <!DOCTYPE html>

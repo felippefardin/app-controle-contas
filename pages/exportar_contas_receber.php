@@ -7,6 +7,9 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 include('../database.php');
 
+// Conexão com o banco principal
+$conn = getConnPrincipal();
+
 $tipo        = $_GET['tipo'] ?? '';
 $status      = $_GET['status'] ?? 'pendente';
 $responsavel = $_GET['responsavel'] ?? '';

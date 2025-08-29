@@ -6,14 +6,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 include('../database.php');
 
-// Verifica se as classes estão carregadas
-if (!class_exists('Dompdf\Dompdf')) {
-    die('Dompdf não está carregado.');
-}
-
-if (!class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
-    die('PhpSpreadsheet não está carregado.');
-}
+$conn = getConnPrincipal();
 
 $tipo = $_GET['tipo'] ?? '';
 $data_inicio = $_GET['data_inicio'] ?? '';
@@ -52,9 +45,17 @@ if ($result->num_rows === 0) {
 
 $dados = [];
 while ($row = $result->fetch_assoc()) {
+    // Formatar data para dd/mm/yyyy
+    if (!empty($row['data_baixa'])) {
+        $date = DateTime::createFromFormat('Y-m-d', $row['data_baixa']);
+        if ($date) {
+            $row['data_baixa'] = $date->format('d/m/Y');
+        }
+    }
     $dados[] = $row;
 }
 
+// --- Exportar CSV ---
 if ($tipo === 'csv') {
     header('Content-Type: text/csv');
     header("Content-Disposition: attachment; filename=\"{$nomeArquivo}.csv\"");
@@ -67,6 +68,7 @@ if ($tipo === 'csv') {
     exit;
 }
 
+// --- Exportar Excel ---
 if ($tipo === 'excel') {
     header("Content-Type: application/vnd.ms-excel");
     header("Content-Disposition: attachment; filename={$nomeArquivo}.xls");
@@ -83,6 +85,7 @@ if ($tipo === 'excel') {
     exit;
 }
 
+// --- Exportar PDF ---
 if ($tipo === 'pdf') {
     $html = "<h2>Contas a Receber Baixadas</h2><table border='1' cellpadding='5'>
                 <tr><th>Responsável</th><th>Número</th><th>Valor</th><th>Data de Baixa</th><th>Forma de Pagamento</th></tr>";

@@ -13,8 +13,8 @@ function enviarCodigoRecuperacao($emailDestino, $nomeUsuario, $codigo) {
         $mail->isSMTP();
         $mail->Host = 'smtp.gmail.com';         // servidor SMTP
         $mail->SMTPAuth = true;
-        $mail->Username = 'seu-email@gmail.com';  // seu email
-        $mail->Password = 'sua-senha-app';       // senha do app ou sua senha
+        $mail->Username = 'felippefardin@gmail.com';  // seu email
+        $mail->Password = 'ejlg wslz aulp zzgw';       // senha do app ou sua senha
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // ou PHPMailer::ENCRYPTION_SMTPS
         $mail->Port = 587;
 

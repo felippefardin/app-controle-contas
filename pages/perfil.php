@@ -8,6 +8,8 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
+$conn = getConnPrincipal();
+
 $id_usuario = $_SESSION['usuario']['id'];
 
 // Buscar dados atuais incluindo foto

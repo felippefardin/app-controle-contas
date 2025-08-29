@@ -1,7 +1,10 @@
 <?php
 session_start();
 include('../database.php');
-if (!isset($_SESSION['usuario'])) { header('Location: ../pages/login.php'); exit; }
+if (!isset($_SESSION['usuario'])) { header('Location: ../pages/login.php'); exit; 
+}
+
+$conn = getConnPrincipal();
 
 $id = $_GET['id'];
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];

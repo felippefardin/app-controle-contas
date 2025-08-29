@@ -1,15 +1,25 @@
 <?php
-
 require '../vendor/autoload.php';
 
 use Dompdf\Dompdf;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-include('../database.php');
+// Conexão com o banco (ajuste conforme seu ambiente)
+$servername = "localhost";
+$username = "root";
+$password = "";
+$database = "app_controle_contas";
 
+$conn = new mysqli($servername, $username, $password, $database);
+
+if ($conn->connect_error) {
+    die("Erro: Conexão com o banco de dados não estabelecida. " . $conn->connect_error);
+}
+
+// Recebe parâmetros
 $tipo = $_GET['tipo'] ?? '';
-$status = $_GET['status'] ?? 'baixada'; // aqui já consideramos baixadas
+$status = $_GET['status'] ?? 'baixada';
 $data_inicio = $_GET['data_inicio'] ?? '';
 $data_fim = $_GET['data_fim'] ?? '';
 
@@ -17,12 +27,11 @@ if (!in_array($tipo, ['pdf', 'excel', 'csv'])) {
     die("Tipo de exportação inválido.");
 }
 
-// Montar consulta básica
+// Monta consulta
 $sql = "SELECT fornecedor, numero, valor, data_baixa, forma_pagamento FROM contas_pagar WHERE status = ?";
 $params = [$status];
 $types = "s";
 
-// Filtro por intervalo de data de baixa, se informado
 if (!empty($data_inicio) && !empty($data_fim)) {
     $sql .= " AND data_baixa BETWEEN ? AND ?";
     $params[] = $data_inicio;
@@ -30,16 +39,19 @@ if (!empty($data_inicio) && !empty($data_fim)) {
     $types .= "ss";
 }
 
-// Ordenar pela data de baixa
 $sql .= " ORDER BY data_baixa ASC";
 
 $stmt = $conn->prepare($sql);
+if (!$stmt) {
+    die("Erro na preparação da consulta: " . $conn->error);
+}
+
 $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
 $dados = $result->fetch_all(MYSQLI_ASSOC);
 
-// Formata a data para padrão brasileiro dd/mm/aaaa
+// Formata a data para padrão brasileiro
 foreach ($dados as &$linha) {
     if (!empty($linha['data_baixa'])) {
         $date = DateTime::createFromFormat('Y-m-d', $linha['data_baixa']);
@@ -48,9 +60,8 @@ foreach ($dados as &$linha) {
         }
     }
 }
-unset($linha); // remove referência
+unset($linha);
 
-// Nome do arquivo
 $nomeArquivo = "contas_baixadas_" . (!empty($data_inicio) && !empty($data_fim) ? "{$data_inicio}_a_{$data_fim}_" : "") . date("YmdHis");
 
 // Exportar para Excel
@@ -61,10 +72,8 @@ if ($tipo === 'excel') {
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
 
-    // Cabeçalhos
     $sheet->fromArray(['Fornecedor', 'Número', 'Valor', 'Data de Baixa', 'Forma de Pagamento'], NULL, 'A1');
 
-    // Dados
     $linha = 2;
     foreach ($dados as $linhaDados) {
         $sheet->fromArray(array_values($linhaDados), NULL, "A{$linha}");

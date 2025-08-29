@@ -7,6 +7,8 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
+$conn = getConnPrincipal();
+
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     die("ID do usuário não especificado.");
 }
