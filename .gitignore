@@ -1,0 +1,41 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Arquivos temporários / cache
+/tmp/
+/cache/
+/*.log
+*.tmp
+
+# Composer
+/vendor/
+/composer.lock
+
+# PHPMailer e bibliotecas externas (se não estiverem versionadas)
+lib/PHPMailer/PHPMailer.php
+lib/PHPMailer/SMTP.php
+lib/PHPMailer/Exception.php
+
+# FPDF (se quiser manter versão local fora do Git)
+/lib/fpdf/
+
+# Configurações sensíveis
+.env
+*.env
+
+# Arquivos de backup
+*~
+*.bak
+*.old
+*.orig
+
+# Sistema de banco de dados local (se estiver usando arquivos)
+*.sqlite
+*.db

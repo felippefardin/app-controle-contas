@@ -12,8 +12,17 @@ if (!$token) {
     die("Token inválido.");
 }
 
-// Conecta ao banco principal
-$conn = getConnPrincipal();
+
+// 🔹 Conexão com o banco (mesma de contas_pagar.php)
+$servername = "localhost";
+$username   = "root";
+$password   = "";
+$database   = "app_controle_contas";
+
+$conn = new mysqli($servername, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Falha na conexão: " . $conn->connect_error);
+}
 
 // Verifica se o token existe e não expirou
 $stmt = $conn->prepare("SELECT rs.id, u.id AS usuario_id, u.nome, u.email 

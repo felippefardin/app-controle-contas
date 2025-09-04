@@ -19,8 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$email) {
         $erro = "Preencha o e-mail.";
     } else {
-        // Conecta ao banco principal
-        $conn = getConnPrincipal();
+        // 🔹 Conexão com o banco (mesma de contas_pagar.php)
+$servername = "localhost";
+$username   = "root";
+$password   = "";
+$database   = "app_controle_contas";
+
+$conn = new mysqli($servername, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Falha na conexão: " . $conn->connect_error);
+}
 
         $stmt = $conn->prepare("SELECT id, nome, email FROM usuarios WHERE email = ?");
         $stmt->bind_param("s", $email);
@@ -41,21 +49,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtToken->close();
 
             // Enviar e-mail com link de recuperação
-            $mail = new PHPMailer(true);
+           $mail = new PHPMailer(true);
 
-            try {
-                // Configuração SMTP Gmail
-                $mail->isSMTP();
-                $mail->Host       = 'smtp.gmail.com';
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'felippefardin@gmail.com'; // seu e-mail Gmail
-                $mail->Password   = 'kwrs aszs oybl ypcf';     // senha de app do Gmail
-                $mail->SMTPSecure = 'tls';
-                $mail->Port       = 587;
+try {
+    $mail->isSMTP();
+    $mail->Host       = 'smtp.gmail.com';
+    $mail->SMTPAuth   = true;
+    $mail->Username   = 'felippefardin@gmail.com';
+    $mail->Password   = 'kwrsaszsoyblypcf'; // senha de app sem espaços
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // melhor prática
+    $mail->Port       = 587;
 
-                // Remetente
-                $mail->setFrom('felippefardin@gmail.com', 'App Controle de Contas');
-                $mail->addAddress($email_db, $nome);
+    $mail->setFrom('felippefardin@gmail.com', 'App Controle de Contas');
+    $mail->addAddress($email_db, $nome);
 
                 $mail->isHTML(true);
                 $mail->Subject = 'Recuperação de senha';

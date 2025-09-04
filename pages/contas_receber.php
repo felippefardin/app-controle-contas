@@ -266,6 +266,23 @@ if (!isset($_SESSION['usuario'])) {
       td:nth-of-type(5)::before { content: "Ações"; }
     }
 
+    /* Botão Gerar Cobrança */
+.btn-gerar {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-gerar:hover {
+  background-color: #0056b3;
+}
+
     /* Botão export */
     .btn-export-green {
       background-color: #28a745;
@@ -545,8 +562,22 @@ while ($row = $result->fetch_assoc()) {
     echo "<td>R$ " . number_format((float)$valor, 2, ',', '.') . "</td>";
 
     echo "<td>";
-    echo "<a href='../actions/baixar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "'>Baixar</a> | ";
-    echo "<a href='../actions/editar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "'>Editar</a>";
+echo "<a href='../actions/baixar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "'>Baixar</a> | ";
+echo "<a href='../actions/editar_conta_receber.php?id=" . htmlspecialchars($row['id']) . "' class='btn-edit'>Editar</a>";
+
+if ($_SESSION['usuario']['perfil'] === 'admin') {
+    echo " | <button class='btn-excluir' data-id='" . htmlspecialchars($row['id']) . "'>Excluir</button>";
+}
+
+// Botão Gerar Cobrança
+echo " | <button 
+        class='btn-gerar' 
+        data-id='" . htmlspecialchars($row['id']) . "' 
+        data-responsavel='" . htmlspecialchars($responsavel) . "' 
+        data-email='" . htmlspecialchars($row['email'] ?? '') . "'>Gerar Cobrança</button>";
+
+
+echo "</td>";
 
     if ($_SESSION['usuario']['perfil'] === 'admin') {
         // Botão excluir agora abre modal e passa ID para exclusão
@@ -568,6 +599,27 @@ echo "</table>";
     <button class="cancel">Cancelar</button>
   </div>
 </div>
+
+<!-- Modal Gerar Cobrança -->
+<div id="cobrancaModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:#222; padding:30px; max-width:400px; margin:100px auto; border-radius:10px; color:white; position:relative;">
+    <h3>Gerar Cobrança</h3>
+    <form method="POST" action="../actions/enviar_cobranca.php">
+      <input type="hidden" name="conta_id" id="conta_id">
+      
+      <label for="email">Enviar para o e-mail:</label>
+      <input type="email" name="email" id="email" placeholder="exemplo@email.com" required style="width:100%; padding:8px; margin-bottom:10px;">
+
+      <label for="pix">Chave PIX (opcional):</label>
+      <input type="text" name="pix" id="pix" placeholder="Digite a chave PIX" style="width:100%; padding:8px; margin-bottom:15px;">
+
+      <button type="submit" style="padding:10px 20px; background-color:#007bff; color:white; border:none; border-radius:5px;">Enviar Cobrança</button>
+      <button type="button" onclick="document.getElementById('cobrancaModal').style.display='none'" style="padding:10px 20px; background-color:#cc3333; color:white; border:none; border-radius:5px; margin-left:10px;">Cancelar</button>
+    </form>
+  </div>
+</div>
+
+
 
 
 <!-- Modal de Exportação -->
@@ -638,6 +690,23 @@ echo "</table>";
       deleteId = null;
     }
   });
+  // Modal Gerar Cobrança
+const cobrancaModal = document.getElementById('cobrancaModal');
+document.querySelectorAll('.btn-gerar').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const contaId = btn.getAttribute('data-id');
+    document.getElementById('conta_id').value = contaId;
+    cobrancaModal.style.display = 'flex';
+  });
+});
+
+// Fechar modal clicando fora
+window.addEventListener('click', e => {
+  if (e.target === cobrancaModal) {
+    cobrancaModal.style.display = 'none';
+  }
+});
+
 </script>
 
 </body>

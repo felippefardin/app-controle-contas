@@ -8,8 +8,15 @@ if (!isset($_SESSION['usuario'])) {
 include('../database.php');
 include('../includes/header.php');
 
-// Inicializa a conexão
-$conn = getConnPrincipal(); // conecta ao banco principal
+$servername = "localhost";
+$username   = "root";
+$password   = "";
+$database   = "app_controle_contas";
+
+$conn = new mysqli($servername, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Falha na conexão: " . $conn->connect_error);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Mostrar formulário para edição

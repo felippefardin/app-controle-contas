@@ -6,6 +6,12 @@ namespace Composer\Autoload;
 
 class ComposerStaticInitac2d307f4ed514763a8119f3523066bb
 {
+    public static $files = array (
+        '7b11c4dc42b3b3023073cb14e519683c' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+    );
+
     public static $prefixLengthsPsr4 = array (
         'Z' => 
         array (
@@ -26,8 +32,16 @@ class ComposerStaticInitac2d307f4ed514763a8119f3523066bb
         ),
         'M' => 
         array (
+            'MercadoPago\\' => 12,
             'Matrix\\' => 7,
             'Masterminds\\' => 12,
+        ),
+        'G' => 
+        array (
+            'GuzzleHttp\\Psr7\\' => 16,
+            'GuzzleHttp\\Promise\\' => 19,
+            'GuzzleHttp\\' => 11,
+            'Gerencianet\\' => 12,
         ),
         'F' => 
         array (
@@ -78,6 +92,10 @@ class ComposerStaticInitac2d307f4ed514763a8119f3523066bb
         array (
             0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
         ),
+        'MercadoPago\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/mercadopago/dx-php/src/MercadoPago',
+        ),
         'Matrix\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/matrix/classes/src',
@@ -85,6 +103,22 @@ class ComposerStaticInitac2d307f4ed514763a8119f3523066bb
         'Masterminds\\' => 
         array (
             0 => __DIR__ . '/..' . '/masterminds/html5/src',
+        ),
+        'GuzzleHttp\\Psr7\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
+        ),
+        'GuzzleHttp\\Promise\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/promises/src',
+        ),
+        'GuzzleHttp\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
+        ),
+        'Gerencianet\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/gerencianet/gerencianet-sdk-php/src/Gerencianet',
         ),
         'FontLib\\' => 
         array (
