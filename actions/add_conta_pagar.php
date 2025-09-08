@@ -10,8 +10,16 @@ if (!isset($_SESSION['usuario'])) {
 // Inclui a conexão com o banco
 include('../database.php');
 
-// Conecta ao banco principal
-$conn = getConnPrincipal();
+// 🔹 Conexão com o banco (mesma de contas_pagar.php)
+$servername = "localhost";
+$username   = "root";
+$password   = "";
+$database   = "app_controle_contas";
+
+$conn = new mysqli($servername, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Falha na conexão: " . $conn->connect_error);
+}
 
 // Recebe e valida os dados do formulário
 $fornecedor = trim($_POST['fornecedor'] ?? '');

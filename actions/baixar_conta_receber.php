@@ -4,7 +4,16 @@ include('../database.php');
 if (!isset($_SESSION['usuario'])) { header('Location: ../pages/login.php'); exit; 
 }
 
-$conn = getConnPrincipal();
+// 🔹 Conexão com o banco (mesma de contas_pagar.php)
+$servername = "localhost";
+$username   = "root";
+$password   = "";
+$database   = "app_controle_contas";
+
+$conn = new mysqli($servername, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Falha na conexão: " . $conn->connect_error);
+}
 
 $id = $_GET['id'];
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];
@@ -19,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param("ssii", $forma, $hoje, $usuario, $id);
     $stmt->execute();
 
-    header('Location: ../pages/contas_receber.php');
+    header('Location: ../pages/contas_receber_baixadas.php');
     exit;
 }
 ?>
