@@ -47,6 +47,11 @@ th { background:#222; color:#00bfff; }
 tr:nth-child(even) { background:#2a2a2a; }
 tr:hover { background:#333; }
 tr.vencido { background:#662222 !important; }
+.action-btn {
+    margin-right: 10px;
+    margin-bottom: 4px;
+}
+
 
 /* Botões ações */
 .btn-gerar { background:#007bff; color:white; border:none; padding:5px 12px; font-size:14px; font-weight:bold; border-radius:5px; cursor:pointer; transition:0.3s; }
@@ -57,6 +62,23 @@ tr.vencido { background:#662222 !important; }
 .btn-excluir:hover { background:#a02a2a; }
 .btn-baixar { background:#28a745; color:white; border:none; padding:5px 12px; font-size:14px; font-weight:bold; border-radius:5px; cursor:pointer; transition:0.3s; }
 .btn-baixar:hover { background:#218838; }
+.btn-primary {
+    background-color: #27ae60;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color .3s ease;
+    display: inline-flex
+;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    min-width: 120px;
+    text-align: center;
+}
 
 /* Modal */
 .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; }
@@ -106,9 +128,9 @@ tr.vencido { background:#662222 !important; }
 </form>
 
 <!-- Botões exportar e adicionar -->
-<div class="export-buttons">
-    <button class="btn-export" onclick="document.getElementById('exportModal').style.display='flex'">Exportar</button>
-</div>
+ <div class="export-buttons">
+    <button type="button" class="btn-primary" onclick="document.getElementById('exportar_contas_receber').style.display='block'">Exportar Baixadas</button>
+  </div>
 <button class="btn-add" onclick="toggleForm()">Adicionar Nova Conta</button>
 
 <!-- Formulário Adicionar -->
@@ -145,15 +167,16 @@ while($row = $result->fetch_assoc()){
     echo "<td>".htmlspecialchars($row['numero'])."</td>";
     echo "<td>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
     echo "<td>";
-    echo "<button class='btn-gerar' data-id='{$row['id']}' data-responsavel='".htmlspecialchars($row['responsavel'])."' data-email='".htmlspecialchars($row['email']??'')."'>Gerar Cobrança</button> ";
-    echo "<button class='btn-editar' data-id='{$row['id']}' data-responsavel='".htmlspecialchars($row['responsavel'])."' data-numero='".htmlspecialchars($row['numero'])."' data-valor='{$row['valor']}' data-data='{$row['data_vencimento']}'>Editar</button> ";
-    echo "<a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-baixar'>Baixar</a> ";
+    echo "<button class='btn-gerar action-btn' data-id='{$row['id']}' data-responsavel='".htmlspecialchars($row['responsavel'])."' data-email='".htmlspecialchars($row['email']??'')."'>Gerar Cobrança</button> ";
+    echo "<button class='btn-editar action-btn' data-id='{$row['id']}' data-responsavel='".htmlspecialchars($row['responsavel'])."' data-numero='".htmlspecialchars($row['numero'])."' data-valor='{$row['valor']}' data-data='{$row['data_vencimento']}'>Editar</button> ";
+    echo "<a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-baixar action-btn'>Baixar</a> ";
     if($_SESSION['usuario']['perfil']==='admin'){
-        echo "<button class='btn-excluir' data-id='{$row['id']}'>Excluir</button>";
+        echo "<button class='btn-excluir action-btn' data-id='{$row['id']}'>Excluir</button>";
     }
     echo "</td></tr>";
 }
 echo "</table>";
+
 ?>
 
 <!-- Modais -->
@@ -208,6 +231,35 @@ echo "</table>";
   </div>
 </div>
 
+<!-- Modal Exportar Baixadas -->
+  <div id="exportar_contas_receber" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <span class="close" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
+      <h2>Exportar Contas</h2>
+
+      <form action="../pages/exportar_contas_receber.php" method="get">
+        <label for="tipo">Formato:</label>
+        <select name="tipo" id="tipo" required>
+          <option value="pdf">PDF</option>
+          <option value="csv">CSV</option>
+          <option value="excel">Excel</option>
+        </select>
+
+        <input type="hidden" name="contas_receber" value="pendente">
+
+        <label for="data_inicio">Data Início:</label>
+        <input type="date" name="data_inicio" id="data_inicio" required />
+
+        <label for="data_fim">Data Fim:</label>
+        <input type="date" name="data_fim" id="data_fim" required />
+
+        <div class="modal-actions">
+          <button type="button" class="btn-danger" onclick="document.getElementById('exportar_contas_receber').style.display='none'">Cancelar</button>
+          <button type="submit" class="btn-primary">Exportar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
 <script>
 function toggleForm(){ 
@@ -252,13 +304,14 @@ document.querySelectorAll('.btn-editar').forEach(btn=>{
 });
 
 
-// Baixar
-document.querySelectorAll('.btn-baixar').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-        baixarModal.style.display='flex';
-        document.getElementById('baixar_id').value=btn.dataset.id;
+    // ESC fecha modais
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const exportModal = document.getElementById('exportar_contas_receber');
+        if (deleteModal.style.display === 'block') closeDeleteModal();
+        if (exportModal.style.display === 'block') exportModal.style.display = 'none';
+      }
     });
-});
 
 
 // Fechar modais ao clicar fora

@@ -19,7 +19,7 @@ if (!isset($conn)) {
 
 // Parâmetros
 $tipo        = $_GET['tipo']        ?? '';
-$status      = $_GET['status']      ?? 'pendente'; // padrão: pendente
+$status      = $_GET['status']      ?? 'pendente'; 
 $data_inicio = $_GET['data_inicio'] ?? '';
 $data_fim    = $_GET['data_fim']    ?? '';
 

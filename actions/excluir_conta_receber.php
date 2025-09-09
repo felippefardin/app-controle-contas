@@ -17,7 +17,7 @@ if (isset($_GET['id'])) {
 
     if ($stmt->execute()) {
         // Redireciona para a listagem após excluir
-        header("Location: ../pages/contas_receber.php?msg=Conta excluída com sucesso");
+        header("Location: ../pages/contas_receber_baixadas.php?msg=Conta excluída com sucesso");
         exit();
     } else {
         echo "Erro ao excluir a conta: " . $conn->error;
