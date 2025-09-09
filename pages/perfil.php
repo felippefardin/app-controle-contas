@@ -126,13 +126,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Editar Perfil</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  
   <style>
-    body {
-      background-color: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
+    body {     
+    background-color: #121212;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
     .container {
       max-width: 600px;
       margin: 30px auto;
@@ -164,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .profile-photo-preview {
       width: 150px;
       height: 150px;
-      border-radius: 50%;
+      /* border-radius: 50%; */
       border: 2px solid #00bfff;
       object-fit: cover;
       margin-bottom: 10px;
@@ -245,6 +247,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   background-color: #0056b3;
   outline: none;
 }
+/* Responsividade */
+@media (max-width: 768px) {
+  .container {
+    width: 95%;
+    margin: 15px auto;
+    padding: 10px;
+  }
+
+  form {
+    padding: 15px;
+  }
+
+  h2 {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  .profile-photo-preview {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 15px auto; /* centraliza no mobile */
+    display: block;
+  }
+
+  label {
+    font-size: 14px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="file"] {
+    font-size: 14px;
+    padding: 6px;
+  }
+
+  .password-wrapper {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .toggle-password {
+    font-size: 16px;
+    right: 8px;
+  }
+
+  button[type="submit"],
+  .btn-padrao {
+    font-size: 15px;
+    padding: 10px;
+    width: 100%; /* ocupa a largura toda no mobile */
+  }
+}
+
 
     
   </style>
@@ -252,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
 <div class="container">
-  <h2>Editar Perfil</h2>
+   <h2><i class="fa-solid fa-user"></i> (Editar) Perfil</h2>
 
   <?php if ($mensagem): ?>
     <div class="mensagem"><?= htmlspecialchars($mensagem) ?></div>

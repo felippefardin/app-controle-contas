@@ -55,7 +55,7 @@ if (!$result) {
 ?>
 
 <style>
-/* Código de estilo mantido do seu exemplo anterior */
+
 body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; }
 .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
 h2 { text-align: center; color: #00bfff; margin-bottom: 20px; }

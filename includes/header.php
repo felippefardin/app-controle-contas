@@ -10,17 +10,10 @@
 
 <style>
   
-  .font-controls {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    display: flex;
-    gap: 10px;
-    z-index: 1000;
-  }
 
-  .font-controls button,
-  .font-controls a {
+/* Estilo dos botões */
+.font-controls button,
+.font-controls a {
     border: none;
     padding: 10px 14px;
     font-size: 16px;
@@ -31,7 +24,37 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     text-decoration: none;
     display: inline-block;
-  }
+}
+
+/* Cores específicas */
+.font-controls .btn-font { background-color: #007BFF; color: white; }
+.font-controls .btn-font:hover { background-color: #0056b3; }
+.font-controls .btn-exit { background-color: #dc3545; color: white; }
+.font-controls .btn-exit:hover { background-color: #b52a37; }
+.font-controls .btn-home { background-color: #28a745; color: white; }
+.font-controls .btn-home:hover { background-color: #1e7e34; }
+
+.font-controls button:focus,
+.font-controls a:focus {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* RESPONSIVO: telas menores que 600px */
+@media (max-width: 600px) {
+    .font-controls {
+        top: 20px;         /* Aproxima do topo */
+        left: 10px;        /* Aproxima da esquerda */
+        flex-direction: column; /* Botões empilhados verticalmente */
+        gap: 6px;          /* Espaçamento menor */
+    }
+
+    .font-controls button,
+    .font-controls a {
+        font-size: 14px;   /* Botões menores */
+        /* padding: 8px 12px; */
+    }
+}
 
   .font-controls .btn-font {
     background-color: #007BFF;
@@ -65,6 +88,7 @@
     outline: 2px solid #fff;
     outline-offset: 2px;
   }
+  
 </style>
 
 <div class="font-controls">

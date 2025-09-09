@@ -3,9 +3,14 @@ body {
   background-color: #121212;
   color: #eee;
   font-family: Arial, sans-serif;
-  padding: 20px;
+  padding: 40px 20px 20px 20px; /* Aumentei o padding-top de 20px para 40px */
   font-size: 16px;
   transition: background-color 0.3s, color 0.3s, font-size 0.2s;
+}
+
+/* Caso queira espaçamento adicional somente no header */
+header {
+  margin-top: 30px; /* Adiciona 30px extra acima do header */
 }
 
 /* Containers principais */

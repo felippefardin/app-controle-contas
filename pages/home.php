@@ -6,6 +6,8 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
+include('../includes/header_home.php');
+
 $usuario = $_SESSION['usuario'];
 $nome = $usuario['nome'];
 $perfil = $usuario['perfil'];
@@ -27,6 +29,7 @@ unset($_SESSION['mensagem']);
       margin: 0;
       padding: 0;
     }
+    
 
     body {
       background-color: #121212;
