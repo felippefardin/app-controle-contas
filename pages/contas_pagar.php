@@ -1,4 +1,13 @@
 <?php
+session_start();
+
+// Verifica se o usuário está logado
+if (!isset($_SESSION['usuario'])) {
+    header('Location: login.php');
+    exit;
+}
+
+// Inclui a conexão com o banco
 $servername = "localhost";
 $username = "root";
 $password = "";
@@ -10,6 +19,26 @@ $conn = new mysqli($servername, $username, $password, $database);
 if ($conn->connect_error) {
     die("Conexão falhou: " . $conn->connect_error);
 }
+
+// Adiciona a lógica de filtro de usuário
+$usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
+
+// Monta filtros SQL
+$where = ["status='pendente'"];
+if ($perfil !== 'admin') {
+    $where[] = "usuario_id = '$usuarioId'";
+}
+if(!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
+if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
+if(!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
+    $where[] = "data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
+} elseif(!empty($_GET['data_inicio'])) $where[] = "data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
+elseif(!empty($_GET['data_fim'])) $where[] = "data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
+
+$sql = "SELECT * FROM contas_pagar WHERE ".implode(" AND ",$where)." ORDER BY data_vencimento ASC";
+$result = $conn->query($sql);
+
 ?>
 
 <!DOCTYPE html>
@@ -190,15 +219,13 @@ if ($conn->connect_error) {
   </script>
 </head>
 <body>
-  <!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 
 <div id="successMsg">✅ Conta excluída com sucesso!</div>
 
 <h2>Contas a Pagar</h2>
 
-<!-- Formulário de Busca -->
 <form class="search-form" method="GET" action="">
   <input type="text" name="responsavel" placeholder="Responsável" value="<?php echo htmlspecialchars($_GET['responsavel'] ?? ''); ?>">
   <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
@@ -207,15 +234,12 @@ if ($conn->connect_error) {
   <a href="contas_receber.php" class="clear-filters">Limpar</a>
 </form>
 
-<!-- Botão Exportar -->
 <div class="export-buttons">
   <button type="button" class="btn-export" onclick="document.getElementById('exportModal').style.display='block'">Exportar</button>
 </div>
 
-<!-- Botão Adicionar Conta -->
 <button class="btn-add" onclick="toggleForm()">➕ Adicionar Nova Conta</button>
 
-<!-- Formulário de Adição -->
 <div id="form-container">
   <h3>Nova Conta</h3>
   <form action="../actions/add_conta_pagar.php" method="POST">
@@ -228,18 +252,6 @@ if ($conn->connect_error) {
 </div>
 
 <?php
-// Monta filtros SQL
-$where = ["status='pendente'"];
-if(!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
-if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
-if(!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
-    $where[] = "data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
-} elseif(!empty($_GET['data_inicio'])) $where[] = "data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
-elseif(!empty($_GET['data_fim'])) $where[] = "data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
-
-$sql = "SELECT * FROM contas_pagar WHERE ".implode(" AND ",$where)." ORDER BY data_vencimento ASC";
-$result = $conn->query($sql);
-
 echo "<table>";
 echo "<tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr>";
 $hoje = date('Y-m-d');
@@ -266,7 +278,6 @@ while($row = $result->fetch_assoc()){
 echo "</table>";
 ?>
 
-<!-- Modal Exportação -->
 <div id="exportModal">
   <div class="modal-content">
     <h3>Exportar Dados</h3>
@@ -288,7 +299,6 @@ echo "</table>";
   </div>
 </div>
 
-<!-- Modal Exclusão -->
 <div id="deleteModal">
   <div class="modal-content">
     <h3>Confirmar Exclusão</h3>

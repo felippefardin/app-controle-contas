@@ -10,22 +10,14 @@ if (!isset($_SESSION['usuario'])) {
 // Inclui a conexão com o banco
 include('../database.php');
 
-// 🔹 Conexão com o banco (mesma de contas_pagar.php)
-$servername = "localhost";
-$username   = "root";
-$password   = "";
-$database   = "app_controle_contas";
-
-$conn = new mysqli($servername, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
 // Recebe e valida os dados do formulário
 $fornecedor = trim($_POST['fornecedor'] ?? '');
 $data_vencimento = trim($_POST['data_vencimento'] ?? '');
 $numero = trim($_POST['numero'] ?? '');
 $valor = trim($_POST['valor'] ?? '');
+
+// Pega o ID do usuário logado
+$usuarioId = $_SESSION['usuario']['id'];
 
 // Verifica se todos os campos obrigatórios foram preenchidos
 if (empty($fornecedor) || empty($data_vencimento) || empty($numero) || empty($valor)) {
@@ -35,13 +27,13 @@ if (empty($fornecedor) || empty($data_vencimento) || empty($numero) || empty($va
 // Ajusta valor para formato numérico, substituindo vírgula por ponto
 $valor = str_replace(',', '.', $valor);
 
-// Prepara e executa a query
-$stmt = $conn->prepare("INSERT INTO contas_pagar (fornecedor, data_vencimento, numero, valor) VALUES (?, ?, ?, ?)");
+// Prepara e executa a query com a ID do usuário
+$stmt = $conn->prepare("INSERT INTO contas_pagar (fornecedor, data_vencimento, numero, valor, usuario_id) VALUES (?, ?, ?, ?, ?)");
 if (!$stmt) {
     die("Erro ao preparar a query: " . $conn->error);
 }
 
-$stmt->bind_param("sssd", $fornecedor, $data_vencimento, $numero, $valor);
+$stmt->bind_param("sssdi", $fornecedor, $data_vencimento, $numero, $valor, $usuarioId);
 $executado = $stmt->execute();
 
 if (!$executado) {

@@ -6,34 +6,27 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-// 🔹 Conexão com o banco (mesma de contas_pagar.php)
-$servername = "localhost";
-$username   = "root";
-$password   = "";
-$database   = "app_controle_contas";
+include('../database.php');
 
-$conn = new mysqli($servername, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
-$id = intval($_GET['id'] ?? 0); // garante que seja um número
+$id = intval($_GET['id'] ?? 0);
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $forma   = $_POST['forma'];
+    $juros   = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
     $hoje    = date('Y-m-d');
     $usuario = $_SESSION['usuario']['id'];
 
     $sql = "UPDATE contas_pagar 
-            SET status='baixada', forma_pagamento=?, data_baixa=?, baixado_por=? 
+            SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? 
             WHERE id=?";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         die("Erro ao preparar query: " . $conn->error);
     }
-
-    $stmt->bind_param("ssii", $forma, $hoje, $usuario, $id);
+    
+    // A string de tipos agora inclui 'd' para o valor decimal dos juros
+    $stmt->bind_param("ssidi", $forma, $juros, $hoje, $usuario, $id);
     if (!$stmt->execute()) {
         die("Erro ao atualizar conta: " . $stmt->error);
     }
@@ -53,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Baixar Conta - Forma de Pagamento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
-  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   
   <style>
@@ -80,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       flex-direction: column;
       gap: 20px;
     }
-    select {
+    select, input[type="text"] {
       padding: 12px 15px;
       font-size: 16px;
       border-radius: 6px;
@@ -110,7 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
   <form method="POST" autocomplete="off">
-    <h2><i class="fa fa-credit-card"></i> Escolha a forma de pagamento</h2>
+    <h2><i class="fa fa-credit-card"></i> Baixar Conta a Pagar</h2>
+    <input type="text" name="juros" placeholder="Juros (ex: 10.50)" pattern="^\d+([.,]\d{1,2})?$" title="Use ponto ou vírgula para separar os centavos" value="0,00" />
     <select name="forma" required aria-label="Selecione a forma de pagamento">
       <option value="">Selecione</option>
       <?php foreach ($formas as $f): ?>

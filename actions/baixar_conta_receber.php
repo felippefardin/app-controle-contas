@@ -1,31 +1,25 @@
 <?php
 session_start();
 include('../database.php');
-if (!isset($_SESSION['usuario'])) { header('Location: ../pages/login.php'); exit; 
+if (!isset($_SESSION['usuario'])) {
+    header('Location: ../pages/login.php');
+    exit;
 }
 
-// 🔹 Conexão com o banco (mesma de contas_pagar.php)
-$servername = "localhost";
-$username   = "root";
-$password   = "";
-$database   = "app_controle_contas";
-
-$conn = new mysqli($servername, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
-$id = $_GET['id'];
+$id = intval($_GET['id'] ?? 0);
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $forma = $_POST['forma'];
+    $juros = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
     $hoje = date('Y-m-d');
     $usuario = $_SESSION['usuario']['id'];
 
-    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, data_baixa=?, baixado_por=? WHERE id=?";
+    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? WHERE id=?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssii", $forma, $hoje, $usuario, $id);
+    
+    // A string de tipos agora inclui 'd' para o valor decimal dos juros
+    $stmt->bind_param("ssidi", $forma, $juros, $hoje, $usuario, $id);
     $stmt->execute();
 
     header('Location: ../pages/contas_receber_baixadas.php');
@@ -40,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Forma de Pagamento - Contas a Receber</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
-  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   
   <style>
@@ -75,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       flex-direction: column;
       gap: 20px;
     }
-    select {
+    select, input[type="text"] {
       padding: 12px 40px 12px 14px;
       font-size: 16px;
       border-radius: 6px;
@@ -90,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       cursor: pointer;
       transition: border-color 0.3s ease;
     }
-    select:focus {
+    select:focus, input[type="text"]:focus {
       outline: none;
       border-color: #00bfff;
       box-shadow: 0 0 6px #00bfff;
@@ -119,23 +112,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <h2>Escolha a forma de pagamento</h2>
   <form method="POST" novalidate>
+    <input type="text" name="juros" placeholder="Juros (ex: 15.50)" pattern="^\d+([.,]\d{1,2})?$" title="Use ponto ou vírgula para separar os centavos" value="0,00" />
     <select name="forma" required aria-label="Selecione a forma de pagamento">
       <option value="" disabled selected>Selecione</option>
-      <option value="boleto"><i class="fa-solid fa-file-invoice"></i> Boleto</option>
-      <option value="deposito"><i class="fa-solid fa-money-check-dollar"></i> Depósito</option>
-      <option value="credito"><i class="fa-solid fa-credit-card"></i> Cartão de Crédito</option>
-      <option value="debito"><i class="fa-solid fa-credit-card"></i> Cartão de Débito</option>
-      <option value="dinheiro"><i class="fa-solid fa-money-bill-wave"></i> Dinheiro</option>
+      <option value="boleto">Boleto</option>
+      <option value="deposito">Depósito</option>
+      <option value="credito">Cartão de Crédito</option>
+      <option value="debito">Cartão de Débito</option>
+      <option value="dinheiro">Dinheiro</option>
     </select>
     <button type="submit">
       <i class="fa-solid fa-check"></i> Confirmar
     </button>
   </form>
-
-  <script>
-    // Como não dá para colocar ícones dentro do <option>, vamos só deixar as opções simples.
-    // Ou, se quiser, usar uma biblioteca customizada para selects estilizados.
-  </script>
 
 </body>
 </html>

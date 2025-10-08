@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 if (!isset($_SESSION['usuario'])) {
     header("Location: login.php");
     exit;
@@ -8,21 +9,27 @@ if (!isset($_SESSION['usuario'])) {
 include('../includes/header.php');
 include('../database.php');
 
+$usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
 
+$where = ["status = 'baixada'"];
 
-// ADICIONE ISTO: inicializa $conn se ainda não existir
-if (!isset($conn)) {
-    $servername = "localhost";
-    $username = "root";
-    $password = "";
-    $database = "app_controle_contas";
-
-    $conn = new mysqli($servername, $username, $password, $database);
-
-    if ($conn->connect_error) {
-        die("Conexão falhou: " . $conn->connect_error);
-    }
+if ($perfil !== 'admin') {
+    $where[] = "c.usuario_id = '$usuarioId'";
 }
+
+if (!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";
+if (!empty($_GET['numero'])) $where[] = "numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";
+if (!empty($_GET['valor'])) $where[] = "valor = " . floatval($_GET['valor']);
+if (!empty($_GET['data_vencimento'])) $where[] = "data_vencimento = '" . $conn->real_escape_string($_GET['data_vencimento']) . "'";
+
+$sql = "SELECT c.*, u.nome AS usuario_baixou
+        FROM contas_pagar c
+        LEFT JOIN usuarios u ON c.baixado_por = u.id
+        WHERE " . implode(" AND ", $where) . "
+        ORDER BY c.data_baixa DESC";
+
+$result = $conn->query($sql);
 ?>
 
 <!DOCTYPE html>
@@ -216,12 +223,12 @@ if (!isset($conn)) {
 
     /* Modal de exclusão */
     .modal {
-      display: none; 
-      position: fixed; 
-      z-index: 10000; 
-      left: 0; top: 0; 
-      width: 100%; height: 100%; 
-      overflow: auto; 
+      display: none;
+      position: fixed;
+      z-index: 10000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      overflow: auto;
       background-color: rgba(0,0,0,0.7);
     }
 
@@ -268,8 +275,7 @@ if (!isset($conn)) {
   </style>
 </head>
 <body>
-   <!-- Mensagem Sobreposta -->
-<div id="successMsg" style="
+   <div id="successMsg" style="
     display:none;
     position:fixed;
     top:50%;
@@ -292,7 +298,6 @@ if (!isset($conn)) {
 <h2>Contas a Pagar - Baixadas</h2>
 
 
-<!-- Formulário de Busca -->
 <form class="search-form" method="GET" action="">
   <input type="text" name="responsavel" placeholder="Responsável" value="<?php echo htmlspecialchars($_GET['responsavel'] ?? ''); ?>">
   <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
@@ -301,31 +306,17 @@ if (!isset($conn)) {
   <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar</a>
 </form>
 
-<!-- Botão que abre o modal export -->
 <div class="export-buttons">
   <button type="button" class="btn-export" onclick="document.getElementById('exportModal').style.display='block'">Exportar</button>
 </div>
 
 <?php
-$where = ["status = 'baixada'"];
-if (!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";
-if (!empty($_GET['numero'])) $where[] = "numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";
-if (!empty($_GET['valor'])) $where[] = "valor = " . floatval($_GET['valor']);
-if (!empty($_GET['data_vencimento'])) $where[] = "data_vencimento = '" . $conn->real_escape_string($_GET['data_vencimento']) . "'";
-
-$sql = "SELECT c.*, u.nome AS usuario_baixou 
-        FROM contas_pagar c 
-        LEFT JOIN usuarios u ON c.baixado_por = u.id 
-        WHERE " . implode(" AND ", $where) . " 
-        ORDER BY c.data_baixa DESC";
-
-$result = $conn->query($sql);
 
 if (!$result) {
     echo "<p>Erro na consulta: " . $conn->error . "</p>";
 } else {
     echo "<table>";
-    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Forma de Pagamento</th><th>Data de Baixa</th><th>Usuário</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Juros</th><th>Forma de Pagamento</th><th>Data de Baixa</th><th>Usuário</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while ($row = $result->fetch_assoc()) {
         echo "<tr>";
@@ -333,9 +324,10 @@ if (!$result) {
         echo "<td data-label='Vencimento'>" . date('d/m/Y', strtotime($row['data_vencimento'])) . "</td>";
         echo "<td data-label='Número'>" . htmlspecialchars($row['numero']) . "</td>";
         echo "<td data-label='Valor'>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
-        echo "<td data-label='Forma de Pagamento'>" . htmlspecialchars($row['forma_pagamento']) . "</td>";
+        echo "<td data-label='Juros'>R$ " . number_format($row['juros'], 2, ',', '.') . "</td>";
+        echo "<td data-label='Forma de Pagamento'>" . htmlspecialchars($row['forma_pagamento'] ?? '-') . "</td>";
         echo "<td data-label='Data de Baixa'>" . date('d/m/Y', strtotime($row['data_baixa'])) . "</td>";
-        echo "<td data-label='Usuário'>" . htmlspecialchars($row['usuario_baixou']) . "</td>";
+        echo "<td data-label='Usuário'>" . htmlspecialchars($row['usuario_baixou'] ?? '-') . "</td>";
         echo "<td data-label='Ações'>
                 <button class='btn-delete' onclick='openDeleteModal({$row['id']})'>Excluir</button>
               </td>";
@@ -345,7 +337,6 @@ if (!$result) {
 }
 ?>
 
-<!-- Modal de Exportação -->
 <div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999;">
   <div style="background:#222; padding:30px; max-width:400px; margin:100px auto; border-radius:10px; color:white; position:relative;">
     <h3 style="margin-top:0;">Exportar Dados</h3>
@@ -370,7 +361,6 @@ if (!$result) {
   </div>
 </div>
 
-<!-- Modal de confirmação de exclusão -->
 <div id="deleteModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closeDeleteModal()">&times;</span>
@@ -427,3 +417,4 @@ if (!$result) {
 </script>
 
 </body>
+<?php include('../includes/footer.php'); ?>

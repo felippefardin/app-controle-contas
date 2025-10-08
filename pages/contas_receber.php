@@ -7,6 +7,11 @@ if (!isset($_SESSION['usuario'])) {
     header('Location: login.php');
     exit;
 }
+
+// Adiciona a lógica de filtro de usuário
+$usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
+
 ?>
 
 <!DOCTYPE html>
@@ -60,8 +65,8 @@ tr.vencido { background:#662222 !important; }
 .btn-editar:hover { background:#cc8400; }
 .btn-excluir { background:#cc3333; color:white; border:none; padding:5px 12px; font-size:14px; font-weight:bold; border-radius:5px; cursor:pointer; transition:0.3s; }
 .btn-excluir:hover { background:#a02a2a; }
-.btn-baixar { background:#28a745; color:white; border:none; padding:5px 12px; font-size:14px; font-weight:bold; border-radius:5px; cursor:pointer; transition:0.3s; }
-.btn-baixar:hover { background:#218838; }
+.btn-baixar { background:#28a745; color:white; border:none; padding:10px 22px; font-weight: bold; font-size:14px; border-radius: 6px; cursor:pointer; transition: background-color .3s ease; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; min-width: 120px; text-align: center; }
+.btn-baixar:hover { background-color:#218838; }
 .btn-primary {
     background-color: #27ae60;
     color: #fff;
@@ -118,7 +123,6 @@ tr.vencido { background:#662222 !important; }
 
 <h2>Contas a Receber</h2>
 
-<!-- Formulário de busca -->
 <form class="search-form" method="GET" action="">
     <input type="text" name="responsavel" placeholder="Responsável" value="<?= htmlspecialchars($_GET['responsavel'] ?? '') ?>">
     <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
@@ -127,13 +131,11 @@ tr.vencido { background:#662222 !important; }
     <a href="contas_receber.php" class="clear-filters">Limpar</a>
 </form>
 
-<!-- Botões exportar e adicionar -->
- <div class="export-buttons">
+<div class="export-buttons">
     <button type="button" class="btn-primary" onclick="document.getElementById('exportar_contas_receber').style.display='block'">Exportar Baixadas</button>
   </div>
 <button class="btn-add" onclick="toggleForm()">Adicionar Nova Conta</button>
 
-<!-- Formulário Adicionar -->
 <div id="form-container">
     <h3>Nova Conta</h3>
     <form method="POST" action="../actions/add_conta_receber.php">
@@ -148,6 +150,9 @@ tr.vencido { background:#662222 !important; }
 <?php
 // Filtros
 $where = ["status='pendente'"];
+if ($perfil !== 'admin') {
+    $where[] = "usuario_id = '$usuarioId'";
+}
 if(!empty($_GET['responsavel'])) $where[] = "responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
 if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
 if(!empty($_GET['data_vencimento'])) $where[] = "data_vencimento='".$conn->real_escape_string($_GET['data_vencimento'])."'";
@@ -179,7 +184,6 @@ echo "</table>";
 
 ?>
 
-<!-- Modais -->
 <div id="deleteModal" class="modal">
   <div class="modal-content">
     <h3>Confirmar Exclusão</h3>
@@ -202,7 +206,6 @@ echo "</table>";
   </div>
 </div>
 
-<!-- Modal Editar -->
 <div id="editarModal" class="modal">
   <div class="modal-content">
     <h3>Editar Conta</h3>
@@ -231,15 +234,14 @@ echo "</table>";
   </div>
 </div>
 
-<!-- Modal Exportar Baixadas -->
-  <div id="exportar_contas_receber" class="modal" aria-hidden="true">
+<div id="exportar_contas_receber" class="modal" aria-hidden="true">
     <div class="modal-content">
       <span class="close" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
       <h2>Exportar Contas</h2>
 
       <form action="../pages/exportar_contas_receber.php" method="get">
         <label for="tipo">Formato:</label>
-        <select name="tipo" id="tipo" required>
+        <select name="tipo" id="tipo" required style="width:100%; padding:8px; margin-bottom:15px;">
           <option value="pdf">PDF</option>
           <option value="csv">CSV</option>
           <option value="excel">Excel</option>

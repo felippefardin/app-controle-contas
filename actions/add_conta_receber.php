@@ -1,6 +1,5 @@
 <?php
 session_start();
-include('../database.php');
 
 // Verifica se o usuário está logado
 if (!isset($_SESSION['usuario'])) {
@@ -8,11 +7,17 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
+// Inclui a conexão com o banco
+include('../database.php');
+
 // Sanitização e coleta dos dados
 $responsavel = htmlspecialchars(trim($_POST['responsavel']));
 $data_vencimento = $_POST['data_vencimento'];
 $numero = htmlspecialchars(trim($_POST['numero']));
 $valor = floatval(str_replace(',', '.', $_POST['valor']));
+
+// Pega o ID do usuário logado
+$usuarioId = $_SESSION['usuario']['id'];
 
 // Validação simples
 if (empty($responsavel) || empty($data_vencimento) || empty($numero) || empty($valor)) {
@@ -22,7 +27,7 @@ if (empty($responsavel) || empty($data_vencimento) || empty($numero) || empty($v
 }
 
 // Prepara e executa a inserção
-$sql = "INSERT INTO contas_receber (responsavel, data_vencimento, numero, valor) VALUES (?, ?, ?, ?)";
+$sql = "INSERT INTO contas_receber (responsavel, data_vencimento, numero, valor, usuario_id) VALUES (?, ?, ?, ?, ?)";
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
@@ -31,7 +36,7 @@ if (!$stmt) {
     exit;
 }
 
-$stmt->bind_param("sssd", $responsavel, $data_vencimento, $numero, $valor);
+$stmt->bind_param("sssdi", $responsavel, $data_vencimento, $numero, $valor, $usuarioId);
 
 if ($stmt->execute()) {
     $_SESSION['mensagem'] = "Conta a receber adicionada com sucesso.";
@@ -44,3 +49,4 @@ $conn->close();
 
 header('Location: ../pages/contas_receber.php');
 exit;
+?>

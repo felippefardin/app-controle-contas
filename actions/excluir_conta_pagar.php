@@ -8,10 +8,12 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
+// Inclui a conexão que define a variável $conn
 include('../database.php');
 
-// Inicializa a conexão
-$conn = getConnPrincipal();
+// Pega o ID e o perfil do usuário logado
+$usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
 
 // Verifica se veio o ID na URL
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -20,15 +22,27 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $id = intval($_GET['id']);
 
+// Monta a query DELETE
+$sql = "DELETE FROM contas_pagar WHERE id = ?";
+$params = "i";
+$bindVars = [$id];
+
+// Se o usuário não for um admin, adiciona o filtro de usuario_id
+if ($perfil !== 'admin') {
+    $sql .= " AND usuario_id = ?";
+    $params .= "i";
+    $bindVars[] = $usuarioId;
+}
+
 // Prepara e executa o DELETE
-$stmt = $conn->prepare("DELETE FROM contas_pagar WHERE id = ?");
-$stmt->bind_param("i", $id);
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($params, ...$bindVars);
 
 if ($stmt->execute()) {
     $stmt->close();
     $conn->close();
     // Redireciona de volta para a tela de contas a pagar
-    header('Location: ../pages/contas_pagar_baixadas.php?excluido=1');
+    header('Location: ../pages/contas_pagar.php?excluido=1');
     exit;
 } else {
     die("Erro ao excluir conta: " . $conn->error);
