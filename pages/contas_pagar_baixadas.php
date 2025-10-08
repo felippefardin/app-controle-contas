@@ -326,7 +326,7 @@ if (!$result) {
         echo "<td data-label='Valor'>R$ " . number_format($row['valor'], 2, ',', '.') . "</td>";
         echo "<td data-label='Juros'>R$ " . number_format($row['juros'], 2, ',', '.') . "</td>";
         echo "<td data-label='Forma de Pagamento'>" . htmlspecialchars($row['forma_pagamento'] ?? '-') . "</td>";
-        echo "<td data-label='Data de Baixa'>" . date('d/m/Y', strtotime($row['data_baixa'])) . "</td>";
+        echo "<td data-label='Data de Baixa'>" . ($row['data_baixa'] && strtotime($row['data_baixa']) !== false ? date('d/m/Y', strtotime($row['data_baixa'])) : '-') . "</td>";
         echo "<td data-label='Usuário'>" . htmlspecialchars($row['usuario_baixou'] ?? '-') . "</td>";
         echo "<td data-label='Ações'>
                 <button class='btn-delete' onclick='openDeleteModal({$row['id']})'>Excluir</button>
