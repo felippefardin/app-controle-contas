@@ -14,10 +14,10 @@ if (!isset($_SESSION['usuario'])) {
 }
 
 // Parâmetros recebidos via POST do modal
-$data_inicio = $_POST['data_inicio'];
-$data_fim = $_POST['data_fim'];
-$formato = $_POST['formato'];
-$status = $_POST['status'] ?? 'pendente'; // 'pendente' ou 'baixada'
+$data_inicio = $_POST['data_inicio'] ?? '';
+$data_fim = $_POST['data_fim'] ?? '';
+$formato = $_POST['formato'] ?? 'pdf';
+$status = $_POST['status'] ?? 'pendente'; // 'pendente', 'baixada', ou 'todos'
 
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
@@ -34,6 +34,7 @@ $types = "";
 // Define o campo de data para o filtro de período
 $dateField = ($status === 'baixada') ? 'c.data_baixa' : 'c.data_vencimento';
 
+// Adiciona o filtro de status
 $where[] = "c.status = ?";
 $params[] = $status;
 $types .= "s";
@@ -52,8 +53,11 @@ if ($perfil !== 'admin') {
     $where[] = "c.usuario_id IN ($subUsersQuery)";
 }
 
-$sql .= " WHERE " . implode(" AND ", $where);
-$sql .= ($status === 'baixada') ? " ORDER BY c.data_baixa DESC" : " ORDER BY c.data_vencimento ASC";
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
+
+$sql .= " ORDER BY " . ($status === 'baixada' ? "c.data_baixa" : "c.data_vencimento") . " ASC";
 
 $stmt = $conn->prepare($sql);
 if ($stmt && !empty($params)) {
@@ -67,20 +71,23 @@ while($row = $result->fetch_assoc()) {
     $dados[] = $row;
 }
 
-$fileName = "contas_a_receber_{$status}_" . date('Y-m-d');
-$periodo = 'Período de ' . date('d/m/Y', strtotime($data_inicio)) . ' a ' . date('d/m/Y', strtotime($data_fim));
-
-// Cabeçalhos para a tabela/arquivo
-$headers = ['Responsável', 'Número', 'Valor', 'Vencimento'];
-if ($status === 'baixada') {
-    $headers = ['Responsável', 'Número', 'Valor', 'Data Baixa', 'Juros', 'Forma Pagamento', 'Usuário Baixou'];
+if (empty($dados)) {
+    echo "<script>alert('Nenhum dado encontrado para o período e status selecionado.'); window.close();</script>";
+    exit;
 }
+
+$fileName = "relatorio_contas_a_receber_" . date('Y-m-d');
+$periodo = 'Período de ' . date('d/m/Y', strtotime($data_inicio)) . ' a ' . date('d/m/Y', strtotime($data_fim));
+$statusTitulo = ($status === 'todos') ? 'Todas as Contas' : ucfirst($status) . 's';
+
+// Cabeçalhos universais para a tabela/arquivo
+$headers = ['Responsável', 'Número', 'Valor', 'Vencimento', 'Status', 'Data Baixa', 'Usuário Baixou'];
 
 // Geração dos arquivos
 if ($formato === 'pdf') {
-    $html = "<h1>Relatório de Contas a Receber ({$status})</h1>";
+    $html = "<h1>Relatório de Contas a Receber - {$statusTitulo}</h1>";
     $html .= "<p>{$periodo}</p>";
-    $html .= '<table border="1" cellpadding="5" cellspacing="0" width="100%" style="font-size: 12px;">';
+    $html .= '<table border="1" cellpadding="4" cellspacing="0" width="100%" style="font-size: 9px;">';
     $html .= '<thead><tr><th>' . implode('</th><th>', $headers) . '</th></tr></thead>';
     $html .= '<tbody>';
     foreach ($dados as $dado) {
@@ -88,12 +95,10 @@ if ($formato === 'pdf') {
         $html .= '<td>' . htmlspecialchars($dado['responsavel']) . '</td>';
         $html .= '<td>' . htmlspecialchars($dado['numero']) . '</td>';
         $html .= '<td>R$ ' . number_format($dado['valor'], 2, ',', '.') . '</td>';
-        $html .= '<td>' . date('d/m/Y', strtotime($dado[$status === 'baixada' ? 'data_baixa' : 'data_vencimento'])) . '</td>';
-        if ($status === 'baixada') {
-            $html .= '<td>R$ ' . number_format($dado['juros'] ?? 0, 2, ',', '.') . '</td>';
-            $html .= '<td>' . htmlspecialchars($dado['forma_pagamento'] ?? '-') . '</td>';
-            $html .= '<td>' . htmlspecialchars($dado['usuario_baixou'] ?? '-') . '</td>';
-        }
+        $html .= '<td>' . ($dado['data_vencimento'] ? date('d/m/Y', strtotime($dado['data_vencimento'])) : '-') . '</td>';
+        $html .= '<td>' . ucfirst($dado['status']) . '</td>';
+        $html .= '<td>' . ($dado['data_baixa'] ? date('d/m/Y', strtotime($dado['data_baixa'])) : '-') . '</td>';
+        $html .= '<td>' . htmlspecialchars($dado['usuario_baixou'] ?? '-') . '</td>';
         $html .= '</tr>';
     }
     $html .= '</tbody></table>';
@@ -115,13 +120,11 @@ if ($formato === 'pdf') {
             $dado['responsavel'],
             $dado['numero'],
             $dado['valor'],
-            date('d/m/Y', strtotime($dado[$status === 'baixada' ? 'data_baixa' : 'data_vencimento'])),
+            ($dado['data_vencimento'] ? date('d/m/Y', strtotime($dado['data_vencimento'])) : '-'),
+            ucfirst($dado['status']),
+            ($dado['data_baixa'] ? date('d/m/Y', strtotime($dado['data_baixa'])) : '-'),
+            $dado['usuario_baixou'] ?? '-',
         ];
-        if ($status === 'baixada') {
-            $rowData[] = $dado['juros'] ?? 0;
-            $rowData[] = $dado['forma_pagamento'] ?? '-';
-            $rowData[] = $dado['usuario_baixou'] ?? '-';
-        }
         $sheet->fromArray($rowData, null, 'A' . $rowNum);
         $rowNum++;
     }
@@ -130,13 +133,13 @@ if ($formato === 'pdf') {
         $writer = new Xlsx($spreadsheet);
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="'. $fileName .'.xlsx"');
-        $writer->save('php://output');
     } elseif ($formato === 'csv') {
         $writer = new Csv($spreadsheet);
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="'. $fileName .'.csv"');
-        $writer->save('php://output');
     }
+    $writer->save('php://output');
 }
 $conn->close();
+exit;
 ?>

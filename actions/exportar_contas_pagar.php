@@ -1,199 +1,146 @@
 <?php
 session_start();
-include('../includes/header.php');
+require '../vendor/autoload.php';
 include('../database.php');
 
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Csv;
+use Dompdf\Dompdf;
+
 if (!isset($_SESSION['usuario'])) {
-    header('Location: login.php');
+    header('Location: ../pages/login.php');
     exit;
 }
 
+// Parâmetros recebidos via POST do modal
+$data_inicio = $_POST['data_inicio'] ?? '';
+$data_fim = $_POST['data_fim'] ?? '';
+$formato = $_POST['formato'] ?? 'pdf';
+$status = $_POST['status'] ?? 'pendente'; // 'pendente', 'baixada', ou 'todos'
+
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
-// Assumindo que o id_criador está na sessão. Use 0 ou null como padrão.
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// Monta filtros SQL
-$where = ["status='pendente'"];
+// Monta a base da consulta
+$sql = "SELECT c.*, u.nome AS usuario_baixou
+        FROM contas_pagar c
+        LEFT JOIN usuarios u ON c.baixado_por = u.id";
+$where = [];
+$params = [];
+$types = "";
+
+// Define o campo de data para o filtro de período
+// Se o status for 'baixada', usamos data_baixa, caso contrário, data_vencimento
+$dateField = ($status === 'baixada') ? 'c.data_baixa' : 'c.data_vencimento';
+
+// Adiciona o filtro de status
+$where[] = "c.status = ?";
+$params[] = $status;
+$types .= "s";
+
+if (!empty($data_inicio) && !empty($data_fim)) {
+    $where[] = "$dateField BETWEEN ? AND ?";
+    $params[] = $data_inicio;
+    $params[] = $data_fim;
+    $types .= "ss";
+}
+
+// Filtro de visibilidade por usuário
 if ($perfil !== 'admin') {
-    // Se id_criador for maior que 0, o usuário é secundário.
-    // O ID principal é o id_criador. Caso contrário, é o próprio ID do usuário.
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-
-    // Subconsulta para obter todos os IDs de usuários associados à conta principal
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-
-    // A cláusula WHERE agora inclui o ID do usuário principal e todos os seus usuários secundários
-    $where[] = "(usuario_id = {$mainUserId} OR usuario_id IN ({$subUsersQuery}))";
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id = {$mainUserId} OR id_criador = {$mainUserId}";
+    $where[] = "c.usuario_id IN ($subUsersQuery)";
 }
-if(!empty($_GET['responsavel'])) $where[] = "responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
-if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
-if(!empty($_GET['data_vencimento'])) $where[] = "data_vencimento='".$conn->real_escape_string($_GET['data_vencimento'])."'";
 
-$sql = "SELECT * FROM contas_receber WHERE ".implode(" AND ", $where)." ORDER BY data_vencimento ASC";
-$result = $conn->query($sql);
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
 
-?>
+$sql .= " ORDER BY " . ($status === 'baixada' ? "c.data_baixa" : "c.data_vencimento") . " ASC";
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8" />
-<title>Contas a Receber</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+$stmt = $conn->prepare($sql);
+if ($stmt && !empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
 
-<style>
-    /* RESET & BASE */
-    * { box-sizing: border-box; }
-    body { background-color:#121212; color:#eee; font-family:Arial,sans-serif; margin:0; padding:20px; }
-    h2,h3 { text-align:center; color:#00bfff; }
-    a { color:#00bfff; text-decoration:none; font-weight:bold; }
-    a:hover { text-decoration:underline; }
+$dados = [];
+while($row = $result->fetch_assoc()) {
+    $dados[] = $row;
+}
 
-    /* Formulário de Busca */
-    form.search-form { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:25px; max-width:900px; margin:auto; }
-    form.search-form input[type="text"], form.search-form input[type="date"] { padding:10px; font-size:16px; border-radius:5px; border:1px solid #444; background:#333; color:#eee; min-width:180px; }
-    form.search-form button, form.search-form a.clear-filters { color:white; border:none; padding:10px 22px; font-weight:bold; border-radius:5px; cursor:pointer; transition:background-color 0.3s; min-width:120px; text-align:center; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
-    form.search-form button { background:#27ae60; font-size:16px; }
-    form.search-form button:hover { background:#1e874b; }
-    form.search-form a.clear-filters { background:#cc3333; }
-    form.search-form a.clear-filters:hover { background:#a02a2a; }
+if (empty($dados)) {
+    echo "<script>alert('Nenhum dado encontrado para o período e status selecionado.'); window.close();</script>";
+    exit;
+}
 
-    /* Botões */
-    .action-buttons-group { display:flex; justify-content:center; gap:12px; margin:20px 0; flex-wrap:wrap; }
-    .btn { border: none; padding: 10px 22px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
-    .btn-add { background-color:#00bfff; color:white; }
-    .btn-add:hover { background-color:#0099cc; }
-    .btn-export { background-color: #28a745; color: white; }
-    .btn-export:hover { background-color: #218838; }
-    
-    /* Tabela */
-    table { width:100%; border-collapse:collapse; background:#1f1f1f; border-radius:8px; overflow:hidden; margin-top:10px; }
-    th, td { padding:12px 10px; border-bottom:1px solid #333; text-align:left; }
-    th { background:#222; color:#00bfff; }
-    tr:nth-child(even) { background:#2a2a2a; }
-    tr:hover { background:#333; }
-    tr.vencido { background:#662222 !important; }
-    .btn-action { margin: 2px; }
+$fileName = "relatorio_contas_a_pagar_" . date('Y-m-d');
+$periodo = 'Período de ' . date('d/m/Y', strtotime($data_inicio)) . ' a ' . date('d/m/Y', strtotime($data_fim));
+$statusTitulo = ($status === 'todos') ? 'Todas as Contas' : ucfirst($status) . 's';
 
-    /* --- ESTILOS DO NOVO MODAL --- */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-    .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
-    .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
-    .modal-content .close-btn:hover { color: #00bfff; }
-    .modal-content form { display: flex; flex-wrap: wrap; gap: 15px; }
-    .modal-content form input { flex: 1 1 200px; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
-    .modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
-    .modal-content form button:hover { background-color: #0099cc; }
-    
-    /* Responsivo */
-    @media(max-width:768px){
-      td { padding-left: 50%; text-align: right; }
-      td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
-      .modal-content form { flex-direction: column; }
+// Cabeçalhos universais para a tabela/arquivo
+$headers = ['Fornecedor', 'Número', 'Valor', 'Vencimento', 'Status', 'Data Baixa', 'Usuário Baixou'];
+
+// Geração dos arquivos
+if ($formato === 'pdf') {
+    $html = "<h1>Relatório de Contas a Pagar - {$statusTitulo}</h1>";
+    $html .= "<p>{$periodo}</p>";
+    $html .= '<table border="1" cellpadding="4" cellspacing="0" width="100%" style="font-size: 9px;">';
+    $html .= '<thead><tr><th>' . implode('</th><th>', $headers) . '</th></tr></thead>';
+    $html .= '<tbody>';
+    foreach ($dados as $dado) {
+        $html .= '<tr>';
+        $html .= '<td>' . htmlspecialchars($dado['fornecedor']) . '</td>';
+        $html .= '<td>' . htmlspecialchars($dado['numero']) . '</td>';
+        $html .= '<td>R$ ' . number_format($dado['valor'], 2, ',', '.') . '</td>';
+        $html .= '<td>' . ($dado['data_vencimento'] ? date('d/m/Y', strtotime($dado['data_vencimento'])) : '-') . '</td>';
+        $html .= '<td>' . ucfirst($dado['status']) . '</td>';
+        $html .= '<td>' . ($dado['data_baixa'] ? date('d/m/Y', strtotime($dado['data_baixa'])) : '-') . '</td>';
+        $html .= '<td>' . htmlspecialchars($dado['usuario_baixou'] ?? '-') . '</td>';
+        $html .= '</tr>';
     }
-</style>
-</head>
-<body>
+    $html .= '</tbody></table>';
 
-<h2>Contas a Receber</h2>
+    $dompdf = new Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+    $dompdf->stream($fileName . ".pdf");
 
-<form class="search-form" method="GET" action="">
-    <input type="text" name="responsavel" placeholder="Responsável" value="<?= htmlspecialchars($_GET['responsavel'] ?? '') ?>">
-    <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
-    <input type="date" name="data_vencimento" value="<?= htmlspecialchars($_GET['data_vencimento'] ?? '') ?>">
-    <button type="submit"><i class="fa fa-search"></i> Buscar</button>
-    <a href="contas_receber.php" class="clear-filters">Limpar</a>
-</form>
-
-<div class="action-buttons-group">
-    <button class="btn btn-add" onclick="toggleForm()">➕ Adicionar Nova Conta</button>
-    <button type="button" class="btn btn-export" onclick="document.getElementById('exportar_contas_receber').style.display='flex'">Exportar</button>
-</div>
-
-<div id="addContaModal" class="modal">
-  <div class="modal-content">
-    <span class="close-btn" onclick="toggleForm()">&times;</span>
-    <h3>Nova Conta a Receber</h3>
-    <form method="POST" action="../actions/add_conta_receber.php">
-        <input type="text" name="responsavel" placeholder="Responsável" required>
-        <input type="text" name="numero" placeholder="Número" required>
-        <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
-        <input type="date" name="data_vencimento" required>
-        <button type="submit">Adicionar Conta</button>
-    </form>
-  </div>
-</div>
-
-<?php
-if ($result && $result->num_rows > 0) {
-    echo "<table>";
-    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr></thead>";
-    echo "<tbody>";
-    $hoje = date('Y-m-d');
-    while($row = $result->fetch_assoc()){
-        $vencido = ($row['data_vencimento'] < $hoje) ? 'vencido' : '';
-        echo "<tr class='$vencido'>";
-        echo "<td data-label='Responsável'>".htmlspecialchars($row['responsavel'])."</td>";
-        echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
-        echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
-        echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
-        echo "<td data-label='Ações'>";
-        // Seus botões de ação aqui
-        echo "<a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'>Baixar</a>";
-        echo "</td></tr>";
-    }
-    echo "</tbody></table>";
 } else {
-    echo "<p>Nenhuma conta a receber pendente encontrada.</p>";
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->fromArray($headers, null, 'A1');
+
+    $rowNum = 2;
+    foreach ($dados as $dado) {
+        $rowData = [
+            $dado['fornecedor'],
+            $dado['numero'],
+            $dado['valor'],
+            ($dado['data_vencimento'] ? date('d/m/Y', strtotime($dado['data_vencimento'])) : '-'),
+            ucfirst($dado['status']),
+            ($dado['data_baixa'] ? date('d/m/Y', strtotime($dado['data_baixa'])) : '-'),
+            $dado['usuario_baixou'] ?? '-',
+        ];
+        $sheet->fromArray($rowData, null, 'A' . $rowNum);
+        $rowNum++;
+    }
+
+    if ($formato === 'xlsx') {
+        $writer = new Xlsx($spreadsheet);
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="'. $fileName .'.xlsx"');
+    } elseif ($formato === 'csv') {
+        $writer = new Csv($spreadsheet);
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="'. $fileName .'.csv"');
+    }
+    $writer->save('php://output');
 }
+$conn->close();
+exit;
 ?>
-
-<div id="exportar_contas_receber" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
-        <h3>Exportar Contas a Receber</h3>
-        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
-            <div class="form-group">
-                <label for="data_inicio">De:</label>
-                <input type="date" name="data_inicio" required>
-            </div>
-            <div class="form-group">
-                <label for="data_fim">Até:</label>
-                <input type="date" name="data_fim" required>
-            </div>
-            <div class="form-group">
-                <label for="formato">Formato:</label>
-                <select name="formato">
-                    <option value="pdf">PDF</option>
-                    <option value="xlsx">Excel (XLSX)</option>
-                    <option value="csv">CSV</option>
-                </select>
-            </div>
-            <button type="submit">Exportar</button>
-        </form>
-    </div>
-</div>
-
-
-<script>
-function toggleForm(){ 
-    const modal = document.getElementById('addContaModal'); 
-    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
-}
-
-// Fechar modais ao clicar fora
-window.addEventListener('click', e => {
-    const addModal = document.getElementById('addContaModal');
-    const exportModal = document.getElementById('exportar_contas_receber');
-    if(e.target === addModal) addModal.style.display = 'none';
-    if(e.target === exportModal) exportModal.style.display = 'none';
-    // Adicione aqui a lógica para outros modais se necessário
-});
-</script>
-
-</body>
-</html>
-
-<?php include('../includes/footer.php'); ?>

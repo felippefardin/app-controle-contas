@@ -60,36 +60,6 @@ $result = $conn->query($sql);
 
 <h2>Contas a Receber - Baixadas</h2>
 
-<div class="action-buttons-group">
-    <button type="button" class="btn btn-export" onclick="document.getElementById('exportModal').style.display='flex'">Exportar Baixadas</button>
-</div>
-<div id="exportModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
-        <h3>Exportar Contas a Receber Baixadas</h3>
-        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
-             <input type="hidden" name="status" value="baixada">
-            <div class="form-group">
-                <label for="data_inicio">De (Data de Baixa):</label>
-                <input type="date" name="data_inicio" required>
-            </div>
-            <div class="form-group">
-                <label for="data_fim">Até (Data de Baixa):</label>
-                <input type="date" name="data_fim" required>
-            </div>
-            <div class="form-group">
-                <label for="formato">Formato:</label>
-                <select name="formato">
-                    <option value="pdf">PDF</option>
-                    <option value="xlsx">Excel (XLSX)</option>
-                    <option value="csv">CSV</option>
-                </select>
-            </div>
-            <button type="submit">Exportar</button>
-        </form>
-    </div>
-</div>
-
 <?php
 if ($result) {
     echo "<table>";

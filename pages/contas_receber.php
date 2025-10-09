@@ -93,6 +93,7 @@ $result = $conn->query($sql);
       td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
       .modal-content form { flex-direction: column; }
     }
+    
 </style>
 </head>
 <body>
@@ -153,27 +154,32 @@ if ($result && $result->num_rows > 0) {
 <div id="exportar_contas_receber" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
-        <h3>Exportar Contas a Receber</h3>
-        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
-            <input type="hidden" name="status" value="pendente">
-
+        <h3>Exportar Relatório de Contas a Receber</h3>
+        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank" onsubmit="return validateExportForm(this);">
             <div class="form-group">
-                <label for="data_inicio">De (Vencimento):</label>
+                <label for="status">Tipo de Relatório:</label>
+                <select name="status" id="exportStatusReceber" onchange="updateDateLabel('Receber')">
+                    <option value="pendente">Contas Pendentes</option>
+                    <option value="baixada">Contas Baixadas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="data_inicio" id="dateLabelInicioReceber">Filtrar de (Data de Vencimento):</label>
                 <input type="date" name="data_inicio" required>
             </div>
             <div class="form-group">
-                <label for="data_fim">Até (Vencimento):</label>
+                <label for="data_fim" id="dateLabelFimReceber">Até (Data de Vencimento):</label>
                 <input type="date" name="data_fim" required>
             </div>
             <div class="form-group">
-                <label for="formato">Formato:</label>
+                <label for="formato">Formato do Arquivo:</label>
                 <select name="formato">
                     <option value="pdf">PDF</option>
                     <option value="xlsx">Excel (XLSX)</option>
                     <option value="csv">CSV</option>
                 </select>
             </div>
-            <button type="submit">Exportar</button>
+            <button type="submit">Gerar Relatório</button>
         </form>
     </div>
 </div>

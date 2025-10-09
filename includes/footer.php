@@ -14,6 +14,50 @@
   function resetFontSize() {
     document.body.style.fontSize = defaultFontSize + 'px';
   }
+ 
+function updateDateLabel(type) {
+    const statusSelect = document.getElementById('exportStatus' + type);
+    const labelInicio = document.getElementById('dateLabelInicio' + type);
+    const labelFim = document.getElementById('dateLabelFim' + type);
+
+    if (!statusSelect || !labelInicio || !labelFim) {
+        return;
+    }
+
+    const selectedStatus = statusSelect.value;
+    let labelText = 'De (Data de Vencimento):';
+    let labelTextFim = 'Até (Data de Vencimento):';
+
+    if (selectedStatus === 'baixada') {
+        labelText = 'De (Data de Baixa):';
+        labelTextFim = 'Até (Data de Baixa):';
+    }
+    
+    labelInicio.textContent = labelText;
+    labelFim.textContent = labelTextFim;
+}
+
+function validateExportForm(form) {
+    const dataInicio = form.querySelector('input[name="data_inicio"]').value;
+    const dataFim = form.querySelector('input[name="data_fim"]').value;
+
+    if (dataInicio && dataFim && dataFim < dataInicio) {
+        alert('A data final não pode ser anterior à data inicial.');
+        return false;
+    }
+    return true;
+}
+
+// Garante que o label esteja correto ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('exportStatusPagar')) {
+        updateDateLabel('Pagar');
+    }
+    if (document.getElementById('exportStatusReceber')) {
+        updateDateLabel('Receber');
+    }
+});
+
 </script>
 
 </body>
