@@ -1,46 +1,8 @@
 <?php
 session_start();
-include('../database.php');
-
-$erro = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = strtolower(trim($_POST['email'] ?? ''));
-    $senha = $_POST['senha'] ?? '';
-
-    if (!$email || !$senha) {
-        $erro = "Preencha e-mail e senha.";
-    } else {
-        $stmt = $conn->prepare("SELECT id, nome, email, senha, perfil, tipo, foto FROM usuarios WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->store_result();
-
-        if ($stmt->num_rows == 1) {
-            $stmt->bind_result($id, $nome, $email_db, $senha_hash, $perfil, $tipo, $foto);
-            $stmt->fetch();
-
-            if (password_verify($senha, $senha_hash)) {
-                $_SESSION['usuario'] = [
-                    'id' => $id,
-                    'nome' => $nome,
-                    'email' => $email_db,
-                    'perfil' => $perfil,
-                    'tipo' => $tipo,
-                    'foto' => $foto,
-                ];
-                $_SESSION['mensagem'] = "Usuário logado com sucesso!";
-                header('Location: select_user.php');
-                exit;
-            } else {
-                $erro = "Senha incorreta.";
-            }
-        } else {
-            $erro = "Usuário não encontrado.";
-        }
-        $stmt->close();
-    }
-}
+// Apenas exibe o erro, não processa mais o login aqui
+$erro = $_SESSION['erro_login'] ?? '';
+unset($_SESSION['erro_login']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -48,12 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8" />
   <title>Login - App Controle de Contas</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
   <style>
     * {
       box-sizing: border-box;
     }
-
     body {
       background-color: #121212;
       color: #eee;
@@ -65,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin: 0;
       padding: 10px;
     }
-
     form {
       background: #222;
       padding: 25px 30px;
@@ -75,19 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       display: flex;
       flex-direction: column;
     }
-
     form h2 {
       margin-bottom: 20px;
       text-align: center;
       color: #00bfff;
     }
-
     label {
       margin-top: 10px;
       font-weight: 600;
       font-size: 0.9rem;
     }
-
     input {
       width: 100%;
       padding: 10px;
@@ -96,13 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       border-radius: 4px;
       font-size: 1rem;
     }
-
     input:focus {
       outline: 2px solid #00bfff;
       background-color: #333;
       color: #fff;
     }
-
     button {
       margin-top: 20px;
       padding: 12px;
@@ -115,13 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
-
     button:hover,
     button:focus {
       background-color: #0056b3;
       outline: none;
     }
-
     .erro {
       background-color: #cc4444;
       padding: 10px;
@@ -130,17 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-weight: 600;
       text-align: center;
     }
-
-    /* Campo com ícone */
     .password-container {
       position: relative;
       width: 100%;
     }
-
     .password-container input {
       padding-right: 35px;
     }
-
     .password-container .toggle-password {
       position: absolute;
       top: 50%;
@@ -150,11 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: black;
       font-size: 1.1rem;
     }
-
-    .password-container .toggle-password:hover {
-      color: #222;
-    }
-
     @media (max-width: 400px) {
       form {
         width: 100%;
@@ -168,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </style>
 </head>
 <body>
-  <form method="POST" novalidate>
+  <form action="../actions/login.php" method="POST" novalidate>
     <h2>Login</h2>
 
     <?php if (!empty($erro)) : ?>

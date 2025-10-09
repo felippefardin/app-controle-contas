@@ -1,18 +1,19 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['usuario'])) {
+// Verifica se há um usuário principal E um usuário ativo na sessão
+if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
+    // Se faltar algum, destrói a sessão e volta para o login para recomeçar
+    session_destroy();
     header('Location: login.php');
     exit;
 }
 
 include('../includes/header_home.php');
 
-$usuario = $_SESSION['usuario'];
-$nome = $usuario['nome'];
-$perfil = $usuario['perfil'];
-$tipo = $usuario['tipo'];
-$foto = $usuario['foto'] ?? null;
+$usuario_ativo = $_SESSION['usuario'];
+$nome = $usuario_ativo['nome'];
+$perfil = $usuario_ativo['perfil'];
 
 $mensagem = $_SESSION['mensagem'] ?? null;
 unset($_SESSION['mensagem']);
@@ -24,112 +25,23 @@ unset($_SESSION['mensagem']);
   <title>Home - App Controle de Contas</title>
   <style>
     /* Reset básico */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-
-    body {
-      background-color: #121212;
-      color: #eee;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding: 20px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    h1 {
-      color: #00bfff;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-
-    h3 {
-      margin-bottom: 20px;
-      font-weight: 400;
-      text-align: center;
-      color: #bbb;
-    }
-
-    .mensagem-sucesso {
-      background-color: #28a745;
-      padding: 15px 20px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
-      font-weight: 600;
-      font-size: 1rem;
-    }
-
-    nav {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 15px;
-      margin-bottom: 30px;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    nav a {
-      background-color: #00bfff;
-      color: #121212;
-      text-decoration: none;
-      padding: 12px 22px;
-      border-radius: 8px;
-      font-weight: 600;
-      box-shadow: 0 3px 6px rgba(0,191,255,0.4);
-      transition: background-color 0.3s ease, color 0.3s ease;
-      flex: 1 1 130px;
-      text-align: center;
-      user-select: none;
-    }
-
-    nav a:hover,
-    nav a:focus {
-      background-color: #0095cc;
-      color: #fff;
-      outline: none;
-      box-shadow: 0 0 12px #0095cc;
-    }
-
-    p {
-      font-size: 1.1rem;
-      color: #ccc;
-      text-align: center;
-      max-width: 600px;
-      width: 100%;
-    }
-
-    /* Responsivo para telas menores */
-    @media (max-width: 480px) {
-      nav {
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      nav a {
-        flex: 1 1 100%;
-        padding: 14px 0;
-        font-size: 1.1rem;
-      }
-
-      body {
-        padding: 15px;
-      }
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: #121212; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    h1 { color: #00bfff; margin-bottom: 10px; text-align: center; }
+    h3 { margin-bottom: 5px; font-weight: 400; text-align: center; color: #ddd; }
+    h4 { margin-bottom: 20px; font-weight: 400; text-align: center; color: #999; }
+    .mensagem-sucesso { background-color: #28a745; color: white; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); font-weight: 600; font-size: 1rem; }
+    nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 30px; width: 100%; max-width: 800px; }
+    nav a { background-color: #00bfff; color: #121212; text-decoration: none; padding: 12px 22px; border-radius: 8px; font-weight: 600; box-shadow: 0 3px 6px rgba(0,191,255,0.4); transition: background-color 0.3s ease, color 0.3s ease; flex: 1 1 130px; text-align: center; user-select: none; }
+    nav a:hover, nav a:focus { background-color: #0095cc; color: #fff; outline: none; box-shadow: 0 0 12px #0095cc; }
+    p { font-size: 1.1rem; color: #ccc; text-align: center; max-width: 600px; width: 100%; }
+    @media (max-width: 480px) { nav { flex-direction: column; gap: 12px; } nav a { flex: 1 1 100%; padding: 14px 0; font-size: 1.1rem; } body { padding: 15px; } }
   </style>
 </head>
 <body>
   <h1>App Controle de Contas</h1>
-  <h3>Usuário: <?= htmlspecialchars($nome) ?> (<?= htmlspecialchars($perfil) ?>)</h3>
+  <h3>Usuário Ativo: <?= htmlspecialchars($nome) ?> (<?= htmlspecialchars($perfil) ?>)</h3>
+  <h4>(Conta Principal: <?= htmlspecialchars($_SESSION['usuario_principal']['nome']) ?>)</h4>
 
   <?php if ($mensagem): ?>
     <div class="mensagem-sucesso"><?= htmlspecialchars($mensagem) ?></div>
@@ -142,6 +54,7 @@ unset($_SESSION['mensagem']);
     <a href="contas_receber_baixadas.php">Contas a receber baixadas</a>
     <a href="usuarios.php">Usuários</a>
     <a href="perfil.php">Perfil</a>
+    <a href="selecionar_usuario.php">Trocar Usuário</a>
     <a style="background-color: red;" href="logout.php">Sair</a>
   </nav>
 

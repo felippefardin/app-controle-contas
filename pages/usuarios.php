@@ -3,7 +3,8 @@ session_start();
 include('../includes/header.php');
 include('../database.php');
 
-if (!isset($_SESSION['usuario'])) {
+// A verificação agora é baseada no 'usuario_principal'
+if (!isset($_SESSION['usuario_principal'])) {
     header('Location: login.php');
     exit;
 }
@@ -31,11 +32,12 @@ if (isset($_GET['erro'])) {
             $mensagem_erro = "Erro ao salvar usuário!";
     }
 }
-$ownerId = $_SESSION['usuario']['id'];
+// Pega o ID da conta principal
+$usuario_principal_id = $_SESSION['usuario_principal']['id'];
 
-// Consulta usuários
-$stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR owner_id = ? ORDER BY nome ASC");
-$stmt->bind_param("ii", $ownerId, $ownerId);
+// Consulta usuários: o próprio principal E os que ele criou
+$stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR id_criador = ? ORDER BY nome ASC");
+$stmt->bind_param("ii", $usuario_principal_id, $usuario_principal_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -45,127 +47,3 @@ if (!$result) {
     exit;
 }
 ?>
-
-<style>
-
-body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; }
-.container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
-h2 { text-align: center; color: #00bfff; margin-bottom: 20px; }
-table { width: 100%; border-collapse: collapse; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; box-shadow: 0 0 8px rgba(0,0,0,0.7); }
-thead tr { background-color: #222; color: #00bfff; }
-th, td { padding: 12px 10px; border-bottom: 1px solid #333; text-align: left; }
-tr:nth-child(even) { background-color: #2a2a2a; }
-tr:hover { background-color: #333; }
-a { color: #00bfff; font-weight: bold; text-decoration: none; }
-a:hover { text-decoration: underline; }
-p a { display: inline-block; margin-top: 20px; }
-.btn-secondary { background-color: #c0392b; border: none; color: white; padding: 10px 22px; font-weight: bold; font-size: 14px; border-radius: 6px; cursor: pointer; transition: background-color 0.3s ease; }
-.btn-secondary:hover { background-color: #992d22; }
-@media (max-width: 768px) { table, thead, tbody, th, td, tr { display: block; } thead tr { display: none; } tr { margin-bottom: 20px; border: 1px solid #333; border-radius: 8px; padding: 10px; } td { position: relative; padding-left: 50%; text-align: right; border-bottom: 1px solid #444; font-size: 14px; } td:last-child { border-bottom: 0; } td::before { content: attr(data-label); position: absolute; left: 10px; top: 12px; font-weight: bold; color: #999; white-space: nowrap; text-align: left; font-size: 14px; } }
-.btn-primary { background-color: #27ae60; border: none; color: white; padding: 10px 22px; font-weight: bold; font-size: 14px; border-radius: 6px; cursor: pointer; transition: background-color 0.3s ease; }
-.btn-primary:hover { background-color: #1e874b; }
-form#addUserForm label { display: block; margin-top: 10px; margin-bottom: 5px; }
-form#addUserForm input { width: 100%; padding: 8px; border-radius: 4px; border: none; background-color: #333; color: #eee; font-size: 14px; }
-form#addUserForm input::placeholder { color: #bbb; }
-.password-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
-.password-wrapper input { flex: 1; width: 100%; padding-right: 40px; }
-.toggle-password { position: absolute; right: 5px; background: transparent; border: none; cursor: pointer; color: #00bfff; font-size: 18px; padding: 0 8px; user-select: none; }
-</style>
-
-<div class="container">
-    <h2>Usuários</h2>
-
-    <?php if ($mensagem_sucesso): ?>
-        <div style="text-align:center; background:#27ae60; color:#fff; padding:10px; border-radius:6px; margin-bottom:15px;">
-            <?= $mensagem_sucesso ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($mensagem_erro): ?>
-        <div style="text-align:center; background:#c0392b; color:#fff; padding:10px; border-radius:6px; margin-bottom:15px;">
-            <?= $mensagem_erro ?>
-        </div>
-    <?php endif; ?>
-
-    <div style="text-align: center; margin-bottom: 15px;">
-        <button id="toggleFormBtn" class="btn-primary">Adicionar Novo Usuário</button>
-    </div>
-
-    <form id="addUserForm" action="../actions/add_usuario.php" method="POST" style="display:none; background:#222; padding:15px; border-radius:8px; max-width: 500px; margin: 0 auto 30px auto;">
-        <label for="nome">Nome Completo:</label>
-        <input type="text" id="nome" name="nome" required>
-
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required>
-
-        <label for="cpf">CPF:</label>
-        <input type="text" id="cpf" name="cpf" required>
-
-        <label for="telefone">Telefone:</label>
-        <input type="text" id="telefone" name="telefone" required>
-
-        <label for="senha">Senha:</label>
-        <div class="password-wrapper">
-            <input type="password" id="senha" name="senha" required>
-            <button type="button" class="toggle-password" data-target="senha">👁️</button>
-        </div>
-
-        <label for="senha_confirmar">Confirmar Senha:</label>
-        <div class="password-wrapper">
-            <input type="password" id="senha_confirmar" name="senha_confirmar" required>
-            <button type="button" class="toggle-password" data-target="senha_confirmar">👁️</button>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button type="submit" class="btn-primary">Salvar Usuário</button>
-            <button type="button" class="btn-secondary" id="cancelarBtn">Cancelar</button>
-        </div>
-    </form>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Email</th>
-                <th>CPF</th>
-                <th>Telefone</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php while ($usuario = $result->fetch_assoc()): ?>
-                <tr>
-                    <td data-label="Nome"><?= htmlspecialchars($usuario['nome']) ?></td>
-                    <td data-label="Email"><?= htmlspecialchars($usuario['email']) ?></td>
-                    <td data-label="CPF"><?= htmlspecialchars($usuario['cpf']) ?></td>
-                    <td data-label="Telefone"><?= htmlspecialchars($usuario['telefone']) ?></td>
-                    <td data-label="Ações">
-                        <a href="editar_usuario.php?id=<?= $usuario['id'] ?>">Editar</a> |
-                        <a href="excluir_usuario.php?id=<?= $usuario['id'] ?>" onclick="return confirm('Deseja realmente excluir este usuário?')">Excluir</a>
-                    </td>
-                </tr>
-            <?php endwhile; ?>
-        </tbody>
-    </table>
-</div>
-
-<script>
-document.getElementById('toggleFormBtn').addEventListener('click', function() {
-    const form = document.getElementById('addUserForm');
-    form.style.display = (form.style.display === 'block') ? 'none' : 'block';
-});
-
-document.querySelectorAll('.toggle-password').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const input = document.getElementById(btn.dataset.target);
-        input.type = input.type === 'password' ? 'text' : 'password';
-        btn.textContent = input.type === 'password' ? '👁️' : '🙈';
-    });
-});
-
-document.getElementById('cancelarBtn').addEventListener('click', () => {
-    document.getElementById('addUserForm').style.display = 'none';
-});
-</script>
-
-<?php include('../includes/footer.php'); ?>
