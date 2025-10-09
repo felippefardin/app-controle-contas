@@ -23,11 +23,21 @@ if ($conn->connect_error) {
 // Adiciona a lógica de filtro de usuário
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
+// Assumindo que o id_criador está na sessão. Use 0 ou null como padrão.
+$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // Monta filtros SQL
 $where = ["status='pendente'"];
 if ($perfil !== 'admin') {
-    $where[] = "usuario_id = '$usuarioId'";
+    // Se id_criador for maior que 0, o usuário é secundário.
+    // O ID principal é o id_criador. Caso contrário, é o próprio ID do usuário.
+    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+    
+    // Subconsulta para obter todos os IDs de usuários associados à conta principal
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
+    
+    // A cláusula WHERE agora inclui o ID do usuário principal e todos os seus usuários secundários
+    $where[] = "(usuario_id = {$mainUserId} OR usuario_id IN ({$subUsersQuery}))";
 }
 if(!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
 if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
@@ -189,7 +199,30 @@ if ($result->num_rows > 0) {
 
 <div id="exportModal" class="modal">
     <div class="modal-content">
-        </div>
+        <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
+        <h3>Exportar Contas a Pagar</h3>
+        <form action="../actions/exportar_contas_pagar.php" method="POST" target="_blank">
+            <input type="hidden" name="status" value="pendente">
+
+            <div class="form-group">
+                <label for="data_inicio">De (Vencimento):</label>
+                <input type="date" name="data_inicio" required>
+            </div>
+            <div class="form-group">
+                <label for="data_fim">Até (Vencimento):</label>
+                <input type="date" name="data_fim" required>
+            </div>
+            <div class="form-group">
+                <label for="formato">Formato:</label>
+                <select name="formato">
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                    <option value="csv">CSV</option>
+                </select>
+            </div>
+            <button type="submit">Exportar</button>
+        </form>
+    </div>
 </div>
 <div id="deleteModal" class="modal">
     <div class="modal-content">

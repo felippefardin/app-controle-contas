@@ -155,14 +155,12 @@ if ($result && $result->num_rows > 0) {
         <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
         <h3>Exportar Contas a Receber</h3>
         <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
-            <input type="hidden" name="status" value="pendente">
-
             <div class="form-group">
-                <label for="data_inicio">De (Vencimento):</label>
+                <label for="data_inicio">De:</label>
                 <input type="date" name="data_inicio" required>
             </div>
             <div class="form-group">
-                <label for="data_fim">Até (Vencimento):</label>
+                <label for="data_fim">Até:</label>
                 <input type="date" name="data_fim" required>
             </div>
             <div class="form-group">
@@ -177,6 +175,7 @@ if ($result && $result->num_rows > 0) {
         </form>
     </div>
 </div>
+
 
 <script>
 function toggleForm(){ 

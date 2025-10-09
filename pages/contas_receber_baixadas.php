@@ -10,12 +10,22 @@ if (!isset($_SESSION['usuario'])) {
 
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
+// Assumindo que o id_criador está na sessão. Use 0 ou null como padrão.
+$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // --- CORREÇÃO: Especificado "c.status" para remover a ambiguidade ---
 $where = ["c.status='baixada'"];
 
 if ($perfil !== 'admin') {
-    $where[] = "c.usuario_id = '$usuarioId'";
+    // Se id_criador for maior que 0, o usuário é secundário.
+    // O ID principal é o id_criador. Caso contrário, é o próprio ID do usuário.
+    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+
+    // Subconsulta para obter todos os IDs de usuários associados à conta principal
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
+
+    // A cláusula WHERE agora inclui o ID do usuário principal e todos os seus usuários secundários
+    $where[] = "(c.usuario_id = {$mainUserId} OR c.usuario_id IN ({$subUsersQuery}))";
 }
 
 if (!empty($_GET['responsavel'])) $where[] = "responsavel LIKE '%" . $conn->real_escape_string($_GET['responsavel']) . "%'";
@@ -49,6 +59,36 @@ $result = $conn->query($sql);
 <body>
 
 <h2>Contas a Receber - Baixadas</h2>
+
+<div class="action-buttons-group">
+    <button type="button" class="btn btn-export" onclick="document.getElementById('exportModal').style.display='flex'">Exportar Baixadas</button>
+</div>
+<div id="exportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
+        <h3>Exportar Contas a Receber Baixadas</h3>
+        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
+             <input type="hidden" name="status" value="baixada">
+            <div class="form-group">
+                <label for="data_inicio">De (Data de Baixa):</label>
+                <input type="date" name="data_inicio" required>
+            </div>
+            <div class="form-group">
+                <label for="data_fim">Até (Data de Baixa):</label>
+                <input type="date" name="data_fim" required>
+            </div>
+            <div class="form-group">
+                <label for="formato">Formato:</label>
+                <select name="formato">
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                    <option value="csv">CSV</option>
+                </select>
+            </div>
+            <button type="submit">Exportar</button>
+        </form>
+    </div>
+</div>
 
 <?php
 if ($result) {
