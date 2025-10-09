@@ -12,10 +12,20 @@ $id = intval($_GET['id'] ?? 0);
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $forma   = $_POST['forma'];
-    $juros   = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
-    $hoje    = date('Y-m-d');
+    $forma = $_POST['forma'];
+    $juros = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
+    $dataBaixaInput = $_POST['data_baixa'];
     $usuario = $_SESSION['usuario']['id'];
+
+    // --- CORREÇÃO: Converte a data do formato brasileiro (d/m/Y) para o formato do banco de dados (Y-m-d) ---
+    $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
+    if ($dataBaixa) {
+        $dataBaixaFormatada = $dataBaixa->format('Y-m-d');
+    } else {
+        // Se a data estiver em formato inválido, usa a data de hoje como padrão
+        $dataBaixaFormatada = date('Y-m-d');
+    }
+    // --- FIM DA CORREÇÃO ---
 
     $sql = "UPDATE contas_pagar 
             SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? 
@@ -25,8 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Erro ao preparar query: " . $conn->error);
     }
     
-    // A string de tipos agora inclui 'd' para o valor decimal dos juros
-    $stmt->bind_param("ssidi", $forma, $juros, $hoje, $usuario, $id);
+    $stmt->bind_param("sdsii", $forma, $juros, $dataBaixaFormatada, $usuario, $id);
     if (!$stmt->execute()) {
         die("Erro ao atualizar conta: " . $stmt->error);
     }
@@ -34,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
     $conn->close();
 
-    header('Location: ../pages/contas_pagar.php');
+    header('Location: ../pages/contas_pagar_baixadas.php');
     exit;
 }
 ?>
@@ -67,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       padding: 25px 30px;
       border-radius: 10px;
       box-shadow: 0 0 12px rgba(0,191,255,0.4);
-      width: 320px;
+      width: 340px;
       display: flex;
       flex-direction: column;
       gap: 20px;
@@ -79,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       border: 1px solid #333;
       background-color: #2a2a2a;
       color: #eee;
-      appearance: none;
       cursor: pointer;
     }
     button {
@@ -103,13 +111,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <form method="POST" autocomplete="off">
     <h2><i class="fa fa-credit-card"></i> Baixar Conta a Pagar</h2>
-    <input type="text" name="juros" placeholder="Juros (ex: 10.50)" pattern="^\d+([.,]\d{1,2})?$" title="Use ponto ou vírgula para separar os centavos" value="0,00" />
+    
+    <input type="text" name="data_baixa" placeholder="Data da Baixa (ex: dd/mm/aaaa)" value="<?= date('d/m/Y') ?>" required />
+
+    <input type="text" name="juros" placeholder="Juros (ex: 10,50)" pattern="^\d+([,.]\d{1,2})?$" title="Use vírgula para separar os centavos" value="0,00" />
+    
     <select name="forma" required aria-label="Selecione a forma de pagamento">
-      <option value="">Selecione</option>
+      <option value="">Selecione a Forma de Pagamento</option>
       <?php foreach ($formas as $f): ?>
         <option value="<?= htmlspecialchars($f) ?>"><?= ucfirst($f) ?></option>
       <?php endforeach; ?>
     </select>
+    
     <button type="submit"><i class="fa fa-check"></i> Confirmar</button>
   </form>
 

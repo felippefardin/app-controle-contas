@@ -57,6 +57,26 @@ $result = $conn->query($sql);
       color: #00bfff;
       margin-bottom: 20px;
     }
+    table {
+       width: 100%; 
+       border-collapse: collapse; 
+       background-color: #1f1f1f; 
+       border-radius: 8px; 
+       overflow: hidden; 
+       margin-top: 10px;
+       }
+
+       th, td {
+         padding: 12px 10px; 
+         text-align: left; 
+         border-bottom: 1px solid #333; 
+        }
+
+        th { 
+          background-color: #222; 
+          color: #00bfff; 
+        }
+
     a {
       color: #00bfff;
       text-decoration: none;
