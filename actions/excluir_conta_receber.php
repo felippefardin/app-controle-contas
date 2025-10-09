@@ -8,6 +8,7 @@ if (!isset($_SESSION['usuario'])) {
 
 include('../database.php');
 
+
 if (isset($_GET['id'])) {
     $id = intval($_GET['id']); // Garante que o ID é inteiro para segurança
 

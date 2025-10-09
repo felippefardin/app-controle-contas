@@ -8,6 +8,7 @@ if (!isset($_SESSION['usuario'])) {
 include('../database.php');
 include('../includes/header.php');
 
+
 $servername = "localhost";
 $username   = "root";
 $password   = "";

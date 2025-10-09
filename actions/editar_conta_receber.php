@@ -8,6 +8,7 @@ if (!isset($_SESSION['usuario'])) {
 include('../database.php');
 include('../includes/header.php');
 
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Mostrar formulário para edição
     if (!isset($_GET['id'])) {
