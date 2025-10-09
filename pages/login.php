@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'foto' => $foto,
                 ];
                 $_SESSION['mensagem'] = "Usuário logado com sucesso!";
-                header('Location: home.php');
+                header('Location: select_user.php');
                 exit;
             } else {
                 $erro = "Senha incorreta.";
@@ -47,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8" />
   <title>Login - App Controle de Contas</title>
-  <!-- Link Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>

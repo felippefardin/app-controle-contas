@@ -42,7 +42,7 @@ if ($stmt->execute()) {
     $stmt->close();
     $conn->close();
     // Redireciona de volta para a tela de contas a pagar
-    header('Location: ../pages/contas_pagar.php?excluido=1');
+    header('Location: ../pages/contas_pagar_baixadas.php?excluido=1');
     exit;
 } else {
     die("Erro ao excluir conta: " . $conn->error);

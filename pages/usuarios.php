@@ -8,17 +8,6 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-// 🔹 Conexão com o banco (mesma de contas_pagar.php)
-$servername = "localhost";
-$username   = "root";
-$password   = "";
-$database   = "app_controle_contas";
-
-$conn = new mysqli($servername, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
 // Mensagens
 $mensagem_sucesso = '';
 $mensagem_erro = '';
@@ -42,10 +31,13 @@ if (isset($_GET['erro'])) {
             $mensagem_erro = "Erro ao salvar usuário!";
     }
 }
+$ownerId = $_SESSION['usuario']['id'];
 
 // Consulta usuários
-$sql = "SELECT id, nome, email, cpf, telefone FROM usuarios ORDER BY nome ASC";
-$result = $conn->query($sql);
+$stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR owner_id = ? ORDER BY nome ASC");
+$stmt->bind_param("ii", $ownerId, $ownerId);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if (!$result) {
     echo "<p>Erro na consulta: " . $conn->error . "</p>";
