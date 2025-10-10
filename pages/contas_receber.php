@@ -94,6 +94,7 @@ $result = $conn->query($sql);
       .modal-content form { flex-direction: column; }
     }
     
+    
 </style>
 </head>
 <body>
@@ -186,6 +187,25 @@ if ($result && $result->num_rows > 0) {
                 </select>
             </div>
             <button type="submit">Exportar</button>
+        </form>
+    </div>
+</div>
+
+<div id="cobrancaModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
+        <h3>Gerar Cobrança</h3>
+        <form action="../actions/enviar_cobranca.php" method="POST">
+            <input type="hidden" name="id_conta" id="id_conta_cobranca">
+            <div class="form-group">
+                <label for="email_devedor">E-mail do Devedor</label>
+                <input type="email" name="email_devedor" id="email_devedor" required>
+            </div>
+            <div class="form-group">
+                <label for="dados_pagamento">Sua Chave PIX ou Dados Bancários</label>
+                <textarea name="dados_pagamento" rows="4" required placeholder="Ex: Chave PIX (CPF): 123.456.789-00 ou Banco: Itaú, Ag: 1234, C/C: 56789-0"></textarea>
+            </div>
+            <button type="submit" class="btn btn-cobranca">Enviar E-mail de Cobrança</button>
         </form>
     </div>
 </div>

@@ -212,4 +212,25 @@ a:hover {
 }
 
 
+
+
 }
+/* =================================
+   BOTÕES DE AÇÃO PADRONIZADOS
+==================================== */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 2px;
+    border: none; /* Garante que links pareçam botões */
+}
+
