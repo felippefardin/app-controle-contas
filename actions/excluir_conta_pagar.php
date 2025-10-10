@@ -1,50 +1,42 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
 
 if (!isset($_SESSION['usuario'])) {
     header('Location: ../pages/login.php');
     exit;
 }
 
-// Inclui a conexão que define a variável $conn
 include('../database.php');
 
-// Pega o ID e o perfil do usuário logado
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
+if (isset($_GET['id'])) {
+    $id = intval($_GET['id']); // Proteção contra SQL Injection
 
-// Verifica se veio o ID na URL
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    die("ID inválido.");
-}
+    // Verifica de qual página a solicitação veio para redirecionar corretamente
+    $origem = $_GET['origem'] ?? 'pendentes';
+    $redirectPage = ($origem === 'baixadas') ? 'contas_pagar_baixadas.php' : 'contas_pagar.php';
 
-$id = intval($_GET['id']);
+    // Usar prepared statements para segurança
+    $stmt = $conn->prepare("DELETE FROM contas_pagar WHERE id = ?");
+    if ($stmt === false) {
+        // Tratar erro na preparação da query
+        header("Location: ../pages/{$redirectPage}?erro=Erro ao preparar a exclusão.");
+        exit();
+    }
 
-// Monta a query DELETE
-$sql = "DELETE FROM contas_pagar WHERE id = ?";
-$params = "i";
-$bindVars = [$id];
+    $stmt->bind_param("i", $id);
 
-// Se o usuário não for um admin, adiciona o filtro de usuario_id
-if ($perfil !== 'admin') {
-    $sql .= " AND usuario_id = ?";
-    $params .= "i";
-    $bindVars[] = $usuarioId;
-}
-
-// Prepara e executa o DELETE
-$stmt = $conn->prepare($sql);
-$stmt->bind_param($params, ...$bindVars);
-
-if ($stmt->execute()) {
-    $stmt->close();
-    $conn->close();
-    // Redireciona de volta para a tela de contas a pagar
-    header('Location: ../pages/contas_pagar_baixadas.php?excluido=1');
-    exit;
+    if ($stmt->execute()) {
+        // Redireciona para a página de origem com mensagem de sucesso
+        header("Location: ../pages/{$redirectPage}?msg=Conta excluída com sucesso!");
+        exit();
+    } else {
+        // Redireciona para a página de origem com mensagem de erro
+        header("Location: ../pages/{$redirectPage}?erro=Erro ao executar a exclusão.");
+        exit();
+    }
 } else {
-    die("Erro ao excluir conta: " . $conn->error);
+    // Se nenhum ID for fornecido, redireciona para a página principal
+    header("Location: ../pages/contas_pagar.php?erro=ID da conta não especificado.");
+    exit();
 }
 ?>

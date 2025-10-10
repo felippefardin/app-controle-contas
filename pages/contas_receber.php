@@ -143,6 +143,11 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Ações'>";
         // Seus botões de ação aqui
         echo "<a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'>Baixar</a>";
+        echo "<a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'>Editar</a>";
+        
+        // ADICIONE O BOTÃO EXCLUIR AQUI
+        echo "<a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>";
+        
         echo "</td></tr>";
     }
     echo "</tbody></table>";
@@ -154,17 +159,18 @@ if ($result && $result->num_rows > 0) {
 <div id="exportar_contas_receber" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
-        <h3>Exportar Relatório de Contas a Receber</h3>
+        <h3>Exportar Contas a Receber</h3>
         <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank" onsubmit="return validateExportForm(this);">
             <div class="form-group">
-                <label for="status">Tipo de Relatório:</label>
+                <label for="status">Status da Conta:</label>
                 <select name="status" id="exportStatusReceber" onchange="updateDateLabel('Receber')">
-                    <option value="pendente">Contas Pendentes</option>
-                    <option value="baixada">Contas Baixadas</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="baixada">Baixadas</option>
+                    <option value="todos">Todas</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="data_inicio" id="dateLabelInicioReceber">Filtrar de (Data de Vencimento):</label>
+                <label for="data_inicio" id="dateLabelInicioReceber">De (Data de Vencimento):</label>
                 <input type="date" name="data_inicio" required>
             </div>
             <div class="form-group">
@@ -172,19 +178,58 @@ if ($result && $result->num_rows > 0) {
                 <input type="date" name="data_fim" required>
             </div>
             <div class="form-group">
-                <label for="formato">Formato do Arquivo:</label>
+                <label for="formato">Formato:</label>
                 <select name="formato">
                     <option value="pdf">PDF</option>
                     <option value="xlsx">Excel (XLSX)</option>
                     <option value="csv">CSV</option>
                 </select>
             </div>
-            <button type="submit">Gerar Relatório</button>
+            <button type="submit">Exportar</button>
         </form>
     </div>
 </div>
 
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        </div>
+</div>
+
 <script>
+
+    function toggleForm(){ 
+    const modal = document.getElementById('addContaModal'); 
+    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
+}
+
+// Função para abrir o modal de exclusão
+function openDeleteModal(id, responsavel) {
+    const modal = document.getElementById('deleteModal');
+    const modalContent = modal.querySelector('.modal-content');
+    
+    modalContent.innerHTML = `
+        <h3>Confirmar Exclusão</h3>
+        <p>Tem certeza de que deseja excluir a conta a receber do responsável abaixo?</p>
+        <p><strong>${responsavel}</strong></p>
+        <div class="modal-actions" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+            <a href="../actions/excluir_conta_receber.php?id=${id}" class="btn btn-excluir" style="background-color: #cc3333; color: white;">Sim, Excluir</a>
+            <button type="button" class="btn" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+}
+
+// Fechar modais ao clicar fora
+window.addEventListener('click', e => {
+    const addModal = document.getElementById('addContaModal');
+    const exportModal = document.getElementById('exportar_contas_receber');
+    const deleteModal = document.getElementById('deleteModal'); // Adicionado
+    
+    if(e.target === addModal) addModal.style.display = 'none';
+    if(e.target === exportModal) exportModal.style.display = 'none';
+    if(e.target === deleteModal) deleteModal.style.display = 'none'; // Adicionado
+});
 function toggleForm(){ 
     const modal = document.getElementById('addContaModal'); 
     modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
@@ -202,5 +247,7 @@ window.addEventListener('click', e => {
 
 </body>
 </html>
+
+
 
 <?php include('../includes/footer.php'); ?>

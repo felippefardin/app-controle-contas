@@ -188,11 +188,12 @@ if ($result->num_rows > 0) {
         echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Valor'>R$ ".number_format($row['valor'],2,',','.')."</td>";
-        echo "<td data-label='Ações'>
-                <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
-                <a href='../actions/editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
-                <a href='#' onclick='openDeleteModal({$row['id']}); return false;' class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
-              </td>";
+       echo "<td data-label='Ações'>
+        <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
+        <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
+        
+        <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+      </td>";
         echo "</tr>";
     }
     echo "</tbody></table>";
@@ -245,6 +246,25 @@ if ($result->num_rows > 0) {
     modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
   }
 
+  // FUNÇÃO DE EXCLUSÃO CORRIGIDA
+  function openDeleteModal(id, fornecedor) {
+    const modal = document.getElementById('deleteModal');
+    const modalContent = modal.querySelector('.modal-content');
+
+    // Injeta o HTML de confirmação no modal
+    modalContent.innerHTML = `
+      <h3>Confirmar Exclusão</h3>
+      <p>Tem certeza de que deseja excluir a seguinte conta a pagar?</p>
+      <p><strong>Fornecedor:</strong> ${fornecedor}</p>
+      <div class="modal-actions" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+        <a href="../actions/excluir_conta_pagar.php?id=${id}" class="btn btn-excluir">Sim, Excluir</a>
+        <button class="btn" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
+      </div>
+    `;
+    
+    modal.style.display = 'flex';
+  }
+
   // Lógica para fechar modais
   window.onclick = function(event) {
     const addModal = document.getElementById('addContaModal');
@@ -260,9 +280,6 @@ if ($result->num_rows > 0) {
         deleteModal.style.display = 'none';
     }
   };
-
-  // Funções para o modal de exclusão
-  function openDeleteModal(id) { /* ... */ }
 </script>
 
 <?php include('../includes/footer.php'); ?>

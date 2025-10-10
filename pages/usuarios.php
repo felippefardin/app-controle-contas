@@ -46,4 +46,5 @@ if (!$result) {
     include('../includes/footer.php');
     exit;
 }
+
 ?>
