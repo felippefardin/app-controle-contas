@@ -17,15 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dataBaixaInput = $_POST['data_baixa'];
     $usuario = $_SESSION['usuario']['id'];
 
-    // --- CORREÇÃO: Converte a data do formato brasileiro (d/m/Y) para o formato do banco de dados (Y-m-d) ---
     $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
     if ($dataBaixa) {
         $dataBaixaFormatada = $dataBaixa->format('Y-m-d');
     } else {
-        // Se a data estiver em formato inválido, usa a data de hoje como padrão
         $dataBaixaFormatada = date('Y-m-d');
     }
-    // --- FIM DA CORREÇÃO ---
 
     $sql = "UPDATE contas_pagar 
             SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? 
@@ -36,13 +33,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $stmt->bind_param("sdsii", $forma, $juros, $dataBaixaFormatada, $usuario, $id);
-    if (!$stmt->execute()) {
-        die("Erro ao atualizar conta: " . $stmt->error);
+    if ($stmt->execute()) {
+        // Define a mensagem de sucesso na sessão
+        $_SESSION['success_message'] = "Conta baixada com sucesso!";
+    } else {
+        // Opcional: Adicionar uma mensagem de erro em caso de falha
+        // $_SESSION['error_message'] = "Erro ao baixar conta: " . $stmt->error;
     }
 
     $stmt->close();
     $conn->close();
 
+    // Redireciona para a página de contas baixadas
     header('Location: ../pages/contas_pagar_baixadas.php');
     exit;
 }

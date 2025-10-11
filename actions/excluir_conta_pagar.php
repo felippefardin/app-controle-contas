@@ -9,34 +9,34 @@ if (!isset($_SESSION['usuario'])) {
 include('../database.php');
 
 if (isset($_GET['id'])) {
-    $id = intval($_GET['id']); // Proteção contra SQL Injection
+    $id = intval($_GET['id']);
 
-    // Verifica de qual página a solicitação veio para redirecionar corretamente
     $origem = $_GET['origem'] ?? 'pendentes';
     $redirectPage = ($origem === 'baixadas') ? 'contas_pagar_baixadas.php' : 'contas_pagar.php';
 
-    // Usar prepared statements para segurança
     $stmt = $conn->prepare("DELETE FROM contas_pagar WHERE id = ?");
     if ($stmt === false) {
-        // Tratar erro na preparação da query
-        header("Location: ../pages/{$redirectPage}?erro=Erro ao preparar a exclusão.");
+        // $_SESSION['error_message'] = "Erro ao preparar a exclusão.";
+        header("Location: ../pages/{$redirectPage}");
         exit();
     }
 
     $stmt->bind_param("i", $id);
 
     if ($stmt->execute()) {
-        // Redireciona para a página de origem com mensagem de sucesso
-        header("Location: ../pages/{$redirectPage}?msg=Conta excluída com sucesso!");
-        exit();
+        $_SESSION['success_message'] = "Conta excluída com sucesso!";
     } else {
-        // Redireciona para a página de origem com mensagem de erro
-        header("Location: ../pages/{$redirectPage}?erro=Erro ao executar a exclusão.");
-        exit();
+        // $_SESSION['error_message'] = "Erro ao executar a exclusão.";
     }
+    
+    $stmt->close();
+    $conn->close();
+    
+    header("Location: ../pages/{$redirectPage}");
+    exit();
 } else {
-    // Se nenhum ID for fornecido, redireciona para a página principal
-    header("Location: ../pages/contas_pagar.php?erro=ID da conta não especificado.");
+    // $_SESSION['error_message'] = "ID da conta não especificado.";
+    header("Location: ../pages/contas_pagar.php");
     exit();
 }
 ?>

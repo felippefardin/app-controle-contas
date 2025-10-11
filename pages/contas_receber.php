@@ -10,20 +10,13 @@ if (!isset($_SESSION['usuario'])) {
 
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
-// Assumindo que o id_criador está na sessão. Use 0 ou null como padrão.
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // Monta filtros SQL
 $where = ["status='pendente'"];
 if ($perfil !== 'admin') {
-    // Se id_criador for maior que 0, o usuário é secundário.
-    // O ID principal é o id_criador. Caso contrário, é o próprio ID do usuário.
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-
-    // Subconsulta para obter todos os IDs de usuários associados à conta principal
     $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-
-    // A cláusula WHERE agora inclui o ID do usuário principal e todos os seus usuários secundários
     $where[] = "(usuario_id = {$mainUserId} OR usuario_id IN ({$subUsersQuery}))";
 }
 if(!empty($_GET['responsavel'])) $where[] = "responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
@@ -46,38 +39,78 @@ $result = $conn->query($sql);
 <style>
     /* RESET & BASE */
     * { box-sizing: border-box; }
-    body { background-color:#121212; color:#eee; font-family:Arial,sans-serif; margin:0; padding:20px; }
-    h2,h3 { text-align:center; color:#00bfff; }
-    a { color:#00bfff; text-decoration:none; font-weight:bold; }
-    a:hover { text-decoration:underline; }
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 20px;
+    }
+    h2, h3 { text-align: center; color: #00bfff; }
+    a { color: #00bfff; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
+    p { text-align: center; margin-top: 20px; }
+
+    /* MENSAGENS DE SUCESSO/ERRO */
+    .success-message {
+      background-color: #27ae60;
+      color: white; padding: 15px; margin-bottom: 20px;
+      border-radius: 5px; text-align: center;
+      position: relative; font-weight: bold;
+    }
+    .close-msg-btn {
+      position: absolute; top: 50%; right: 15px;
+      transform: translateY(-50%); font-size: 22px;
+      line-height: 1; cursor: pointer; transition: color 0.2s;
+    }
+    .close-msg-btn:hover { color: #ddd; }
 
     /* Formulário de Busca */
-    form.search-form { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:25px; max-width:900px; margin:auto; }
-    form.search-form input[type="text"], form.search-form input[type="date"] { padding:10px; font-size:16px; border-radius:5px; border:1px solid #444; background:#333; color:#eee; min-width:180px; }
-    form.search-form button, form.search-form a.clear-filters { color:white; border:none; padding:10px 22px; font-weight:bold; border-radius:5px; cursor:pointer; transition:background-color 0.3s; min-width:120px; text-align:center; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
-    form.search-form button { background:#27ae60; font-size:16px; }
-    form.search-form button:hover { background:#1e874b; }
-    form.search-form a.clear-filters { background:#cc3333; }
-    form.search-form a.clear-filters:hover { background:#a02a2a; }
+    form.search-form {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+      margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
+    }
+    form.search-form input[type="text"],
+    form.search-form input[type="date"] {
+      padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444;
+      background-color: #333; color: #eee; min-width: 180px;
+    }
+    form.search-form input::placeholder { color: #aaa; }
+    form.search-form button, form.search-form a.clear-filters {
+      color: white; border: none; padding: 10px 22px; font-weight: bold;
+      border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
+      min-width: 120px; text-align: center; display: inline-flex;
+      align-items: center; justify-content: center; text-decoration: none;
+    }
+    form.search-form button { background-color: #27ae60; font-size: 16px; }
+    form.search-form button:hover { background-color: #1e874b; }
+    form.search-form a.clear-filters { background-color: #cc3333; }
+    form.search-form a.clear-filters:hover { background-color: #a02a2a; }
 
     /* Botões */
-    .action-buttons-group { display:flex; justify-content:center; gap:12px; margin:20px 0; flex-wrap:wrap; }
+    .action-buttons-group { display: flex; justify-content: center; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
     .btn { border: none; padding: 10px 22px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
-    .btn-add { background-color:#00bfff; color:white; }
-    .btn-add:hover { background-color:#0099cc; }
-    .btn-export { background-color: #28a745; color: white; }
+    .btn-add { background-color: #00bfff; color: white; }
+    .btn-add:hover { background-color: #0099cc; }
+    .btn-export { background-color: #28a745; color: white; padding: 10px 14px; }
     .btn-export:hover { background-color: #218838; }
-    
-    /* Tabela */
-    table { width:100%; border-collapse:collapse; background:#1f1f1f; border-radius:8px; overflow:hidden; margin-top:10px; }
-    th, td { padding:12px 10px; border-bottom:1px solid #333; text-align:left; }
-    th { background:#222; color:#00bfff; }
-    tr:nth-child(even) { background:#2a2a2a; }
-    tr:hover { background:#333; }
-    tr.vencido { background:#662222 !important; }
-    .btn-action { margin: 2px; }
 
-    /* --- ESTILOS DO NOVO MODAL --- */
+    /* Tabela */
+    table { width: 100%; border-collapse: collapse; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
+    th { background-color: #222; color: #00bfff; }
+    tr:nth-child(even) { background-color: #2a2a2a; }
+    tr:hover { background-color: #333; }
+    tr.vencido { background-color: #662222 !important; }
+    
+    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 2px; }
+    .btn-baixar { background-color: #27ae60; }
+    .btn-baixar:hover { background-color: #1e874b; }
+    .btn-editar { background-color: #00bfff; }
+    .btn-editar:hover { background-color: #0099cc; }
+    .btn-excluir { background-color: #cc3333; }
+    .btn-excluir:hover { background-color: #a02a2a; }
+    
+    /* MODAL */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
     .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -86,18 +119,26 @@ $result = $conn->query($sql);
     .modal-content form input { flex: 1 1 200px; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
     .modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
-    
+
     /* Responsivo */
-    @media(max-width:768px){
-      td { padding-left: 50%; text-align: right; }
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      th { display: none; }
+      tr { margin-bottom: 15px; border: 1px solid #333; border-radius: 8px; padding: 10px; }
+      td { position: relative; padding-left: 50%; text-align: right; }
       td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
       .modal-content form { flex-direction: column; }
     }
-    
-    
 </style>
 </head>
 <body>
+
+<?php
+if (isset($_SESSION['success_message'])) {
+    echo '<div class="success-message">' . htmlspecialchars($_SESSION['success_message']) . '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
+    unset($_SESSION['success_message']);
+}
+?>
 
 <h2>Contas a Receber</h2>
 
@@ -141,15 +182,11 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
-        echo "<td data-label='Ações'>";
-        // Seus botões de ação aqui
-        echo "<a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'>Baixar</a>";
-        echo "<a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'>Editar</a>";
-        
-        // ADICIONE O BOTÃO EXCLUIR AQUI
-        echo "<a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>";
-        
-        echo "</td></tr>";
+        echo "<td data-label='Ações'>
+            <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'>Baixar</a>
+            <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'>Editar</a>
+            <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>
+        </td></tr>";
     }
     echo "</tbody></table>";
 } else {
@@ -191,83 +228,44 @@ if ($result && $result->num_rows > 0) {
     </div>
 </div>
 
-<div id="cobrancaModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
-        <h3>Gerar Cobrança</h3>
-        <form action="../actions/enviar_cobranca.php" method="POST">
-            <input type="hidden" name="id_conta" id="id_conta_cobranca">
-            <div class="form-group">
-                <label for="email_devedor">E-mail do Devedor</label>
-                <input type="email" name="email_devedor" id="email_devedor" required>
-            </div>
-            <div class="form-group">
-                <label for="dados_pagamento">Sua Chave PIX ou Dados Bancários</label>
-                <textarea name="dados_pagamento" rows="4" required placeholder="Ex: Chave PIX (CPF): 123.456.789-00 ou Banco: Itaú, Ag: 1234, C/C: 56789-0"></textarea>
-            </div>
-            <button type="submit" class="btn btn-cobranca">Enviar E-mail de Cobrança</button>
-        </form>
-    </div>
-</div>
-
 <div id="deleteModal" class="modal">
     <div class="modal-content">
         </div>
 </div>
 
 <script>
-
     function toggleForm(){ 
-    const modal = document.getElementById('addContaModal'); 
-    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
-}
+        const modal = document.getElementById('addContaModal'); 
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
+    }
 
-// Função para abrir o modal de exclusão
-function openDeleteModal(id, responsavel) {
-    const modal = document.getElementById('deleteModal');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    modalContent.innerHTML = `
-        <h3>Confirmar Exclusão</h3>
-        <p>Tem certeza de que deseja excluir a conta a receber do responsável abaixo?</p>
-        <p><strong>${responsavel}</strong></p>
-        <div class="modal-actions" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
-            <a href="../actions/excluir_conta_receber.php?id=${id}" class="btn btn-excluir" style="background-color: #cc3333; color: white;">Sim, Excluir</a>
-            <button type="button" class="btn" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
-        </div>
-    `;
+    function openDeleteModal(id, responsavel) {
+        const modal = document.getElementById('deleteModal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        modalContent.innerHTML = `
+            <h3>Confirmar Exclusão</h3>
+            <p>Tem certeza de que deseja excluir a conta a receber do responsável abaixo?</p>
+            <p><strong>${responsavel}</strong></p>
+            <div class="modal-actions" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+                <a href="../actions/excluir_conta_receber.php?id=${id}" class="btn btn-excluir" style="background-color: #cc3333; color: white;">Sim, Excluir</a>
+                <button type="button" class="btn" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
+            </div>
+        `;
 
-    modal.style.display = 'flex';
-}
+        modal.style.display = 'flex';
+    }
 
-// Fechar modais ao clicar fora
-window.addEventListener('click', e => {
-    const addModal = document.getElementById('addContaModal');
-    const exportModal = document.getElementById('exportar_contas_receber');
-    const deleteModal = document.getElementById('deleteModal'); // Adicionado
-    
-    if(e.target === addModal) addModal.style.display = 'none';
-    if(e.target === exportModal) exportModal.style.display = 'none';
-    if(e.target === deleteModal) deleteModal.style.display = 'none'; // Adicionado
-});
-function toggleForm(){ 
-    const modal = document.getElementById('addContaModal'); 
-    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
-}
-
-// Fechar modais ao clicar fora
-window.addEventListener('click', e => {
-    const addModal = document.getElementById('addContaModal');
-    const exportModal = document.getElementById('exportar_contas_receber');
-    if(e.target === addModal) addModal.style.display = 'none';
-    if(e.target === exportModal) exportModal.style.display = 'none';
-    // Adicione aqui a lógica para outros modais se necessário
-});
+    window.addEventListener('click', e => {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
 </script>
 
 </body>
 </html>
-
-
-
 <?php include('../includes/footer.php'); ?>

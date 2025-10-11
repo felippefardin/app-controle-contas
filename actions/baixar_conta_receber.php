@@ -15,20 +15,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dataBaixaInput = $_POST['data_baixa'];
     $usuario = $_SESSION['usuario']['id'];
 
-    // --- CORREÇÃO: Converte a data do formato brasileiro (d/m/Y) para o formato do banco de dados (Y-m-d) ---
     $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
     if ($dataBaixa) {
         $dataBaixaFormatada = $dataBaixa->format('Y-m-d');
     } else {
         $dataBaixaFormatada = date('Y-m-d');
     }
-    // --- FIM DA CORREÇÃO ---
 
     $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? WHERE id=?";
     $stmt = $conn->prepare($sql);
     
     $stmt->bind_param("sdsii", $forma, $juros, $dataBaixaFormatada, $usuario, $id);
-    $stmt->execute();
+    
+    if ($stmt->execute()) {
+        $_SESSION['success_message'] = "Conta baixada com sucesso!";
+    } else {
+        // $_SESSION['error_message'] = "Erro ao baixar a conta.";
+    }
+    
+    $stmt->close();
+    $conn->close();
 
     header('Location: ../pages/contas_receber_baixadas.php');
     exit;

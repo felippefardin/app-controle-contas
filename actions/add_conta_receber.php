@@ -21,7 +21,8 @@ $usuarioId = $_SESSION['usuario']['id'];
 
 // Validação simples
 if (empty($responsavel) || empty($data_vencimento) || empty($numero) || empty($valor)) {
-    $_SESSION['erro'] = 'Todos os campos são obrigatórios.';
+    // Opcional: Adicionar uma mensagem de erro
+    // $_SESSION['error_message'] = 'Todos os campos são obrigatórios.';
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -31,7 +32,8 @@ $sql = "INSERT INTO contas_receber (responsavel, data_vencimento, numero, valor,
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
-    $_SESSION['erro'] = "Erro na preparação da query: " . $conn->error;
+    // Opcional: Adicionar uma mensagem de erro
+    // $_SESSION['error_message'] = "Erro na preparação da query: " . $conn->error;
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -39,9 +41,11 @@ if (!$stmt) {
 $stmt->bind_param("sssdi", $responsavel, $data_vencimento, $numero, $valor, $usuarioId);
 
 if ($stmt->execute()) {
-    $_SESSION['mensagem'] = "Conta a receber adicionada com sucesso.";
+    // Define a mensagem de sucesso na sessão (padronizado)
+    $_SESSION['success_message'] = "Conta a receber adicionada com sucesso!";
 } else {
-    $_SESSION['erro'] = "Erro ao adicionar conta: " . $stmt->error;
+    // Opcional: Adicionar uma mensagem de erro
+    // $_SESSION['error_message'] = "Erro ao adicionar conta: " . $stmt->error;
 }
 
 $stmt->close();

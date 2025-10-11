@@ -21,7 +21,10 @@ $usuarioId = $_SESSION['usuario']['id'];
 
 // Verifica se todos os campos obrigatórios foram preenchidos
 if (empty($fornecedor) || empty($data_vencimento) || empty($numero) || empty($valor)) {
-    die("Por favor, preencha todos os campos.");
+    // Você pode adicionar uma mensagem de erro aqui se desejar
+    // $_SESSION['error_message'] = "Por favor, preencha todos os campos.";
+    header('Location: ../pages/contas_pagar.php');
+    exit;
 }
 
 // Ajusta valor para formato numérico, substituindo vírgula por ponto
@@ -36,8 +39,12 @@ if (!$stmt) {
 $stmt->bind_param("sssdi", $fornecedor, $data_vencimento, $numero, $valor, $usuarioId);
 $executado = $stmt->execute();
 
-if (!$executado) {
-    die("Erro ao adicionar conta: " . $stmt->error);
+if ($executado) {
+    // Define a mensagem de sucesso na sessão
+    $_SESSION['success_message'] = "Conta adicionada com sucesso!";
+} else {
+    // Opcional: Adicionar uma mensagem de erro em caso de falha
+    // $_SESSION['error_message'] = "Erro ao adicionar conta: " . $stmt->error;
 }
 
 // Fecha statement e conexão

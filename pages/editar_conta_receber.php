@@ -32,12 +32,37 @@ if (!$conta) {
     <meta charset="UTF-8">
     <title>Editar Conta a Receber</title>
     <style>
-        /* Estilos do formulário (pode colocar no style.css) */
-        .form-container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #1f1f1f; border-radius: 8px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #00bfff; }
-        .form-group input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
-        .btn-salvar { background-color: #27ae60; color: white; }
+        body {
+            background-color: #121212;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        label, input {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"], input[type="date"], input[type="number"] {
+            width: 300px;
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        a {
+            color: #0af;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>

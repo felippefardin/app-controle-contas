@@ -23,20 +23,13 @@ if ($conn->connect_error) {
 // Adiciona a lógica de filtro de usuário
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
-// Assumindo que o id_criador está na sessão. Use 0 ou null como padrão.
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // Monta filtros SQL
 $where = ["status='pendente'"];
 if ($perfil !== 'admin') {
-    // Se id_criador for maior que 0, o usuário é secundário.
-    // O ID principal é o id_criador. Caso contrário, é o próprio ID do usuário.
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    
-    // Subconsulta para obter todos os IDs de usuários associados à conta principal
     $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-    
-    // A cláusula WHERE agora inclui o ID do usuário principal e todos os seus usuários secundários
     $where[] = "(usuario_id = {$mainUserId} OR usuario_id IN ({$subUsersQuery}))";
 }
 if(!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
@@ -73,6 +66,20 @@ $result = $conn->query($sql);
     a:hover { text-decoration: underline; }
     p { text-align: center; margin-top: 20px; }
 
+    /* MENSAGENS DE SUCESSO/ERRO */
+    .success-message {
+      background-color: #27ae60;
+      color: white; padding: 15px; margin-bottom: 20px;
+      border-radius: 5px; text-align: center;
+      position: relative; font-weight: bold;
+    }
+    .close-msg-btn {
+      position: absolute; top: 50%; right: 15px;
+      transform: translateY(-50%); font-size: 22px;
+      line-height: 1; cursor: pointer; transition: color 0.2s;
+    }
+    .close-msg-btn:hover { color: #ddd; }
+    
     /* Formulário de Busca */
     form.search-form {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
@@ -119,7 +126,7 @@ $result = $conn->query($sql);
     .btn-excluir { background-color: #cc3333; }
     .btn-excluir:hover { background-color: #a02a2a; }
     
-    /* --- ESTILOS DO NOVO MODAL --- */
+    /* MODAL */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
     .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -138,14 +145,16 @@ $result = $conn->query($sql);
       td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
       .modal-content form { flex-direction: column; }
     }
-
-    
-    
-
-    
   </style>
 </head>
 <body>
+
+<?php
+if (isset($_SESSION['success_message'])) {
+    echo '<div class="success-message">' . htmlspecialchars($_SESSION['success_message']) . '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
+    unset($_SESSION['success_message']);
+}
+?>
 
 <h2>Contas a Pagar</h2>
 
@@ -192,7 +201,6 @@ if ($result->num_rows > 0) {
        echo "<td data-label='Ações'>
         <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
         <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
-        
         <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
       </td>";
         echo "</tr>";
@@ -247,12 +255,10 @@ if ($result->num_rows > 0) {
     modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
   }
 
-  // FUNÇÃO DE EXCLUSÃO CORRIGIDA
   function openDeleteModal(id, fornecedor) {
     const modal = document.getElementById('deleteModal');
     const modalContent = modal.querySelector('.modal-content');
 
-    // Injeta o HTML de confirmação no modal
     modalContent.innerHTML = `
       <h3>Confirmar Exclusão</h3>
       <p>Tem certeza de que deseja excluir a seguinte conta a pagar?</p>
@@ -266,7 +272,6 @@ if ($result->num_rows > 0) {
     modal.style.display = 'flex';
   }
 
-  // Lógica para fechar modais
   window.onclick = function(event) {
     const addModal = document.getElementById('addContaModal');
     const exportModal = document.getElementById('exportModal');
