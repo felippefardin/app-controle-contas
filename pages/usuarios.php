@@ -3,7 +3,6 @@ session_start();
 include('../includes/header.php');
 include('../database.php');
 
-// A verificação agora é baseada no 'usuario_principal'
 if (!isset($_SESSION['usuario_principal'])) {
     header('Location: login.php');
     exit;
@@ -13,41 +12,37 @@ if (!isset($_SESSION['usuario_principal'])) {
 $mensagem_sucesso = '';
 $mensagem_erro = '';
 
-if (isset($_GET['sucesso']) && $_GET['sucesso'] == 1) {
-    $mensagem_sucesso = "Usuário salvo com sucesso!";
+if (isset($_GET['sucesso'])) {
+    if ($_GET['sucesso'] == '1') {
+        $mensagem_sucesso = "Usuário salvo com sucesso!";
+    } elseif ($_GET['sucesso'] == 'excluido') {
+        $mensagem_sucesso = "Usuário excluído com sucesso!";
+    }
 }
 
 if (isset($_GET['erro'])) {
     switch($_GET['erro']) {
-        case 'duplicado_email':
-            $mensagem_erro = "Este e-mail já está cadastrado em outro usuário!";
+        case 'auto_exclusao':
+            $mensagem_erro = "Você não pode excluir seu próprio usuário.";
             break;
-        case 'duplicado_cpf':
-            $mensagem_erro = "Este CPF já está cadastrado em outro usuário!";
+        case 'permissao':
+            $mensagem_erro = "Você não tem permissão para excluir este usuário.";
             break;
-        case 'senha':
-            $mensagem_erro = "As senhas não coincidem!";
-            break;
+        // Adicione outros casos de erro conforme necessário
         default:
-            $mensagem_erro = "Erro ao salvar usuário!";
+            $mensagem_erro = "Ocorreu um erro!";
     }
 }
-// Pega o ID da conta principal
-$usuario_principal_id = $_SESSION['usuario_principal']['id'];
 
-// ✅ ESTA CONSULTA ESTÁ CORRETA
-// Consulta usuários: o próprio principal E os que ele criou
+$usuario_principal_id = $_SESSION['usuario_principal']['id'];
 $stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR id_criador = ? OR owner_id = ? OR criado_por_usuario_id = ? ORDER BY nome ASC");
 $stmt->bind_param("iiii", $usuario_principal_id, $usuario_principal_id, $usuario_principal_id, $usuario_principal_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if (!$result) {
-    echo "<p>Erro na consulta: " . $conn->error . "</p>";
-    include('../includes/footer.php');
-    exit;
+    die("Erro na consulta: " . $conn->error);
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -55,78 +50,42 @@ if (!$result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Usuários</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-            margin-top: 2rem;
-        }
-        h1 {
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-            margin-bottom: 2rem;
-        }
-        .table thead {
-            background-color: #007bff;
-            color: white;
-        }
-        .table-hover tbody tr:hover {
-            background-color: #f1f1f1;
-        }
-        .btn {
-            transition: all 0.2s ease-in-out;
-        }
-        .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
-        }
-        .btn-primary:hover {
-            background-color: #0056b3;
-            border-color: #004085;
-        }
-        .btn-info {
-            color: white;
-        }
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
-        td a.btn {
-            margin-right: 5px;
-        }
-        .alert {
-            border-radius: 5px;
-        }
+        /* Seu CSS dark mode aqui... */
+        body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .container { background-color: #222; padding: 25px; border-radius: 8px; }
+        h1 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; margin-bottom: 2rem; font-size: 1.8rem; }
+        .alert { padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center; color: white; opacity: 1; transition: opacity 0.5s ease-out; }
+        .alert-success { background-color: #28a745; }
+        .alert-danger { background-color: #cc4444; }
+        /* Estilos da tabela e botões... */
+        .table { width: 100%; border-collapse: collapse; color: #eee; }
+        .table thead { background-color: #0af; color: #121212; font-weight: bold; }
+        .table th, .table td { padding: 12px 15px; border: 1px solid #444; text-align: left; }
+        .table tbody tr { background-color: #2c2c2c; }
+        .table tbody tr:hover { background-color: #3c3c3c; }
+        .btn { padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; text-decoration: none; display: inline-block; margin-right: 5px; }
+        .btn-primary { background-color: #0af; color: white; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="my-4">Gestão de Usuários</h1>
+        <h1><i class="fa-solid fa-users"></i> Gestão de Usuários</h1>
 
         <?php if ($mensagem_sucesso): ?>
-            <div class="alert alert-success">
-                <?php echo htmlspecialchars($mensagem_sucesso); ?>
-            </div>
+            <div class="alert alert-success"><?php echo htmlspecialchars($mensagem_sucesso); ?></div>
         <?php endif; ?>
-
         <?php if ($mensagem_erro): ?>
-            <div class="alert alert-danger">
-                <?php echo htmlspecialchars($mensagem_erro); ?>
-            </div>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem_erro); ?></div>
         <?php endif; ?>
 
-        <a href="add_usuario.php" class="btn btn-primary mb-4">Adicionar Novo Usuário</a>
+        <a href="add_usuario.php" class="btn btn-primary mb-4"><i class="fa-solid fa-plus"></i> Adicionar Novo Usuário</a>
 
         <div class="table-responsive">
-            <table class="table table-striped table-bordered table-hover">
+            <table class="table">
                 <thead>
                     <tr>
                         <th>Nome</th>
@@ -145,19 +104,14 @@ if (!$result) {
                                 <td><?php echo htmlspecialchars($usuario['cpf']); ?></td>
                                 <td><?php echo htmlspecialchars($usuario['telefone']); ?></td>
                                 <td>
-                                    <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-sm btn-info">Editar</a>
-                                    
-                                    <a href="../actions/excluir_usuario.php?id=<?php echo $usuario['id']; ?>" 
-                                       class="btn btn-sm btn-danger" 
-                                       onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
-                                       Excluir
-                                    </a>
+                                    <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-info">Editar</a>
+                                    <a href="../actions/excluir_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</a>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="5" class="text-center">Nenhum usuário encontrado.</td>
+                            <td colspan="5" style="text-align:center;">Nenhum usuário encontrado.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -165,9 +119,20 @@ if (!$result) {
         </div>
     </div>
 
-<?php
-// Inclui o rodapé da página
-include('../includes/footer.php');
-?>
+    <?php include('../includes/footer.php'); ?>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        alert.style.display = 'none';
+                    }, 500); // Tempo para a transição de opacidade
+                }, 3000); // 3 segundos
+            });
+        });
+    </script>
 </body>
 </html>

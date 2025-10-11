@@ -1,113 +1,187 @@
 <?php
 session_start();
+include('../includes/header.php');
 include('../database.php');
 
-if (!isset($_SESSION['usuario'])) {
+if (!isset($_SESSION['usuario_principal'])) {
     header('Location: login.php');
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim($_POST['nome'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $cpf = trim($_POST['cpf'] ?? '');
-    $telefone = trim($_POST['telefone'] ?? '');
-    $senha = $_POST['senha'] ?? '';
-    $senha_confirmar = $_POST['senha_confirmar'] ?? '';
-
-    if (!$nome || !$email || !$cpf || !$telefone || !$senha || !$senha_confirmar) {
-        die("Por favor, preencha todos os campos.");
-    }
-
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        die("E-mail inválido.");
-    }
-
-    if ($senha !== $senha_confirmar) {
-        die("As senhas não conferem.");
-    }
-
-    $stmt = $conn->prepare("SELECT id FROM usuarios WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $stmt->store_result();
-    if ($stmt->num_rows > 0) {
-        die("Este e-mail já está cadastrado.");
-    }
-    $stmt->close();
-
-    $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
-
-    $stmt = $conn->prepare("INSERT INTO usuarios (nome, email, cpf, telefone, senha) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssss", $nome, $email, $cpf, $telefone, $senha_hash);
-
-    if ($stmt->execute()) {
-        $stmt->close();
-        header("Location: usuarios.php"); 
-        exit;
-    } else {
-        die("Erro ao salvar usuário: " . $conn->error);
+$mensagem_erro = '';
+if (isset($_GET['erro'])) {
+    switch ($_GET['erro']) {
+        case 'campos_vazios':
+            $mensagem_erro = "Nome, e-mail e senha são obrigatórios.";
+            break;
+        case 'senha':
+            $mensagem_erro = "As senhas não coincidem.";
+            break;
+        case 'duplicado_email':
+            $mensagem_erro = "Este e-mail já está em uso.";
+            break;
+        case 'duplicado_cpf':
+            $mensagem_erro = "Este CPF já está em uso.";
+            break;
+        default:
+            $mensagem_erro = "Ocorreu um erro inesperado ao salvar o usuário.";
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cadastro de Usuário</title>
-<!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adicionar Usuário</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <style>
+        body {
+            background-color: #121212;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            /* Ajustado para 30px para padronizar com as outras telas */
+            margin: 30px auto;
+        }
+        form {
+            background-color: #222;
+            padding: 25px;
+            border-radius: 8px;
+        }
+        h2 {
+            text-align: center;
+            color: #eee;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #0af;
+            padding-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+        .form-group, .form-row {
+            margin-bottom: 15px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            box-sizing: border-box;
+            font-size: 16px;
+            background-color: #333;
+            color: #eee;
+        }
+        .form-control:focus {
+            background-color: #333;
+            color: #eee;
+            border-color: #0af;
+            box-shadow: none;
+        }
+        .btn {
+            padding: 10px 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #0af;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #008cdd;
+        }
+        .btn-secondary {
+            background-color: #555;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #444;
+        }
+        .alert {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: white;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        .alert-danger {
+            background-color: #cc4444;
+        }
+    </style>
 </head>
-<body class="bg-light">
+<body>
+    <div class="container">
+        <form action="../actions/add_usuario.php" method="POST">
+            <h2><i class="fa-solid fa-user-plus"></i> Adicionar Novo Usuário</h2>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white text-center">
-                    <h3>Cadastrar Usuário</h3>
+            <?php if (!empty($mensagem_erro)): ?>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem_erro); ?></div>
+            <?php endif; ?>
+
+            <div class="form-group">
+                <label for="nome">Nome Completo*</label>
+                <input type="text" class="form-control" id="nome" name="nome" required>
+            </div>
+            <div class="form-group">
+                <label for="email">E-mail*</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="cpf">CPF</label>
+                    <input type="text" class="form-control" id="cpf" name="cpf">
                 </div>
-                <div class="card-body">
-                    <form method="POST" action="">
-                        <div class="mb-3">
-                            <label for="nome" class="form-label">Nome</label>
-                            <input type="text" class="form-control" id="nome" name="nome" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="email" class="form-label">E-mail</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="cpf" class="form-label">CPF</label>
-                            <input type="text" class="form-control" id="cpf" name="cpf" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="telefone" class="form-label">Telefone</label>
-                            <input type="text" class="form-control" id="telefone" name="telefone" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="senha" class="form-label">Senha</label>
-                            <input type="password" class="form-control" id="senha" name="senha" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="senha_confirmar" class="form-label">Confirmar Senha</label>
-                            <input type="password" class="form-control" id="senha_confirmar" name="senha_confirmar" required>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-success">Cadastrar</button>
-                            <a href="usuarios.php" class="btn btn-secondary">Voltar</a>
-                        </div>
-                    </form>
+                <div class="form-group col-md-6">
+                    <label for="telefone">Telefone</label>
+                    <input type="text" class="form-control" id="telefone" name="telefone">
                 </div>
             </div>
-        </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="senha">Senha*</label>
+                    <input type="password" class="form-control" id="senha" name="senha" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="senha_confirmar">Confirmar Senha*</label>
+                    <input type="password" class="form-control" id="senha_confirmar" name="senha_confirmar" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Usuário</button>
+            <a href="usuarios.php" class="btn btn-secondary">Cancelar</a>
+        </form>
     </div>
-</div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $('#cpf').mask('000.000.000-00', {reverse: true});
+            $('#telefone').mask('(00) 00000-0000');
+        });
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        // Script para a mensagem desaparecer
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        alert.style.display = 'none';
+                    }, 500); // Tempo para a transição de opacidade
+                }, 3000); // 3 segundos
+            });
+        });
+    </script>
 </body>
 </html>
