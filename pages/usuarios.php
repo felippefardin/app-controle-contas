@@ -37,8 +37,8 @@ $usuario_principal_id = $_SESSION['usuario_principal']['id'];
 
 // ✅ ESTA CONSULTA ESTÁ CORRETA
 // Consulta usuários: o próprio principal E os que ele criou
-$stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR id_criador = ? ORDER BY nome ASC");
-$stmt->bind_param("ii", $usuario_principal_id, $usuario_principal_id);
+$stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR id_criador = ? OR owner_id = ? OR criado_por_usuario_id = ? ORDER BY nome ASC");
+$stmt->bind_param("iiii", $usuario_principal_id, $usuario_principal_id, $usuario_principal_id, $usuario_principal_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -54,7 +54,58 @@ if (!$result) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Usuários</title>     
+    <title>Gestão de Usuários</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            margin-top: 2rem;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 2rem;
+        }
+        .table thead {
+            background-color: #007bff;
+            color: white;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+        .btn-info {
+            color: white;
+        }
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        td a.btn {
+            margin-right: 5px;
+        }
+        .alert {
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -72,11 +123,11 @@ if (!$result) {
             </div>
         <?php endif; ?>
 
-        <a href="add_usuario.php" class="btn btn-primary mb-3">Adicionar Novo Usuário</a>
+        <a href="add_usuario.php" class="btn btn-primary mb-4">Adicionar Novo Usuário</a>
 
         <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead class="thead-dark">
+            <table class="table table-striped table-bordered table-hover">
+                <thead>
                     <tr>
                         <th>Nome</th>
                         <th>E-mail</th>
