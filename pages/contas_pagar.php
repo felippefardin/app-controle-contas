@@ -62,7 +62,7 @@ $result = $conn->query($sql);
       margin: 0; padding: 20px;
     }
     h2, h3 { text-align: center; color: #00bfff; }
-    a { color: #fff; text-decoration: none; font-weight: bold; }
+    a { color: #00bfff; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
     p { text-align: center; margin-top: 20px; }
 
@@ -125,15 +125,13 @@ $result = $conn->query($sql);
     .btn-editar:hover { background-color: #0099cc; }
     .btn-excluir { background-color: #cc3333; }
     .btn-excluir:hover { background-color: #a02a2a; }
-
-    /* NOVO: Estilo para o botão de repetir */
+    /* Estilo para o botão de repetir */
 .btn-repetir { 
   background-color: #f39c12; /* Cor de fundo laranja */
 }
 .btn-repetir:hover { 
-  background-color: #d35400; /* Cor de fundo ao passar o mouse */
+  background-color: #d35400; /* Cor de fundo quando o mouse está sobre ele */
 }
-    
     /* MODAL */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
@@ -143,6 +141,7 @@ $result = $conn->query($sql);
     .modal-content form input { flex: 1 1 200px; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
     .modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
+    
 
     /* Responsivo */
     @media (max-width: 768px) {
@@ -153,7 +152,6 @@ $result = $conn->query($sql);
       td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
       .modal-content form { flex-direction: column; }
     }
-    
   </style>
 </head>
 <body>
@@ -276,7 +274,8 @@ if ($result->num_rows > 0) {
 
             <div class="form-group">
                 <label for="manter_nome">Como nomear as próximas contas?</label>
-                <select name="manter_nome" id="manter_nome">                    
+                <select name="manter_nome" id="manter_nome">
+                    <option value="1">Adicionar "(Parcela X/Y)" ao nome</option>
                     <option value="0">Manter o nome original</option>
                 </select>
             </div>

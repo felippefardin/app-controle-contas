@@ -1,11 +1,24 @@
 <?php
 session_start();
-require_once('../database.php');
+// O 'database.php' não é mais necessário no topo, pois a conexão é feita dentro do POST.
 
-// Incluir PHPMailer manualmente
-require __DIR__ . '/../lib/PHPMailer/PHPMailer.php';
-require __DIR__ . '/../lib/PHPMailer/SMTP.php';
-require __DIR__ . '/../lib/PHPMailer/Exception.php';
+// --- INÍCIO DA ALTERAÇÃO ---
+// Carrega o autoload do Composer para PHPMailer e Dotenv
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require __DIR__ . '/../vendor/autoload.php';
+} else {
+    // Se o autoload não existe, o Dotenv não funcionará. Encerra com um erro claro.
+    die("ERRO CRÍTICO: O arquivo vendor/autoload.php não foi encontrado. Por favor, execute 'composer install' para instalar as dependências.");
+}
+
+// Carrega as variáveis de ambiente do arquivo .env que está na raiz do projeto
+try {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+    $dotenv->load();
+} catch (\Dotenv\Exception\InvalidPathException $e) {
+    die("ERRO CRÍTICO: O arquivo .env não foi encontrado na pasta raiz do projeto. Verifique o local e o nome do arquivo.");
+}
+// --- FIM DA ALTERAÇÃO ---
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -17,18 +30,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
 
     if (!$email) {
-        $erro = "Preencha o e-mail.";
+        $erro = "Preencha o campo de e-mail.";
     } else {
-        // 🔹 Conexão com o banco (mesma de contas_pagar.php)
-$servername = "localhost";
-$username   = "root";
-$password   = "";
-$database   = "app_controle_contas";
+        // Conexão com o banco de dados
+        $servername = "localhost";
+        $username   = "root";
+        $password   = "";
+        $database   = "app_controle_contas";
 
-$conn = new mysqli($servername, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
+        $conn = new mysqli($servername, $username, $password, $database);
+        if ($conn->connect_error) {
+            die("Falha na conexão: " . $conn->connect_error);
+        }
 
         $stmt = $conn->prepare("SELECT id, nome, email FROM usuarios WHERE email = ?");
         $stmt->bind_param("s", $email);
@@ -49,33 +62,48 @@ if ($conn->connect_error) {
             $stmtToken->close();
 
             // Enviar e-mail com link de recuperação
-           $mail = new PHPMailer(true);
+            $mail = new PHPMailer(true);
 
-try {
-    $mail->isSMTP();
-    $mail->Host       = 'smtp.gmail.com';
-    $mail->SMTPAuth   = true;
-    $mail->Username   = 'felippefardin@gmail.com';
-    $mail->Password   = 'kwrsaszsoyblypcf'; // senha de app sem espaços
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // melhor prática
-    $mail->Port       = 587;
+            try {
+                // --- INÍCIO DA ALTERAÇÃO ---
+                // Configurações do servidor a partir do .env
+                $mail->isSMTP();
+                $mail->Host       = $_ENV['MAIL_HOST'];
+                $mail->SMTPAuth   = true;
+                $mail->Username   = $_ENV['MAIL_USERNAME'];
+                $mail->Password   = $_ENV['MAIL_PASSWORD'];
+                $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION']; // Usa 'tls' ou 'ssl' do .env
+                $mail->Port       = (int)$_ENV['MAIL_PORT']; // Converte para inteiro
 
-    $mail->setFrom('felippefardin@gmail.com', 'App Controle de Contas');
-    $mail->addAddress($email_db, $nome);
+                // Remetente e Destinatário
+                $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
+                // --- FIM DA ALTERAÇÃO ---
+
+                $mail->addAddress($email_db, $nome);
+                $mail->CharSet = 'UTF-8';
 
                 $mail->isHTML(true);
                 $mail->Subject = 'Recuperação de senha';
-                $link = "http://localhost/app-controle-contas/pages/resetar_senha.php?token=$token";
-                $mail->Body = "Olá $nome,<br><br>Clique no link abaixo para redefinir sua senha:<br>
-                               <a href='$link'>$link</a><br><br>Esse link expira em 1 hora.";
+                
+                // --- INÍCIO DA ALTERAÇÃO ---
+                // Cria o link de recuperação dinamicamente a partir do .env
+                $appUrl = rtrim($_ENV['APP_URL'], '/'); // Remove a barra final, se houver
+                $link = $appUrl . "/pages/resetar_senha.php?token=" . $token;
+                // --- FIM DA ALTERAÇÃO ---
+                
+                $mail->Body = "Olá $nome,<br><br>Você solicitou a redefinição de sua senha. Clique no link abaixo para continuar:<br>
+                               <a href='$link'>Redefinir Minha Senha</a><br><br>
+                               Se você não conseguir clicar no link, copie e cole a seguinte URL no seu navegador:<br>
+                               $link<br><br>Este link expira em 1 hora.";
 
                 $mail->send();
-                $sucesso = "E-mail de recuperação enviado com sucesso!";
+                $sucesso = "Um e-mail de recuperação foi enviado para sua caixa de entrada!";
             } catch (Exception $e) {
                 $erro = "Erro ao enviar e-mail: " . $mail->ErrorInfo;
             }
         } else {
-            $erro = "Usuário não encontrado.";
+            // Mensagem genérica para não informar se um e-mail existe ou não no sistema
+            $sucesso = "Se o e-mail informado estiver em nosso sistema, um link de recuperação será enviado.";
         }
 
         $stmt->close();
@@ -91,20 +119,21 @@ try {
 <title>Esqueci minha senha</title>
 <style>
     body { background-color:#121212; color:#eee; font-family:Arial, sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
-    form { background:#222; padding:25px 30px; border-radius:8px; width:320px; display:flex; flex-direction:column; }
+    form { background:#222; padding:25px 30px; border-radius:8px; width:100%; max-width: 350px; display:flex; flex-direction:column; box-shadow: 0 0 15px rgba(0, 191, 255, 0.2); }
     h2 { text-align:center; color:#00bfff; margin-bottom:20px; }
-    input { margin-top:10px; padding:10px; border:none; border-radius:4px; font-size:1rem; }
+    label { margin-bottom: 5px; color: #ccc; }
+    input { margin-bottom:15px; padding:12px; border:1px solid #444; border-radius:4px; font-size:1rem; background-color: #333; color: #eee; }
     input:focus { outline:2px solid #00bfff; background:#333; color:#fff; }
-    button { margin-top:20px; padding:12px; border:none; border-radius:5px; background:#007bff; color:#fff; font-weight:bold; cursor:pointer; }
+    button { margin-top:10px; padding:12px; border:none; border-radius:5px; background:#007bff; color:#fff; font-weight:bold; cursor:pointer; transition: background-color 0.3s; }
     button:hover { background:#0056b3; }
-    .mensagem { text-align:center; padding:10px; border-radius:5px; margin-bottom:15px; }
-    .erro { background:#cc4444; }
-    .sucesso { background:#27ae60; }
+    .mensagem { text-align:center; padding:12px; border-radius:5px; margin-bottom:15px; font-weight: bold; }
+    .erro { background:#cc4444; color: white; }
+    .sucesso { background:#27ae60; color: white; }
 </style>
 </head>
 <body>
 <form method="POST">
-    <h2>Esqueci minha senha</h2>
+    <h2>Recuperar Senha</h2>
 
     <?php if ($erro): ?>
         <div class="mensagem erro"><?= htmlspecialchars($erro) ?></div>
@@ -114,10 +143,10 @@ try {
         <div class="mensagem sucesso"><?= htmlspecialchars($sucesso) ?></div>
     <?php endif; ?>
 
-    <label for="email">E-mail</label>
+    <label for="email">Digite seu e-mail de cadastro</label>
     <input type="email" id="email" name="email" required autofocus>
 
-    <button type="submit">Enviar</button>   
+    <button type="submit">Enviar Link de Recuperação</button>   
 </form>
 </body>
 </html>

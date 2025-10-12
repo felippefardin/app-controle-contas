@@ -39,3 +39,4 @@ lib/PHPMailer/Exception.php
 # Sistema de banco de dados local (se estiver usando arquivos)
 *.sqlite
 *.db
+.env
