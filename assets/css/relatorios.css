@@ -1,0 +1,110 @@
+/* === Reset básico === */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+/* === Container principal === */
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
+
+/* === Título === */
+h2 {
+    font-size: 2rem;
+    margin-bottom: 30px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* === Cards === */
+.summary-card {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+}
+
+/* === Cores dos cards === */
+.card-receber {
+    border-left: 5px solid #2ecc71;
+}
+.card-pagar {
+    border-left: 5px solid #e74c3c;
+}
+.card-saldo.positive {
+    border-left: 5px solid #3498db;
+}
+.card-saldo.negative {
+    border-left: 5px solid #c0392b;
+}
+.card-info {
+    border-left: 5px solid #9b59b6;
+}
+
+/* === Título e valor do card === */
+.summary-card h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #34495e;
+}
+
+.summary-card p {
+    font-size: 1.6rem;
+    margin: 0;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.summary-card span {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+/* === Ícones dos cards === */
+.card-icon {
+    font-size: 2.5rem;
+    color: #bdc3c7;
+    transition: color 0.3s ease;
+}
+
+.summary-card:hover .card-icon {
+    color: #2980b9;
+}
+
+/* === Chart Containers === */
+.chart-container {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.chart-container h4 {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* === Responsividade === */
+@media (max-width: 767px) {
+    .summary-card {
+        margin-bottom: 20px;
+    }
+
+    .chart-container {
+        padding: 15px;
+    }
+}

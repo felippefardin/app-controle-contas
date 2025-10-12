@@ -99,7 +99,7 @@ if (empty($dados)) {
 
 // --- O restante do código para gerar PDF, Excel e CSV continua o mesmo ---
 
-$fileName = "relatorio_contas_a_pagar_" . $status . "_" . date('Y-m-d');
+$fileName = "relatorio_contas_pagar" . $status . "_" . date('Y-m-d');
 $periodo = 'Período de ' . date('d/m/Y', strtotime($data_inicio)) . ' a ' . date('d/m/Y', strtotime($data_fim));
 $statusTitulo = ucfirst($status) . 's';
 

@@ -95,7 +95,7 @@ switch ($formato) {
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
-        $dompdf->stream("contas_a_receber.pdf", ["Attachment" => true]);
+        $dompdf->stream("contas_receber.pdf", ["Attachment" => true]);
         break;
 
     case 'xlsx':
@@ -118,7 +118,7 @@ switch ($formato) {
         }
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="contas_a_receber.xlsx"');
+        header('Content-Disposition: attachment;filename="contas_receber.xlsx"');
         header('Cache-Control: max-age=0');
         $writer = new Xlsx($spreadsheet);
         $writer->save('php://output');
@@ -126,7 +126,7 @@ switch ($formato) {
 
     case 'csv':
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment;filename="contas_a_receber.csv"');
+        header('Content-Disposition: attachment;filename="contas_receber.csv"');
         $output = fopen('php://output', 'w');
         fputcsv($output, $headers);
         

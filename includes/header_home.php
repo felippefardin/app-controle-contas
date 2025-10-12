@@ -70,6 +70,7 @@
   <button type="button" class="btn-font" onclick="resetFontSize()">Resetar Fonte</button>
 </div>
 
+
 <script>
 let fontSize = 100;
 
