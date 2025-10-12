@@ -22,9 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dataBaixaFormatada = date('Y-m-d');
     }
 
-    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? WHERE id=?";
+    // --- CORREÇÃO AQUI ---
+    // Alterado o nome da coluna de 'baixado_por' para 'baixado_por_usuario_id'
+    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por_usuario_id=? WHERE id=?";
     $stmt = $conn->prepare($sql);
     
+    // O bind_param permanece o mesmo, pois a ordem e os tipos dos dados estão corretos.
     $stmt->bind_param("sdsii", $forma, $juros, $dataBaixaFormatada, $usuario, $id);
     
     if ($stmt->execute()) {
@@ -53,50 +56,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <style>
     * { box-sizing: border-box; }
     body {
-      background-color: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 30px 15px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
+        background-color: #121212;
+        color: #eee;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 30px 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
     }
     h2 { color: #00bfff; margin-bottom: 30px; font-weight: 700; text-align: center; }
     form {
-      background-color: #1f1f1f;
-      padding: 25px 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-      width: 100%;
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+        background-color: #1f1f1f;
+        padding: 25px 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        width: 100%;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
     }
     select, input[type="text"] {
-      padding: 12px 14px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #444;
-      background-color: #333;
-      color: #eee;
+        padding: 12px 14px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background-color: #333;
+        color: #eee;
     }
     button {
-      background-color: #27ae60;
-      color: white;
-      border: none;
-      font-weight: bold;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      transition: background-color 0.3s ease;
+        background-color: #27ae60;
+        color: white;
+        border: none;
+        font-weight: bold;
+        padding: 12px;
+        font-size: 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: background-color 0.3s ease;
     }
     button:hover { background-color: #1e874b; }
   </style>

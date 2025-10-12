@@ -206,7 +206,7 @@ if ($result && $result->num_rows > 0) {
                 <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'>Baixar</a>
                 <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'>Editar</a>
                 <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>
-                <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\">Gerar Cobrança
+                <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\">Gerar
                     <i class='fa-solid fa-envelope-invoice-dollar'></i>
                 </button>
               </td></tr>";
@@ -218,7 +218,38 @@ if ($result && $result->num_rows > 0) {
 ?>
 
 <div id="exportar_contas_receber" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
+        <h3>Exportar Contas a Receber</h3>
+        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
+            <div class="form-group">
+                <label for="status">Status da Conta:</label>
+                <select name="status" id="exportStatusReceber">
+                    <option value="pendente">Pendentes</option>
+                    <option value="baixada">Baixadas</option>
+                    <option value="todos">Todas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="data_inicio">De (Data):</label>
+                <input type="date" name="data_inicio" required>
+            </div>
+            <div class="form-group">
+                <label for="data_fim">Até (Data):</label>
+                <input type="date" name="data_fim" required>
+            </div>
+            <div class="form-group">
+                <label for="formato">Formato:</label>
+                <select name="formato">
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                    <option value="csv">CSV</option>
+                </select>
+            </div>
+            <button type="submit">Exportar</button>
+        </form>
     </div>
+</div>
 
 <div id="deleteModal" class="modal">
     <div class="modal-content"></div>
