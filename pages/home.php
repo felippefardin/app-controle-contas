@@ -55,8 +55,13 @@ unset($_SESSION['mensagem']);
     <a href="usuarios.php">Usuários</a>
     <a href="perfil.php">Perfil</a>
     <a href="selecionar_usuario.php">Trocar Usuário</a>
-    <a style="background-color: red;" href="logout.php">Sair</a>
+    <a style="background-color: red;" href="logout.php">Sair</a>    
   </nav>
+   <nav>  
+        <a href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
+        <a href="../pages/banco_cadastro.php">Contas Bancárias</a>
+
+    </nav>
 
   <p>Bem-vindo ao sistema!</p>
 </body>

@@ -63,6 +63,7 @@
 }
 </style>
 
+
 <div class="font-controls">
   <button type="button" class="btn-font" onclick="adjustFontSize(-1)">A-</button>
   <button type="button" class="btn-font" onclick="adjustFontSize(1)">A+</button>
