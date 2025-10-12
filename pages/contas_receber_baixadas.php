@@ -67,9 +67,9 @@ if (!$result) {
         }
         .close-msg-btn:hover { color: #ddd; }
         
-        table { width: 100%; border-collapse: collapse; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 20px; }
+        table { width: 100%;  background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 20px; }
         th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
-        th { background-color: #222; color: #00bfff; }
+        th { background-color: #222; }
         tr:nth-child(even) { background-color: #2a2a2a; }
         tr:hover { background-color: #333; }
         

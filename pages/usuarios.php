@@ -60,8 +60,8 @@ if (!$result) {
         .alert-success { background-color: #28a745; }
         .alert-danger { background-color: #cc4444; }
         /* Estilos da tabela e botões... */
-        .table { width: 100%; border-collapse: collapse; color: #eee; }
-        .table thead { background-color: #0af; color: #121212; font-weight: bold; }
+        .table { width: 100%; color: #eee; }
+        .table thead { background-color: #0af; color: #ffffff; font-weight: bold; }
         .table th, .table td { padding: 12px 15px; border: 1px solid #444; text-align: left; }
         .table tbody tr { background-color: #2c2c2c; }
         .table tbody tr:hover { background-color: #3c3c3c; }

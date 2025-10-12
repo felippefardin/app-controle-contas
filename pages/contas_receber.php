@@ -114,9 +114,9 @@ $result = $conn->query($sql);
     .btn-export { background-color: #28a745; color: white; padding: 10px 14px; }
     .btn-export:hover { background-color: #218838; }
 
-    table { width: 100%; border-collapse: collapse; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+    table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
-    th { background-color: #222; color: #00bfff; }
+    th { background-color: #222;  }
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
@@ -149,6 +149,13 @@ $result = $conn->query($sql);
         td { position: relative; padding-left: 50%; text-align: right; }
         td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
     }
+    /* NOVO: Estilo para o botão de repetir */
+.btn-repetir { 
+  background-color: #f39c12; /* Cor de fundo laranja */
+}
+.btn-repetir:hover { 
+  background-color: #d35400; /* Cor mais escura ao passar o mouse */
+}
 </style>
 </head>
 <body>
@@ -203,12 +210,14 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
         echo "<td data-label='Ações'>
-                <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'>Baixar</a>
-                <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'>Editar</a>
-                <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>
-                <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\">Gerar
-                    <i class='fa-solid fa-envelope-invoice-dollar'></i>
-                </button>
+                  <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
+                  <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
+                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+                  <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\"class='btn-action btn-excluir'><i class='fa-solid fa-envelope-open-text'></i> Gerar Cobrança</a>
+                  </button>
+                  <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."'); return false;\" class='btn-action btn-repetir'>
+                      <i class='fa-solid fa-clone'></i> Repetir
+                  </a>
               </td></tr>";
     }
     echo "</tbody></table>";
@@ -303,6 +312,33 @@ if ($result && $result->num_rows > 0) {
     </div>
 </div>
 
+<div id="repetirModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('repetirModal').style.display='none'">&times;</span>
+        <h3>Repetir / Parcelar Conta</h3>
+        <form action="../actions/repetir_conta_receber.php" method="POST">
+            <input type="hidden" name="id_conta" id="modalRepetirContaId">
+            <p style="text-align: left;">Você está repetindo a conta do responsável: <br><strong><span id="modalRepetirResponsavel"></span></strong></p>
+            <hr style="border-top: 1px solid #444; width:100%; border-bottom: none;">
+            
+            <div class="form-group">
+                <label for="quantidade">Repetir mais quantas vezes?</label>
+                <input type="number" id="quantidade" name="quantidade" min="1" max="60" value="1" required>
+                <small style="color: #999;">Ex: Se esta é a parcela 1 de 12, digite 11.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="manter_nome">Como nomear as próximas contas?</label>
+                <select name="manter_nome" id="manter_nome">                    
+                    <option value="0">Manter o nome original</option>
+                </select>
+            </div>
+            
+            <button type="submit">Criar Repetições</button>
+        </form>
+    </div>
+</div>
+
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
@@ -358,6 +394,31 @@ if ($result && $result->num_rows > 0) {
                 modal.style.display = 'none';
             }
         });
+    });
+     // --- NOVO: FUNÇÃO PARA ABRIR O MODAL DE REPETIÇÃO ---
+    function openRepetirModal(id, responsavel) {
+        document.getElementById('modalRepetirContaId').value = id;
+        document.getElementById('modalRepetirResponsavel').innerText = responsavel;
+        document.getElementById('repetirModal').style.display = 'flex';
+    }
+
+    // Fecha modais ao clicar fora
+    window.addEventListener('click', e => {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (e.target === modal) {
+                // Adiciona o novo modal à lista de verificação
+                if (e.target.id !== 'repetirModal' && e.target.id !== 'deleteModal' && e.target.id !== 'addContaModal' && e.target.id !== 'cobrancaModal') {
+                    modal.style.display = 'none';
+                }
+            }
+        });
+        // Lógica específica para fechar cada modal
+        if (e.target == document.getElementById('repetirModal')) document.getElementById('repetirModal').style.display = 'none';
+        if (e.target == document.getElementById('deleteModal')) document.getElementById('deleteModal').style.display = 'none';
+        if (e.target == document.getElementById('addContaModal')) document.getElementById('addContaModal').style.display = 'none';
+        if (e.target == document.getElementById('cobrancaModal')) document.getElementById('cobrancaModal').style.display = 'none';
+        if (e.target == document.getElementById('exportar_contas_receber')) document.getElementById('exportar_contas_receber').style.display = 'none';
     });
 </script>
 

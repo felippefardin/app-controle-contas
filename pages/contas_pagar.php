@@ -62,7 +62,7 @@ $result = $conn->query($sql);
       margin: 0; padding: 20px;
     }
     h2, h3 { text-align: center; color: #00bfff; }
-    a { color: #00bfff; text-decoration: none; font-weight: bold; }
+    a { color: #fff; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
     p { text-align: center; margin-top: 20px; }
 
@@ -111,7 +111,7 @@ $result = $conn->query($sql);
     .btn-export:hover { background-color: #218838; }
 
     /* Tabela */
-    table { width: 100%; border-collapse: collapse; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+    table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222; color: #00bfff; }
     tr:nth-child(even) { background-color: #2a2a2a; }
@@ -125,6 +125,14 @@ $result = $conn->query($sql);
     .btn-editar:hover { background-color: #0099cc; }
     .btn-excluir { background-color: #cc3333; }
     .btn-excluir:hover { background-color: #a02a2a; }
+
+    /* NOVO: Estilo para o botão de repetir */
+.btn-repetir { 
+  background-color: #f39c12; /* Cor de fundo laranja */
+}
+.btn-repetir:hover { 
+  background-color: #d35400; /* Cor de fundo ao passar o mouse */
+}
     
     /* MODAL */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
@@ -145,6 +153,7 @@ $result = $conn->query($sql);
       td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
       .modal-content form { flex-direction: column; }
     }
+    
   </style>
 </head>
 <body>
@@ -202,6 +211,7 @@ if ($result->num_rows > 0) {
         <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
         <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
         <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+         <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
       </td>";
         echo "</tr>";
     }
@@ -249,6 +259,33 @@ if ($result->num_rows > 0) {
         </div>
 </div>
 
+<div id="repetirModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('repetirModal').style.display='none'">&times;</span>
+        <h3>Repetir / Parcelar Conta</h3>
+        <form action="../actions/repetir_conta_pagar.php" method="POST">
+            <input type="hidden" name="id_conta" id="modalRepetirContaId">
+            <p style="text-align: left;">Você está repetindo a conta do fornecedor: <br><strong><span id="modalRepetirFornecedor"></span></strong></p>
+            <hr style="border-top: 1px solid #444; width:100%; border-bottom: none;">
+            
+            <div class="form-group">
+                <label for="quantidade">Repetir mais quantas vezes?</label>
+                <input type="number" id="quantidade" name="quantidade" min="1" max="60" value="1" required>
+                <small style="color: #999;">Ex: Se esta é a parcela 1 de 12, digite 11.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="manter_nome">Como nomear as próximas contas?</label>
+                <select name="manter_nome" id="manter_nome">                    
+                    <option value="0">Manter o nome original</option>
+                </select>
+            </div>
+            
+            <button type="submit">Criar Repetições</button>
+        </form>
+    </div>
+</div>
+
 <script>
   function toggleForm() {
     const modal = document.getElementById('addContaModal');
@@ -284,6 +321,33 @@ if ($result->num_rows > 0) {
     }
     if (event.target == deleteModal) {
         deleteModal.style.display = 'none';
+    }
+  };
+
+  // NOVO: Função para abrir o modal de repetição
+  function openRepetirModal(id, fornecedor) {
+    document.getElementById('modalRepetirContaId').value = id;
+    document.getElementById('modalRepetirFornecedor').innerText = fornecedor;
+    document.getElementById('repetirModal').style.display = 'flex';
+  }
+
+  window.onclick = function(event) {
+    const addModal = document.getElementById('addContaModal');
+    const exportModal = document.getElementById('exportModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const repetirModal = document.getElementById('repetirModal'); // NOVO
+    if (event.target == addModal) {
+        addModal.style.display = 'none';
+    }
+    if (event.target == exportModal) {
+        exportModal.style.display = 'none';
+    }
+    if (event.target == deleteModal) {
+        deleteModal.style.display = 'none';
+    }
+    // NOVO: Fecha o modal de repetição ao clicar fora
+    if (event.target == repetirModal) {
+        repetirModal.style.display = 'none';
     }
   };
 </script>
