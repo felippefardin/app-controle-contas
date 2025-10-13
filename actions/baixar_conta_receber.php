@@ -8,12 +8,24 @@ if (!isset($_SESSION['usuario'])) {
 
 $id = intval($_GET['id'] ?? 0);
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];
+$comprovantePath = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $forma = $_POST['forma'];
     $juros = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
     $dataBaixaInput = $_POST['data_baixa'];
     $usuario = $_SESSION['usuario']['id'];
+
+    // Lógica de Upload do Comprovante
+    if (isset($_FILES['comprovante']) && $_FILES['comprovante']['error'] == 0) {
+        $target_dir = "../comprovantes/";
+        $fileName = uniqid() . '_' . basename($_FILES["comprovante"]["name"]);
+        $target_file = $target_dir . $fileName;
+        
+        if (move_uploaded_file($_FILES["comprovante"]["tmp_name"], $target_file)) {
+            $comprovantePath = 'comprovantes/' . $fileName;
+        }
+    }
 
     $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
     if ($dataBaixa) {
@@ -22,13 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dataBaixaFormatada = date('Y-m-d');
     }
 
-    // --- CORREÇÃO AQUI ---
-    // Alterado o nome da coluna de 'baixado_por' para 'baixado_por_usuario_id'
-    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por_usuario_id=? WHERE id=?";
+    // --- CORREÇÃO E AJUSTE NO SQL ---
+    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por_usuario_id=?, comprovante=? WHERE id=?";
     $stmt = $conn->prepare($sql);
     
-    // O bind_param permanece o mesmo, pois a ordem e os tipos dos dados estão corretos.
-    $stmt->bind_param("sdsii", $forma, $juros, $dataBaixaFormatada, $usuario, $id);
+    // O bind_param foi ajustado para incluir o comprovante.
+    $stmt->bind_param("sdsisi", $forma, $juros, $dataBaixaFormatada, $usuario, $comprovantePath, $id);
     
     if ($stmt->execute()) {
         $_SESSION['success_message'] = "Conta baixada com sucesso!";
@@ -78,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flex-direction: column;
         gap: 20px;
     }
-    select, input[type="text"] {
+    select, input[type="text"], input[type="file"] {
         padding: 12px 14px;
         font-size: 16px;
         border-radius: 6px;
@@ -107,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
   <h2>Escolha a forma de recebimento</h2>
-  <form method="POST" novalidate>
+  <form method="POST" novalidate enctype="multipart/form-data">
     <input type="text" name="data_baixa" placeholder="Data da Baixa (ex: dd/mm/aaaa)" value="<?= date('d/m/Y') ?>" required />
 
     <input type="text" name="juros" placeholder="Juros (ex: 15,50)" pattern="^\d+([,.]\d{1,2})?$" title="Use vírgula para separar os centavos" value="0,00" />
@@ -120,6 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <option value="debito">Cartão de Débito</option>
       <option value="dinheiro">Dinheiro</option>
     </select>
+
+    <label for="comprovante" style="text-align: left; font-weight: bold; margin-bottom: -10px;">Anexar Comprovante:</label>
+    <input type="file" name="comprovante" accept="image/*,.pdf">
+
     <button type="submit">
       <i class="fa-solid fa-check"></i> Confirmar
     </button>

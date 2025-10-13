@@ -10,12 +10,25 @@ include('../database.php');
 
 $id = intval($_GET['id'] ?? 0);
 $formas = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro'];
+$comprovantePath = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $forma = $_POST['forma'];
     $juros = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
     $dataBaixaInput = $_POST['data_baixa'];
     $usuario = $_SESSION['usuario']['id'];
+
+    // Lógica de Upload do Comprovante
+    if (isset($_FILES['comprovante']) && $_FILES['comprovante']['error'] == 0) {
+        $target_dir = "../comprovantes/";
+        $fileName = uniqid() . '_' . basename($_FILES["comprovante"]["name"]);
+        $target_file = $target_dir . $fileName;
+        
+        // Tenta mover o arquivo para o diretório de uploads
+        if (move_uploaded_file($_FILES["comprovante"]["tmp_name"], $target_file)) {
+            $comprovantePath = 'comprovantes/' . $fileName;
+        }
+    }
 
     $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
     if ($dataBaixa) {
@@ -25,26 +38,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $sql = "UPDATE contas_pagar 
-            SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=? 
+            SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=?, comprovante=? 
             WHERE id=?";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         die("Erro ao preparar query: " . $conn->error);
     }
     
-    $stmt->bind_param("sdsii", $forma, $juros, $dataBaixaFormatada, $usuario, $id);
+    $stmt->bind_param("sdsisi", $forma, $juros, $dataBaixaFormatada, $usuario, $comprovantePath, $id);
     if ($stmt->execute()) {
-        // Define a mensagem de sucesso na sessão
         $_SESSION['success_message'] = "Conta baixada com sucesso!";
     } else {
-        // Opcional: Adicionar uma mensagem de erro em caso de falha
         // $_SESSION['error_message'] = "Erro ao baixar conta: " . $stmt->error;
     }
 
     $stmt->close();
     $conn->close();
 
-    // Redireciona para a página de contas baixadas
     header('Location: ../pages/contas_pagar_baixadas.php');
     exit;
 }
@@ -59,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   
-  <style>
+  <style>   
     * { box-sizing: border-box; }
     body {
       background-color: #121212;
@@ -107,11 +117,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       gap: 8px;
     }
     button:hover { background-color: #0099cc; }
+ 
+    input[type="file"] {
+        padding: 12px 15px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #333;
+        background-color: #2a2a2a;
+        color: #eee;
+        cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <form method="POST" autocomplete="off">
+  <form method="POST" autocomplete="off" enctype="multipart/form-data">
     <h2><i class="fa fa-credit-card"></i> Baixar Conta a Pagar</h2>
     
     <input type="text" name="data_baixa" placeholder="Data da Baixa (ex: dd/mm/aaaa)" value="<?= date('d/m/Y') ?>" required />
@@ -125,8 +145,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php endforeach; ?>
     </select>
     
+    <label for="comprovante" style="text-align: left; font-weight: bold; margin-bottom: -10px;">Anexar Comprovante:</label>
+    <input type="file" name="comprovante" accept="image/*,.pdf">
+    
     <button type="submit"><i class="fa fa-check"></i> Confirmar</button>
   </form>
 
 </body>
 </html>
+
+
+
+ 

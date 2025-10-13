@@ -13,6 +13,7 @@ $fornecedor = trim(filter_input(INPUT_POST, 'fornecedor', FILTER_SANITIZE_SPECIA
 $numero = trim(filter_input(INPUT_POST, 'numero', FILTER_SANITIZE_SPECIAL_CHARS));
 $data_vencimento = trim($_POST['data_vencimento'] ?? '');
 $valor = trim($_POST['valor'] ?? '');
+$enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N';
 
 $usuarioId = $_SESSION['usuario']['id'];
 
@@ -38,6 +39,7 @@ if (!empty($erros)) {
     exit;
 }
 // --- FIM DA VALIDAÇÃO ---
+
 
 
 // Ajusta valor para formato numérico

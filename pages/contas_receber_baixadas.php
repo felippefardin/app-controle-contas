@@ -109,7 +109,7 @@ if (isset($_SESSION['success_message'])) {
 if ($result && $result->num_rows > 0) {
     echo "<table>";
     // --- CABEÇALHO ATUALIZADO ---
-    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Data Baixa</th><th>Valor</th><th>Baixado por</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Data Baixa</th><th>Valor</th><th>Baixado por</th><th>Comprovante</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
         echo "<tr>";
@@ -118,9 +118,17 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Data Baixa'>".($row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
         echo "<td data-label='Baixado por'>".htmlspecialchars($row['baixado_por_nome'] ?? 'N/A')."</td>";
+        
+        // --- ADICIONADO CAMPO COMPROVANTE ---
+        if (!empty($row['comprovante'])) {
+            echo "<td data-label='Comprovante'><a href='../".htmlspecialchars($row['comprovante'])."' target='_blank' class='btn-action'>Ver</a></td>";
+        } else {
+            echo "<td data-label='Comprovante'>-</td>";
+        }
+
         // --- BOTÃO EXCLUIR ADICIONADO ---
         echo "<td data-label='Ações'>
-                <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>
+                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>
               </td>";
         echo "</tr>";
     }

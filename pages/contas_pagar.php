@@ -113,7 +113,7 @@ $result = $conn->query($sql);
     /* Tabela */
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
-    th { background-color: #222; color: #00bfff; }
+    th { background-color: #222;  }
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
@@ -187,6 +187,10 @@ if (isset($_SESSION['success_message'])) {
       <input type="text" name="numero" placeholder="Número" required>
       <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
       <input type="date" name="data_vencimento" required>
+     <div style="display: dflex; align-items: center; width: 100%;">
+  <input type="checkbox" id="enviar_email" name="enviar_email" value="S" checked>
+  <label for="enviar_email" style="margin-left: 5px;">Enviar email de lembrete</label>
+</div>
       <button type="submit">Adicionar Conta</button>
     </form>
   </div>
