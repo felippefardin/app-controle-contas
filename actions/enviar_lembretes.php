@@ -5,24 +5,35 @@ require '../vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// Carrega as variáveis de ambiente do arquivo .env
+try {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..'); // Aponta para a pasta raiz
+    $dotenv->load();
+} catch (\Dotenv\Exception\InvalidPathException $e) {
+    die("ERRO CRÍTICO: Não foi possível encontrar o arquivo .env. Certifique-se de que ele está na pasta raiz do seu projeto.");
+}
+
 $hoje = date('Y-m-d');
 $data_limite = date('Y-m-d', strtotime('+7 days'));
 
 function enviarEmail($email, $nome, $assunto, $corpoHtml, $corpoAlt) {
     $mail = new PHPMailer(true);
     try {
+        //Configurações do servidor a partir do .env
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = $_ENV['MAIL_HOST'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'felippefardin@gmail.com';
-        $mail->Password   = 'kwrsaszsoyblypcf';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $mail->Username   = $_ENV['MAIL_USERNAME'];
+        $mail->Password   = $_ENV['MAIL_PASSWORD'];
+        $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION'];
+        $mail->Port       = (int)$_ENV['MAIL_PORT'];
         $mail->CharSet    = 'UTF-8';
 
-        $mail->setFrom('felippefardin@gmail.com', 'Sistema de Contas');
+        // Remetente e Destinatário
+        $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
         $mail->addAddress($email, $nome);
 
+        // Conteúdo
         $mail->isHTML(true);
         $mail->Subject = $assunto;
         $mail->Body    = $corpoHtml;

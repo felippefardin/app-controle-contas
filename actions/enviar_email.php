@@ -2,25 +2,41 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require '../PHPMailer/src/Exception.php';
-require '../PHPMailer/src/PHPMailer.php';
-require '../PHPMailer/src/SMTP.php';
+// Verifica se o autoload do Composer existe para carregar as bibliotecas e o .env
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require __DIR__ . '/../vendor/autoload.php';
+
+    // Carrega as variáveis de ambiente do arquivo .env na raiz do projeto
+    try {
+        $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+        $dotenv->load();
+    } catch (\Dotenv\Exception\InvalidPathException $e) {
+        // Se o .env não for encontrado, encerra a execução com uma mensagem clara.
+        die("ERRO CRÍTICO: Não foi possível encontrar o arquivo .env. Certifique-se de que ele está na pasta raiz do seu projeto.");
+    }
+
+} else {
+    // Se não usar Composer, o .env não pode ser carregado.
+    die("ERRO CRÍTICO: O arquivo vendor/autoload.php não foi encontrado. Por favor, execute 'composer install' para instalar as dependências.");
+}
+
 
 function enviarCodigoRecuperacao($emailDestino, $nomeUsuario, $codigo) {
     $mail = new PHPMailer(true);
     try {
-        // Configurações SMTP (exemplo com Gmail)
+        // Configurações do servidor a partir do .env
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';         // servidor SMTP
-        $mail->SMTPAuth = true;
-        $mail->Username = 'felippefardin@gmail.com';  // seu email
-        $mail->Password = 'ejlg wslz aulp zzgw';       // senha do app ou sua senha
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // ou PHPMailer::ENCRYPTION_SMTPS
-        $mail->Port = 587;
+        $mail->Host       = $_ENV['MAIL_HOST'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $_ENV['MAIL_USERNAME'];
+        $mail->Password   = $_ENV['MAIL_PASSWORD'];
+        $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION'];
+        $mail->Port       = (int)$_ENV['MAIL_PORT'];
 
         // Remetente e destinatário
-        $mail->setFrom('seu-email@gmail.com', 'App Controle de Contas');
+        $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
         $mail->addAddress($emailDestino, $nomeUsuario);
+        $mail->CharSet = 'UTF-8';
 
         // Conteúdo do e-mail
         $mail->isHTML(true);
@@ -44,3 +60,4 @@ function enviarCodigoRecuperacao($emailDestino, $nomeUsuario, $codigo) {
         return false;
     }
 }
+?>
