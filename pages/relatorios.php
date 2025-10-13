@@ -1,26 +1,49 @@
 <?php
+session_start();
 require_once '../database.php'; // agora $conn está disponível
 require_once '../includes/header.php';
 
-// Buscar totais de contas a pagar (pendentes)
-$resultPagar = $conn->query("SELECT COUNT(id) as total_contas, SUM(valor) as valor_total FROM contas_pagar WHERE status = 'pendente'");
-$totaisPagar = $resultPagar->fetch_assoc();
+// Verifica se o usuário está logado
+if (!isset($_SESSION['usuario']['id'])) {
+    // Redireciona para a página de login se não estiver logado
+    header('Location: login.php');
+    exit;
+}
 
-// Buscar totais de contas a receber (pendentes)
-$resultReceber = $conn->query("SELECT COUNT(id) as total_contas, SUM(valor) as valor_total FROM contas_receber WHERE status = 'pendente'");
+$usuarioId = $_SESSION['usuario']['id'];
+
+// Buscar totais de contas a pagar (pendentes) do usuário logado
+$stmtPagar = $conn->prepare("SELECT COUNT(id) as total_contas, SUM(valor) as valor_total FROM contas_pagar WHERE status = 'pendente' AND usuario_id = ?");
+$stmtPagar->bind_param("i", $usuarioId);
+$stmtPagar->execute();
+$resultPagar = $stmtPagar->get_result();
+$totaisPagar = $resultPagar->fetch_assoc();
+$stmtPagar->close();
+
+// Buscar totais de contas a receber (pendentes) do usuário logado
+$stmtReceber = $conn->prepare("SELECT COUNT(id) as total_contas, SUM(valor) as valor_total FROM contas_receber WHERE status = 'pendente' AND usuario_id = ?");
+$stmtReceber->bind_param("i", $usuarioId);
+$stmtReceber->execute();
+$resultReceber = $stmtReceber->get_result();
 $totaisReceber = $resultReceber->fetch_assoc();
+$stmtReceber->close();
 
 // Calcula o saldo previsto
 $saldoPrevisto = ($totaisReceber['valor_total'] ?? 0) - ($totaisPagar['valor_total'] ?? 0);
 ?>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 
-<style>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatórios</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f5f7fa;
-    color: #333;
+    background-color: #121212; /* Cor de fundo principal do site */
+    color: #eee; /* Cor de texto principal do site */
     margin: 0;
     padding: 20px;
 }
@@ -28,56 +51,61 @@ body {
 .container {
     max-width: 1200px;
     margin: auto;
+    background-color: #222; /* Cor de fundo do container */
+    padding: 25px;
+    border-radius: 8px;
 }
 
 h2 {
     font-size: 2rem;
     margin-bottom: 30px;
     font-weight: 600;
-    color: #2c3e50;
+    color: #00bfff; /* Cor de destaque dos títulos */
+    text-align: center;
 }
 
 .summary-card {
-    background-color: #fff;
+    background-color: #1f1f1f; /* Cor de fundo dos cards */
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
     padding: 20px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 5px solid #00bfff;
 }
 
 .summary-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 6px 15px rgba(0, 191, 255, 0.5);
 }
 
 .card-receber {
-    border-left: 5px solid #2ecc71;
+    border-left-color: #2ecc71;
 }
 
 .card-pagar {
-    border-left: 5px solid #e74c3c;
+    border-left-color: #e74c3c;
 }
 
 .card-saldo.positive {
-    border-left: 5px solid #3498db;
+    border-left-color: #3498db;
 }
 
 .card-saldo.negative {
-    border-left: 5px solid #c0392b;
+    border-left-color: #c0392b;
 }
 
 .summary-card h5 {
     font-size: 1.2rem;
     font-weight: 600;
     margin-bottom: 5px;
-    color: #34495e;
+    color: #eee;
 }
 
 .summary-card p {
     font-size: 1.6rem;
     margin: 0;
     font-weight: bold;
-    color: #2c3e50;
+    color: #fff;
 }
 
 .summary-card span {
@@ -92,11 +120,11 @@ h2 {
 }
 
 .summary-card:hover .card-icon {
-    color: #2980b9;
+    color: #00bfff;
 }
 
 .chart-container {
-    background-color: #fff;
+    background-color: #1f1f1f; /* Cor de fundo do container do gráfico */
     border-radius: 10px;
     padding: 25px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
@@ -105,27 +133,20 @@ h2 {
 .chart-container h4 {
     font-size: 1.2rem;
     margin-bottom: 20px;
-    color: #2c3e50;
+    color: #eee;
     font-weight: 600;
 }
 
-@media (max-width: 767px) {
-    .summary-card {
-        margin-bottom: 20px;
-    }
-
-    .chart-container {
-        padding: 15px;
-    }
+/* Ajustes para o Chart.js em tema escuro */
+.chart-container canvas {
+    background-color: #1f1f1f;
 }
 </style>
 
 <div class="container">
     <h2>Dashboard Financeiro</h2>
 
-    <!-- Cards principais -->
     <div class="row mb-4">
-        <!-- A Receber -->
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="summary-card card-receber">
                 <div class="card-body">
@@ -143,7 +164,6 @@ h2 {
             </div>
         </div>
 
-        <!-- A Pagar -->
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="summary-card card-pagar">
                 <div class="card-body">
@@ -161,7 +181,6 @@ h2 {
             </div>
         </div>
 
-        <!-- Saldo Previsto -->
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="summary-card card-saldo <?= ($saldoPrevisto >= 0) ? 'positive' : 'negative'; ?>">
                 <div class="card-body">
@@ -180,7 +199,6 @@ h2 {
         </div>
     </div>
 
-    <!-- Gráfico de Fluxo de Caixa -->
     <div class="row mt-4">
         <div class="col-md-10 offset-md-1">
             <div class="chart-container">
@@ -194,7 +212,7 @@ h2 {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Gráfico de Fluxo de Caixa
-fetch('../actions/get_relatorios_data.php?report=fluxo_caixa')
+fetch(`../actions/get_relatorios_data.php?report=fluxo_caixa&usuario_id=<?= $usuarioId ?>`)
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('fluxoCaixaChart').getContext('2d');
@@ -222,7 +240,30 @@ fetch('../actions/get_relatorios_data.php?report=fluxo_caixa')
             options: {
                 responsive: true,
                 scales: {
-                    y: { beginAtZero: true }
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#eee' // Cor dos ticks do eixo Y
+                        },
+                        grid: {
+                            color: '#444' // Cor das linhas de grade do eixo Y
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#eee' // Cor dos ticks do eixo X
+                        },
+                        grid: {
+                            color: '#444' // Cor das linhas de grade do eixo X
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#eee' // Cor da legenda
+                        }
+                    }
                 }
             }
         });
