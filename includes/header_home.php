@@ -67,8 +67,15 @@
 <div class="font-controls">
   <button type="button" class="btn-font" onclick="adjustFontSize(-1)">A-</button>
   <button type="button" class="btn-font" onclick="adjustFontSize(1)">A+</button>
-  <button type="button" class="btn-font" onclick="resetFontSize()">Resetar Fonte</button>
+  <button type="button" class="btn-font" onclick="resetFontSize()">Resetar Fonte</button>  
+  <button type="button" class="btn-font">
+    <a href="tutorial.php" style="color: #fff; text-decoration: none;">
+      <i class="fa fa-book-open" style="color: #fff;"></i> Tutorial
+    </a>
+  </button>
 </div>
+
+
 
 
 <script>

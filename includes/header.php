@@ -96,7 +96,7 @@
   <button type="button" class="btn-font" onclick="adjustFontSize(1)">A+</button>
   <button type="button" class="btn-font" onclick="resetFontSize()">Resetar Fonte</button>
   <a href="../pages/home.php" class="btn-home">Voltar Home</a>
-  <a href="../pages/logout.php" class="btn-exit">Sair</a>
+  <a href="../pages/logout.php" class="btn-exit">Sair</a> 
 </div>
 
 <script>

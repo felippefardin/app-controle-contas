@@ -52,7 +52,7 @@ body {
     max-width: 1200px;
     margin: auto;
     background-color: #222; /* Cor de fundo do container */
-    padding: 25px;
+    /* padding: 25px; */
     border-radius: 8px;
 }
 

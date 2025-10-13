@@ -23,7 +23,7 @@
     background-color: #222;
     padding: 20px 30px;
     border-radius: 8px;
-    max-width: 400px;
+    max-width: 600px;
     width: 100%;
     box-sizing: border-box;
     box-shadow: 0 0 15px rgba(0, 191, 255, 0.3);

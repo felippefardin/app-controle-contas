@@ -29,7 +29,7 @@ unset($_SESSION['erro_login']);
       background: #222;
       padding: 25px 30px;
       border-radius: 8px;
-      width: 320px;
+      width: 500px;
       box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
       display: flex;
       flex-direction: column;

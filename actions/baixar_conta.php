@@ -87,8 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       background-color: #1f1f1f;
       padding: 25px 30px;
       border-radius: 10px;
-      box-shadow: 0 0 12px rgba(0,191,255,0.4);
-      width: 340px;
+      box-shadow: 0 0 12px rgba(0,191,255,0.4);      
       display: flex;
       flex-direction: column;
       gap: 20px;
