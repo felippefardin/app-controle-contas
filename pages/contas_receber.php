@@ -187,7 +187,14 @@ if (isset($_SESSION['success_message'])) {
     <span class="close-btn" onclick="toggleForm()">&times;</span>
     <h3>Nova Conta a Receber</h3>
     <form method="POST" action="../actions/add_conta_receber.php">
-        <input type="text" name="responsavel" placeholder="Responsável" required>
+        <select name="responsavel_id" required>
+            <option value="">-- Selecione um Responsável --</option>
+            <?php foreach ($pessoas as $pessoa): ?>
+                <option value="<?= $pessoa['id'] ?>">
+                    <?= htmlspecialchars($pessoa['nome']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
         <input type="text" name="numero" placeholder="Número" required>
         <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
         <input type="date" name="data_vencimento" required>
