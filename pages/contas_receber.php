@@ -118,6 +118,10 @@ $result = $conn->query($sql);
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222;  }
     tr:nth-child(even) { background-color: #2a2a2a; }
+    td[data-label='Ações'] {
+  width: 600px; /* ajuste conforme o número de botões */
+  text-align: center;
+}
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
     

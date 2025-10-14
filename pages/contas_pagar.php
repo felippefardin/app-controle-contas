@@ -66,6 +66,8 @@ $result = $conn->query($sql);
     a:hover { text-decoration: underline; }
     p { text-align: center; margin-top: 20px; }
 
+    
+
     /* MENSAGENS DE SUCESSO/ERRO */
     .success-message {
       background-color: #27ae60;
@@ -114,6 +116,11 @@ $result = $conn->query($sql);
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222;  }
+    th:last-child,
+td[data-label='Ações'] {
+  width: 500px; /* ajuste conforme o número de botões */
+  text-align: center;
+}
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
