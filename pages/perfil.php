@@ -33,6 +33,20 @@ $stmt->close();
 $mensagem = '';
 $erro = '';
 
+// ✨ NOVO: Captura mensagens da URL
+if (isset($_GET['mensagem'])) {
+    $mensagem = htmlspecialchars($_GET['mensagem']);
+}
+if (isset($_GET['erro'])) {
+    $erro = htmlspecialchars($_GET['erro']);
+}
+
+$uploadDir = '../img/usuarios/'; 
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ... (toda a lógica do POST para atualizar o perfil permanece a mesma) ...
+}
+
 $uploadDir = '../img/usuarios/'; // pasta onde as fotos ficarão (crie esta pasta com permissão de escrita)
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -339,6 +353,7 @@ a.btn-padrao-link:hover {
 
 <div class="container">
    <h2><i class="fa-solid fa-user"></i> (Editar) Perfil</h2>
+  
 
   <?php if ($mensagem): ?>
     <div class="mensagem"><?= htmlspecialchars($mensagem) ?></div>
@@ -379,7 +394,13 @@ a.btn-padrao-link:hover {
     </div>
 
     <button type="submit">Salvar Alterações</button>
+
+     <div style="margin-top: 20px; text-align: center;">
+    <a href="../actions/enviar_link_exclusao.php" class="btn-padrao-link" style="background-color: #dc3545;" onclick="return confirm('Você tem certeza que deseja iniciar o processo de exclusão da sua conta? Um e-mail de confirmação será enviado.');">Excluir Minha Conta</a>
+  </div>
   </form>
+
+  
 
   <!-- <p><a href="home.php">Voltar para Home</a></p> -->
 </div>

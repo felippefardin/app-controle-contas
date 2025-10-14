@@ -60,4 +60,45 @@ function enviarCodigoRecuperacao($emailDestino, $nomeUsuario, $codigo) {
         return false;
     }
 }
+
+function enviarLinkExclusao($emailDestino, $nomeUsuario, $token) {
+    $mail = new PHPMailer(true);
+    $link = "http://localhost/app-controle-contas/pages/confirmar_exclusao_conta.php?token=" . $token;
+
+    try {
+       // Configurações do servidor a partir do .env
+        $mail->isSMTP();
+        $mail->Host       = $_ENV['MAIL_HOST'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $_ENV['MAIL_USERNAME'];
+        $mail->Password   = $_ENV['MAIL_PASSWORD'];
+        $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION'];
+        $mail->Port       = (int)$_ENV['MAIL_PORT'];
+
+        // Remetente e destinatário
+        $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
+        $mail->addAddress($emailDestino, $nomeUsuario);
+        $mail->CharSet = 'UTF-8';
+
+        // Conteúdo do e-mail
+        $mail->isHTML(true);
+        $mail->Subject = 'Confirmação de Exclusão de Conta';
+        $mail->Body = "
+            <p>Olá <strong>{$nomeUsuario}</strong>,</p>
+            <p>Recebemos uma solicitação para excluir sua conta. Se você realmente deseja continuar, clique no link abaixo:</p>
+            <p><a href='{$link}' style='color: #dc3545;'>Confirmar Exclusão da Conta</a></p>
+            <p>Este link é válido por 1 hora. Se você não solicitou isso, por favor, ignore este e-mail.</p>
+            <br>
+            <p>Atenciosamente,<br>Equipe App Controle de Contas</p>
+        ";
+        $mail->AltBody = "Olá {$nomeUsuario}, para confirmar a exclusão da sua conta, acesse o seguinte link: {$link}";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log('Erro ao enviar e-mail de exclusão: ' . $mail->ErrorInfo);
+        return false;
+    }
+}
+
 ?>
