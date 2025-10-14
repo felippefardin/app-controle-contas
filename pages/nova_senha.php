@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
+
 date_default_timezone_set('America/Sao_Paulo');
 
 include('../database.php');

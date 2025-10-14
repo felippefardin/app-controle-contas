@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 // O 'database.php' não é mais necessário no topo, pois a conexão é feita dentro do POST.
 
 // --- INÍCIO DA ALTERAÇÃO ---

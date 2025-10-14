@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 include('../database.php');
 
 // Se não houver um usuário principal na sessão, não há como prosseguir

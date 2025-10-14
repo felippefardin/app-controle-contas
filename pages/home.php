@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 
 // Verifica se há um usuário principal E um usuário ativo na sessão
 if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {

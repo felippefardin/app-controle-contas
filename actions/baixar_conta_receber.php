@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 include('../database.php');
 if (!isset($_SESSION['usuario'])) {
     header('Location: ../pages/login.php');

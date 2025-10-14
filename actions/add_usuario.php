@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 include('../database.php'); // A conexão $conn já é criada aqui.
 
 // Apenas o usuário principal logado pode adicionar novos usuários

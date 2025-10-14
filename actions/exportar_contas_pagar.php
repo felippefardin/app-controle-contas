@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 require '../vendor/autoload.php';
 include('../database.php');
 

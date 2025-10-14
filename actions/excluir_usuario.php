@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 include('../database.php'); // Sua conexão com o banco
 
 // 1. Verifica se o usuário principal está logado

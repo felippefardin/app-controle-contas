@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 // Caminhos ajustados para o local correto do arquivo
 include('../includes/header.php');
 include('../database.php');

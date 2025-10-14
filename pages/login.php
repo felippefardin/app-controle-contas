@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
+
 // Apenas exibe o erro, não processa mais o login aqui
 $erro = $_SESSION['erro_login'] ?? '';
 unset($_SESSION['erro_login']);

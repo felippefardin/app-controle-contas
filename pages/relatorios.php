@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 require_once '../database.php'; // agora $conn está disponível
 require_once '../includes/header.php';
 

@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 include('../database.php');
 
 // 🔹 Conexão com o banco (mesma de contas_pagar.php)
