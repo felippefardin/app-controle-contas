@@ -23,7 +23,8 @@ $result_usuarios = $stmt->get_result();
 <head>
     <meta charset="UTF-8">
     <title>Selecionar Usuário - App Controle de Contas</title>
-    <style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>       
         body {
             display: flex;
             justify-content: center;
@@ -50,20 +51,33 @@ $result_usuarios = $stmt->get_result();
         .form-group {
             margin-bottom: 20px;
             text-align: left;
+            position: relative; /* importante para posicionar o ícone dentro */
         }
         label {
             display: block;
             margin-bottom: 8px;
             color: #bbb;
         }
-        select, input[type="password"] {
+        select, input[type="password"], input[type="text"] {
             width: 100%;
             padding: 12px;
+            padding-right: 40px; /* espaço pro ícone */
             border-radius: 5px;
             border: 1px solid #444;
             background-color: #333;
             color: #eee;
             box-sizing: border-box;
+        }
+        .toggle-password {
+            position: absolute;
+            top: 37px; /* alinhamento vertical com o campo */
+            right: 12px;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .toggle-password:hover {
+            color: #00bfff;
         }
         button {
             width: 100%;
@@ -112,9 +126,22 @@ $result_usuarios = $stmt->get_result();
             <div class="form-group">
                 <label for="senha">Senha do usuário selecionado:</label>
                 <input type="password" name="senha" id="senha" required>
+                <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
             </div>
             <button type="submit">Acessar Sistema</button>
         </form>
     </div>
+
+    <script>
+    const toggleSenha = document.getElementById('toggleSenha');
+    const inputSenha = document.getElementById('senha');
+
+    toggleSenha.addEventListener('click', () => {
+      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
+      inputSenha.setAttribute('type', tipo);
+      toggleSenha.classList.toggle('fa-eye');
+      toggleSenha.classList.toggle('fa-eye-slash');
+    });
+  </script>
 </body>
 </html>

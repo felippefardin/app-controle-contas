@@ -54,13 +54,28 @@ if (!$result) {
         /* Estilos gerais */
         body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
         .container { background-color: #222; padding: 25px; border-radius: 8px; }
-        h1 { color: #00bfff; border-bottom: 2px solid #00bfff; padding-bottom: 10px; margin-bottom: 2rem; font-size: 1.8rem; }
+        h1 {
+    color: #00bfff;
+    border-bottom: 2px solid #00bfff;
+    padding-bottom: 10px;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    gap: 12px; /* espaço entre ícone e texto */
+}
+
+h1 i {
+    font-size: 1.9rem;
+    color: #00bfff;
+}
+
         .alert { padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center; color: white; opacity: 1; transition: opacity 0.5s ease-out; }
         .alert-success { background-color: #28a745; }
         .alert-danger { background-color: #cc4444; }
 
         /* Estilos da tabela e botões */
-        .table { width: 100%; color: #eee; border-collapse: collapse; }
+        .table { width: 100%; color: #eee;  }
         .table thead { background-color: #00bfff; color: #ffffff; font-weight: bold; }
         .table th, .table td { padding: 12px 15px; border: 1px solid #444; text-align: left; }
         .table tbody tr { background-color: #2c2c2c; }

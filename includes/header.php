@@ -4,92 +4,73 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>App Controle de Contas</title>
-  <!-- <link rel="stylesheet" href="../assets/css/style.css" /> -->
-</head>
-<body>
+  <style>
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      transition: font-size 0.3s ease;
+    }
 
-<style>
-  
-
-/* Estilo dos botões */
-.font-controls button,
-.font-controls a {
-    border: none;
-    padding: 10px 14px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    text-decoration: none;
-    display: inline-block;
-}
-
-/* Cores específicas */
-.font-controls .btn-font { background-color: #007BFF; color: white; }
-.font-controls .btn-font:hover { background-color: #0056b3; }
-.font-controls .btn-exit { background-color: #dc3545; color: white; }
-.font-controls .btn-exit:hover { background-color: #b52a37; }
-.font-controls .btn-home { background-color: #28a745; color: white; }
-.font-controls .btn-home:hover { background-color: #1e7e34; }
-
-.font-controls button:focus,
-.font-controls a:focus {
-    outline: 2px solid #fff;
-    outline-offset: 2px;
-}
-
-/* RESPONSIVO: telas menores que 600px */
-@media (max-width: 600px) {
     .font-controls {
-        top: 20px;         /* Aproxima do topo */
-        left: 10px;        /* Aproxima da esquerda */
-        flex-direction: column; /* Botões empilhados verticalmente */
-        gap: 6px;          /* Espaçamento menor */
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 20px 0;
     }
 
     .font-controls button,
     .font-controls a {
-        font-size: 14px;   /* Botões menores */
-        /* padding: 8px 12px; */
+      border: none;
+      padding: 10px 16px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+      text-decoration: none;
+      display: inline-block;
+      color: white;
     }
-}
 
-  .font-controls .btn-font {
-    background-color: #007BFF;
-    color: white;
-  }
+    /* Cores dos botões */
+    .btn-font { background-color: #007BFF; }
+    .btn-font:hover { background-color: #0056b3; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
 
-  .font-controls .btn-font:hover {
-    background-color: #0056b3;
-  }
+    .btn-home { background-color: #28a745; }
+    .btn-home:hover { background-color: #1e7e34; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
 
-  .font-controls .btn-exit {
-    background-color: #dc3545;
-    color: white;
-  }
+    .btn-exit { background-color: #dc3545; }
+    .btn-exit:hover { background-color: #b52a37; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
 
-  .font-controls .btn-exit:hover {
-    background-color: #b52a37;
-  }
+    /* Foco nos botões */
+    .font-controls button:focus,
+    .font-controls a:focus {
+      outline: 2px solid #00bfff;
+      outline-offset: 2px;
+    }
 
-  .font-controls .btn-home {
-    background-color: #28a745;
-    color: white;
-  }
+    /* Responsivo para telas menores */
+    @media (max-width: 600px) {
+      .font-controls {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
 
-  .font-controls .btn-home:hover {
-    background-color: #1e7e34;
-  }
-
-  .font-controls button:focus,
-  .font-controls a:focus {
-    outline: 2px solid #fff;
-    outline-offset: 2px;
-  }
-  
-</style>
+      .font-controls button,
+      .font-controls a {
+        width: 80%;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
 
 <div class="font-controls">
   <button type="button" class="btn-font" onclick="adjustFontSize(-1)">A-</button>

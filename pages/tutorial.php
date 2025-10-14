@@ -17,64 +17,120 @@ if (!isset($_SESSION['usuario'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body {
-            background-color: #121212;
-            color: #eee;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
+    background-color: #121212;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
 
-        .container {
-            max-width: 900px;
-            margin: auto;
-            background-color: #1f1f1f;
-            padding: 30px;
-            border-radius: 8px;
-        }
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    background-color: #1f1f1f;
+    padding: 35px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 191, 255, 0.2);
+    box-shadow: 0 0 25px rgba(0, 191, 255, 0.08);
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
 
-        h1, h2, h3 {
-            color: #00bfff;
-            text-align: center;
-            border-bottom: 2px solid #00bfff;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
+.container:hover {
+    box-shadow: 0 0 35px rgba(0, 191, 255, 0.15);
+    transform: translateY(-2px);
+}
 
-        .secao-tutorial {
-            margin-bottom: 40px;
-        }
+h1, h2, h3 {
+    color: #00bfff;
+    text-align: center;
+    border-bottom: 2px solid #00bfff;
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+    letter-spacing: 0.5px;
+}
 
-        .secao-tutorial h3 {
-            color: #27ae60;
-            border-bottom: none;
-            text-align: left;
-            margin-bottom: 15px;
-        }
-        
-        .secao-tutorial p {
-            line-height: 1.6;
-            text-align: justify;
-            margin-bottom: 10px;
-        }
+.secao-tutorial {
+    margin-bottom: 45px;
+    animation: fadeInUp 0.6s ease;
+}
 
-        .secao-tutorial ul {
-            list-style: none;
-            padding: 0;
-        }
+.secao-tutorial h3 {
+    color: #27ae60;
+    border-bottom: none;
+    text-align: left;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
-        .secao-tutorial li {
-            background-color: #2a2a2a;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .secao-tutorial li i {
-            margin-right: 10px;
-            color: #00bfff;
-        }
+.secao-tutorial p {
+    line-height: 1.7;
+    text-align: justify;
+    margin-bottom: 12px;
+    color: #ccc;
+}
+
+.secao-tutorial ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.secao-tutorial li {
+    background-color: #2a2a2a;
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0, 191, 255, 0.1);
+    transition: background-color 0.25s ease, transform 0.2s ease, border-color 0.25s ease;
+}
+
+.secao-tutorial li:hover {
+    background-color: #333;
+    border-color: rgba(0, 191, 255, 0.3);
+    transform: translateX(5px);
+}
+
+.secao-tutorial li i {
+    margin-right: 10px;
+    color: #00bfff;
+    font-size: 1.1em;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 1.4em;
+    }
+
+    .secao-tutorial h3 {
+        font-size: 1.1em;
+    }
+
+    .secao-tutorial li {
+        font-size: 0.95em;
+    }
+}
+
+/* Animação suave ao carregar */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
     </style>
 </head>

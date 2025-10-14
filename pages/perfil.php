@@ -127,136 +127,169 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   
-  <style>
-    body {     
-    background-color: #121212;
-    color: #eee;
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-  }
-    .container {
-      max-width: 600px;
-      margin: 30px auto;
-    }
-    form {
-      background-color: #222;
-      padding: 20px;
-      border-radius: 8px;
-    }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: bold;
-    }
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="file"] {
-      width: 100%;
-      padding: 8px;
-      border-radius: 4px;
-      border: none;
-      margin-bottom: 15px;
-      box-sizing: border-box;
-      font-size: 16px;
-      background-color: #333;
-      color: #eee;
-    }
-    .profile-photo-preview {
-      width: 150px;
-      height: 150px;
-      /* border-radius: 50%; */
-      border: 2px solid #00bfff;
-      object-fit: cover;
-      margin-bottom: 10px;
-      display: block;
-    }
-    .password-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .password-wrapper input {
-      flex: 1;
-      padding-right: 40px;
-      margin-bottom: 0;
-    }
-    .toggle-password {
-      position: absolute;
-      right: 10px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      color: #00bfff;
-      font-size: 18px;
-      user-select: none;
-    }
-    .toggle-password:focus {
-      outline: none;
-    }
-    button[type="submit"] {
-      background-color: #0af;
-      color: white;
-      padding: 10px;
-      font-weight: bold;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-      width: 100%;
-      font-size: 16px;
-    }
-    .mensagem {
-      background-color: #28a745;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    .erro {
-      background-color: #cc4444;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    a {
-      color: #0af;
-      text-decoration: none;
-      margin-top: 20px;
-      display: inline-block;
-    }
-    .btn-padrao {
+ <style>
+/* Corpo da página */
+body {     
+  background-color: #121212;
+  color: #eee;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Container principal */
+.container {
+  max-width: 600px;
+  margin: 30px auto;
+  padding: 20px;
+}
+
+/* Título */
+h2 {
+  color: #00bfff;
+  border-bottom: 2px solid #00bfff;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Formulário */
+form {
+  background-color: #222;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Labels e Inputs */
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  margin-bottom: 15px;
+  box-sizing: border-box;
+  font-size: 16px;
+  background-color: #333;
+  color: #eee;
+  transition: 0.3s;
+}
+
+input:focus {
+  outline: 2px solid #00bfff;
+}
+
+/* Preview da foto */
+.profile-photo-preview {
+  width: 150px;
+  height: 150px;
+  border: 2px solid #00bfff;
+  object-fit: cover;
+  margin-bottom: 15px;
+  display: block;
+  border-radius: 8px;
+}
+
+/* Wrapper senha */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  flex: 1;
+  padding-right: 50px;
+  margin-bottom: 15px;
+}
+
+/* Botões padronizados (submit, toggle senha, links) */
+.btn-padrao,
+button[type="submit"],
+.toggle-password,
+a.btn-padrao-link {
+  border: none;
   padding: 10px 14px;
   font-size: 16px;
   font-weight: bold;
   border-radius: 6px;
   cursor: pointer;
-  background-color: #007BFF;
-  color: white;
-  border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.2s;
+  text-decoration: none;
   display: inline-block;
   text-align: center;
-  width: 100%; /* se quiser que ocupe 100% da largura do container */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
-.btn-padrao:hover,
-.btn-padrao:focus {
-  background-color: #0056b3;
-  outline: none;
+/* Cores dos botões */
+button[type="submit"],
+.btn-padrao { 
+  background-color: #007BFF; 
+  color: white; 
 }
-/* Responsividade */
+button[type="submit"]:hover,
+.btn-padrao:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+.toggle-password {
+      position: absolute;
+      top: 35%;
+      right: 6px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: white;
+      font-size: 1.1rem;
+    }
+        .toggle-password:hover {
+            color: #00bfff;
+        }
+        
+
+a.btn-padrao-link {
+  background-color: #28a745;
+  color: white;
+}
+a.btn-padrao-link:hover {
+  background-color: #1e7e34;
+}
+
+/* Mensagens */
+.mensagem {
+  background-color: #28a745;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.erro {
+  background-color: #cc4444;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+/* Responsivo */
 @media (max-width: 768px) {
   .container {
     width: 95%;
     margin: 15px auto;
     padding: 10px;
-  }
-
-  form {
-    padding: 15px;
   }
 
   h2 {
@@ -265,14 +298,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   .profile-photo-preview {
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 15px auto; /* centraliza no mobile */
-    display: block;
-  }
-
-  label {
-    font-size: 14px;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 15px auto;
   }
 
   input[type="text"],
@@ -280,30 +308,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   input[type="password"],
   input[type="file"] {
     font-size: 14px;
-    padding: 6px;
-  }
-
-  .password-wrapper {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .toggle-password {
-    font-size: 16px;
-    right: 8px;
+    padding: 8px;
   }
 
   button[type="submit"],
-  .btn-padrao {
+  .btn-padrao,
+  .toggle-password,
+  a.btn-padrao-link {
     font-size: 15px;
     padding: 10px;
-    width: 100%; /* ocupa a largura toda no mobile */
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .toggle-password {
+    width: 45px;
+    /* height: 45px; */
+    font-size: 16px;
+    position: absolute;
+    right: 10px;
   }
 }
 
+</style>
 
-    
-  </style>
+
 </head>
 <body>
 
@@ -339,13 +368,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <label for="senha">Nova Senha (deixe em branco para manter a atual):</label>
     <div class="password-wrapper">
       <input type="password" id="senha" name="senha">
-      <button type="button" class="toggle-password" data-target="senha" aria-label="Mostrar/Ocultar senha">👁️</button>
+      <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
     </div>
 
     <label for="senha_confirmar">Confirmar Nova Senha:</label>
     <div class="password-wrapper">
       <input type="password" id="senha_confirmar" name="senha_confirmar">
-      <button type="button" class="toggle-password" data-target="senha_confirmar" aria-label="Mostrar/Ocultar senha">👁️</button>
+      <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
     </div>
 
     <button type="submit">Salvar Alterações</button>
@@ -355,19 +384,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-  document.querySelectorAll('.toggle-password').forEach(button => {
-    button.addEventListener('click', () => {
-      const targetId = button.getAttribute('data-target');
-      const input = document.getElementById(targetId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        button.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        button.textContent = '👁️';
-      }
+  const toggleSenha = document.getElementById('toggleSenha');
+    const inputSenha = document.getElementById('senha');
+
+    toggleSenha.addEventListener('click', () => {
+      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
+      inputSenha.setAttribute('type', tipo);
+      toggleSenha.classList.toggle('fa-eye');
+      toggleSenha.classList.toggle('fa-eye-slash');
     });
-  });
 </script>
 
 <?php include('../includes/footer.php'); ?>
