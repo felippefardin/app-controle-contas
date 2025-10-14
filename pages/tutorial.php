@@ -220,6 +220,18 @@ h1, h2, h3 {
         </ul>
     </div>
 
+    <div class="secao-tutorial">
+        <h3><i class="fas fa-calendar-alt"></i> Calendário Flutuante</h3>
+        <p>Um calendário prático para consultas rápidas de datas, disponível em todas as páginas.</p>
+        <ul>
+            <li><i class="fas fa-mouse-pointer"></i> <strong>Abrir:</strong> Clique no ícone de calendário (&#128197;) no canto inferior esquerdo para abri-lo.</li>
+            <li><i class="fas fa-hand-point-up"></i> <strong>Ativar:</strong> Clique em qualquer parte do calendário para ativá-lo. A borda ficará verde para indicar que está em foco.</li>
+            <li><i class="fas fa-arrows-alt"></i> <strong>Mover:</strong> Assim como a calculadora, clique e arraste seu cabeçalho para reposicioná-lo.</li>
+            <li><i class="fas fa-chevron-left"></i><i class="fas fa-chevron-right" style="margin-left: -5px;"></i> <strong>Navegar:</strong> Use as setas para avançar ou retroceder os meses.</li>
+            <li><i class="fas fa-times"></i> <strong>Fechar:</strong> Clique no '×' para fechar o calendário.</li>
+        </ul>
+    </div>
+
 </div>
 
 <?php include('../includes/footer.php'); ?>
