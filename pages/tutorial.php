@@ -208,6 +208,18 @@ h1, h2, h3 {
         </ul>
     </div>
 
+    <div class="secao-tutorial">
+        <h3><i class="fas fa-calculator"></i> Calculadora Flutuante</h3>
+        <p>Uma ferramenta rápida para cálculos, disponível em qualquer página do sistema.</p>
+        <ul>
+            <li><i class="fas fa-mouse-pointer"></i> <strong>Abrir:</strong> Clique no ícone da calculadora (&#128290;) no canto inferior esquerdo para exibi-la.</li>
+            <li><i class="fas fa-hand-point-up"></i> <strong>Ativar:</strong> Clique em qualquer parte da calculadora para ativá-la. A borda ficará azul, indicando que ela pode receber comandos do teclado.</li>
+            <li><i class="fas fa-arrows-alt"></i> <strong>Mover:</strong> Clique e arraste o cabeçalho da calculadora para movê-la pela tela.</li>
+            <li><i class="fas fa-power-off"></i> <strong>Desativar:</strong> Clique em qualquer lugar fora da calculadora para desativá-la. A borda voltará ao normal e ela não responderá mais ao teclado.</li>
+            <li><i class="fas fa-times"></i> <strong>Fechar:</strong> Clique no '×' no canto superior direito para fechar a calculadora.</li>
+        </ul>
+    </div>
+
 </div>
 
 <?php include('../includes/footer.php'); ?>

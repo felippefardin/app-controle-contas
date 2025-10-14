@@ -1,3 +1,15 @@
+<?php 
+// Inclua o arquivo da calculadora DEPOIS do ícone.
+// O ideal é que ele fique no final do body.
+include_once 'calculadora.php'; 
+?>
+</body>
+<div style="position: fixed; bottom: 30px; left: 30px; z-index: 1002;">
+  <a href="#" id="abrir-calculadora" title="Abrir Calculadora" style="font-size: 24px; text-decoration: none;">
+    &#128290; </a>
+</div>
+
+
 <script>
   const defaultFontSize = 16;
 
@@ -60,5 +72,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
-</body>
+<script>
+  // Script para abrir a calculadora
+  document.getElementById('abrir-calculadora').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('calculadora-container').style.display = 'block';
+  });
+</script>
+
+
+
 </html>
