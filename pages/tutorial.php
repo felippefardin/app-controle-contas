@@ -242,6 +242,30 @@ h1, h2, h3 {
         </ul>
     </div>
 
+    <!-- Seção Feedback -->
+    <div class="secao-tutorial">
+        <h3><i class="fas fa-comment-dots"></i> Feedback</h3>
+        <p>O sistema conta com uma área dedicada para você enviar sugestões, críticas ou ideias de melhoria. Sua opinião é essencial para que possamos aprimorar continuamente a experiência de uso.</p>
+        <ul>
+            <li><i class="fas fa-lightbulb"></i> <strong>Como acessar:</strong> Clique no ícone <i class="fas fa-comment-dots" style="color:#00bfff;"></i> localizado no canto superior direito da tela de login.</li>
+            <li><i class="fas fa-info-circle"></i> <strong>Dica:</strong> Ao passar o mouse sobre o ícone, será exibido um balão com a mensagem <em>“Nos ajude a melhorar o sistema com sua opinião”</em>.</li>
+            <li><i class="fas fa-pen-nib"></i> <strong>Envie seu feedback:</strong> Preencha o formulário com suas observações e envie. Todas as mensagens são analisadas pela equipe de desenvolvimento.</li>
+        </ul>
+    </div>
+
+    <!-- Seção Suporte -->
+    <div class="secao-tutorial">
+        <h3><i class="fas fa-headset"></i> Suporte</h3>
+        <p>O suporte técnico está disponível para auxiliar em dúvidas, problemas de acesso, erros no sistema ou dificuldades no uso das funcionalidades.</p>
+        <ul>
+            <li><i class="fas fa-phone-volume"></i> <strong>Como acessar:</strong> Clique no ícone <i class="fas fa-headset" style="color:#00bfff;"></i> no canto superior direito da tela de login.</li>
+            <li><i class="fas fa-comment"></i> <strong>Fale Conosco:</strong> Ao passar o mouse sobre o ícone, aparecerá o texto <em>“Fale Conosco”</em> acima do ícone.</li>
+            <li><i class="fas fa-envelope"></i> <strong>Atendimento:</strong> Envie sua mensagem com a descrição do problema e, se possível, uma captura de tela. O suporte entrará em contato pelo e-mail cadastrado.</li>
+        </ul>
+    </div>
+
+    
+
 </div>
 
 <?php include('../includes/footer.php'); ?>
