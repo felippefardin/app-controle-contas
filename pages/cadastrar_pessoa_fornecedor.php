@@ -1,6 +1,5 @@
 <?php
 require_once '../includes/session_init.php';
-// Caminhos ajustados para o local correto do arquivo
 include('../includes/header.php');
 include('../database.php');
 
@@ -11,7 +10,6 @@ if (!isset($_SESSION['usuario'])) {
 
 $id_usuario = $_SESSION['usuario']['id'];
 
-// Lógica para buscar pessoas e fornecedores já cadastrados
 $stmt = $conn->prepare("SELECT * FROM pessoas_fornecedores WHERE id_usuario = ? ORDER BY nome ASC");
 $stmt->bind_param("i", $id_usuario);
 $stmt->execute();
@@ -21,128 +19,137 @@ $result = $stmt->get_result();
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Cadastro de Clientes/Fornecedores</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <style>
-body {
-    background-color: #121212;
-    color: #eee;
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    margin: 0;
-}
+    <style>
+        body {
+            background-color: #121212;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
 
-/* Container principal */
-.container {
-    background-color: #222;
-    padding: 25px;
-    border-radius: 8px;
-    margin-top: 30px;
-}
+        .container {
+            background-color: #222;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
 
-/* Títulos */
-h1, h2 {
-    color: #eee;
-    border-bottom: 2px solid #0af;
-    padding-bottom: 10px;
-    margin-bottom: 1rem;
-}
+        h1, h2 {
+            color: #eee;
+            border-bottom: 2px solid #0af;
+            padding-bottom: 10px;
+            margin-bottom: 1rem;
+        }
 
-/* Formulário */
-.form-control, .custom-select {
-    background-color: #333;
-    color: #eee;
-    border: 1px solid #444;
-}
-.form-control:focus, .custom-select:focus {
-    background-color: #333;
-    color: #eee;
-    border-color: #0af;
-    box-shadow: none;
-}
+        .form-control, .custom-select {
+            background-color: #333;
+            color: #eee;
+            border: 1px solid #444;
+        }
 
-/* Botão */
-.btn-primary {
-    background-color: #0af;
-    border: none;
-}
+        .form-control:focus, .custom-select:focus {
+            background-color: #333;
+            color: #eee;
+            border-color: #0af;
+            box-shadow: none;
+        }
 
-/* Tabela */
-.table {
-    color: #eee;
-}
-.table thead {
-    background-color: #0af;
-    color: #fff;
-}
-.table tbody tr {
-    background-color: #2c2c2c;
-}
-.table tbody tr:hover {
-    background-color: #3c3c3c;
-}
+        .btn-primary {
+            background-color: #0af;
+            border: none;
+        }
 
-/* Botões de ação */
-.btn-action {
-    padding: 5px 10px;
-    font-size: 14px;
-    margin: 0 2px;
-    text-decoration: none !important;
-    color: white !important;
-}
-.btn-edit { background-color: #17a2b8; }
-.btn-delete { background-color: #dc3545; }
+        .table {
+            color: #eee;
+        }
 
-/* RESPONSIVIDADE MOBILE */
-@media (max-width: 992px) {
-    .form-row {
-        display: flex;
-        flex-direction: column;
-    }
-    .form-group {
-        width: 100% !important;
-        margin-bottom: 15px;
-    }
-    .btn-action {
-        display: block;
-        width: 100%;
-        margin-bottom: 5px;
-        text-align: center;
-    }
+        .table thead {
+            background-color: #0af;
+            color: #fff;
+        }
 
-    /* Tabela em estilo card para mobile */
-    table, thead, tbody, th, td, tr {
-        display: block;
-    }
-    .table thead tr {
-        display: none; /* Esconde cabeçalho no mobile */
-    }
-    .table tbody tr {
-        margin-bottom: 15px;
-        border-bottom: 2px solid #0af;
-        padding: 10px 5px;
-    }
-    .table tbody td {
-        display: flex;
-        justify-content: space-between;
-        padding: 5px 10px;
-        text-align: left;
-    }
-    .table tbody td::before {
-        content: attr(data-label);
-        font-weight: bold;
-        color: #0af;
-        flex-basis: 40%;
-    }
-}
-</style>
+        .table tbody tr {
+            background-color: #2c2c2c;
+        }
 
+        .table tbody tr:hover {
+            background-color: #3c3c3c;
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 14px;
+            margin: 0 2px;
+            text-decoration: none !important;
+            color: white !important;
+        }
+
+        .btn-edit { background-color: #17a2b8; }
+        .btn-delete { background-color: #dc3545; }
+
+        /* Responsividade */
+        @media (max-width: 992px) {
+            .form-row {
+                display: flex;
+                flex-direction: column;
+            }
+            .form-group {
+                width: 100% !important;
+                margin-bottom: 15px;
+            }
+            .btn-action {
+                display: block;
+                width: 100%;
+                margin-bottom: 5px;
+                text-align: center;
+            }
+
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            .table thead tr { display: none; }
+            .table tbody tr {
+                margin-bottom: 15px;
+                border-bottom: 2px solid #0af;
+                padding: 10px 5px;
+            }
+            .table tbody td {
+                display: flex;
+                justify-content: space-between;
+                padding: 5px 10px;
+                text-align: left;
+            }
+            .table tbody td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                color: #0af;
+                flex-basis: 40%;
+            }
+        }
+
+        /* Barra de pesquisa */
+        #searchInput {
+            margin-bottom: 15px;
+            background-color: #333;
+            color: #eee;
+            border: 1px solid #444;
+        }
+        #searchInput:focus {
+            border-color: #0af;
+            outline: none;
+        }
+    </style>
 </head>
 <body>
 <div class="container">
     <h1><i class="fa-solid fa-users"></i> Clientes e Fornecedores</h1>
-    
+
+    <!-- Formulário de cadastro -->
     <div class="card bg-dark text-white mb-4">
         <div class="card-header">
             <h2>Cadastrar Novo</h2>
@@ -173,7 +180,7 @@ h1, h2 {
                         <input type="email" class="form-control" name="email" required>
                     </div>
                 </div>
-                 <div class="form-group">
+                <div class="form-group">
                     <label for="tipo">Tipo</label>
                     <select name="tipo" class="custom-select" required>
                         <option value="pessoa">Pessoa (Cliente)</option>
@@ -185,6 +192,10 @@ h1, h2 {
         </div>
     </div>
 
+    <!-- Barra de pesquisa -->
+    <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar por Nome, Email ou CPF/CNPJ...">
+
+    <!-- Tabela de cadastrados -->
     <h2><i class="fa-solid fa-list"></i> Cadastrados</h2>
     <div class="table-responsive">
         <table class="table table-bordered">
@@ -194,9 +205,10 @@ h1, h2 {
                     <th>CPF/CNPJ</th>
                     <th>Email</th>
                     <th>Tipo</th>
-                    <th>Ações</th> </tr>
+                    <th>Ações</th>
+                </tr>
             </thead>
-            <tbody>
+            <tbody id="tableBody">
 <?php while($row = $result->fetch_assoc()): ?>
 <tr>
     <td data-label="Nome"><?= htmlspecialchars($row['nome']) ?></td>
@@ -213,10 +225,32 @@ h1, h2 {
     </td>
 </tr>
 <?php endwhile; ?>
-</tbody>
+            </tbody>
         </table>
     </div>
 </div>
+
+<script>
+    // Filtro de pesquisa em tempo real
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('tableBody');
+    searchInput.addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = tableBody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            const nome = row.cells[0].textContent.toLowerCase();
+            const cpf_cnpj = row.cells[1].textContent.toLowerCase();
+            const email = row.cells[2].textContent.toLowerCase();
+
+            if (nome.includes(filter) || cpf_cnpj.includes(filter) || email.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
 
 <?php include('../includes/footer.php'); ?>
 </body>
