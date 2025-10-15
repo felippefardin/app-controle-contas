@@ -1,11 +1,71 @@
-<div style="position: fixed; bottom: 20px; left: 20px; z-index: 1002; display: flex; gap: 15px;">
-    
-    <a href="#" id="abrir-calculadora" title="Abrir Calculadora" style="font-size: 24px; text-decoration: none;">
-        &#128290; </a>
+<style>
+    /* Estilos do Rodapé Principal */
+    .footer {
+        background-color: #222;
+        color: #aaa;
+        padding: 15px 0;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        font-size: 0.9em;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
+        z-index: 1000; /* Garante que o rodapé fique acima de outros elementos */
+    }
+    .footer a {
+        color: #0af;
+        text-decoration: none;
+        margin: 0 10px;
+    }
+    .footer a:hover {
+        text-decoration: underline;
+    }
 
-    <a href="#" id="abrir-calendario" title="Abrir Calendário" style="font-size: 24px; text-decoration: none;">
-        &#128197; </a>
+    /* Estilos para os Ícones Flutuantes de Ação */
+    .action-buttons {
+        position: fixed;
+        bottom: 80px; /* Posição acima do rodapé */
+        left: 20px;
+        z-index: 1002;
+        display: flex;
+        flex-direction: column; /* Ícones empilhados verticalmente */
+        gap: 10px;
+    }
+    .action-buttons a {
+        background-color: #007bff;
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 22px;
+        text-decoration: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .action-buttons a:hover {
+        background-color: #0056b3;
+        transform: scale(1.1);
+    }
+</style>
 
+<footer class="footer">
+    <p>
+        © <?php echo date("Y"); ?> App Controle de Contas. Todos os direitos reservados.
+        <a href="tutorial.php">Tutorial</a>
+        <a href="protecao_de_dados.php">Proteção de Dados</a>
+    </p>
+</footer>
+
+<div class="action-buttons">
+    <a href="#" id="abrir-calculadora" title="Abrir Calculadora">
+        <i class="fas fa-calculator"></i>
+    </a>
+    <a href="#" id="abrir-calendario" title="Abrir Calendário">
+        <i class="fas fa-calendar-alt"></i>
+    </a>
 </div>
 
 <script>
@@ -100,7 +160,6 @@
 
 <?php
 // Inclui os componentes da calculadora e do calendário no final do body
-// Isso garante que todo o HTML da página já foi carregado antes deles
 include_once 'calculadora.php';
 include_once 'calendario.php';
 ?>
