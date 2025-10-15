@@ -27,6 +27,16 @@ $resultReceber = $stmtReceber->get_result();
 $totaisReceber = $resultReceber->fetch_assoc();
 $stmtReceber->close();
 
+// --- CONSULTA CORRIGIDA PARA O TOTAL DO FLUXO DE CAIXA ---
+// Soma total do caixa diário
+$stmtCaixa = $conn->prepare("SELECT SUM(valor) as total FROM caixa_diario WHERE usuario_id = ?");
+$stmtCaixa->bind_param("i", $usuarioId);
+$stmtCaixa->execute();
+$resultCaixa = $stmtCaixa->get_result();
+$totalCaixa = $resultCaixa->fetch_assoc()['total'] ?? 0;
+$stmtCaixa->close();
+
+
 // Saldo previsto
 $saldoPrevisto = ($totaisReceber['valor_total'] ?? 0) - ($totaisPagar['valor_total'] ?? 0);
 
@@ -36,15 +46,28 @@ $entradas = [];
 $saidas = [];
 for ($i = 11; $i >= 0; $i--) {
     $mes = date('Y-m', strtotime("-$i month"));
-    $labels[] = date('M/Y', strtotime($mes.'-01'));
+    $labels[] = date('M/Y', strtotime($mes . '-01'));
 
-    // Entradas
+    // --- LÓGICA DE ENTRADAS ATUALIZADA ---
+    // Entradas (Contas a Receber)
     $stmtE = $conn->prepare("SELECT SUM(valor) as total FROM contas_receber WHERE usuario_id = ? AND DATE_FORMAT(data_vencimento, '%Y-%m') = ?");
     $stmtE->bind_param("is", $usuarioId, $mes);
     $stmtE->execute();
     $resE = $stmtE->get_result()->fetch_assoc();
-    $entradas[] = floatval($resE['total'] ?? 0);
+    $total_receber_mes = floatval($resE['total'] ?? 0);
     $stmtE->close();
+
+    // Entradas de caixa diário
+    $stmtCaixaMes = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE usuario_id = ? AND DATE_FORMAT(data, '%Y-%m') = ?");
+    $stmtCaixaMes->bind_param("is", $usuarioId, $mes);
+    $stmtCaixaMes->execute();
+    $resCaixaMes = $stmtCaixaMes->get_result()->fetch_assoc();
+    $total_caixa_mes = floatval($resCaixaMes['total'] ?? 0);
+    $stmtCaixaMes->close();
+
+    // Soma as duas fontes de entrada para o mês
+    $entradas[] = $total_receber_mes + $total_caixa_mes;
+
 
     // Saídas
     $stmtS = $conn->prepare("SELECT SUM(valor) as total FROM contas_pagar WHERE usuario_id = ? AND DATE_FORMAT(data_vencimento, '%Y-%m') = ?");
@@ -54,6 +77,19 @@ for ($i = 11; $i >= 0; $i--) {
     $saidas[] = floatval($resS['total'] ?? 0);
     $stmtS->close();
 }
+
+
+$mensagem_sucesso = '';
+$mensagem_erro = '';
+
+if (isset($_GET['success']) && $_GET['success'] === 'excluido') {
+    $mensagem_sucesso = "Lançamento excluído com sucesso!";
+}
+if (isset($_GET['error']) && $_GET['error'] === 'excluir') {
+    $mensagem_erro = "Erro ao excluir lançamento!";
+}
+
+
 ?>
 
 <!DOCTYPE html>
@@ -66,9 +102,13 @@ for ($i = 11; $i >= 0; $i--) {
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #eee; margin:0; padding:20px;}
 .container { max-width:1200px; margin:auto; background-color:#222; padding:25px; border-radius:8px; }
 h2 { font-size:2rem; margin-bottom:30px; font-weight:600; color:#00bfff; text-align:center; }
-.summary-card { background-color:#1f1f1f; border-radius:10px; padding:20px; margin-bottom:20px; border-left:5px solid #00bfff; }
+/* Adicionado 'display: grid' para alinhar os cards */
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+.summary-card { background-color:#1f1f1f; border-radius:10px; padding:20px; border-left:5px solid #00bfff; }
 .card-receber { border-left-color:#2ecc71; }
 .card-pagar { border-left-color:#e74c3c; }
+/* Nova cor para a caixa de fluxo de caixa */
+.card-caixa { border-left-color: #f1c40f; }
 .card-saldo.positive { border-left-color:#3498db; }
 .card-saldo.negative { border-left-color:#c0392b; }
 .summary-card h5 { font-size:1.2rem; font-weight:600; margin-bottom:5px; color:#eee; }
@@ -83,6 +123,13 @@ button#savePdf:hover { background-color:#0099cc; }
 </head>
 <body>
 <div class="container">
+
+<?php if ($mensagem_sucesso): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($mensagem_sucesso) ?></div>
+<?php endif; ?>
+<?php if ($mensagem_erro): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($mensagem_erro) ?></div>
+<?php endif; ?>
 <h2>Dashboard Financeiro</h2>
 
 <div class="row">
@@ -96,6 +143,13 @@ button#savePdf:hover { background-color:#0099cc; }
         <p>R$ <?= number_format($totaisPagar['valor_total'] ?? 0, 2, ',', '.'); ?></p>
         <span><?= $totaisPagar['total_contas'] ?? 0 ?> contas pendentes</span>
     </div>
+
+    <div class="summary-card card-caixa">
+        <h5>Fluxo de Caixa (Entradas)</h5>
+        <p>R$ <?= number_format($totalCaixa, 2, ',', '.'); ?></p>
+        <span>Total de Entradas em Caixa</span>
+    </div>
+    
     <div class="summary-card card-saldo <?= ($saldoPrevisto>=0)?'positive':'negative' ?>">
         <h5>Saldo Previsto</h5>
         <p>R$ <?= number_format($saldoPrevisto,2,',','.'); ?></p>
@@ -152,6 +206,25 @@ document.getElementById('savePdf').addEventListener('click', () => {
         pdf.save('relatorio_financeiro.pdf');
     });
 });
+
+
+// Aguarda o carregamento do DOM
+document.addEventListener('DOMContentLoaded', () => {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        // Define opacidade inicial
+        alert.style.transition = 'opacity 0.5s ease-out';
+        // Aguarda 3 segundos
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            // Após transição, esconde completamente
+            setTimeout(() => { 
+                alert.style.display = 'none'; 
+            }, 500); // tempo da transição
+        }, 3000); // 3 segundos antes do fade-out
+    });
+});
+
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

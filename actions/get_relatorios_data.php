@@ -15,13 +15,25 @@ if ($report == 'fluxo_caixa') {
         $labels[] = date('d/m', strtotime($date));
 
         // Entradas (contas_receber)
-        $sql = "SELECT SUM(valor) AS total FROM contas_receber WHERE data_recebimento = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $date);
-        $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        $entradas[] = $result['total'] ?? 0;
-        $stmt->close();
+        $sql_receber = "SELECT SUM(valor) AS total FROM contas_receber WHERE data_recebimento = ?";
+        $stmt_receber = $conn->prepare($sql_receber);
+        $stmt_receber->bind_param("s", $date);
+        $stmt_receber->execute();
+        $result_receber = $stmt_receber->get_result()->fetch_assoc();
+        $total_receber = $result_receber['total'] ?? 0;
+        $stmt_receber->close();
+
+        // Entradas de caixa diário
+        $sql_caixa = "SELECT SUM(valor) AS total FROM caixa_diario WHERE data = ?";
+        $stmt_caixa = $conn->prepare($sql_caixa);
+        $stmt_caixa->bind_param("s", $date);
+        $stmt_caixa->execute();
+        $result_caixa = $stmt_caixa->get_result()->fetch_assoc();
+        $total_caixa = $result_caixa['total'] ?? 0;
+        $stmt_caixa->close();
+
+        // Soma as entradas de contas a receber e do caixa diário
+        $entradas[] = $total_receber + $total_caixa;
 
         // Saídas (contas_pagar)
         $sql = "SELECT SUM(valor) AS total FROM contas_pagar WHERE data_pagamento = ?";
