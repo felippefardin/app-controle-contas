@@ -1,21 +1,25 @@
 <?php
-require_once '../includes/session_init.php';
 require_once '../database.php';
 
-if (!isset($_GET['id'])) {
-    header('Location: ../pages/lancamento_caixa.php');
-    exit;
-}
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
 
-$id = intval($_GET['id']);
+    // Prepara a query de exclusão
+    $sql = "DELETE FROM caixa_diario WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id);
 
-$stmt = $conn->prepare("DELETE FROM caixa_diario WHERE id = ?");
-$stmt->bind_param("i", $id);
-
-if ($stmt->execute()) {
-    header('Location: ../pages/lancamento_caixa.php?success=excluido');
+    // Executa e redireciona com a mensagem correta
+    if ($stmt->execute()) {
+        header('Location: ../pages/lancamento_caixa.php?success_delete=true');
+    } else {
+        header('Location: ../pages/lancamento_caixa.php?error_delete=true');
+    }
+    $stmt->close();
+    $conn->close();
 } else {
-    header('Location: ../pages/lancamento_caixa.php?error=erro');
+    // Redireciona se o ID não for fornecido
+    header('Location: ../pages/lancamento_caixa.php?error_delete=true');
 }
-$stmt->close();
+exit;
 ?>

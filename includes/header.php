@@ -46,10 +46,10 @@ body {
 .btn-font:hover { background-color: #0056b3; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
 
 .btn-home { background-color: #28a745; }
-.btn-home:hover { background-color: #1e7e34; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
+.btn-home:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
 
 .btn-exit { background-color: #dc3545; }
-.btn-exit:hover { background-color: #b52a37; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
+.btn-exit:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.35); }
 
 /* Foco nos botões */
 .font-controls button:focus,

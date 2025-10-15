@@ -64,6 +64,7 @@ $result = $stmt->get_result();
             border: none;
         }
 
+        
         .table {
             color: #eee;
         }

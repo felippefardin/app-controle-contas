@@ -181,6 +181,16 @@ h1, h2, h3 {
     </div>
 
     <div class="secao-tutorial">
+        <h3><i class="fas fa-cash-register"></i> Fluxo de Caixa Real</h3>
+        <p>Esta seção permite o controle de entradas e saídas diárias do caixa, oferecendo uma visão clara do dinheiro que efetivamente movimentou na empresa.</p>
+        <ul>
+            <li><i class="fas fa-plus"></i> Adicione novos lançamentos de caixa informando a data e o valor.</li>
+            <li><i class="fas fa-calendar-alt"></i> Filtre os lançamentos por período para analisar o fluxo de caixa em datas específicas.</li>
+            <li><i class="fas fa-file-pdf"></i> Gere relatórios em PDF do período filtrado, com resumo de totais.</li>
+        </ul>
+    </div>
+
+    <div class="secao-tutorial">
         <h3><i class="fas fa-users-cog"></i> Usuários</h3>
         <p>Se você for um administrador, esta área permite gerenciar os usuários do sistema.</p>
         <ul>

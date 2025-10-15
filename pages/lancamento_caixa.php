@@ -177,9 +177,12 @@ table tbody tr:hover {
         <div class="alert alert-success">Lançamento salvo com sucesso!</div>
     <?php elseif (isset($_GET['error'])): ?>
         <div class="alert alert-danger">Ocorreu um erro ao salvar o lançamento.</div>
+    <?php elseif (isset($_GET['success_delete'])): ?>
+        <div class="alert alert-success">Lançamento excluído com sucesso!</div>
+    <?php elseif (isset($_GET['error_delete'])): ?>
+        <div class="alert alert-danger">Ocorreu um erro ao excluir o lançamento.</div>
     <?php endif; ?>
 
-    <!-- Formulário de novo lançamento -->
     <form action="../actions/add_caixa_diario.php" method="post">
         <div class="form-group">
             <label for="data">Data:</label>
@@ -192,7 +195,6 @@ table tbody tr:hover {
         <button type="submit" class="btn btn-primary">Salvar Lançamento</button>
     </form>
 
-    <!-- Pesquisa por período -->
     <div class="search-container">
         <h3>Filtrar por Período</h3>
         <div class="form-group">
@@ -241,6 +243,18 @@ table tbody tr:hover {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            alert.style.opacity = '0';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 500); // Tempo para a transição de opacidade
+        }, 3000); // 3 segundos
+    });
+});
+
 // Filtrar tabela em tempo real por data
 const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
