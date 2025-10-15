@@ -1,7 +1,6 @@
 <?php
 require_once '../includes/session_init.php';
 
-// Apenas exibe o erro, não processa mais o login aqui
 $erro = $_SESSION['erro_login'] ?? '';
 unset($_SESSION['erro_login']);
 ?>
@@ -34,6 +33,7 @@ unset($_SESSION['erro_login']);
       box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
       display: flex;
       flex-direction: column;
+      position: relative;
     }
     form h2 {
       margin-bottom: 20px;
@@ -70,10 +70,8 @@ unset($_SESSION['erro_login']);
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
-    button:hover,
-    button:focus {
+    button:hover {
       background-color: #0056b3;
-      outline: none;
     }
     .erro {
       background-color: #cc4444;
@@ -99,10 +97,74 @@ unset($_SESSION['erro_login']);
       color: black;
       font-size: 1.1rem;
     }
-    @media (max-width: 400px) {
+    .action-icons {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 15px;
+    }
+    .action-icons a {
+      color: #0af;
+      text-decoration: none;
+      font-size: 1.3rem;
+      position: relative;
+      transition: transform 0.3s ease;
+    }
+    .action-icons a:hover {
+      transform: scale(1.2);
+    }
+
+    /* Balão do Feedback */
+    .action-icons a.feedback::after {
+      content: "Nos ajude a melhorar o sistema com sua opinião";
+      position: absolute;
+      bottom: 130%;
+      right: 50%;
+      transform: translateX(50%);
+      background-color: #00bfff;
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .action-icons a.feedback:hover::after {
+      opacity: 1;
+    }
+
+    /* Texto acima do Suporte */
+    .action-icons a.suporte::after {
+      content: "Fale Conosco";
+      position: absolute;
+      bottom: 130%;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #00bfff;
+      font-weight: bold;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .action-icons a.suporte:hover::after {
+      opacity: 1;
+    }
+
+    @media (max-width: 500px) {
       form {
         width: 100%;
         padding: 20px;
+      }
+      .action-icons {
+        gap: 10px;
+        top: 5px;
+        right: 5px;
+      }
+      .action-icons a {
+        font-size: 1.2rem;
       }
       button {
         font-size: 1rem;
@@ -113,6 +175,10 @@ unset($_SESSION['erro_login']);
 </head>
 <body>
   <form action="../actions/login.php" method="POST" novalidate>
+    <div class="action-icons">
+      <a href="feedback.php" class="feedback" title="Feedback"><i class="fas fa-comment-dots"></i></a>
+      <a href="suporte.php" class="suporte" title="Suporte"><i class="fas fa-headset"></i></a>
+    </div>
     <h2>Login</h2>
 
     <?php if (!empty($erro)) : ?>
