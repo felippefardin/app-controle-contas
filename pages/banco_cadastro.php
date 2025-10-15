@@ -24,27 +24,114 @@ $result = $stmt->get_result();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; padding: 20px; }
-        .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
-        h1, h2 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; margin-bottom: 1rem; }
-        .form-control { background-color: #333; color: #eee; border: 1px solid #444; }
-        .form-control:focus { background-color: #333; color: #eee; border-color: #0af; box-shadow: none; }
-        .btn-primary { background-color: #0af; border: none; }
-        .table { color: #eee; }
-        .table thead { background-color: #0af; color: #121212; }
-        .table tbody tr { background-color: #2c2c2c; }
-        .table tbody tr:hover { background-color: #3c3c3c; }
-        /* Estilos para os botões de ação */
-        .btn-action {
-            padding: 5px 10px;
-            font-size: 14px;
-            margin: 0 2px;
-            text-decoration: none !important;
-            color: white !important;
-        }
-        .btn-edit { background-color: #17a2b8; }
-        .btn-delete { background-color: #dc3545; }
-    </style>
+body {
+    background-color: #121212;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    margin: 0;
+}
+
+/* Container principal */
+.container {
+    background-color: #222;
+    padding: 25px;
+    border-radius: 8px;
+    margin-top: 30px;
+}
+
+/* Títulos */
+h1, h2 {
+    color: #eee;
+    border-bottom: 2px solid #0af;
+    padding-bottom: 10px;
+    margin-bottom: 1rem;
+}
+
+/* Formulário */
+.form-control {
+    background-color: #333;
+    color: #eee;
+    border: 1px solid #444;
+}
+.form-control:focus {
+    background-color: #333;
+    color: #eee;
+    border-color: #0af;
+    box-shadow: none;
+}
+
+/* Botão */
+.btn-primary {
+    background-color: #0af;
+    border: none;
+}
+
+/* Tabela */
+.table {
+    color: #eee;
+}
+.table thead {
+    background-color: #0af;
+    color: #fff;
+}
+.table tbody tr {
+    background-color: #2c2c2c;
+}
+.table tbody tr:hover {
+    background-color: #3c3c3c;
+}
+
+/* Botões de ação */
+.btn-action {
+    padding: 5px 10px;
+    font-size: 14px;
+    margin: 0 2px;
+    text-decoration: none !important;
+    color: white !important;
+}
+.btn-edit { background-color: #17a2b8; }
+.btn-delete { background-color: #dc3545; }
+
+/* Responsividade */
+@media (max-width: 992px) {
+    .form-row {
+        display: flex;
+        flex-direction: column;
+    }
+    .form-group {
+        width: 100% !important;
+    }
+    .btn-action {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+        text-align: center;
+    }
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+    .table thead tr {
+        display: none; /* Esconde cabeçalho da tabela no mobile */
+    }
+    .table tbody tr {
+        margin-bottom: 15px;
+        border-bottom: 2px solid #0af;
+        padding: 10px 5px;
+    }
+    .table tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 10px;
+        text-align: left;
+    }
+    .table tbody td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        color: #0af;
+    }
+}
+</style>
 </head>
 <body>
 <div class="container">
@@ -97,23 +184,23 @@ $result = $stmt->get_result();
                     <th>Ações</th> </tr>
             </thead>
             <tbody>
-                <?php while($row = $result->fetch_assoc()): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row['nome_banco']) ?></td>
-                    <td><?= htmlspecialchars($row['agencia']) ?></td>
-                    <td><?= htmlspecialchars($row['conta']) ?></td>
-                    <td><?= htmlspecialchars($row['chave_pix']) ?></td>
-                    <td>
-                        <a href="editar_banco.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-edit btn-action">
-                            <i class="fa-solid fa-pen-to-square"></i> Editar
-                        </a>
-                        <a href="../actions/excluir_banco.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-delete btn-action" onclick="return confirm('Tem certeza que deseja excluir esta conta?');">
-                            <i class="fa-solid fa-trash"></i> Excluir
-                        </a>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
+<?php while($row = $result->fetch_assoc()): ?>
+<tr>
+    <td data-label="Banco"><?= htmlspecialchars($row['nome_banco']) ?></td>
+    <td data-label="Agência"><?= htmlspecialchars($row['agencia']) ?></td>
+    <td data-label="Conta"><?= htmlspecialchars($row['conta']) ?></td>
+    <td data-label="Chave PIX"><?= htmlspecialchars($row['chave_pix']) ?></td>
+    <td data-label="Ações">
+        <a href="editar_banco.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-edit btn-action">
+            <i class="fa-solid fa-pen-to-square"></i> Editar
+        </a>
+        <a href="../actions/excluir_banco.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-delete btn-action" onclick="return confirm('Tem certeza que deseja excluir esta conta?');">
+            <i class="fa-solid fa-trash"></i> Excluir
+        </a>
+    </td>
+</tr>
+<?php endwhile; ?>
+</tbody>
         </table>
     </div>
 </div>
