@@ -1,11 +1,12 @@
 <?php
+require_once '../includes/session_init.php';
 require_once '../includes/header.php';
 require_once '../database.php';
 
 // Busca todos os lançamentos de caixa para exibir na tabela
 $lancamentos = [];
 $sql = "SELECT id, data, valor FROM caixa_diario ORDER BY data DESC";
-$result = $conn->query($sql);
+$result = $conn->query($sql); 
 if ($result) {
     $lancamentos = $result->fetch_all(MYSQLI_ASSOC);
 }
