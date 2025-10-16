@@ -1,3 +1,10 @@
+<?php if (isset($_SESSION['proprietario_id_original'])): ?>
+    <div style="background-color: #ffc107; color: #000; text-align: center; padding: 10px;">
+        Você está visualizando como <strong><?= htmlspecialchars($_SESSION['usuario_principal']['nome']); ?></strong>.
+        <a href="../actions/retornar_admin.php" style="margin-left: 20px; color: #000; font-weight: bold;">Voltar para o Acesso Proprietário</a>
+    </div>
+<?php endif; ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

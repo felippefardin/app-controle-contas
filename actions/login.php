@@ -14,6 +14,16 @@ $result = $stmt->get_result();
 
 if ($user = $result->fetch_assoc()) {
     if (password_verify($senha, $user['senha'])) {
+        // --- NOVA VERIFICAÇÃO DE NÍVEL DE ACESSO ---
+        if ($user['nivel_acesso'] === 'proprietario') {
+            $_SESSION['proprietario'] = $user; // Armazena os dados do proprietário em uma sessão separada
+            session_write_close();
+            // Linha CORRIGIDA
+header('Location: ../pages/admin/selecionar_conta.php'); // Redireciona para a nova página de administração
+            exit;
+        }
+        // --- FIM DA NOVA VERIFICAÇÃO ---
+
         $_SESSION['usuario_principal'] = $user;
         session_write_close();
         header('Location: ../pages/selecionar_usuario.php');
