@@ -1,90 +1,114 @@
-<style>
-    /* Estilos do Rodapé Principal */
-.footer {
-    background-color: #222;
-    color: #aaa;
-    padding: 15px 0;
-    text-align: center;
-    position: relative; /* Remove o fixo para não cobrir conteúdo */
-    width: 100%;
-    font-size: 0.9em;
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
-    z-index: 1000;
-    margin-top: 40px; /* Espaço entre o conteúdo e o rodapé */
-}
+ <?php include('../pages/calculadora.php'); ?>
+<?php include('../pages/calendario.php'); ?>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-/* Caso queira que o footer fique no fundo mesmo em páginas curtas */
-body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-main {
-    flex: 1;
-}
+ </main>
 
-/* Links do rodapé */
-.footer a {
-    color: #0af;
-    text-decoration: none;
-    margin: 0 10px;
-}
-.footer a:hover {
-    text-decoration: underline;
-}
+  <footer class="footer">
+      <p>
+          © <?php echo date("Y"); ?> App Controle de Contas. Todos os direitos reservados.
+          <a href="tutorial.php">Tutorial</a>
+          <a href="protecao_de_dados.php">Proteção de Dados</a>
+      </p>
+  </footer>
 
-/* Ícones flutuantes de ação */
-.action-buttons {
-    position: fixed;
-    bottom: 80px; /* Posição acima do rodapé */
-    left: 20px;
-    z-index: 1002;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.action-buttons a {
-    background-color: #007bff;
-    color: white;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 22px;
-    text-decoration: none;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-.action-buttons a:hover {
-    background-color: #0056b3;
-    transform: scale(1.1);
-}
+  <div class="action-buttons">
+      <a href="#" id="abrir-calculadora" title="Abrir Calculadora">
+          <i class="fas fa-calculator"></i>
+      </a>
+      <a href="#" id="abrir-calendario" title="Abrir Calendário">
+          <i class="fas fa-calendar-alt"></i>
+      </a>
+  </div>
 
-</style>
+  <style>
+    .footer {
+        background-color: #222;
+        color: #aaa;
+        padding: 15px 0;
+        text-align: center;
+        width: 100%;
+        font-size: 0.9em;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
+        margin-top: auto;
+    }
 
-<body>
+    .footer a {
+        color: #0af;
+        text-decoration: none;
+        margin: 0 10px;
+    }
+    .footer a:hover { text-decoration: underline; }
+
+    .action-buttons {
+        position: fixed;
+        bottom: 80px;
+        left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 1002;
+    }
+    .action-buttons a {
+        background-color: #007bff;
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 22px;
+        text-decoration: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .action-buttons a:hover {
+        background-color: #0056b3;
+        transform: scale(1.1);
+    }
+  </style>
+
+  <script>
+    let fontSize = 100;
+    function adjustFontSize(amount) {
+      fontSize += amount * 10;
+      document.body.style.fontSize = fontSize + '%';
+    }
+    function resetFontSize() {
+      fontSize = 100;
+      document.body.style.fontSize = '100%';
+    }
    
+// Botões flutuantes
+const botaoCalc = document.getElementById('abrir-calculadora');
+const botaoCal = document.getElementById('abrir-calendario');
 
-    <main>
-        <!-- conteúdo principal da página -->
-    </main>
+// Containers das janelas
+const calcContainer = document.getElementById('calculadora-container');
+const calContainer = document.getElementById('calendario-container');
 
-    <footer class="footer">
-        <p>
-            © <?php echo date("Y"); ?> App Controle de Contas. Todos os direitos reservados.
-            <a href="tutorial.php">Tutorial</a>
-            <a href="protecao_de_dados.php">Proteção de Dados</a>
-        </p>
-    </footer>
+// Abertura
+botaoCalc.addEventListener('click', (e) => {
+  e.preventDefault();
+  fecharAmbos();
+  calcContainer.style.display = 'block';
+});
 
-    <div class="action-buttons">
-        <a href="#" id="abrir-calculadora" title="Abrir Calculadora">
-            <i class="fas fa-calculator"></i>
-        </a>
-        <a href="#" id="abrir-calendario" title="Abrir Calendário">
-            <i class="fas fa-calendar-alt"></i>
-        </a>
-    </div>
+botaoCal.addEventListener('click', (e) => {
+  e.preventDefault();
+  fecharAmbos();
+  calContainer.style.display = 'block';
+});
+
+// Fecha uma ao abrir outra
+function fecharAmbos() {
+  calcContainer.style.display = 'none';
+  calContainer.style.display = 'none';
+}
+
+
+  </script>
+
 </body>
+</html>
