@@ -1,13 +1,35 @@
 <?php
 require_once '../includes/session_init.php';
 
-// Verifica se o usuário está logado
-if (!isset($_SESSION['usuario'])) {
-    header('Location: login.php');
+// Bloco para lidar com a pesquisa de fornecedores via AJAX
+if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
+    include '../database.php';
+    if (!isset($_SESSION['usuario']['id'])) {
+        echo json_encode([]);
+        exit;
+    }
+
+    $usuarioId = $_SESSION['usuario']['id'];
+    $term = $_GET['term'] ?? '';
+
+    $stmt = $conn->prepare("SELECT id, nome FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
+    $searchTerm = "%{$term}%";
+    $stmt->bind_param("is", $usuarioId, $searchTerm);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $fornecedores = [];
+    while ($row = $result->fetch_assoc()) {
+        $fornecedores[] = $row;
+    }
+    $stmt->close();
+
+    header('Content-Type: application/json');
+    echo json_encode($fornecedores);
     exit;
 }
 
-// Inclui a conexão com o banco
+
+// O restante do seu código PHP original
 $servername = "localhost";
 $username = "root";
 $password = "";
@@ -20,7 +42,7 @@ if ($conn->connect_error) {
     die("Conexão falhou: " . $conn->connect_error);
 }
 
-// Adiciona a lógica de filtro de usuário
+// Lógica de filtro de usuário
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
@@ -41,7 +63,6 @@ elseif(!empty($_GET['data_fim'])) $where[] = "data_vencimento <= '".$conn->real_
 
 $sql = "SELECT * FROM contas_pagar WHERE ".implode(" AND ",$where)." ORDER BY data_vencimento ASC";
 $result = $conn->query($sql);
-
 ?>
 
 <!DOCTYPE html>
@@ -66,7 +87,32 @@ $result = $conn->query($sql);
     a:hover { text-decoration: underline; }
     p { text-align: center; margin-top: 20px; }
 
-    
+    /* Estilos para o autocompletar */
+    .autocomplete-container {
+        position: relative;
+        width: 100%;
+    }
+    .autocomplete-items {
+        position: absolute;
+        border: 1px solid #444;
+        border-top: none;
+        z-index: 99;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #333;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    .autocomplete-items div {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #444;
+        color: #eee;
+    }
+    .autocomplete-items div:hover {
+        background-color: #555;
+    }
 
     /* MENSAGENS DE SUCESSO/ERRO */
     .success-message {
@@ -144,8 +190,8 @@ td[data-label='Ações'] {
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
     .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
     .modal-content .close-btn:hover { color: #00bfff; }
-    .modal-content form { display: flex; flex-wrap: wrap; gap: 15px; }
-    .modal-content form input { flex: 1 1 200px; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
+    .modal-content form { display: flex; flex-direction: column; gap: 15px; }
+    .modal-content form input { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
     .modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
     
@@ -190,15 +236,19 @@ if (isset($_SESSION['success_message'])) {
     <span class="close-btn" onclick="toggleForm()">&times;</span>
     <h3>Nova Conta a Pagar</h3>
     <form action="../actions/add_conta_pagar.php" method="POST">
-      <input type="text" name="fornecedor" placeholder="Fornecedor" required>
-      <input type="text" name="numero" placeholder="Número" required>
-      <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
-      <input type="date" name="data_vencimento" required>
-     <div style="display: dflex; align-items: center; width: 100%;">
-  <input type="checkbox" id="enviar_email" name="enviar_email" value="S" checked>
-  <label for="enviar_email" style="margin-left: 5px;">Enviar email de lembrete</label>
-</div>
-      <button type="submit">Adicionar Conta</button>
+        <div class="autocomplete-container">
+            <input type="text" id="pesquisar_fornecedor" name="fornecedor_nome" placeholder="Pesquisar fornecedor..." autocomplete="off" required>
+            <div id="fornecedor_autocomplete_list" class="autocomplete-items"></div>
+        </div>
+        <input type="hidden" name="fornecedor_id" id="fornecedor_id_hidden">
+        <input type="text" name="numero" placeholder="Número" required>
+        <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
+        <input type="date" name="data_vencimento" required>
+        <div style="display: flex; align-items: center; width: 100%;">
+            <input type="checkbox" id="enviar_email" name="enviar_email" value="S" checked>
+            <label for="enviar_email" style="margin-left: 5px;">Enviar email de lembrete</label>
+        </div>
+        <button type="submit">Adicionar Conta</button>
     </form>
   </div>
 </div>
@@ -296,7 +346,48 @@ if ($result->num_rows > 0) {
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
+  $(document).ready(function() {
+      $("#pesquisar_fornecedor").on("keyup", function() {
+          var term = $(this).val();
+          if (term.length < 2) {
+              $("#fornecedor_autocomplete_list").empty();
+              $("#fornecedor_id_hidden").val('');
+              return;
+          }
+
+          $.ajax({
+              url: 'contas_pagar.php',
+              type: 'GET',
+              data: { action: 'search_fornecedor', term: term },
+              dataType: 'json',
+              success: function(data) {
+                  var items = "";
+                  $.each(data, function(index, item) {
+                      items += `<div data-id="${item.id}">${item.nome}</div>`;
+                  });
+                  $("#fornecedor_autocomplete_list").html(items);
+              }
+          });
+      });
+
+      $(document).on("click", "#fornecedor_autocomplete_list div", function() {
+          var id = $(this).data("id");
+          var name = $(this).text();
+          $("#pesquisar_fornecedor").val(name);
+          $("#fornecedor_id_hidden").val(id);
+          $("#fornecedor_autocomplete_list").empty();
+      });
+
+      // Hide autocomplete when clicking outside
+      $(document).on("click", function(e) {
+          if (!$(e.target).closest('.autocomplete-container').length) {
+              $(".autocomplete-items").empty();
+          }
+      });
+  });
+
   function toggleForm() {
     const modal = document.getElementById('addContaModal');
     modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
@@ -318,21 +409,6 @@ if ($result->num_rows > 0) {
     
     modal.style.display = 'flex';
   }
-
-  window.onclick = function(event) {
-    const addModal = document.getElementById('addContaModal');
-    const exportModal = document.getElementById('exportModal');
-    const deleteModal = document.getElementById('deleteModal');
-    if (event.target == addModal) {
-        addModal.style.display = 'none';
-    }
-    if (event.target == exportModal) {
-        exportModal.style.display = 'none';
-    }
-    if (event.target == deleteModal) {
-        deleteModal.style.display = 'none';
-    }
-  };
 
   // NOVO: Função para abrir o modal de repetição
   function openRepetirModal(id, fornecedor) {
