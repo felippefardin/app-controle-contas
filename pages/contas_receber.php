@@ -1,5 +1,35 @@
 <?php
 require_once '../includes/session_init.php';
+
+// Bloco para lidar com a pesquisa de responsáveis/clientes via AJAX
+if (isset($_GET['action']) && in_array($_GET['action'], ['search_responsavel', 'search_cliente'])) {
+    include '../database.php';
+    if (!isset($_SESSION['usuario']['id'])) {
+        echo json_encode([]);
+        exit;
+    }
+
+    $usuarioId = $_SESSION['usuario']['id'];
+    $term = $_GET['term'] ?? '';
+
+    // A busca é a mesma para ambos, na tabela de pessoas/fornecedores
+    $stmt = $conn->prepare("SELECT id, nome, email FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
+    $searchTerm = "%{$term}%";
+    $stmt->bind_param("is", $usuarioId, $searchTerm);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $pessoas = [];
+    while ($row = $result->fetch_assoc()) {
+        $pessoas[] = $row;
+    }
+    $stmt->close();
+
+    header('Content-Type: application/json');
+    echo json_encode($pessoas);
+    exit;
+}
+
+
 include('../includes/header.php');
 include('../database.php');
 
@@ -13,17 +43,6 @@ $perfil = $_SESSION['usuario']['perfil'];
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // --- BUSCANDO DADOS PARA O MODAL DE COBRANÇA ---
-// Buscar pessoas/fornecedores
-$stmt_pessoas = $conn->prepare("SELECT id, nome, email FROM pessoas_fornecedores WHERE id_usuario = ? ORDER BY nome ASC");
-$stmt_pessoas->bind_param("i", $usuarioId);
-$stmt_pessoas->execute();
-$result_pessoas = $stmt_pessoas->get_result();
-$pessoas = [];
-while ($row_pessoa = $result_pessoas->fetch_assoc()) {
-    $pessoas[] = $row_pessoa;
-}
-$stmt_pessoas->close();
-
 // Buscar contas bancárias
 $stmt_bancos = $conn->prepare("SELECT id, nome_banco, chave_pix FROM contas_bancarias WHERE id_usuario = ? ORDER BY nome_banco ASC");
 $stmt_bancos->bind_param("i", $usuarioId);
@@ -146,6 +165,33 @@ $result = $conn->query($sql);
     .modal-content form button { width: 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
 
+    /* Estilos para o autocompletar */
+    .autocomplete-container {
+        position: relative;
+        width: 100%;
+    }
+    .autocomplete-items {
+        position: absolute;
+        border: 1px solid #444;
+        border-top: none;
+        z-index: 99;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #333;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    .autocomplete-items div {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #444;
+        color: #eee;
+    }
+    .autocomplete-items div:hover {
+        background-color: #555;
+    }
+
     @media (max-width: 768px) {
         table, thead, tbody, th, td, tr { display: block; }
         th { display: none; }
@@ -191,14 +237,11 @@ if (isset($_SESSION['success_message'])) {
     <span class="close-btn" onclick="toggleForm()">&times;</span>
     <h3>Nova Conta a Receber</h3>
     <form method="POST" action="../actions/add_conta_receber.php">
-        <select name="responsavel_id" required>
-            <option value="">-- Selecione um Responsável --</option>
-            <?php foreach ($pessoas as $pessoa): ?>
-                <option value="<?= $pessoa['id'] ?>">
-                    <?= htmlspecialchars($pessoa['nome']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+        <div class="autocomplete-container">
+            <input type="text" id="pesquisar_responsavel" name="responsavel_nome" placeholder="Pesquisar responsável..." autocomplete="off" required>
+            <div id="responsavel_autocomplete_list" class="autocomplete-items"></div>
+        </div>
+        <input type="hidden" name="responsavel_id" id="responsavel_id_hidden">
         <input type="text" name="numero" placeholder="Número" required>
         <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
         <input type="date" name="data_vencimento" required>
@@ -284,17 +327,12 @@ if ($result && $result->num_rows > 0) {
             <p style="text-align: left;"><strong>Valor da Conta:</strong> R$ <span id="modalValorConta"></span></p>
             <hr style="border-top: 1px solid #444; width:100%;">
             
-            <div>
-                <label for="pessoa_id">Selecione o Cliente</label>
-                <select name="pessoa_id" id="pessoa_id" required>
-                    <option value="">-- Selecione um cliente --</option>
-                    <?php foreach ($pessoas as $pessoa): ?>
-                        <option value="<?= $pessoa['id'] ?>" data-email="<?= htmlspecialchars($pessoa['email']) ?>">
-                            <?= htmlspecialchars($pessoa['nome']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div class="autocomplete-container">
+                <label for="pesquisar_cliente_cobranca">Selecione o Cliente</label>
+                <input type="text" id="pesquisar_cliente_cobranca" name="cliente_nome" placeholder="Pesquisar cliente..." autocomplete="off" required>
+                <div id="cliente_cobranca_autocomplete_list" class="autocomplete-items"></div>
             </div>
+            <input type="hidden" name="pessoa_id" id="pessoa_id_hidden">
 
             <div>
                 <label for="email_destinatario">E-mail para Envio</label>
@@ -353,6 +391,83 @@ if ($result && $result->num_rows > 0) {
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
+    $(document).ready(function() {
+        // Autocompletar para Adicionar Nova Conta
+        $("#pesquisar_responsavel").on("keyup", function() {
+            var term = $(this).val();
+            if (term.length < 2) {
+                $("#responsavel_autocomplete_list").empty();
+                $("#responsavel_id_hidden").val('');
+                return;
+            }
+
+            $.ajax({
+                url: 'contas_receber.php',
+                type: 'GET',
+                data: { action: 'search_responsavel', term: term },
+                dataType: 'json',
+                success: function(data) {
+                    var items = "";
+                    $.each(data, function(index, item) {
+                        items += `<div data-id="${item.id}">${item.nome}</div>`;
+                    });
+                    $("#responsavel_autocomplete_list").html(items);
+                }
+            });
+        });
+
+        $(document).on("click", "#responsavel_autocomplete_list div", function() {
+            var id = $(this).data("id");
+            var name = $(this).text();
+            $("#pesquisar_responsavel").val(name);
+            $("#responsavel_id_hidden").val(id);
+            $("#responsavel_autocomplete_list").empty();
+        });
+
+        // NOVO: Autocompletar para Gerar Cobrança
+        $("#pesquisar_cliente_cobranca").on("keyup", function() {
+            var term = $(this).val();
+            if (term.length < 2) {
+                $("#cliente_cobranca_autocomplete_list").empty();
+                $("#pessoa_id_hidden").val('');
+                $("#email_destinatario").val('');
+                return;
+            }
+
+            $.ajax({
+                url: 'contas_receber.php',
+                type: 'GET',
+                data: { action: 'search_cliente', term: term },
+                dataType: 'json',
+                success: function(data) {
+                    var items = "";
+                    $.each(data, function(index, item) {
+                        items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
+                    });
+                    $("#cliente_cobranca_autocomplete_list").html(items);
+                }
+            });
+        });
+
+        $(document).on("click", "#cliente_cobranca_autocomplete_list div", function() {
+            var id = $(this).data("id");
+            var name = $(this).text();
+            var email = $(this).data("email");
+            $("#pesquisar_cliente_cobranca").val(name);
+            $("#pessoa_id_hidden").val(id);
+            $("#email_destinatario").val(email);
+            $("#cliente_cobranca_autocomplete_list").empty();
+        });
+
+
+        // Esconde a lista de autocompletar ao clicar fora
+        $(document).on("click", function(e) {
+            if (!$(e.target).closest('.autocomplete-container').length) {
+                $(".autocomplete-items").empty();
+            }
+        });
+    });
+
     // Suas funções JS originais
     function toggleForm(){ 
         const modal = document.getElementById('addContaModal'); 
@@ -375,27 +490,20 @@ if ($result && $result->num_rows > 0) {
         modal.style.display = 'flex';
     }
 
-    // --- ADIÇÃO: FUNÇÃO PARA ABRIR O MODAL DE COBRANÇA ---
+    // --- FUNÇÃO PARA ABRIR O MODAL DE COBRANÇA ---
     function openCobrancaModal(contaId, valor) {
         // Preenche os campos do modal
         document.getElementById('modalContaId').value = contaId;
         document.getElementById('modalValorConta').innerText = valor;
         
-        // Reseta os selects e o campo de email
-        document.getElementById('pessoa_id').selectedIndex = 0;
+        // Limpa os campos de busca ao abrir o modal
+        document.getElementById('pesquisar_cliente_cobranca').value = '';
+        document.getElementById('pessoa_id_hidden').value = '';
         document.getElementById('email_destinatario').value = '';
 
         // Mostra o modal
         document.getElementById('cobrancaModal').style.display = 'flex';
     }
-
-    // Adiciona o evento para preencher o e-mail
-    document.getElementById('pessoa_id').addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const email = selectedOption.getAttribute('data-email');
-        document.getElementById('email_destinatario').value = email || '';
-    });
-
 
     // Fecha modais ao clicar fora
     window.addEventListener('click', e => {

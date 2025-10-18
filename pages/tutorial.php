@@ -160,11 +160,12 @@ h1, h2, h3 {
         </ul>
     </div>
     
-    <div class="secao-tutorial">
+   <div class="secao-tutorial">
         <h3><i class="fas fa-hand-holding-usd"></i> Contas a Receber</h3>
         <p>Aqui você administra tudo o que precisa receber de seus clientes ou outras fontes.</p>
         <ul>
             <li><i class="fas fa-plus-circle"></i> <strong>Adicionar Nova Conta:</strong> Semelhante às contas a pagar, adicione novas receitas com seus detalhes.</li>
+            <li><i class="fas fa-search"></i> <strong>Pesquisa Inteligente:</strong> Ao adicionar uma conta ou gerar uma cobrança, digite o nome do responsável/cliente no campo de pesquisa para encontrar o cadastro rapidamente, sem precisar rolar a lista.</li>
             <li><i class="fas fa-check-double"></i> <strong>Baixar:</strong> Quando receber um pagamento, marque a conta como "baixada", informando os detalhes do recebimento e anexando o comprovante.</li>
             <li><i class="fas fa-envelope"></i> <strong>Enviar Cobrança:</strong> Gere e envie um e-mail de cobrança diretamente do sistema para o responsável pela conta.</li>
         </ul>
@@ -252,7 +253,7 @@ h1, h2, h3 {
             <li><i class="fas fa-pen-nib"></i> <strong>Envie seu feedback:</strong> Preencha o formulário com suas observações e envie. Todas as mensagens são analisadas pela equipe de desenvolvimento.</li>
         </ul>
     </div>
-
+ 
     <!-- Seção Suporte -->
     <div class="secao-tutorial">
         <h3><i class="fas fa-headset"></i> Suporte</h3>
