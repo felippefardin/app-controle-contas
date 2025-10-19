@@ -68,7 +68,7 @@
   #fechar-calculadora { cursor:pointer; font-size:18px; font-weight:bold; }
   #calculadora { padding: 10px; }
   #display {
-    width: 93%;
+    width: 100%;
     margin-bottom: 10px;
     padding: 10px;
     font-size: 1.4em;

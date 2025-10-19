@@ -61,3 +61,4 @@ CREATE TABLE recuperacao_senha (
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 
+

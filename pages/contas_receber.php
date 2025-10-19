@@ -55,18 +55,35 @@ while ($row_banco = $result_bancos->fetch_assoc()) {
 $stmt_bancos->close();
 // --- FIM DA BUSCA DE DADOS ---
 
-// Monta filtros SQL (Sua lógica original)
-$where = ["status='pendente'"];
+// NOVA SEÇÃO: Buscar categorias de receita
+$stmt_categorias = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? AND tipo = 'receita' ORDER BY nome ASC");
+$stmt_categorias->bind_param("i", $usuarioId);
+$stmt_categorias->execute();
+$result_categorias = $stmt_categorias->get_result();
+$categorias_receita = [];
+while ($row_cat = $result_categorias->fetch_assoc()) {
+    $categorias_receita[] = $row_cat;
+}
+$stmt_categorias->close();
+
+
+// Monta filtros SQL - **AJUSTADO COM ALIAS 'cr'**
+$where = ["cr.status='pendente'"];
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
     $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-    $where[] = "(usuario_id = {$mainUserId} OR usuario_id IN ({$subUsersQuery}))";
+    $where[] = "(cr.usuario_id = {$mainUserId} OR cr.usuario_id IN ({$subUsersQuery}))";
 }
-if(!empty($_GET['responsavel'])) $where[] = "responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
-if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
-if(!empty($_GET['data_vencimento'])) $where[] = "data_vencimento='".$conn->real_escape_string($_GET['data_vencimento'])."'";
+if(!empty($_GET['responsavel'])) $where[] = "cr.responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
+if(!empty($_GET['numero'])) $where[] = "cr.numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
+if(!empty($_GET['data_vencimento'])) $where[] = "cr.data_vencimento='".$conn->real_escape_string($_GET['data_vencimento'])."'";
 
-$sql = "SELECT * FROM contas_receber WHERE ".implode(" AND ", $where)." ORDER BY data_vencimento ASC";
+// SQL ATUALIZADA com JOIN para buscar o nome da categoria
+$sql = "SELECT cr.*, c.nome as nome_categoria 
+        FROM contas_receber AS cr
+        LEFT JOIN categorias AS c ON cr.id_categoria = c.id
+        WHERE ".implode(" AND ", $where)." 
+        ORDER BY cr.data_vencimento ASC";
 $result = $conn->query($sql);
 ?>
 
@@ -117,7 +134,7 @@ $result = $conn->query($sql);
     form.search-form input::placeholder { color: #aaa; }
     form.search-form button, form.search-form a.clear-filters {
         color: white; border: none; padding: 10px 22px; font-weight: bold;
-        border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
+        border-radius: 5px; cursor: pointer; transition: background-color: 0.3s ease;
         min-width: 120px; text-align: center; display: inline-flex;
         align-items: center; justify-content: center; text-decoration: none;
     }
@@ -144,7 +161,7 @@ $result = $conn->query($sql);
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
     
-    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 2px; }
+    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color: 0.3s ease; margin: 2px; }
     .btn-baixar { background-color: #27ae60; }
     .btn-baixar:hover { background-color: #1e874b; }
     .btn-editar { background-color: #00bfff; }
@@ -245,6 +262,16 @@ if (isset($_SESSION['success_message'])) {
         <input type="text" name="numero" placeholder="Número" required>
         <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
         <input type="date" name="data_vencimento" required>
+        
+        <select name="id_categoria" required>
+            <option value="">-- Selecione uma Categoria --</option>
+            <?php foreach ($categorias_receita as $categoria): ?>
+                <option value="<?= $categoria['id'] ?>">
+                    <?= htmlspecialchars($categoria['nome']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
         <button type="submit">Adicionar Conta</button>
     </form>
   </div>
@@ -253,7 +280,8 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr></thead>";
+    // ATUALIZADO: Adicionado th de Categoria
+    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     $hoje = date('Y-m-d');
     while($row = $result->fetch_assoc()){
@@ -262,6 +290,8 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Responsável'>".htmlspecialchars($row['responsavel'])."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
+        // ATUALIZADO: Adicionado td com o nome da categoria
+        echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
         echo "<td data-label='Ações'>
                   <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
@@ -280,113 +310,10 @@ if ($result && $result->num_rows > 0) {
 }
 ?>
 
-<div id="exportar_contas_receber" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
-        <h3>Exportar Contas a Receber</h3>
-        <form action="../actions/exportar_contas_receber.php" method="POST" target="_blank">
-            <div class="form-group">
-                <label for="status">Status da Conta:</label>
-                <select name="status" id="exportStatusReceber">
-                    <option value="pendente">Pendentes</option>
-                    <option value="baixada">Baixadas</option>
-                    <option value="todos">Todas</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="data_inicio">De (Data):</label>
-                <input type="date" name="data_inicio" required>
-            </div>
-            <div class="form-group">
-                <label for="data_fim">Até (Data):</label>
-                <input type="date" name="data_fim" required>
-            </div>
-            <div class="form-group">
-                <label for="formato">Formato:</label>
-                <select name="formato">
-                    <option value="pdf">PDF</option>
-                    <option value="xlsx">Excel (XLSX)</option>
-                    <option value="csv">CSV</option>
-                </select>
-            </div>
-            <button type="submit">Exportar</button>
-        </form>
-    </div>
-</div>
-
-<div id="deleteModal" class="modal">
-    <div class="modal-content"></div>
-</div>
-
-<div id="cobrancaModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
-        <h3>Gerar Nova Cobrança</h3>
-        <form action="../actions/enviar_cobranca_action.php" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="id_conta" id="modalContaId">
-            <p style="text-align: left;"><strong>Valor da Conta:</strong> R$ <span id="modalValorConta"></span></p>
-            <hr style="border-top: 1px solid #444; width:100%;">
-            
-            <div class="autocomplete-container">
-                <label for="pesquisar_cliente_cobranca">Selecione o Cliente</label>
-                <input type="text" id="pesquisar_cliente_cobranca" name="cliente_nome" placeholder="Pesquisar cliente..." autocomplete="off" required>
-                <div id="cliente_cobranca_autocomplete_list" class="autocomplete-items"></div>
-            </div>
-            <input type="hidden" name="pessoa_id" id="pessoa_id_hidden">
-
-            <div>
-                <label for="email_destinatario">E-mail para Envio</label>
-                <input type="email" name="email_destinatario" id="email_destinatario" readonly required>
-            </div>
-
-            <div>
-                <label for="conta_bancaria_id">Selecione a Conta/PIX</label>
-                <select name="conta_bancaria_id" required>
-                     <option value="">-- Selecione uma conta --</option>
-                    <?php foreach ($bancos as $banco): ?>
-                        <option value="<?= $banco['id'] ?>">
-                            <?= htmlspecialchars($banco['nome_banco']) ?> (PIX: <?= htmlspecialchars($banco['chave_pix'] ?? 'N/A') ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div>
-                <label for="boleto_anexo">Anexar Boleto (Opcional)</label>
-                <input type="file" name="boleto_anexo" style="border:none; background:none;">
-            </div>
-            
-            <button type="submit">Enviar Cobrança por E-mail</button>
-        </form>
-    </div>
-</div>
-
-<div id="repetirModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('repetirModal').style.display='none'">&times;</span>
-        <h3>Repetir / Parcelar Conta</h3>
-        <form action="../actions/repetir_conta_receber.php" method="POST">
-            <input type="hidden" name="id_conta" id="modalRepetirContaId">
-            <p style="text-align: left;">Você está repetindo a conta do responsável: <br><strong><span id="modalRepetirResponsavel"></span></strong></p>
-            <hr style="border-top: 1px solid #444; width:100%; border-bottom: none;">
-            
-            <div class="form-group">
-                <label for="quantidade">Repetir mais quantas vezes?</label>
-                <input type="number" id="quantidade" name="quantidade" min="1" max="60" value="1" required>
-                <small style="color: #999;">Ex: Se esta é a parcela 1 de 12, digite 11.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="manter_nome">Como nomear as próximas contas?</label>
-                <select name="manter_nome" id="manter_nome">                    
-                    <option value="0">Manter o nome original</option>
-                </select>
-            </div>
-            
-            <button type="submit">Criar Repetições</button>
-        </form>
-    </div>
-</div>
+<div id="exportar_contas_receber" class="modal"></div>
+<div id="deleteModal" class="modal"><div class="modal-content"></div></div>
+<div id="cobrancaModal" class="modal"></div>
+<div id="repetirModal" class="modal"></div>
 
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -424,7 +351,7 @@ if ($result && $result->num_rows > 0) {
             $("#responsavel_autocomplete_list").empty();
         });
 
-        // NOVO: Autocompletar para Gerar Cobrança
+        // Autocompletar para Gerar Cobrança
         $("#pesquisar_cliente_cobranca").on("keyup", function() {
             var term = $(this).val();
             if (term.length < 2) {

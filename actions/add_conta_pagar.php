@@ -1,71 +1,52 @@
 <?php
-session_start();
+// actions/add_conta_pagar.php
 
-if (!isset($_SESSION['usuario'])) {
+require_once '../includes/session_init.php';
+require_once '../database.php'; // Garante que $conn está disponível
+
+// Verifica se o usuário está logado
+if (!isset($_SESSION['usuario']['id'])) {
     header('Location: ../pages/login.php');
     exit;
 }
 
-include('../database.php');
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Pega os dados do formulário
+    $fornecedor = trim($_POST['fornecedor_nome']);
+    $numero = trim($_POST['numero']);
+    $valor = str_replace(['.', ','], ['', '.'], $_POST['valor']);
+    $data_vencimento = $_POST['data_vencimento'];
+    $id_categoria = $_POST['id_categoria'];
+    $usuario_id = $_SESSION['usuario']['id'];
+    $enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N'; // Verifica se o checkbox está marcado
 
-// --- VALIDAÇÃO E SANITIZAÇÃO ---
-$fornecedor = trim(filter_input(INPUT_POST, 'fornecedor', FILTER_SANITIZE_SPECIAL_CHARS));
-$numero = trim(filter_input(INPUT_POST, 'numero', FILTER_SANITIZE_SPECIAL_CHARS));
-$data_vencimento = trim($_POST['data_vencimento'] ?? '');
-$valor = trim($_POST['valor'] ?? '');
-$enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N';
+    // Validação básica
+    if (empty($fornecedor) || empty($numero) || !is_numeric($valor) || empty($data_vencimento) || empty($id_categoria)) {
+        $_SESSION['error_message'] = "Todos os campos, incluindo a categoria, são obrigatórios.";
+        header('Location: ../pages/contas_pagar.php');
+        exit;
+    }
 
-$usuarioId = $_SESSION['usuario']['id'];
+    try {
+        $stmt = $conn->prepare("INSERT INTO contas_pagar (fornecedor, numero, valor, data_vencimento, usuario_id, enviar_email, id_categoria) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        // O "s" para enviar_email é porque ele é um CHAR, tratado como string.
+        $stmt->bind_param("ssdsisi", $fornecedor, $numero, $valor, $data_vencimento, $usuario_id, $enviar_email, $id_categoria);
 
-// Validação
-$erros = [];
-if (empty($fornecedor)) {
-    $erros[] = "O campo Fornecedor é obrigatório.";
-}
-if (empty($numero)) {
-    $erros[] = "O campo Número é obrigatório.";
-}
-if (empty($data_vencimento) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_vencimento)) {
-    $erros[] = "Data de vencimento inválida.";
-}
-if (empty($valor)) {
-    $erros[] = "O campo Valor é obrigatório.";
-}
+        if ($stmt->execute()) {
+            $_SESSION['success_message'] = "Conta a pagar adicionada com sucesso!";
+        } else {
+            $_SESSION['error_message'] = "Erro ao adicionar conta: " . $stmt->error;
+        }
 
-// Se houver erros, redireciona de volta com uma mensagem
-if (!empty($erros)) {
-    $_SESSION['error_message'] = implode('<br>', $erros);
+        $stmt->close();
+        $conn->close();
+
+    } catch (mysqli_sql_exception $e) {
+        // Captura o erro para uma depuração mais fácil
+        $_SESSION['error_message'] = "Erro de banco de dados: " . $e->getMessage();
+    }
+
     header('Location: ../pages/contas_pagar.php');
     exit;
 }
-// --- FIM DA VALIDAÇÃO ---
-
-
-
-// Ajusta valor para formato numérico
-$valor = str_replace('.', '', $valor); // Remove separador de milhar
-$valor = str_replace(',', '.', $valor); // Troca vírgula por ponto
-$valor_float = filter_var($valor, FILTER_VALIDATE_FLOAT);
-
-if ($valor_float === false) {
-    $_SESSION['error_message'] = "Valor inválido.";
-    header('Location: ../pages/contas_pagar.php');
-    exit;
-}
-
-
-$stmt = $conn->prepare("INSERT INTO contas_pagar (fornecedor, data_vencimento, numero, valor, usuario_id) VALUES (?, ?, ?, ?, ?)");
-$stmt->bind_param("sssdi", $fornecedor, $data_vencimento, $numero, $valor_float, $usuarioId);
-
-if ($stmt->execute()) {
-    $_SESSION['success_message'] = "Conta adicionada com sucesso!";
-} else {
-    $_SESSION['error_message'] = "Erro ao adicionar conta.";
-}
-
-$stmt->close();
-$conn->close();
-
-header('Location: ../pages/contas_pagar.php');
-exit;
 ?>

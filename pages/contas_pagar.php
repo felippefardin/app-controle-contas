@@ -47,21 +47,38 @@ $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// Monta filtros SQL
-$where = ["status='pendente'"];
+// NOVA SEÇÃO: Buscar categorias de despesa
+$stmt_categorias = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? AND tipo = 'despesa' ORDER BY nome ASC");
+$stmt_categorias->bind_param("i", $usuarioId);
+$stmt_categorias->execute();
+$result_categorias = $stmt_categorias->get_result();
+$categorias_despesa = [];
+while ($row_cat = $result_categorias->fetch_assoc()) {
+    $categorias_despesa[] = $row_cat;
+}
+$stmt_categorias->close();
+
+
+// Monta filtros SQL - **AJUSTADO COM ALIAS 'cp'**
+$where = ["cp.status='pendente'"];
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
     $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-    $where[] = "(usuario_id = {$mainUserId} OR usuario_id IN ({$subUsersQuery}))";
+    $where[] = "(cp.usuario_id = {$mainUserId} OR cp.usuario_id IN ({$subUsersQuery}))";
 }
-if(!empty($_GET['fornecedor'])) $where[] = "fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
-if(!empty($_GET['numero'])) $where[] = "numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
+if(!empty($_GET['fornecedor'])) $where[] = "cp.fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
+if(!empty($_GET['numero'])) $where[] = "cp.numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
 if(!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
-    $where[] = "data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
-} elseif(!empty($_GET['data_inicio'])) $where[] = "data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
-elseif(!empty($_GET['data_fim'])) $where[] = "data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
+    $where[] = "cp.data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
+} elseif(!empty($_GET['data_inicio'])) $where[] = "cp.data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
+elseif(!empty($_GET['data_fim'])) $where[] = "cp.data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
 
-$sql = "SELECT * FROM contas_pagar WHERE ".implode(" AND ",$where)." ORDER BY data_vencimento ASC";
+// SQL ATUALIZADA COM JOIN para buscar o nome da categoria
+$sql = "SELECT cp.*, c.nome as nome_categoria 
+        FROM contas_pagar AS cp
+        LEFT JOIN categorias AS c ON cp.id_categoria = c.id
+        WHERE ".implode(" AND ",$where)." 
+        ORDER BY cp.data_vencimento ASC";
 $result = $conn->query($sql);
 ?>
 
@@ -162,11 +179,7 @@ $result = $conn->query($sql);
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222;  }
-    th:last-child,
-td[data-label='Ações'] {
-  width: 500px; /* ajuste conforme o número de botões */
-  text-align: center;
-}
+    td[data-label='Ações'] { text-align: center; }
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
@@ -178,24 +191,19 @@ td[data-label='Ações'] {
     .btn-editar:hover { background-color: #0099cc; }
     .btn-excluir { background-color: #cc3333; }
     .btn-excluir:hover { background-color: #a02a2a; }
-    /* Estilo para o botão de repetir */
-.btn-repetir { 
-  background-color: #f39c12; /* Cor de fundo laranja */
-}
-.btn-repetir:hover { 
-  background-color: #d35400; /* Cor de fundo quando o mouse está sobre ele */
-}
+    .btn-repetir { background-color: #f39c12; }
+    .btn-repetir:hover { background-color: #d35400; }
+    
     /* MODAL */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
     .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
     .modal-content .close-btn:hover { color: #00bfff; }
     .modal-content form { display: flex; flex-direction: column; gap: 15px; }
-    .modal-content form input { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
+    .modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
     .modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
     
-
     /* Responsivo */
     @media (max-width: 768px) {
       table, thead, tbody, th, td, tr { display: block; }
@@ -244,6 +252,16 @@ if (isset($_SESSION['success_message'])) {
         <input type="text" name="numero" placeholder="Número" required>
         <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
         <input type="date" name="data_vencimento" required>
+        
+        <select name="id_categoria" required>
+            <option value="">-- Selecione uma Categoria --</option>
+            <?php foreach ($categorias_despesa as $categoria): ?>
+                <option value="<?= $categoria['id'] ?>">
+                    <?= htmlspecialchars($categoria['nome']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
         <div style="display: flex; align-items: center; width: 100%;">
             <input type="checkbox" id="enviar_email" name="enviar_email" value="S" checked>
             <label for="enviar_email" style="margin-left: 5px;">Enviar email de lembrete</label>
@@ -256,7 +274,8 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Ações</th></tr></thead>";
+    // ATUALIZADO: Adicionada coluna Categoria
+    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     $hoje = date('Y-m-d');
     while($row = $result->fetch_assoc()){
@@ -265,6 +284,8 @@ if ($result->num_rows > 0) {
         echo "<td data-label='Fornecedor'>".htmlspecialchars($row['fornecedor'])."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
+        // ATUALIZADO: Exibindo o nome da categoria
+        echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format($row['valor'],2,',','.')."</td>";
        echo "<td data-label='Ações'>
         <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
@@ -280,71 +301,9 @@ if ($result->num_rows > 0) {
 }
 ?>
 
-<div id="exportModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
-        <h3>Exportar Relatório de Contas a Pagar</h3>
-        <form action="../actions/exportar_contas_pagar.php" method="POST" target="_blank" onsubmit="return validateExportForm(this);">
-            <div class="form-group">
-                <label for="status">Tipo de Relatório:</label>
-                <select name="status" id="exportStatusPagar" onchange="updateDateLabel('Pagar')">
-                    <option value="pendente">Contas Pendentes</option>
-                    <option value="baixada">Contas Baixadas</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="data_inicio" id="dateLabelInicioPagar">Filtrar de (Data de Vencimento):</label>
-                <input type="date" name="data_inicio" required>
-            </div>
-            <div class="form-group">
-                <label for="data_fim" id="dateLabelFimPagar">Até (Data de Vencimento):</label>
-                <input type="date" name="data_fim" required>
-            </div>
-            <div class="form-group">
-                <label for="formato">Formato do Arquivo:</label>
-                <select name="formato">
-                    <option value="pdf">PDF</option>
-                    <option value="xlsx">Excel (XLSX)</option>
-                    <option value="csv">CSV</option>
-                </select>
-            </div>
-            <button type="submit">Gerar Relatório</button>
-        </form>
-    </div>
-</div>
-
-<div id="deleteModal" class="modal">
-    <div class="modal-content">
-        </div>
-</div>
-
-<div id="repetirModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="document.getElementById('repetirModal').style.display='none'">&times;</span>
-        <h3>Repetir / Parcelar Conta</h3>
-        <form action="../actions/repetir_conta_pagar.php" method="POST">
-            <input type="hidden" name="id_conta" id="modalRepetirContaId">
-            <p style="text-align: left;">Você está repetindo a conta do fornecedor: <br><strong><span id="modalRepetirFornecedor"></span></strong></p>
-            <hr style="border-top: 1px solid #444; width:100%; border-bottom: none;">
-            
-            <div class="form-group">
-                <label for="quantidade">Repetir mais quantas vezes?</label>
-                <input type="number" id="quantidade" name="quantidade" min="1" max="60" value="1" required>
-                <small style="color: #999;">Ex: Se esta é a parcela 1 de 12, digite 11.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="manter_nome">Como nomear as próximas contas?</label>
-                <select name="manter_nome" id="manter_nome">
-                    <option value="1">Adicionar "(Parcela X/Y)" ao nome</option>
-                    <option value="0">Manter o nome original</option>
-                </select>
-            </div>
-            
-            <button type="submit">Criar Repetições</button>
-        </form>
-    </div>
-</div>
+<div id="exportModal" class="modal"></div>
+<div id="deleteModal" class="modal"><div class="modal-content"></div></div>
+<div id="repetirModal" class="modal"></div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
@@ -380,7 +339,6 @@ if ($result->num_rows > 0) {
           $("#fornecedor_autocomplete_list").empty();
       });
 
-      // Hide autocomplete when clicking outside
       $(document).on("click", function(e) {
           if (!$(e.target).closest('.autocomplete-container').length) {
               $(".autocomplete-items").empty();
@@ -410,7 +368,6 @@ if ($result->num_rows > 0) {
     modal.style.display = 'flex';
   }
 
-  // NOVO: Função para abrir o modal de repetição
   function openRepetirModal(id, fornecedor) {
     document.getElementById('modalRepetirContaId').value = id;
     document.getElementById('modalRepetirFornecedor').innerText = fornecedor;
@@ -421,7 +378,7 @@ if ($result->num_rows > 0) {
     const addModal = document.getElementById('addContaModal');
     const exportModal = document.getElementById('exportModal');
     const deleteModal = document.getElementById('deleteModal');
-    const repetirModal = document.getElementById('repetirModal'); // NOVO
+    const repetirModal = document.getElementById('repetirModal');
     if (event.target == addModal) {
         addModal.style.display = 'none';
     }
@@ -431,7 +388,6 @@ if ($result->num_rows > 0) {
     if (event.target == deleteModal) {
         deleteModal.style.display = 'none';
     }
-    // NOVO: Fecha o modal de repetição ao clicar fora
     if (event.target == repetirModal) {
         repetirModal.style.display = 'none';
     }
