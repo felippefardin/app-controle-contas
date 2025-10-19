@@ -109,15 +109,28 @@ if (isset($_SESSION['success_message'])) {
 if ($result && $result->num_rows > 0) {
     echo "<table>";
     // --- CABEÇALHO ATUALIZADO ---
-    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Data Baixa</th><th>Valor</th><th>Baixado por</th><th>Comprovante</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Data Baixa</th><th>Valor</th><th>Baixado por</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
+        $categoria_nome = 'N/A';
+        if (!empty($row['categoria_id'])) {
+            $stmtCat = $conn->prepare("SELECT nome FROM categorias WHERE id = ?");
+            $stmtCat->bind_param("i", $row['categoria_id']);
+            $stmtCat->execute();
+            $resultCat = $stmtCat->get_result();
+            if ($catRow = $resultCat->fetch_assoc()) {
+                $categoria_nome = $catRow['nome'];
+            }
+            $stmtCat->close();
+        }
+
         echo "<tr>";
         echo "<td data-label='Responsável'>".htmlspecialchars($row['responsavel'])."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Data Baixa'>".($row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
         echo "<td data-label='Baixado por'>".htmlspecialchars($row['baixado_por_nome'] ?? 'N/A')."</td>";
+        echo "<td data-label='Categoria'>".htmlspecialchars($categoria_nome)."</td>";
         
         // --- ADICIONADO CAMPO COMPROVANTE ---
         if (!empty($row['comprovante'])) {

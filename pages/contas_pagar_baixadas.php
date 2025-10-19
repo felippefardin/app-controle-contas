@@ -100,9 +100,21 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Juros</th><th>Forma de Pagamento</th><th>Data de Baixa</th><th>Usuário</th><th>Comprovante</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Juros</th><th>Forma de Pagamento</th><th>Data de Baixa</th><th>Usuário</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
+        $categoria_nome = '-';
+        if (!empty($row['categoria_id'])) {
+            $stmtCat = $conn->prepare("SELECT nome FROM categorias WHERE id = ?");
+            $stmtCat->bind_param("i", $row['categoria_id']);
+            $stmtCat->execute();
+            $resultCat = $stmtCat->get_result();
+            if ($catRow = $resultCat->fetch_assoc()) {
+                $categoria_nome = $catRow['nome'];
+            }
+            $stmtCat->close();
+        }
+
         echo "<tr>";
         echo "<td data-label='Fornecedor'>".htmlspecialchars($row['fornecedor'])."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y', strtotime($row['data_vencimento']))."</td>";
@@ -112,8 +124,8 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Forma de Pagamento'>".htmlspecialchars($row['forma_pagamento'] ?? '-')."</td>";
         echo "<td data-label='Data de Baixa'>".date('d/m/Y', strtotime($row['data_baixa']))."</td>";
         echo "<td data-label='Usuário'>".htmlspecialchars($row['usuario_baixou'] ?? '-')."</td>";
+        echo "<td data-label='Categoria'>".htmlspecialchars($categoria_nome)."</td>";
         
-        // Link para o Comprovante
         if (!empty($row['comprovante'])) {
             echo "<td data-label='Comprovante'><a href='../".htmlspecialchars($row['comprovante'])."' target='_blank' class='btn-action'>Ver</a></td>";
         } else {
