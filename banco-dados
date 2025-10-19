@@ -1,64 +1,179 @@
 CREATE DATABASE app_controle_contas;
 USE app_controle_contas;
 
--- Tabela de usuários
-CREATE TABLE usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100),
-    cpf VARCHAR(14),
-    telefone VARCHAR(20),
-    email VARCHAR(100) UNIQUE,
-    senha VARCHAR(255),
-    foto VARCHAR(255),
-    perfil ENUM('padrao', 'admin') DEFAULT 'padrao',
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `caixa_diario` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `data` date NOT NULL,
+  `valor` decimal(10,2) NOT NULL,
+  `usuario_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `data` (`data`,`usuario_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Tabela de contas a pagar
-CREATE TABLE contas_pagar (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    fornecedor VARCHAR(100),
-    data_vencimento DATE,
-    numero VARCHAR(20),
-    valor DECIMAL(10,2),
-    status ENUM('pendente', 'baixada') DEFAULT 'pendente',
-    forma_pagamento VARCHAR(50),
-    data_baixa DATE,
-    baixado_por INT,
-    FOREIGN KEY (baixado_por) REFERENCES usuarios(id)
-);
+CREATE TABLE `categorias` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `id_pai` int DEFAULT NULL,
+  `nome` varchar(100) NOT NULL,
+  `tipo` enum('receita','despesa') NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_usuario` (`id_usuario`),
+  KEY `id_pai` (`id_pai`),
+  CONSTRAINT `categorias_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `categorias_ibfk_2` FOREIGN KEY (`id_pai`) REFERENCES `categorias` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Tabela de contas a receber
-CREATE TABLE contas_receber (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    responsavel VARCHAR(100),
-    data_vencimento DATE,
-    numero VARCHAR(20),
-    valor DECIMAL(10,2),
-    status ENUM('pendente', 'baixada') DEFAULT 'pendente',
-    forma_pagamento VARCHAR(50),
-    data_baixa DATE,
-    baixado_por INT,
-    FOREIGN KEY (baixado_por) REFERENCES usuarios(id)
-);
+CREATE TABLE `codigos_confirmacao` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(10) DEFAULT NULL,
+  `email_admin` varchar(100) DEFAULT NULL,
+  `criado_em` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `usado` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Tabela de códigos de confirmação
-CREATE TABLE codigos_confirmacao (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    codigo VARCHAR(10),
-    email_admin VARCHAR(100),
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    usado BOOLEAN DEFAULT FALSE
-);
+CREATE TABLE `contas_bancarias` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `nome_banco` varchar(100) NOT NULL,
+  `agencia` varchar(20) DEFAULT NULL,
+  `conta` varchar(20) NOT NULL,
+  `tipo_conta` varchar(50) DEFAULT NULL,
+  `chave_pix` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_usuario` (`id_usuario`),
+  CONSTRAINT `contas_bancarias_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Recuperação de senha
-CREATE TABLE recuperacao_senha (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  codigo VARCHAR(10) NOT NULL,
-  data_geracao DATETIME NOT NULL,
-  usado BOOLEAN DEFAULT FALSE,
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-);
+CREATE TABLE `contas_pagar` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int DEFAULT NULL,
+  `enviar_email` char(1) NOT NULL DEFAULT 'N',
+  `fornecedor` varchar(100) DEFAULT NULL,
+  `data_vencimento` date DEFAULT NULL,
+  `numero` varchar(20) DEFAULT NULL,
+  `valor` decimal(10,2) DEFAULT NULL,
+  `id_categoria` int DEFAULT NULL,
+  `status` enum('pendente','baixada') DEFAULT 'pendente',
+  `forma_pagamento` varchar(50) DEFAULT NULL,
+  `data_baixa` date DEFAULT NULL,
+  `baixado_por` int DEFAULT NULL,
+  `juros` decimal(10,2) DEFAULT '0.00',
+  `comprovante` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_contas_pagar_usuario` (`usuario_id`),
+  KEY `fk_contas_pagar_baixado_por` (`baixado_por`),
+  KEY `id_categoria` (`id_categoria`),
+  CONSTRAINT `contas_pagar_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_contas_pagar_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `contas_receber` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int DEFAULT NULL,
+  `responsavel` varchar(100) DEFAULT NULL,
+  `data_vencimento` date DEFAULT NULL,
+  `numero` varchar(20) DEFAULT NULL,
+  `valor` decimal(10,2) DEFAULT NULL,
+  `id_categoria` int DEFAULT NULL,
+  `status` enum('pendente','baixada') DEFAULT 'pendente',
+  `baixado_por_usuario_id` int DEFAULT NULL,
+  `pagamento_token` varchar(255) DEFAULT NULL,
+  `forma_pagamento` varchar(50) DEFAULT NULL,
+  `data_baixa` date DEFAULT NULL,
+  `baixado_por` int DEFAULT NULL,
+  `fornecedor` varchar(255) DEFAULT NULL,
+  `pix_payload` text,
+  `boleto_link` varchar(255) DEFAULT NULL,
+  `juros` decimal(10,2) DEFAULT '0.00',
+  `comprovante` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_contas_receber_usuario` (`usuario_id`),
+  KEY `fk_contas_receber_baixado_por` (`baixado_por`),
+  KEY `id_categoria` (`id_categoria`),
+  CONSTRAINT `contas_receber_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_contas_receber_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=69 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `lembretes_enviados` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tipo` enum('pagar','receber') NOT NULL,
+  `conta_id` int NOT NULL,
+  `data_envio` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `pessoas_fornecedores` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `nome` varchar(255) NOT NULL,
+  `cpf_cnpj` varchar(20) NOT NULL,
+  `endereco` varchar(255) DEFAULT NULL,
+  `contato` varchar(20) DEFAULT NULL,
+  `email` varchar(255) NOT NULL,
+  `tipo` enum('pessoa','fornecedor') NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_usuario` (`id_usuario`),
+  CONSTRAINT `pessoas_fornecedores_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `recuperacao_senha` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `expira_em` datetime NOT NULL,
+  `codigo` varchar(10) NOT NULL,
+  `usado` tinyint(1) NOT NULL DEFAULT '0',
+  `criado_em` datetime DEFAULT CURRENT_TIMESTAMP,
+  `data_geracao` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_recuperacao_usuario` (`usuario_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `solicitacoes_exclusao` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `expira_em` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_solicitacoes_exclusao_usuario` (`id_usuario`),
+  CONSTRAINT `fk_solicitacoes_exclusao_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `usuarios` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_criador` int DEFAULT NULL,
+  `nome` varchar(100) NOT NULL,
+  `cpf` varchar(14) DEFAULT NULL,
+  `telefone` varchar(20) DEFAULT NULL,
+  `email` varchar(100) NOT NULL,
+  `senha` varchar(255) NOT NULL,
+  `perfil` enum('padrao','admin') DEFAULT 'padrao',
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `tipo` enum('admin','padrao') DEFAULT 'padrao',
+  `owner_id` int DEFAULT NULL,
+  `foto` varchar(255) DEFAULT 'default-profile.png',
+  `cpf_clean` varchar(11) GENERATED ALWAYS AS (replace(replace(replace(`cpf`,_utf8mb4'.',_utf8mb4''),_utf8mb4'-',_utf8mb4''),_utf8mb4' ',_utf8mb4'')) STORED,
+  `banco_usuario` varchar(100) NOT NULL DEFAULT 'app_controle_contas',
+  `criado_por_usuario_id` int DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'ativo',
+  `nivel_acesso` varchar(20) DEFAULT 'padrao',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `ux_usuarios_email` (`email`),
+  UNIQUE KEY `email_2` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `usuarios_backup` (
+  `id` int NOT NULL DEFAULT '0',
+  `nome` varchar(100) NOT NULL,
+  `cpf` varchar(14) DEFAULT NULL,
+  `telefone` varchar(20) DEFAULT NULL,
+  `email` varchar(100) NOT NULL,
+  `senha` varchar(255) NOT NULL,
+  `perfil` enum('padrao','admin') DEFAULT 'padrao',
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `tipo` enum('admin','padrao') DEFAULT 'padrao',
+  `foto` varchar(255) DEFAULT 'default-profile.png',
+  `cpf_clean` varchar(11) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
