@@ -39,9 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Coleta e validação dos dados do formulário
 $id_usuario = $_SESSION['usuario']['id'];
-$id_conta_receber = filter_input(INPUT_POST, 'id_conta', FILTER_VALIDATE_INT);
+$id_conta_receber = filter_input(INPUT_POST, 'conta_id', FILTER_VALIDATE_INT);
 $pessoa_id = filter_input(INPUT_POST, 'pessoa_id', FILTER_VALIDATE_INT);
-$conta_bancaria_id = filter_input(INPUT_POST, 'conta_bancaria_id', FILTER_VALIDATE_INT);
+$conta_bancaria_id = filter_input(INPUT_POST, 'banco_id', FILTER_VALIDATE_INT);
 $email_destinatario = filter_input(INPUT_POST, 'email_destinatario', FILTER_VALIDATE_EMAIL);
 
 // Se algum dado essencial for inválido, redireciona com erro

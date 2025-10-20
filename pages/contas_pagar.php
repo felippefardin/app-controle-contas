@@ -303,7 +303,22 @@ if ($result->num_rows > 0) {
 
 <div id="exportModal" class="modal"></div>
 <div id="deleteModal" class="modal"><div class="modal-content"></div></div>
-<div id="repetirModal" class="modal"></div>
+<div id="repetirModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('repetirModal').style.display='none'">&times;</span>
+    <h3>Repetir Conta a Pagar</h3>
+    <form action="../actions/repetir_conta_pagar.php" method="POST">
+      <input type="hidden" name="conta_id" id="modalRepetirContaId">
+      <p>Repetir conta de <strong id="modalRepetirFornecedor"></strong>?</p>
+      <label for="repetir_vezes">Repetir quantas vezes?</label>
+      <input type="number" name="repetir_vezes" value="1" min="1" required>
+      <label for="repetir_intervalo">A cada quantos dias?</label>
+      <input type="number" name="repetir_intervalo" value="30" min="1" required>
+      <button type="submit">Repetir</button>
+    </form>
+  </div>
+</div>
+
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>

@@ -134,7 +134,7 @@ $result = $conn->query($sql);
     form.search-form input::placeholder { color: #aaa; }
     form.search-form button, form.search-form a.clear-filters {
         color: white; border: none; padding: 10px 22px; font-weight: bold;
-        border-radius: 5px; cursor: pointer; transition: background-color: 0.3s ease;
+        border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
         min-width: 120px; text-align: center; display: inline-flex;
         align-items: center; justify-content: center; text-decoration: none;
     }
@@ -161,7 +161,7 @@ $result = $conn->query($sql);
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
     
-    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color: 0.3s ease; margin: 2px; }
+    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 2px; }
     .btn-baixar { background-color: #27ae60; }
     .btn-baixar:hover { background-color: #1e874b; }
     .btn-editar { background-color: #00bfff; }
@@ -312,9 +312,51 @@ if ($result && $result->num_rows > 0) {
 
 <div id="exportar_contas_receber" class="modal"></div>
 <div id="deleteModal" class="modal"><div class="modal-content"></div></div>
-<div id="cobrancaModal" class="modal"></div>
-<div id="repetirModal" class="modal"></div>
 
+<div id="cobrancaModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
+        <h3>Gerar Cobrança</h3>
+        <form action="../actions/enviar_cobranca_action.php" method="POST">
+            <input type="hidden" name="conta_id" id="modalContaId">
+            <p>Cobrança no valor de R$ <strong id="modalValorConta"></strong></p>
+
+            <div class="autocomplete-container">
+                <input type="text" id="pesquisar_cliente_cobranca" name="cliente_nome" placeholder="Pesquisar cliente..." autocomplete="off" required>
+                <div id="cliente_cobranca_autocomplete_list" class="autocomplete-items"></div>
+            </div>
+            <input type="hidden" name="pessoa_id" id="pessoa_id_hidden">
+            <input type="email" id="email_destinatario" name="email_destinatario" placeholder="Email do destinatário" required>
+
+            <select name="banco_id" required>
+                <option value="">-- Selecione uma Conta Bancária para Pagamento --</option>
+                <?php foreach ($bancos as $banco): ?>
+                    <option value="<?= $banco['id'] ?>">
+                        <?= htmlspecialchars($banco['nome_banco']) ?> (PIX: <?= htmlspecialchars($banco['chave_pix']) ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            
+            <button type="submit">Enviar Cobrança por Email</button>
+        </form>
+    </div>
+</div>
+
+<div id="repetirModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('repetirModal').style.display='none'">&times;</span>
+    <h3>Repetir Conta a Receber</h3>
+    <form action="../actions/repetir_conta_receber.php" method="POST">
+      <input type="hidden" name="conta_id" id="modalRepetirContaId">
+      <p>Repetir conta de <strong id="modalRepetirResponsavel"></strong>?</p>
+      <label for="repetir_vezes">Repetir quantas vezes?</label>
+      <input type="number" name="repetir_vezes" value="1" min="1" required>
+      <label for="repetir_intervalo">A cada quantos dias?</label>
+      <input type="number" name="repetir_intervalo" value="30" min="1" required>
+      <button type="submit">Repetir</button>
+    </form>
+  </div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
