@@ -100,9 +100,9 @@ try {
     $mail->CharSet = 'UTF-8'; // Garante a codificação correta dos caracteres
 
     // Anexo (Boleto)
-    if (isset($_FILES['boleto_anexo']) && $_FILES['boleto_anexo']['error'] == UPLOAD_ERR_OK) {
-        $mail->addAttachment($_FILES['boleto_anexo']['tmp_name'], $_FILES['boleto_anexo']['name']);
-    }
+    if (isset($_FILES['anexo']) && $_FILES['anexo']['error'] == UPLOAD_ERR_OK) {
+    $mail->addAttachment($_FILES['anexo']['tmp_name'], $_FILES['anexo']['name']);
+}
 
     $descricaoConta = htmlspecialchars($conta['responsavel'] ?? 'Serviço/Produto');
 

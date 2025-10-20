@@ -317,7 +317,7 @@ if ($result && $result->num_rows > 0) {
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
         <h3>Gerar Cobrança</h3>
-        <form action="../actions/enviar_cobranca_action.php" method="POST">
+        <form action="../actions/enviar_cobranca_action.php" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="conta_id" id="modalContaId">
             <p>Cobrança no valor de R$ <strong id="modalValorConta"></strong></p>
 
@@ -337,6 +337,9 @@ if ($result && $result->num_rows > 0) {
                 <?php endforeach; ?>
             </select>
             
+            <label for="anexo">Anexar arquivo:</label>
+            <input type="file" name="anexo" id="anexo">
+
             <button type="submit">Enviar Cobrança por Email</button>
         </form>
     </div>
