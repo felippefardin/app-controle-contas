@@ -10,7 +10,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Pdf\Dompdf;
 $formato = $_GET['formato'] ?? 'csv';
 $data_inicio = $_GET['data_inicio'] ?? '';
 $data_fim = $_GET['data_fim'] ?? '';
-$status = $_GET['status'] ?? 'pendente';
+$status = $_GET['status'] ?? 'pendente'; // Deve receber 'pendente' ou 'baixada'
 
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
@@ -25,17 +25,18 @@ if ($perfil !== 'admin') {
 }
 
 if (!empty($data_inicio) && !empty($data_fim)) {
-    if ($status === 'pago') {
-        $where[] = "cp.data_pagamento BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
+    // CORRIGIDO: Usa 'baixada' e a coluna 'data_baixa'
+    if ($status === 'baixada') {
+        $where[] = "cp.data_baixa BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
     } else {
         $where[] = "cp.data_vencimento BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
     }
 }
 
-// Corrigido: Removido o JOIN desnecessário e ordenado por data de pagamento para contas pagas
-$orderBy = ($status === 'pago') ? 'cp.data_pagamento' : 'cp.data_vencimento';
+// CORRIGIDO: Ordena por 'data_baixa' quando o status for 'baixada'
+$orderBy = ($status === 'baixada') ? 'cp.data_baixa' : 'cp.data_vencimento';
 $sql = "SELECT cp.* FROM contas_pagar cp
-        WHERE " . implode(' AND ', $where) . " 
+        WHERE " . implode(' AND ', $where) . "
         ORDER BY $orderBy ASC";
 
 $result = $conn->query($sql);
@@ -48,7 +49,8 @@ $sheet->setCellValue('A1', 'Fornecedor');
 $sheet->setCellValue('B1', 'Número');
 $sheet->setCellValue('C1', 'Valor');
 $sheet->setCellValue('D1', 'Data de Vencimento');
-if ($status === 'pago') {
+// CORRIGIDO: Usa 'baixada' para adicionar as colunas extras
+if ($status === 'baixada') {
     $sheet->setCellValue('E1', 'Data de Pagamento');
     $sheet->setCellValue('F1', 'Baixado por');
 }
@@ -60,8 +62,9 @@ if ($result && $result->num_rows > 0) {
         $sheet->setCellValue('B' . $rowNumber, $row['numero']);
         $sheet->setCellValue('C' . $rowNumber, $row['valor']);
         $sheet->setCellValue('D' . $rowNumber, date('d/m/Y', strtotime($row['data_vencimento'])));
-        if ($status === 'pago') {
-            $sheet->setCellValue('E' . $rowNumber, $row['data_pagamento'] ? date('d/m/Y', strtotime($row['data_pagamento'])) : '');
+        // CORRIGIDO: Usa 'baixada' e a coluna 'data_baixa'
+        if ($status === 'baixada') {
+            $sheet->setCellValue('E' . $rowNumber, $row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '');
             $sheet->setCellValue('F' . $rowNumber, $row['baixado_por']);
         }
         $rowNumber++;

@@ -7,6 +7,9 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Writer\Pdf\Dompdf;
 
+// Linha de teste
+$status = 'pago';
+
 $formato = $_GET['formato'] ?? 'csv';
 $data_inicio = $_GET['data_inicio'] ?? '';
 $data_fim = $_GET['data_fim'] ?? '';
@@ -32,11 +35,14 @@ if (!empty($data_inicio) && !empty($data_fim)) {
     }
 }
 
-$sql = "SELECT cr.*, u.nome AS baixado_por_nome 
+// Adicione esta linha antes da sua variável $sql
+$orderBy = ($status === 'pago') ? 'cr.data_pagamento' : 'cr.data_vencimento';
+
+$sql = "SELECT cr.*, u.nome AS baixado_por_nome
         FROM contas_receber cr
         LEFT JOIN usuarios u ON cr.baixado_por_usuario_id = u.id
-        WHERE " . implode(' AND ', $where) . " 
-        ORDER BY cr.data_vencimento ASC";
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY $orderBy ASC"; // Use a variável $orderBy aqui
 
 $result = $conn->query($sql);
 
