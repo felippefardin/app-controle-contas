@@ -1,170 +1,94 @@
 <?php
 require_once '../includes/session_init.php';
 require '../vendor/autoload.php';
-include('../database.php');
+include '../database.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Writer\Csv;
-use Dompdf\Dompdf;
+use PhpOffice\PhpSpreadsheet\Writer\Pdf\Dompdf;
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
-    exit;
-}
-
-// Parâmetros recebidos do modal
-$data_inicio = $_POST['data_inicio'] ?? '';
-$data_fim = $_POST['data_fim'] ?? '';
-$formato = $_POST['formato'] ?? 'pdf';
-$status = $_POST['status'] ?? 'pendente'; // 'pendente' ou 'baixada'
+$formato = $_GET['formato'] ?? 'csv';
+$data_inicio = $_GET['data_inicio'] ?? '';
+$data_fim = $_GET['data_fim'] ?? '';
+$status = $_GET['status'] ?? 'pendente';
 
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// Base da consulta
-$sql = "SELECT c.*, u.nome AS usuario_baixou
-        FROM contas_pagar c
-        LEFT JOIN usuarios u ON c.baixado_por = u.id";
+$where = ["cp.status = '" . $conn->real_escape_string($status) . "'"];
 
-$where = [];
-$params = [];
-$types = "";
-$orderBy = "";
-
-// Filtro de visibilidade por usuário
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id = {$mainUserId} OR id_criador = {$mainUserId}";
-    $where[] = "c.usuario_id IN ($subUsersQuery)";
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
+    $where[] = "(cp.usuario_id = {$mainUserId} OR cp.usuario_id IN ({$subUsersQuery}))";
 }
 
-// Lógica explícita para cada status
-if ($status === 'baixada') {
-    $where[] = "c.status = ?";
-    $params[] = 'baixada';
-    $types .= "s";
-
-    if (!empty($data_inicio) && !empty($data_fim)) {
-        $where[] = "c.data_baixa BETWEEN ? AND ?";
-        $params[] = $data_inicio;
-        $params[] = $data_fim;
-        $types .= "ss";
+if (!empty($data_inicio) && !empty($data_fim)) {
+    if ($status === 'pago') {
+        $where[] = "cp.data_pagamento BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
+    } else {
+        $where[] = "cp.data_vencimento BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
     }
-    $orderBy = "c.data_baixa ASC";
-} else { // Para 'pendente'
-    $where[] = "c.status = ?";
-    $params[] = 'pendente';
-    $types .= "s";
-
-    if (!empty($data_inicio) && !empty($data_fim)) {
-        $where[] = "c.data_vencimento BETWEEN ? AND ?";
-        $params[] = $data_inicio;
-        $params[] = $data_fim;
-        $types .= "ss";
-    }
-    $orderBy = "c.data_vencimento ASC";
 }
 
-// Montagem final da consulta
-if (!empty($where)) {
-    $sql .= " WHERE " . implode(" AND ", $where);
-}
-$sql .= " ORDER BY " . $orderBy;
+// Corrigido: Removido o JOIN desnecessário e ordenado por data de pagamento para contas pagas
+$orderBy = ($status === 'pago') ? 'cp.data_pagamento' : 'cp.data_vencimento';
+$sql = "SELECT cp.* FROM contas_pagar cp
+        WHERE " . implode(' AND ', $where) . " 
+        ORDER BY $orderBy ASC";
 
-$stmt = $conn->prepare($sql);
+$result = $conn->query($sql);
 
-if (!$stmt) {
-    die("Erro ao preparar a consulta: " . $conn->error);
-}
+$spreadsheet = new Spreadsheet();
+$sheet = $spreadsheet->getActiveSheet();
+$sheet->setTitle('Contas a Pagar');
 
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
-
-$stmt->execute();
-$result = $stmt->get_result();
-
-$dados = [];
-while ($row = $result->fetch_assoc()) {
-    $dados[] = $row;
-}
-$stmt->close();
-
-if (empty($dados)) {
-    echo "<script>alert('Nenhum dado encontrado para o período e status selecionado.'); window.close();</script>";
-    exit;
+$sheet->setCellValue('A1', 'Fornecedor');
+$sheet->setCellValue('B1', 'Número');
+$sheet->setCellValue('C1', 'Valor');
+$sheet->setCellValue('D1', 'Data de Vencimento');
+if ($status === 'pago') {
+    $sheet->setCellValue('E1', 'Data de Pagamento');
+    $sheet->setCellValue('F1', 'Baixado por');
 }
 
-// --- O restante do código para gerar PDF, Excel e CSV continua o mesmo ---
-
-$fileName = "relatorio_contas_pagar" . $status . "_" . date('Y-m-d');
-$periodo = 'Período de ' . date('d/m/Y', strtotime($data_inicio)) . ' a ' . date('d/m/Y', strtotime($data_fim));
-$statusTitulo = ucfirst($status) . 's';
-
-$headers = ($status === 'baixada') 
-    ? ['Fornecedor', 'Número', 'Valor', 'Vencimento', 'Data Baixa', 'Usuário Baixou']
-    : ['Fornecedor', 'Número', 'Valor', 'Vencimento'];
-
-if ($formato === 'pdf') {
-    $html = "<h1>Relatório de Contas a Pagar - {$statusTitulo}</h1>";
-    $html .= "<p>{$periodo}</p>";
-    $html .= '<table border="1" cellpadding="4" cellspacing="0" width="100%" style="font-size: 10px;">';
-    $html .= '<thead><tr><th>' . implode('</th><th>', $headers) . '</th></tr></thead>';
-    $html .= '<tbody>';
-    foreach ($dados as $dado) {
-        $html .= '<tr>';
-        $html .= '<td>' . htmlspecialchars($dado['fornecedor']) . '</td>';
-        $html .= '<td>' . htmlspecialchars($dado['numero']) . '</td>';
-        $html .= '<td>R$ ' . number_format($dado['valor'], 2, ',', '.') . '</td>';
-        $html .= '<td>' . ($dado['data_vencimento'] ? date('d/m/Y', strtotime($dado['data_vencimento'])) : '-') . '</td>';
-        if ($status === 'baixada') {
-            $html .= '<td>' . ($dado['data_baixa'] ? date('d/m/Y', strtotime($dado['data_baixa'])) : '-') . '</td>';
-            $html .= '<td>' . htmlspecialchars($dado['usuario_baixou'] ?? '-') . '</td>';
+$rowNumber = 2;
+if ($result && $result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $sheet->setCellValue('A' . $rowNumber, $row['fornecedor']);
+        $sheet->setCellValue('B' . $rowNumber, $row['numero']);
+        $sheet->setCellValue('C' . $rowNumber, $row['valor']);
+        $sheet->setCellValue('D' . $rowNumber, date('d/m/Y', strtotime($row['data_vencimento'])));
+        if ($status === 'pago') {
+            $sheet->setCellValue('E' . $rowNumber, $row['data_pagamento'] ? date('d/m/Y', strtotime($row['data_pagamento'])) : '');
+            $sheet->setCellValue('F' . $rowNumber, $row['baixado_por']);
         }
-        $html .= '</tr>';
+        $rowNumber++;
     }
-    $html .= '</tbody></table>';
+}
 
-    $dompdf = new Dompdf();
-    $dompdf->loadHtml($html);
-    $dompdf->setPaper('A4', 'portrait');
-    $dompdf->render();
-    $dompdf->stream($fileName . ".pdf");
-
-} else {
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    $sheet->fromArray($headers, null, 'A1');
-
-    $rowNum = 2;
-    foreach ($dados as $dado) {
-        $rowData = [
-            $dado['fornecedor'],
-            $dado['numero'],
-            $dado['valor'],
-            ($dado['data_vencimento'] ? date('d/m/Y', strtotime($dado['data_vencimento'])) : '-'),
-        ];
-        if ($status === 'baixada') {
-            $rowData[] = ($dado['data_baixa'] ? date('d/m/Y', strtotime($dado['data_baixa'])) : '-');
-            $rowData[] = $dado['usuario_baixou'] ?? '-';
-        }
-        $sheet->fromArray($rowData, null, 'A' . $rowNum);
-        $rowNum++;
-    }
-
-    if ($formato === 'xlsx') {
-        $writer = new Xlsx($spreadsheet);
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="'. $fileName .'.xlsx"');
-    } elseif ($formato === 'csv') {
-        $writer = new Csv($spreadsheet);
+switch ($formato) {
+    case 'csv':
         header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="'. $fileName .'.csv"');
-    }
-    $writer->save('php://output');
+        header('Content-Disposition: attachment;filename="contas_a_pagar.csv"');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Csv($spreadsheet);
+        $writer->save('php://output');
+        break;
+    case 'excel':
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="contas_a_pagar.xlsx"');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        break;
+    case 'pdf':
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment;filename="contas_a_pagar.pdf"');
+        \PhpOffice\PhpSpreadsheet\IOFactory::registerWriter('Pdf', Dompdf::class);
+        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Pdf');
+        $writer->save('php://output');
+        break;
 }
+
 $conn->close();
 exit;
-?>

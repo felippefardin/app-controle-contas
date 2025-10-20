@@ -310,7 +310,32 @@ if ($result && $result->num_rows > 0) {
 }
 ?>
 
-<div id="exportar_contas_receber" class="modal"></div>
+<div id="exportar_contas_receber" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
+        <h3>Exportar Contas a Receber</h3>
+        <form id="formExportar" action="" method="GET" target="_blank">
+            <label for="data_inicio_export">Data de Início:</label>
+            <input type="date" id="data_inicio_export" name="data_inicio">
+            <label for="data_fim_export">Data de Fim:</label>
+            <input type="date" id="data_fim_export" name="data_fim">
+
+            <label for="status_export">Status:</label>
+            <select id="status_export" name="status">
+                <option value="pendente">Em Aberto</option>
+                <option value="pago">Baixadas</option>
+            </select>
+
+            <p>Selecione o formato para exportação:</p>
+            <div style="text-align: center; margin-top: 20px;">
+                <button type="submit" name="formato" value="csv" class="btn btn-export">CSV</button>
+                <button type="submit" name="formato" value="pdf" class="btn btn-export">PDF</button>
+                <button type="submit" name="formato" value="excel" class="btn btn-export">Excel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="deleteModal" class="modal"><div class="modal-content"></div></div>
 
 <div id="cobrancaModal" class="modal">
@@ -363,6 +388,11 @@ if ($result && $result->num_rows > 0) {
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
+    document.getElementById('formExportar').addEventListener('submit', function(e) {
+        let formato = e.submitter.value;
+        this.action = `../actions/exportar_contas_receber.php?formato=${formato}`;
+    });
+
     $(document).ready(function() {
         // Autocompletar para Adicionar Nova Conta
         $("#pesquisar_responsavel").on("keyup", function() {

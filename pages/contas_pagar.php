@@ -301,7 +301,32 @@ if ($result->num_rows > 0) {
 }
 ?>
 
-<div id="exportModal" class="modal"></div>
+<div id="exportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
+        <h3>Exportar Contas a Pagar</h3>
+        <form id="formExportarPagar" action="" method="GET" target="_blank">
+            <label for="data_inicio_pagar">Data de Início:</label>
+            <input type="date" id="data_inicio_pagar" name="data_inicio">
+            <label for="data_fim_pagar">Data de Fim:</label>
+            <input type="date" id="data_fim_pagar" name="data_fim">
+
+            <label for="status_export_pagar">Status:</label>
+            <select id="status_export_pagar" name="status">
+                <option value="pendente">Em Aberto</option>
+                <option value="pago">Baixadas</option>
+            </select>
+            
+            <p>Selecione o formato para exportação:</p>
+            <div style="text-align: center; margin-top: 20px;">
+                <button type="submit" name="formato" value="csv" class="btn btn-export">CSV</button>
+                <button type="submit" name="formato" value="pdf" class="btn btn-export">PDF</button>
+                <button type="submit" name="formato" value="excel" class="btn btn-export">Excel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="deleteModal" class="modal"><div class="modal-content"></div></div>
 <div id="repetirModal" class="modal">
   <div class="modal-content">
@@ -322,6 +347,11 @@ if ($result->num_rows > 0) {
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
+    document.getElementById('formExportarPagar').addEventListener('submit', function(e) {
+        let formato = e.submitter.value;
+        this.action = `../actions/exportar_contas_pagar.php?formato=${formato}`;
+    });
+
   $(document).ready(function() {
       $("#pesquisar_fornecedor").on("keyup", function() {
           var term = $(this).val();
@@ -371,6 +401,7 @@ if ($result->num_rows > 0) {
     const modalContent = modal.querySelector('.modal-content');
 
     modalContent.innerHTML = `
+      <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
       <h3>Confirmar Exclusão</h3>
       <p>Tem certeza de que deseja excluir a seguinte conta a pagar?</p>
       <p><strong>Fornecedor:</strong> ${fornecedor}</p>
