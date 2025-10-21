@@ -10,7 +10,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Pdf\Dompdf;
 $formato = $_GET['formato'] ?? 'csv';
 $data_inicio = $_GET['data_inicio'] ?? '';
 $data_fim = $_GET['data_fim'] ?? '';
-$status = $_GET['status'] ?? 'pendente'; // Deve receber 'pendente' ou 'baixada'
+$status = $_GET['status'] ?? 'pendente'; // Recebe 'pendente' ou 'baixada'
 
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
@@ -25,7 +25,6 @@ if ($perfil !== 'admin') {
 }
 
 if (!empty($data_inicio) && !empty($data_fim)) {
-    // CORRIGIDO: Usa 'baixada' e a coluna 'data_baixa'
     if ($status === 'baixada') {
         $where[] = "cp.data_baixa BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
     } else {
@@ -33,9 +32,9 @@ if (!empty($data_inicio) && !empty($data_fim)) {
     }
 }
 
-// CORRIGIDO: Ordena por 'data_baixa' quando o status for 'baixada'
 $orderBy = ($status === 'baixada') ? 'cp.data_baixa' : 'cp.data_vencimento';
-$sql = "SELECT cp.* FROM contas_pagar cp
+$sql = "SELECT cp.*, u.nome as baixado_por_nome FROM contas_pagar cp
+        LEFT JOIN usuarios u ON cp.baixado_por = u.id
         WHERE " . implode(' AND ', $where) . "
         ORDER BY $orderBy ASC";
 
@@ -43,13 +42,13 @@ $result = $conn->query($sql);
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
-$sheet->setTitle('Contas a Pagar');
+$sheet->setTitle('Contas a Pagar - ' . ucfirst($status));
 
 $sheet->setCellValue('A1', 'Fornecedor');
 $sheet->setCellValue('B1', 'Número');
 $sheet->setCellValue('C1', 'Valor');
 $sheet->setCellValue('D1', 'Data de Vencimento');
-// CORRIGIDO: Usa 'baixada' para adicionar as colunas extras
+
 if ($status === 'baixada') {
     $sheet->setCellValue('E1', 'Data de Pagamento');
     $sheet->setCellValue('F1', 'Baixado por');
@@ -62,10 +61,9 @@ if ($result && $result->num_rows > 0) {
         $sheet->setCellValue('B' . $rowNumber, $row['numero']);
         $sheet->setCellValue('C' . $rowNumber, $row['valor']);
         $sheet->setCellValue('D' . $rowNumber, date('d/m/Y', strtotime($row['data_vencimento'])));
-        // CORRIGIDO: Usa 'baixada' e a coluna 'data_baixa'
         if ($status === 'baixada') {
             $sheet->setCellValue('E' . $rowNumber, $row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '');
-            $sheet->setCellValue('F' . $rowNumber, $row['baixado_por']);
+            $sheet->setCellValue('F' . $rowNumber, $row['baixado_por_nome']);
         }
         $rowNumber++;
     }
@@ -95,3 +93,4 @@ switch ($formato) {
 
 $conn->close();
 exit;
+?>
