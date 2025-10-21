@@ -12,7 +12,6 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['search_responsavel', '
     $usuarioId = $_SESSION['usuario']['id'];
     $term = $_GET['term'] ?? '';
 
-    // A busca é a mesma para ambos, na tabela de pessoas/fornecedores
     $stmt = $conn->prepare("SELECT id, nome, email FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
     $searchTerm = "%{$term}%";
     $stmt->bind_param("is", $usuarioId, $searchTerm);
@@ -29,9 +28,8 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['search_responsavel', '
     exit;
 }
 
-
+include '../database.php';
 include('../includes/header.php');
-include('../database.php');
 
 if (!isset($_SESSION['usuario'])) {
     header('Location: login.php');
@@ -42,7 +40,6 @@ $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// --- BUSCANDO DADOS PARA O MODAL DE COBRANÇA ---
 // Buscar contas bancárias
 $stmt_bancos = $conn->prepare("SELECT id, nome_banco, chave_pix FROM contas_bancarias WHERE id_usuario = ? ORDER BY nome_banco ASC");
 $stmt_bancos->bind_param("i", $usuarioId);
@@ -53,9 +50,8 @@ while ($row_banco = $result_bancos->fetch_assoc()) {
     $bancos[] = $row_banco;
 }
 $stmt_bancos->close();
-// --- FIM DA BUSCA DE DADOS ---
 
-// NOVA SEÇÃO: Buscar categorias de receita
+// Buscar categorias de receita
 $stmt_categorias = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? AND tipo = 'receita' ORDER BY nome ASC");
 $stmt_categorias->bind_param("i", $usuarioId);
 $stmt_categorias->execute();
@@ -66,19 +62,27 @@ while ($row_cat = $result_categorias->fetch_assoc()) {
 }
 $stmt_categorias->close();
 
-
-// Monta filtros SQL - **AJUSTADO COM ALIAS 'cr'**
+// Monta filtros SQL
 $where = ["cr.status='pendente'"];
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
     $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
     $where[] = "(cr.usuario_id = {$mainUserId} OR cr.usuario_id IN ({$subUsersQuery}))";
 }
-if(!empty($_GET['responsavel'])) $where[] = "cr.responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
-if(!empty($_GET['numero'])) $where[] = "cr.numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
-if(!empty($_GET['data_vencimento'])) $where[] = "cr.data_vencimento='".$conn->real_escape_string($_GET['data_vencimento'])."'";
+if (!empty($_GET['responsavel'])) {
+    $where[] = "cr.responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
+}
+if (!empty($_GET['numero'])) {
+    $where[] = "cr.numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
+}
+if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
+    $where[] = "cr.data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
+} elseif (!empty($_GET['data_inicio'])) {
+    $where[] = "cr.data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
+} elseif (!empty($_GET['data_fim'])) {
+    $where[] = "cr.data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
+}
 
-// SQL ATUALIZADA com JOIN para buscar o nome da categoria
 $sql = "SELECT cr.*, c.nome as nome_categoria 
         FROM contas_receber AS cr
         LEFT JOIN categorias AS c ON cr.id_categoria = c.id
@@ -96,7 +100,6 @@ $result = $conn->query($sql);
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
-    /* SEU CSS ORIGINAL COM AJUSTES */
     * { box-sizing: border-box; }
     body {
         background-color: #121212;
@@ -153,14 +156,14 @@ $result = $conn->query($sql);
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222;  }
-    tr:nth-child(even) { background-color: #2a2a2a; }
     td[data-label='Ações'] {
-  width: 600px; /* ajuste conforme o número de botões */
-  text-align: center;
-}
+      width: 600px;
+      text-align: center;
+    }
+    tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
-    
+
     .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 2px; }
     .btn-baixar { background-color: #27ae60; }
     .btn-baixar:hover { background-color: #1e874b; }
@@ -168,21 +171,20 @@ $result = $conn->query($sql);
     .btn-editar:hover { background-color: #0099cc; }
     .btn-excluir { background-color: #cc3333; }
     .btn-excluir:hover { background-color: #a02a2a; }
-    /* Estilo para o novo botão */
     .btn-gerar-cobranca { background-color: #28a745; }
     .btn-gerar-cobranca:hover { background-color: #218838; }
-    
-    /* MODAL (Original e Novo) */
+    .btn-repetir { background-color: #f39c12; }
+    .btn-repetir:hover { background-color: #d35400; }
+
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
     .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
     .modal-content .close-btn:hover { color: #00bfff; }
-    .modal-content form { display: flex; flex-direction: column; gap: 15px; } /* Ajustado para empilhar */
+    .modal-content form { display: flex; flex-direction: column; gap: 15px; }
     .modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
     .modal-content form button { width: 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
 
-    /* Estilos para o autocompletar */
     .autocomplete-container {
         position: relative;
         width: 100%;
@@ -216,13 +218,6 @@ $result = $conn->query($sql);
         td { position: relative; padding-left: 50%; text-align: right; }
         td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; color: #999; text-align: left; }
     }
-    /* NOVO: Estilo para o botão de repetir */
-.btn-repetir { 
-  background-color: #f39c12; /* Cor de fundo laranja */
-}
-.btn-repetir:hover { 
-  background-color: #d35400; /* Cor mais escura ao passar o mouse */
-}
 </style>
 </head>
 <body>
@@ -239,7 +234,8 @@ if (isset($_SESSION['success_message'])) {
 <form class="search-form" method="GET" action="">
     <input type="text" name="responsavel" placeholder="Responsável" value="<?= htmlspecialchars($_GET['responsavel'] ?? '') ?>">
     <input type="text" name="numero" placeholder="Número" value="<?= htmlspecialchars($_GET['numero'] ?? '') ?>">
-    <input type="date" name="data_vencimento" value="<?= htmlspecialchars($_GET['data_vencimento'] ?? '') ?>">
+    <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>">
+    <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>">
     <button type="submit"><i class="fa fa-search"></i> Buscar</button>
     <a href="contas_receber.php" class="clear-filters">Limpar</a>
 </form>
@@ -280,29 +276,34 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    // ATUALIZADO: Adicionado th de Categoria
-    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Status de Vencimento</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     $hoje = date('Y-m-d');
     while($row = $result->fetch_assoc()){
-        $vencido = ($row['data_vencimento'] < $hoje) ? 'vencido' : '';
-        echo "<tr class='$vencido'>";
+        $classeVencido = '';
+        if ($row['data_vencimento'] < $hoje) {
+            $classeVencido = 'vencido';
+            $statusData = "Vencido";
+        } elseif ($row['data_vencimento'] === $hoje) {
+            $statusData = "Hoje";
+        } else {
+            $statusData = "Futuro";
+        }
+        echo "<tr class='{$classeVencido}'>";
         echo "<td data-label='Responsável'>".htmlspecialchars($row['responsavel'])."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
-        // ATUALIZADO: Adicionado td com o nome da categoria
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
+        echo "<td data-label='Status de Vencimento'>". $statusData ."</td>";
         echo "<td data-label='Ações'>
                   <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
                   <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
                   <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
-                  <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\"class='btn-action btn-excluir'><i class='fa-solid fa-envelope-open-text'></i> Gerar Cobrança</a>
-                  </button>
-                  <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."'); return false;\" class='btn-action btn-repetir'>
-                      <i class='fa-solid fa-clone'></i> Repetir
-                  </a>
-              </td></tr>";
+                  <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\"><i class='fa-solid fa-envelope-open-text'></i> Gerar Cobrança</button>
+                  <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
+              </td>";
+        echo "</tr>";
     }
     echo "</tbody></table>";
 } else {
@@ -314,7 +315,7 @@ if ($result && $result->num_rows > 0) {
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('exportar_contas_receber').style.display='none'">&times;</span>
         <h3>Exportar Contas a Receber</h3>
-        <form id="formExportar" action="" method="GET" target="_blank">
+        <form id="formExportarReceber" action="" method="GET" target="_blank">
             <label for="data_inicio_export">Data de Início:</label>
             <input type="date" id="data_inicio_export" name="data_inicio">
             <label for="data_fim_export">Data de Fim:</label>
@@ -323,7 +324,7 @@ if ($result && $result->num_rows > 0) {
             <label for="status_export">Status:</label>
             <select id="status_export" name="status">
                 <option value="pendente">Em Aberto</option>
-                <option value="pago">Baixadas</option>
+                <option value="baixada">Baixadas</option>
             </select>
 
             <p>Selecione o formato para exportação:</p>
@@ -388,32 +389,30 @@ if ($result && $result->num_rows > 0) {
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
-    document.getElementById('formExportar').addEventListener('submit', function(e) {
+    document.getElementById('formExportarReceber').addEventListener('submit', function(e) {
         let formato = e.submitter.value;
         this.action = `../actions/exportar_contas_receber.php?formato=${formato}`;
     });
 
     $(document).ready(function() {
-        // Autocompletar para Adicionar Nova Conta
         $("#pesquisar_responsavel").on("keyup", function() {
             var term = $(this).val();
             if (term.length < 2) {
-                $("#responsavel_autocomplete_list").empty();
-                $("#responsavel_id_hidden").val('');
-                return;
+              $("#responsavel_autocomplete_list").empty();
+              $("#responsavel_id_hidden").val('');
+              return;
             }
-
             $.ajax({
                 url: 'contas_receber.php',
                 type: 'GET',
                 data: { action: 'search_responsavel', term: term },
                 dataType: 'json',
                 success: function(data) {
-                    var items = "";
-                    $.each(data, function(index, item) {
-                        items += `<div data-id="${item.id}">${item.nome}</div>`;
-                    });
-                    $("#responsavel_autocomplete_list").html(items);
+                  var items = "";
+                  $.each(data, function(index, item) {
+                    items += `<div data-id="${item.id}">${item.nome}</div>`;
+                  });
+                  $("#responsavel_autocomplete_list").html(items);
                 }
             });
         });
@@ -426,27 +425,25 @@ if ($result && $result->num_rows > 0) {
             $("#responsavel_autocomplete_list").empty();
         });
 
-        // Autocompletar para Gerar Cobrança
         $("#pesquisar_cliente_cobranca").on("keyup", function() {
             var term = $(this).val();
             if (term.length < 2) {
-                $("#cliente_cobranca_autocomplete_list").empty();
-                $("#pessoa_id_hidden").val('');
-                $("#email_destinatario").val('');
-                return;
+              $("#cliente_cobranca_autocomplete_list").empty();
+              $("#pessoa_id_hidden").val('');
+              $("#email_destinatario").val('');
+              return;
             }
-
             $.ajax({
                 url: 'contas_receber.php',
                 type: 'GET',
                 data: { action: 'search_cliente', term: term },
                 dataType: 'json',
                 success: function(data) {
-                    var items = "";
-                    $.each(data, function(index, item) {
-                        items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
-                    });
-                    $("#cliente_cobranca_autocomplete_list").html(items);
+                  var items = "";
+                  $.each(data, function(index, item) {
+                    items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
+                  });
+                  $("#cliente_cobranca_autocomplete_list").html(items);
                 }
             });
         });
@@ -461,88 +458,58 @@ if ($result && $result->num_rows > 0) {
             $("#cliente_cobranca_autocomplete_list").empty();
         });
 
-
-        // Esconde a lista de autocompletar ao clicar fora
         $(document).on("click", function(e) {
-            if (!$(e.target).closest('.autocomplete-container').length) {
-                $(".autocomplete-items").empty();
-            }
+          if (!$(e.target).closest('.autocomplete-container').length) {
+            $(".autocomplete-items").empty();
+          }
         });
     });
 
-    // Suas funções JS originais
     function toggleForm(){ 
-        const modal = document.getElementById('addContaModal'); 
-        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
+      const modal = document.getElementById('addContaModal'); 
+      modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; 
     }
 
     function openDeleteModal(id, responsavel) {
-        const modal = document.getElementById('deleteModal');
-        const modalContent = modal.querySelector('.modal-content');
-        
-        modalContent.innerHTML = `
-            <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
-            <h3>Confirmar Exclusão</h3>
-            <p>Tem certeza que deseja excluir a conta de <strong>${responsavel}</strong>?</p>
-            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
-                <a href="../actions/excluir_conta_receber.php?id=${id}" class="btn-action btn-excluir">Sim, Excluir</a>
-                <button type="button" class="btn" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
-            </div>
-        `;
-        modal.style.display = 'flex';
+      const modal = document.getElementById('deleteModal');
+      const modalContent = modal.querySelector('.modal-content');
+      modalContent.innerHTML = `
+          <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
+          <h3>Confirmar Exclusão</h3>
+          <p>Tem certeza que deseja excluir a conta de <strong>${responsavel}</strong>?</p>
+          <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+              <a href="../actions/excluir_conta_receber.php?id=${id}" class='btn-action btn-excluir'>Sim, Excluir</a>
+              <button type="button" class='btn' onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
+          </div>
+      `;
+      modal.style.display = 'flex';
     }
 
-    // --- FUNÇÃO PARA ABRIR O MODAL DE COBRANÇA ---
     function openCobrancaModal(contaId, valor) {
-        // Preenche os campos do modal
-        document.getElementById('modalContaId').value = contaId;
-        document.getElementById('modalValorConta').innerText = valor;
-        
-        // Limpa os campos de busca ao abrir o modal
-        document.getElementById('pesquisar_cliente_cobranca').value = '';
-        document.getElementById('pessoa_id_hidden').value = '';
-        document.getElementById('email_destinatario').value = '';
-
-        // Mostra o modal
-        document.getElementById('cobrancaModal').style.display = 'flex';
+      document.getElementById('modalContaId').value = contaId;
+      document.getElementById('modalValorConta').innerText = valor;
+      document.getElementById('pesquisar_cliente_cobranca').value = '';
+      document.getElementById('pessoa_id_hidden').value = '';
+      document.getElementById('email_destinatario').value = '';
+      document.getElementById('cobrancaModal').style.display = 'flex';
     }
 
-    // Fecha modais ao clicar fora
-    window.addEventListener('click', e => {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    });
-     // --- NOVO: FUNÇÃO PARA ABRIR O MODAL DE REPETIÇÃO ---
     function openRepetirModal(id, responsavel) {
-        document.getElementById('modalRepetirContaId').value = id;
-        document.getElementById('modalRepetirResponsavel').innerText = responsavel;
-        document.getElementById('repetirModal').style.display = 'flex';
+      document.getElementById('modalRepetirContaId').value = id;
+      document.getElementById('modalRepetirResponsavel').innerText = responsavel;
+      document.getElementById('repetirModal').style.display = 'flex';
     }
 
-    // Fecha modais ao clicar fora
     window.addEventListener('click', e => {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            if (e.target === modal) {
-                // Adiciona o novo modal à lista de verificação
-                if (e.target.id !== 'repetirModal' && e.target.id !== 'deleteModal' && e.target.id !== 'addContaModal' && e.target.id !== 'cobrancaModal') {
-                    modal.style.display = 'none';
-                }
-            }
-        });
-        // Lógica específica para fechar cada modal
-        if (e.target == document.getElementById('repetirModal')) document.getElementById('repetirModal').style.display = 'none';
-        if (e.target == document.getElementById('deleteModal')) document.getElementById('deleteModal').style.display = 'none';
-        if (e.target == document.getElementById('addContaModal')) document.getElementById('addContaModal').style.display = 'none';
-        if (e.target == document.getElementById('cobrancaModal')) document.getElementById('cobrancaModal').style.display = 'none';
-        if (e.target == document.getElementById('exportar_contas_receber')) document.getElementById('exportar_contas_receber').style.display = 'none';
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
     });
 </script>
 
+<?php include('../includes/footer.php'); ?>
 </body>
 </html>
-<?php include('../includes/footer.php'); ?>

@@ -28,26 +28,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
     exit;
 }
 
-
-// O restante do seu código PHP original
-$servername = "localhost";
-$username = "root";
-$password = "";
-$database = "app_controle_contas";
+include '../database.php';
 include('../includes/header.php');
 
-$conn = new mysqli($servername, $username, $password, $database);
-
+$conn = new mysqli($servername = "localhost", $username = "root", $password = "", $database = "app_controle_contas");
 if ($conn->connect_error) {
     die("Conexão falhou: " . $conn->connect_error);
 }
 
-// Lógica de filtro de usuário
 $usuarioId = $_SESSION['usuario']['id'];
 $perfil = $_SESSION['usuario']['perfil'];
 $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// NOVA SEÇÃO: Buscar categorias de despesa
+// Buscar categorias de despesa
 $stmt_categorias = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? AND tipo = 'despesa' ORDER BY nome ASC");
 $stmt_categorias->bind_param("i", $usuarioId);
 $stmt_categorias->execute();
@@ -58,26 +51,31 @@ while ($row_cat = $result_categorias->fetch_assoc()) {
 }
 $stmt_categorias->close();
 
-
-// Monta filtros SQL - **AJUSTADO COM ALIAS 'cp'**
+// Monta filtros SQL
 $where = ["cp.status='pendente'"];
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
     $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
     $where[] = "(cp.usuario_id = {$mainUserId} OR cp.usuario_id IN ({$subUsersQuery}))";
 }
-if(!empty($_GET['fornecedor'])) $where[] = "cp.fornecedor LIKE '%".$conn->real_escape_string($_GET['fornecedor'])."%'";
-if(!empty($_GET['numero'])) $where[] = "cp.numero LIKE '%".$conn->real_escape_string($_GET['numero'])."%'";
-if(!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
-    $where[] = "cp.data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
-} elseif(!empty($_GET['data_inicio'])) $where[] = "cp.data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
-elseif(!empty($_GET['data_fim'])) $where[] = "cp.data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
+if (!empty($_GET['fornecedor'])) {
+    $where[] = "cp.fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";
+}
+if (!empty($_GET['numero'])) {
+    $where[] = "cp.numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";
+}
+if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
+    $where[] = "cp.data_vencimento BETWEEN '" . $conn->real_escape_string($_GET['data_inicio']) . "' AND '" . $conn->real_escape_string($_GET['data_fim']) . "'";
+} elseif (!empty($_GET['data_inicio'])) {
+    $where[] = "cp.data_vencimento >= '" . $conn->real_escape_string($_GET['data_inicio']) . "'";
+} elseif (!empty($_GET['data_fim'])) {
+    $where[] = "cp.data_vencimento <= '" . $conn->real_escape_string($_GET['data_fim']) . "'";
+}
 
-// SQL ATUALIZADA COM JOIN para buscar o nome da categoria
 $sql = "SELECT cp.*, c.nome as nome_categoria 
         FROM contas_pagar AS cp
         LEFT JOIN categorias AS c ON cp.id_categoria = c.id
-        WHERE ".implode(" AND ",$where)." 
+        WHERE " . implode(" AND ", $where) . "
         ORDER BY cp.data_vencimento ASC";
 $result = $conn->query($sql);
 ?>
@@ -131,7 +129,6 @@ $result = $conn->query($sql);
         background-color: #555;
     }
 
-    /* MENSAGENS DE SUCESSO/ERRO */
     .success-message {
       background-color: #27ae60;
       color: white; padding: 15px; margin-bottom: 20px;
@@ -144,8 +141,7 @@ $result = $conn->query($sql);
       line-height: 1; cursor: pointer; transition: color 0.2s;
     }
     .close-msg-btn:hover { color: #ddd; }
-    
-    /* Formulário de Busca */
+
     form.search-form {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
       margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
@@ -167,7 +163,6 @@ $result = $conn->query($sql);
     form.search-form a.clear-filters { background-color: #cc3333; }
     form.search-form a.clear-filters:hover { background-color: #a02a2a; }
 
-    /* Botões */
     .action-buttons-group { display: flex; justify-content: center; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
     .btn { border: none; padding: 10px 22px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .btn-add { background-color: #00bfff; color: white; }
@@ -175,7 +170,6 @@ $result = $conn->query($sql);
     .btn-export { background-color: #28a745; color: white; padding: 10px 14px; }
     .btn-export:hover { background-color: #218838; }
 
-    /* Tabela */
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222;  }
@@ -183,7 +177,7 @@ $result = $conn->query($sql);
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
     tr.vencido { background-color: #662222 !important; }
-    
+
     .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 2px; }
     .btn-baixar { background-color: #27ae60; }
     .btn-baixar:hover { background-color: #1e874b; }
@@ -193,8 +187,7 @@ $result = $conn->query($sql);
     .btn-excluir:hover { background-color: #a02a2a; }
     .btn-repetir { background-color: #f39c12; }
     .btn-repetir:hover { background-color: #d35400; }
-    
-    /* MODAL */
+
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
     .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -203,8 +196,7 @@ $result = $conn->query($sql);
     .modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
     .modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
     .modal-content form button:hover { background-color: #0099cc; }
-    
-    /* Responsivo */
+
     @media (max-width: 768px) {
       table, thead, tbody, th, td, tr { display: block; }
       th { display: none; }
@@ -229,7 +221,8 @@ if (isset($_SESSION['success_message'])) {
 <form class="search-form" method="GET" action="">
   <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($_GET['fornecedor'] ?? ''); ?>">
   <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($_GET['numero'] ?? ''); ?>">
-  <input type="date" name="data_vencimento" placeholder="Data Vencimento" value="<?php echo htmlspecialchars($_GET['data_vencimento'] ?? ''); ?>">
+  <input type="date" name="data_inicio" placeholder="Data Início" value="<?php echo htmlspecialchars($_GET['data_inicio'] ?? ''); ?>">
+  <input type="date" name="data_fim" placeholder="Data Fim" value="<?php echo htmlspecialchars($_GET['data_fim'] ?? ''); ?>">
   <button type="submit"><i class="fa fa-search"></i> Buscar</button>
   <a href="contas_pagar.php" class="clear-filters">Limpar</a>
 </form>
@@ -274,25 +267,33 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result->num_rows > 0) {
     echo "<table>";
-    // ATUALIZADO: Adicionada coluna Categoria
-    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Status de Vencimento</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     $hoje = date('Y-m-d');
     while($row = $result->fetch_assoc()){
-        $vencidoClass = ($row['data_vencimento'] < $hoje) ? "vencido" : "";
-        echo "<tr class='$vencidoClass'>";
+        $classeVencimento = '';
+        if ($row['data_vencimento'] < $hoje) {
+            $classeVencimento = "vencido";
+            $statusData = "Vencido";
+        } elseif ($row['data_vencimento'] === $hoje) {
+            $statusData = "Hoje";
+        } else {
+            $statusData = "Futuro";
+        }
+
+        echo "<tr class='$classeVencimento'>";
         echo "<td data-label='Fornecedor'>".htmlspecialchars($row['fornecedor'])."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
-        // ATUALIZADO: Exibindo o nome da categoria
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format($row['valor'],2,',','.')."</td>";
-       echo "<td data-label='Ações'>
-        <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
-        <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
-        <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
-         <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
-      </td>";
+        echo "<td data-label='Status de Vencimento'>". $statusData ."</td>";
+        echo "<td data-label='Ações'>
+            <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
+            <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
+            <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+            <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
+        </td>";
         echo "</tr>";
     }
     echo "</tbody></table>";
@@ -314,7 +315,7 @@ if ($result->num_rows > 0) {
             <label for="status_export_pagar">Status:</label>
             <select id="status_export_pagar" name="status">
                 <option value="pendente">Em Aberto</option>
-                <option value="pago">Baixadas</option>
+                <option value="baixada">Baixadas</option>
             </select>
             
             <p>Selecione o formato para exportação:</p>
@@ -343,7 +344,6 @@ if ($result->num_rows > 0) {
     </form>
   </div>
 </div>
-
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
@@ -406,8 +406,8 @@ if ($result->num_rows > 0) {
       <p>Tem certeza de que deseja excluir a seguinte conta a pagar?</p>
       <p><strong>Fornecedor:</strong> ${fornecedor}</p>
       <div class="modal-actions" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
-        <a href="../actions/excluir_conta_pagar.php?id=${id}" class="btn btn-excluir">Sim, Excluir</a>
-        <button class="btn" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
+        <a href="../actions/excluir_conta_pagar.php?id=${id}" class='btn btn-excluir'>Sim, Excluir</a>
+        <button class='btn' onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
       </div>
     `;
     
@@ -425,18 +425,10 @@ if ($result->num_rows > 0) {
     const exportModal = document.getElementById('exportModal');
     const deleteModal = document.getElementById('deleteModal');
     const repetirModal = document.getElementById('repetirModal');
-    if (event.target == addModal) {
-        addModal.style.display = 'none';
-    }
-    if (event.target == exportModal) {
-        exportModal.style.display = 'none';
-    }
-    if (event.target == deleteModal) {
-        deleteModal.style.display = 'none';
-    }
-    if (event.target == repetirModal) {
-        repetirModal.style.display = 'none';
-    }
+    if (event.target == addModal) { addModal.style.display = 'none'; }
+    if (event.target == exportModal) { exportModal.style.display = 'none'; }
+    if (event.target == deleteModal) { deleteModal.style.display = 'none'; }
+    if (event.target == repetirModal) { repetirModal.style.display = 'none'; }
   };
 </script>
 

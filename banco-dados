@@ -107,7 +107,7 @@ CREATE TABLE `pessoas_fornecedores` (
   `id` int NOT NULL AUTO_INCREMENT,
   `id_usuario` int NOT NULL,
   `nome` varchar(255) NOT NULL,
-  `cpf_cnpj` varchar(20) NOT NULL,
+  `cpf_cnpj` varchar(20) NOT NULL, 
   `endereco` varchar(255) DEFAULT NULL,
   `contato` varchar(20) DEFAULT NULL,
   `email` varchar(255) NOT NULL,
