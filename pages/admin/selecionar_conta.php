@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/session_init.php';
+require_once '../../includes/session_init.php';
 
 // Protege a página para que apenas o proprietário possa acessá-la
 if (!isset($_SESSION['proprietario'])) {

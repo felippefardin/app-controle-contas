@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 
 // Se o usuário principal não estiver logado, redireciona para o login
 if (!isset($_SESSION['usuario_principal'])) {

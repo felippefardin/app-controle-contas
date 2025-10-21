@@ -104,9 +104,9 @@ if ($result && $result->num_rows > 0) {
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
         $categoria_nome = '-';
-        if (!empty($row['categoria_id'])) {
+        if (!empty($row['id_categoria'])) {
             $stmtCat = $conn->prepare("SELECT nome FROM categorias WHERE id = ?");
-            $stmtCat->bind_param("i", $row['categoria_id']);
+            $stmtCat->bind_param("i", $row['id_categoria']);
             $stmtCat->execute();
             $resultCat = $stmtCat->get_result();
             if ($catRow = $resultCat->fetch_assoc()) {
