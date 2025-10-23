@@ -117,6 +117,10 @@ $result = $stmt->get_result();
                         <label for="unidade_medida">Unidade de Medida</label>
                         <input type="text" class="form-control" name="unidade_medida">
                     </div>
+                    <div class="form-group col-md-4">
+                         <label for="quantidade_minima">Estoque Mínimo</label>
+                        <input type="number" class="form-control" name="quantidade_minima" value="0">
+                </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Cadastrar Produto</button>
             </form>

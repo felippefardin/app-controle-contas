@@ -17,6 +17,18 @@ $perfil = $usuario_ativo['perfil'];
 
 $mensagem = $_SESSION['mensagem'] ?? null;
 unset($_SESSION['mensagem']);
+// --- INÍCIO DO CÓDIGO DE ALERTA DE ESTOQUE ---
+include('../database.php'); // Garanta que a conexão está inclusa
+$id_usuario_ativo = $_SESSION['usuario']['id'];
+$stmt_estoque = $conn->prepare("SELECT nome FROM produtos WHERE id_usuario = ? AND quantidade <= quantidade_minima AND quantidade_minima > 0");
+$stmt_estoque->bind_param("i", $id_usuario_ativo);
+$stmt_estoque->execute();
+$result_estoque = $stmt_estoque->get_result();
+$produtos_estoque_baixo = [];
+while ($produto = $result_estoque->fetch_assoc()) {
+    $produtos_estoque_baixo[] = $produto['nome'];
+}
+// --- FIM DO CÓDIGO DE ALERTA DE ESTOQUE ---
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -32,6 +44,16 @@ unset($_SESSION['mensagem']);
     h1 { color: #00bfff; margin-bottom: 10px; text-align: center; }
     h3 { margin-bottom: 5px; font-weight: 400; text-align: center; color: #ddd; }
     h4 { margin-bottom: 20px; font-weight: 400; text-align: center; color: #999; }
+    .alert-estoque {
+            background-color: #f39c12;
+            color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            max-width: 800px;
+            width: 100%;
+            text-align: left;
+        }
     .mensagem-sucesso { background-color: #28a745; color: white; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); font-weight: 600; font-size: 1rem; }
     nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 30px; width: 100%; max-width: 800px; }
     nav a { background-color: #00bfff; color: #121212; text-decoration: none; padding: 12px 22px; border-radius: 8px; font-weight: 600; box-shadow: 0 3px 6px rgba(0,191,255,0.4); transition: background-color 0.3s ease, color 0.3s ease; flex: 1 1 130px; text-align: center; user-select: none; }
@@ -48,6 +70,17 @@ unset($_SESSION['mensagem']);
   <?php if ($mensagem): ?>
     <div class="mensagem-sucesso"><?= htmlspecialchars($mensagem) ?></div>
   <?php endif; ?>
+
+    <?php if (!empty($produtos_estoque_baixo)): ?>
+        <div class="alert-estoque">
+            <strong><i class="fas fa-exclamation-triangle"></i> Atenção:</strong> Os seguintes produtos estão com estoque baixo ou zerado:
+            <ul>
+                <?php foreach ($produtos_estoque_baixo as $nome_produto): ?>
+                    <li><?= htmlspecialchars($nome_produto) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
   <nav>
     <a href="contas_pagar.php">Contas a Pagar</a>
@@ -66,6 +99,9 @@ unset($_SESSION['mensagem']);
         <a href="relatorios.php">Relatórios</a>
         <a href="lancamento_caixa.php">Fluxo de Caixa Diário</a> 
         <a href="controle_estoque.php">Controle de Estoque</a>
+        <a href="vendas.php">Caixa de Vendas</a>
+        <a href="compras.php">Registrar Compra</a>
+
     </nav>
 
   <p>Bem-vindo ao sistema!</p>
