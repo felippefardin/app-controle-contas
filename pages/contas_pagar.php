@@ -12,7 +12,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
     $usuarioId = $_SESSION['usuario']['id'];
     $term = $_GET['term'] ?? '';
 
-    $stmt = $conn->prepare("SELECT id, nome FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
+    $stmt = $conn->prepare("SELECT id, nome FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? AND tipo = 'fornecedor' ORDER BY nome ASC LIMIT 10");
     $searchTerm = "%{$term}%";
     $stmt->bind_param("is", $usuarioId, $searchTerm);
     $stmt->execute();
@@ -31,7 +31,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
 include '../database.php';
 include('../includes/header.php');
 
-$conn = new mysqli($servername = "localhost", $username = "root", $password = "", $database = "app_controle_contas");
 if ($conn->connect_error) {
     die("Conexão falhou: " . $conn->connect_error);
 }
@@ -72,9 +71,11 @@ if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
     $where[] = "cp.data_vencimento <= '" . $conn->real_escape_string($_GET['data_fim']) . "'";
 }
 
-$sql = "SELECT cp.*, c.nome as nome_categoria 
+// AJUSTE: Query agora faz LEFT JOIN com pessoas_fornecedores para buscar o nome correto.
+$sql = "SELECT cp.*, c.nome as nome_categoria, pf.nome as nome_pessoa_fornecedor
         FROM contas_pagar AS cp
         LEFT JOIN categorias AS c ON cp.id_categoria = c.id
+        LEFT JOIN pessoas_fornecedores AS pf ON cp.id_pessoa_fornecedor = pf.id
         WHERE " . implode(" AND ", $where) . "
         ORDER BY cp.data_vencimento ASC";
 $result = $conn->query($sql);
@@ -282,7 +283,9 @@ if ($result->num_rows > 0) {
         }
 
         echo "<tr class='$classeVencimento'>";
-        echo "<td data-label='Fornecedor'>".htmlspecialchars($row['fornecedor'])."</td>";
+        // AJUSTE: Prioriza o nome vindo da tabela de pessoas, se não houver, usa o campo de texto antigo.
+        $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : $row['fornecedor'];
+        echo "<td data-label='Fornecedor'>".htmlspecialchars($fornecedorDisplay)."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";

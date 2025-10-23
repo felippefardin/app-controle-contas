@@ -172,6 +172,26 @@ h1, h2, h3 {
     </div>
 
     <div class="secao-tutorial">
+        <h3><i class="fas fa-users"></i> Clientes e Fornecedores</h3>
+        <p>Centralize o cadastro de todas as pessoas e empresas com as quais você se relaciona financeiramente.</p>
+        <ul>
+            <li><i class="fas fa-user-plus"></i> <strong>Cadastrar:</strong> Adicione novos clientes ou fornecedores preenchendo informações como nome, CPF/CNPJ, contato e e-mail.</li>
+            <li><i class="fas fa-history"></i> <strong>Histórico Completo:</strong> Clique no botão "Histórico" para visualizar todas as transações vinculadas a um cliente ou fornecedor, incluindo contas a pagar, contas a receber e movimentações de estoque.</li>
+            <li><i class="fas fa-search"></i> <strong>Pesquisa Rápida:</strong> Use a barra de busca para encontrar um cadastro instantaneamente.</li>
+        </ul>
+    </div>
+
+    <div class="secao-tutorial">
+        <h3><i class="fas fa-boxes"></i> Controle de Estoque</h3>
+        <p>Gerencie seus produtos, controle entradas e saídas e mantenha o inventário sempre atualizado.</p>
+        <ul>
+            <li><i class="fas fa-box-open"></i> <strong>Cadastrar Produto:</strong> Adicione novos produtos ao seu estoque, informando nome, quantidade inicial, preços de compra e venda.</li>
+            <li><i class="fas fa-edit"></i> <strong>Editar e Excluir:</strong> Atualize as informações de um produto ou remova-o do estoque.</li>
+            <li><i class="fas fa-dolly-flatbed"></i> <strong>Movimentação (Em breve):</strong> Em futuras atualizações, você poderá registrar entradas (compras) e saídas (vendas) de produtos, vinculando-as a fornecedores e clientes.</li>
+        </ul>
+    </div>
+
+    <div class="secao-tutorial">
         <h3><i class="fas fa-archive"></i> Contas Baixadas (Pagar e Receber)</h3>
         <p>Essas páginas exibem um histórico de todas as contas que já foram pagas ou recebidas.</p>
         <ul>
@@ -243,7 +263,6 @@ h1, h2, h3 {
         </ul>
     </div>
 
-    <!-- Seção Feedback -->
     <div class="secao-tutorial">
         <h3><i class="fas fa-comment-dots"></i> Feedback</h3>
         <p>O sistema conta com uma área dedicada para você enviar sugestões, críticas ou ideias de melhoria. Sua opinião é essencial para que possamos aprimorar continuamente a experiência de uso.</p>
@@ -254,7 +273,6 @@ h1, h2, h3 {
         </ul>
     </div>
  
-    <!-- Seção Suporte -->
     <div class="secao-tutorial">
         <h3><i class="fas fa-headset"></i> Suporte</h3>
         <p>O suporte técnico está disponível para auxiliar em dúvidas, problemas de acesso, erros no sistema ou dificuldades no uso das funcionalidades.</p>

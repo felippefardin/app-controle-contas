@@ -27,122 +27,6 @@ $result = $stmt->get_result();
         body {
             background-color: #121212;
             color: #eee;
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            margin: 0;
-        }
-
-        .container {
-            background-color: #222;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
-        }
-
-        h1, h2 {
-            color: #eee;
-            border-bottom: 2px solid #0af;
-            padding-bottom: 10px;
-            margin-bottom: 1rem;
-        }
-
-        .form-control, .custom-select {
-            background-color: #333;
-            color: #eee;
-            border: 1px solid #444;
-        }
-
-        .form-control:focus, .custom-select:focus {
-            background-color: #333;
-            color: #eee;
-            border-color: #0af;
-            box-shadow: none;
-        }
-
-        .btn-primary {
-            background-color: #0af;
-            border: none;
-        }
-
-        
-        .table {
-            color: #eee;
-        }
-
-        .table thead {
-            background-color: #0af;
-            color: #fff;
-        }
-
-        .table tbody tr {
-            background-color: #2c2c2c;
-        }
-
-        .table tbody tr:hover {
-            background-color: #3c3c3c;
-        }
-
-        .btn-action {
-            padding: 5px 10px;
-            font-size: 14px;
-            margin: 0 2px;
-            text-decoration: none !important;
-            color: white !important;
-        }
-
-        .btn-edit { background-color: #17a2b8; }
-        .btn-delete { background-color: #dc3545; }
-
-        /* Responsividade */
-        @media (max-width: 992px) {
-            .form-row {
-                display: flex;
-                flex-direction: column;
-            }
-            .form-group {
-                width: 100% !important;
-                margin-bottom: 15px;
-            }
-            .btn-action {
-                display: block;
-                width: 100%;
-                margin-bottom: 5px;
-                text-align: center;
-            }
-
-            table, thead, tbody, th, td, tr {
-                display: block;
-            }
-            .table thead tr { display: none; }
-            .table tbody tr {
-                margin-bottom: 15px;
-                border-bottom: 2px solid #0af;
-                padding: 10px 5px;
-            }
-            .table tbody td {
-                display: flex;
-                justify-content: space-between;
-                padding: 5px 10px;
-                text-align: left;
-            }
-            .table tbody td::before {
-                content: attr(data-label);
-                font-weight: bold;
-                color: #0af;
-                flex-basis: 40%;
-            }
-        }
-
-        /* Barra de pesquisa */
-        #searchInput {
-            margin-bottom: 15px;
-            background-color: #333;
-            color: #eee;
-            border: 1px solid #444;
-        }
-        #searchInput:focus {
-            border-color: #0af;
-            outline: none;
         }
     </style>
 </head>
@@ -150,7 +34,6 @@ $result = $stmt->get_result();
 <div class="container">
     <h1><i class="fa-solid fa-users"></i> Clientes e Fornecedores</h1>
 
-    <!-- Formulário de cadastro -->
     <div class="card bg-dark text-white mb-4">
         <div class="card-header">
             <h2>Cadastrar Novo</h2>
@@ -193,13 +76,10 @@ $result = $stmt->get_result();
         </div>
     </div>
 
-    <!-- Barra de pesquisa -->
-    <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar por Nome, Email ou CPF/CNPJ...">
-
-    <!-- Tabela de cadastrados -->
     <h2><i class="fa-solid fa-list"></i> Cadastrados</h2>
+    <input type="text" id="searchInput" class="form-control mb-3" placeholder="Pesquisar...">
     <div class="table-responsive">
-        <table class="table table-bordered">
+        <table class="table table-bordered table-dark">
             <thead>
                 <tr>
                     <th>Nome</th>
@@ -210,47 +90,50 @@ $result = $stmt->get_result();
                 </tr>
             </thead>
             <tbody id="tableBody">
-<?php while($row = $result->fetch_assoc()): ?>
-<tr>
-    <td data-label="Nome"><?= htmlspecialchars($row['nome']) ?></td>
-    <td data-label="CPF/CNPJ"><?= htmlspecialchars($row['cpf_cnpj']) ?></td>
-    <td data-label="Email"><?= htmlspecialchars($row['email']) ?></td>
-    <td data-label="Tipo"><?= ucfirst(htmlspecialchars($row['tipo'])) ?></td>
-    <td data-label="Ações">
-        <a href="editar_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-edit btn-action">
-            <i class="fa-solid fa-pen-to-square"></i> Editar
-        </a>
-        <a href="../actions/excluir_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-delete btn-action" onclick="return confirm('Tem certeza que deseja excluir este registro?');">
-            <i class="fa-solid fa-trash"></i> Excluir
-        </a>
-    </td>
-</tr>
-<?php endwhile; ?>
+            <?php while($row = $result->fetch_assoc()): ?>
+            <tr>
+                <td><?= htmlspecialchars($row['nome']) ?></td>
+                <td><?= htmlspecialchars($row['cpf_cnpj']) ?></td>
+                <td><?= htmlspecialchars($row['email']) ?></td>
+                <td><?= ucfirst(htmlspecialchars($row['tipo'])) ?></td>
+                <td>
+                    <a href="historico_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-success">
+                        <i class="fa-solid fa-history"></i> Histórico
+                    </a>
+                    <a href="editar_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-info">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar
+                    </a>
+                    <a href="../actions/excluir_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este registro?');">
+                        <i class="fa-solid fa-trash"></i> Excluir
+                    </a>
+                </td>
+            </tr>
+            <?php endwhile; ?>
             </tbody>
         </table>
     </div>
 </div>
 
 <script>
-    // Filtro de pesquisa em tempo real
-    const searchInput = document.getElementById('searchInput');
-    const tableBody = document.getElementById('tableBody');
-    searchInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
-        const rows = tableBody.querySelectorAll('tr');
-
-        rows.forEach(row => {
-            const nome = row.cells[0].textContent.toLowerCase();
-            const cpf_cnpj = row.cells[1].textContent.toLowerCase();
-            const email = row.cells[2].textContent.toLowerCase();
-
-            if (nome.includes(filter) || cpf_cnpj.includes(filter) || email.includes(filter)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    var filter = this.value.toLowerCase();
+    var rows = document.getElementById('tableBody').getElementsByTagName('tr');
+    for (var i = 0; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        var found = false;
+        for (var j = 0; j < cells.length; j++) {
+            if (cells[j].textContent.toLowerCase().indexOf(filter) > -1) {
+                found = true;
+                break;
             }
-        });
-    });
+        }
+        if (found) {
+            rows[i].style.display = '';
+        } else {
+            rows[i].style.display = 'none';
+        }
+    }
+});
 </script>
 
 <?php include('../includes/footer.php'); ?>

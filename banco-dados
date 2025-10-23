@@ -60,13 +60,18 @@ CREATE TABLE `contas_pagar` (
   `baixado_por` int DEFAULT NULL,
   `juros` decimal(10,2) DEFAULT '0.00',
   `comprovante` varchar(255) DEFAULT NULL,
+  `data_pagamento` datetime DEFAULT NULL,
+  `id_pessoa_fornecedor` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_contas_pagar_usuario` (`usuario_id`),
   KEY `fk_contas_pagar_baixado_por` (`baixado_por`),
   KEY `id_categoria` (`id_categoria`),
+  KEY `id_pessoa_fornecedor` (`id_pessoa_fornecedor`),
   CONSTRAINT `contas_pagar_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `contas_pagar_ibfk_2` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores` (`id`),
   CONSTRAINT `fk_contas_pagar_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=116 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 CREATE TABLE `contas_receber` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -87,13 +92,18 @@ CREATE TABLE `contas_receber` (
   `boleto_link` varchar(255) DEFAULT NULL,
   `juros` decimal(10,2) DEFAULT '0.00',
   `comprovante` varchar(255) DEFAULT NULL,
+  `data_pagamento` datetime DEFAULT NULL,
+  `id_pessoa_fornecedor` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_contas_receber_usuario` (`usuario_id`),
   KEY `fk_contas_receber_baixado_por` (`baixado_por`),
   KEY `id_categoria` (`id_categoria`),
+  KEY `id_pessoa_fornecedor` (`id_pessoa_fornecedor`),
   CONSTRAINT `contas_receber_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `contas_receber_ibfk_2` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores` (`id`),
   CONSTRAINT `fk_contas_receber_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=69 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 CREATE TABLE `lembretes_enviados` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -177,3 +187,30 @@ CREATE TABLE `usuarios_backup` (
   `foto` varchar(255) DEFAULT 'default-profile.png',
   `cpf_clean` varchar(11) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE produtos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT,
+    preco_compra DECIMAL(10, 2),
+    preco_venda DECIMAL(10, 2),
+    quantidade INT NOT NULL,
+    unidade_medida VARCHAR(50),
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
+);
+
+CREATE TABLE movimento_estoque (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_produto INT NOT NULL,
+    id_usuario INT NOT NULL,
+    id_pessoa_fornecedor INT,
+    tipo ENUM('entrada', 'saida') NOT NULL,
+    quantidade INT NOT NULL,
+    data_movimento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    observacao TEXT,
+    FOREIGN KEY (id_produto) REFERENCES produtos(id),
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id),
+    FOREIGN KEY (id_pessoa_fornecedor) REFERENCES pessoas_fornecedores(id)
+);

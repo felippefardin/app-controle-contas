@@ -62,8 +62,10 @@ unset($_SESSION['mensagem']);
    <nav>  
         <a href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
         <a href="../pages/banco_cadastro.php">Contas Bancárias</a>         
-        <a href="../pages/categorias.php">Categorias</a> <a class="nav-link" href="relatorios.php">Relatórios</a>
-         <a class="nav-link" href="lancamento_caixa.php">Fluxo de Caixa Diário</a> 
+        <a href="../pages/categorias.php">Categorias</a> 
+        <a href="relatorios.php">Relatórios</a>
+        <a href="lancamento_caixa.php">Fluxo de Caixa Diário</a> 
+        <a href="controle_estoque.php">Controle de Estoque</a>
     </nav>
 
   <p>Bem-vindo ao sistema!</p>

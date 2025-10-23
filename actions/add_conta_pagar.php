@@ -12,25 +12,30 @@ if (!isset($_SESSION['usuario']['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Pega os dados do formulário
-    $fornecedor = trim($_POST['fornecedor_nome']);
+    $fornecedor_nome = trim($_POST['fornecedor_nome']);
+    // AJUSTE: Captura o ID do fornecedor do campo hidden
+    $id_pessoa_fornecedor = !empty($_POST['fornecedor_id']) ? (int)$_POST['fornecedor_id'] : null;
     $numero = trim($_POST['numero']);
     $valor = str_replace(['.', ','], ['', '.'], $_POST['valor']);
     $data_vencimento = $_POST['data_vencimento'];
     $id_categoria = $_POST['id_categoria'];
     $usuario_id = $_SESSION['usuario']['id'];
-    $enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N'; // Verifica se o checkbox está marcado
+    $enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N';
 
     // Validação básica
-    if (empty($fornecedor) || empty($numero) || !is_numeric($valor) || empty($data_vencimento) || empty($id_categoria)) {
+    if (empty($fornecedor_nome) || empty($numero) || !is_numeric($valor) || empty($data_vencimento) || empty($id_categoria)) {
         $_SESSION['error_message'] = "Todos os campos, incluindo a categoria, são obrigatórios.";
         header('Location: ../pages/contas_pagar.php');
         exit;
     }
 
     try {
-        $stmt = $conn->prepare("INSERT INTO contas_pagar (fornecedor, numero, valor, data_vencimento, usuario_id, enviar_email, id_categoria) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        // O "s" para enviar_email é porque ele é um CHAR, tratado como string.
-        $stmt->bind_param("ssdsisi", $fornecedor, $numero, $valor, $data_vencimento, $usuario_id, $enviar_email, $id_categoria);
+        // AJUSTE: Adiciona id_pessoa_fornecedor ao INSERT
+        $stmt = $conn->prepare(
+            "INSERT INTO contas_pagar (fornecedor, id_pessoa_fornecedor, numero, valor, data_vencimento, usuario_id, enviar_email, id_categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        // AJUSTE: Atualiza o bind_param para incluir o novo campo (i para integer)
+        $stmt->bind_param("sisdsisi", $fornecedor_nome, $id_pessoa_fornecedor, $numero, $valor, $data_vencimento, $usuario_id, $enviar_email, $id_categoria);
 
         if ($stmt->execute()) {
             $_SESSION['success_message'] = "Conta a pagar adicionada com sucesso!";
