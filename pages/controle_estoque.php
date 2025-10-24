@@ -41,11 +41,28 @@ $result = $stmt->get_result();
         .modal-header, .modal-footer { border-color: #444; }
         .close { color: #fff; text-shadow: none; opacity: 0.7; }
         .close:hover { opacity: 1; }
+        .table-danger, .table-danger > th, .table-danger > td { background-color: #dc3545 !important; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1><i class="fa-solid fa-box-open"></i> Controle de Estoque</h1>
+
+    <?php
+    // Verifica se a sessão com os produtos de estoque baixo existe
+    if (isset($_SESSION['produtos_estoque_baixo']) && !empty($_SESSION['produtos_estoque_baixo'])) {
+        echo '<div id="notificacao-estoque-baixo" class="alert alert-danger">';
+        echo '<strong>Atenção!</strong> Os seguintes produtos estão com estoque baixo:';
+        echo '<ul>';
+        foreach ($_SESSION['produtos_estoque_baixo'] as $produto) {
+            echo '<li>' . htmlspecialchars($produto['nome']) . ' (Estoque: ' . htmlspecialchars($produto['quantidade_estoque']) . ')</li>';
+        }
+        echo '</ul>';
+        echo '</div>';
+        // Remove a variável da sessão para não mostrar a mensagem novamente
+        unset($_SESSION['produtos_estoque_baixo']);
+    }
+    ?>
 
     <div class="card bg-dark text-white mb-4">
         <div class="card-header">
@@ -54,13 +71,17 @@ $result = $stmt->get_result();
         <div class="card-body">
             <form action="../actions/cadastrar_produto_action.php" method="POST">
                 <div class="form-row">
-                    <div class="form-group col-md-8">
+                    <div class="form-group col-md-6">
                         <label for="nome">Nome do Produto</label>
                         <input type="text" class="form-control" name="nome" required>
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-3">
                         <label for="quantidade_estoque">Quantidade em Estoque</label>
                         <input type="number" class="form-control" name="quantidade_estoque" value="0" required>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="quantidade_minima">Quantidade Mínima</label>
+                        <input type="number" class="form-control" name="quantidade_minima" value="0" required>
                     </div>
                 </div>
                 <div class="form-group">
@@ -111,7 +132,7 @@ $result = $stmt->get_result();
             </thead>
             <tbody>
             <?php while($produto = $result->fetch_assoc()): ?>
-                <tr>
+                <tr class="<?= ($produto['quantidade_estoque'] <= $produto['quantidade_minima'] && $produto['quantidade_minima'] > 0) ? 'table-danger' : '' ?>">
                     <td><?= htmlspecialchars($produto['nome']) ?></td>
                     <td><?= htmlspecialchars($produto['quantidade_estoque'] ?? $produto['quantidade']) ?></td>
                     <td>R$ <?= number_format($produto['preco_venda'], 2, ',', '.') ?></td>
@@ -151,6 +172,11 @@ $result = $stmt->get_result();
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function() {
+        // Faz a notificação desaparecer em 5 segundos
+        setTimeout(function() {
+            $('#notificacao-estoque-baixo').fadeOut('slow');
+        }, 5000); // 5 segundos
+
         $('#excluirProdutoModal').on('show.bs.modal', function (event) {
             var button = $(event.relatedTarget);
             var url = button.data('url');

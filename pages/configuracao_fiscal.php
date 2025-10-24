@@ -1,21 +1,34 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../includes/header.php';
 require_once '../database.php';
 
-// Busca a configuração atual para preencher o formulário
-$config = $pdo->query("SELECT * FROM empresa_config WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+// A consulta foi corrigida para buscar pelo ID da configuração,
+$result = $conn->query("SELECT * FROM empresa_config WHERE id = 1");
+$config = $result->fetch_assoc();
+
 if (!$config) {
     // Se não houver configuração, inicializa um array vazio para não dar erro no formulário
     $config = [];
 }
 ?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações Fiscais - App Contas</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<?php require_once '../includes/header.php'; ?>
 
 <div class="container mt-4">
-    <h2>Configurações Fiscais da Empresa</h2>
+    <h2><i class="fa-solid fa-file-invoice-dollar"></i> Configurações Fiscais da Empresa</h2>
     <p>Preencha os dados da sua empresa para a emissão de notas fiscais.</p>
-    <hr>
-
+    
     <?php if (isset($_GET['success'])): ?>
         <div class="alert alert-success">
             Configurações salvas com sucesso!
@@ -27,7 +40,8 @@ if (!$config) {
     <?php endif; ?>
 
     <form action="../actions/salvar_configuracao_fiscal.php" method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="id" value="1"> <div class="card mb-4">
+        <input type="hidden" name="id" value="1">
+        <div class="card mb-4">
             <div class="card-header">
                 Dados da Empresa
             </div>
@@ -150,3 +164,9 @@ if (!$config) {
 </div>
 
 <?php require_once '../includes/footer.php'; ?>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
