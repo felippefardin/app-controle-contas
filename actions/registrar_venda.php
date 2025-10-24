@@ -20,7 +20,6 @@ $conn->begin_transaction();
 try {
     // 1. Inserir a venda
     $stmt = $conn->prepare("INSERT INTO vendas (id_usuario, id_cliente, valor_total, forma_pagamento, numero_parcelas, observacao) VALUES (?, ?, ?, ?, ?, ?)");
-    // Linha corrigida abaixo
     $stmt->bind_param("iiddis", $id_usuario, $id_cliente, $valor_total, $forma_pagamento, $numero_parcelas, $observacao);
     $stmt->execute();
     $id_venda = $conn->insert_id;
@@ -43,14 +42,12 @@ try {
         $stmt_estoque->execute();
     }
     
-    // 3. Se for "A Receber", cria a conta
-    if ($forma_pagamento === 'a_receber') {
-        $data_vencimento = date('Y-m-d', strtotime('+30 days')); // Vencimento em 30 dias
-        $stmt_receber = $conn->prepare("INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, numero, valor, data_vencimento, status) VALUES (?, ?, ?, ?, ?, 'pendente')");
-        $numero_venda = "Venda #" . $id_venda;
-        $stmt_receber->bind_param("iisds", $id_usuario, $id_cliente, $numero_venda, $valor_total, $data_vencimento);
-        $stmt_receber->execute();
-    }
+    // 3. Cria a conta a receber para todas as vendas
+    $data_vencimento = date('Y-m-d'); // Vencimento no mesmo dia da venda
+    $stmt_receber = $conn->prepare("INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, numero, valor, data_vencimento, status) VALUES (?, ?, ?, ?, ?, 'pendente')");
+    $numero_venda = "Venda #" . $id_venda;
+    $stmt_receber->bind_param("iisds", $id_usuario, $id_cliente, $numero_venda, $valor_total, $data_vencimento);
+    $stmt_receber->execute();
 
     $conn->commit();
     $_SESSION['success_message'] = "Venda registrada com sucesso!";

@@ -84,19 +84,19 @@ $vendas = $stmt_vendas->get_result();
     </table>
 
     <h4 class="mt-5">Vendas do Dia</h4>
-    <table class="table table-dark table-hover">
-        <thead><tr><th>ID</th><th>Data</th><th>Forma de Pagamento</th><th>Valor Total</th></tr></thead>
-        <tbody>
-            <?php while($venda = $vendas->fetch_assoc()): ?>
-            <tr class="venda" data-id="<?= $venda['id'] ?>">
-                <td><?= $venda['id'] ?></td>
-                <td><?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></td>
-                <td><?= ucfirst($venda['forma_pagamento']) ?></td>
-                <td>R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></td>
-            </tr>
-            <?php endwhile; ?>
-        </tbody>
-    </table>
+<table class="table table-dark table-hover">
+    <thead><tr><th>ID</th><th>Data</th><th>Forma de Pagamento</th><th>Valor Total</th></tr></thead>
+    <tbody>
+        <?php while($venda = $vendas->fetch_assoc()): ?>
+        <tr class="venda" data-id="<?= $venda['id'] ?>">
+            <td><?= $venda['id'] ?></td>
+            <td><?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></td>
+            <td><?= ucfirst(str_replace('_', ' ', $venda['forma_pagamento'])) ?></td>
+            <td>R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></td>
+        </tr>
+        <?php endwhile; ?>
+    </tbody>
+</table>
 
     <button onclick="window.print()" class="btn btn-success no-print mt-3"><i class="fas fa-print"></i> Imprimir</button>
 </div>

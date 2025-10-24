@@ -91,17 +91,18 @@ $items = $stmt_items->get_result();
         <div class="receipt-total">
             <p><strong>Total:</strong> <span class="float-right font-weight-bold">R$ <?= number_format($venda['valor_total'] ?? 0, 2, ',', '.') ?></span></p>
             <p>
-                <strong>Forma de Pagamento:</strong>
-                <span class="float-right">
-                    <?php
-                        if (!empty($venda['forma_pagamento'])) {
-                            echo ucfirst(str_replace('_', ' ', $venda['forma_pagamento']));
-                        } else {
-                            echo 'Não especificada';
-                        }
-                    ?>
-                </span>
-            </p>
+                <p>
+    <strong>Forma de Pagamento:</strong>
+    <span class="float-right">
+        <?php
+            if (!empty($venda['forma_pagamento'])) {
+                echo ucfirst(str_replace('_', ' ', $venda['forma_pagamento']));
+            } else {
+                echo 'Não especificada';
+            }
+        ?>
+    </span>
+</p>
         </div>
 
         <div class="receipt-signature">
