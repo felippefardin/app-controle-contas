@@ -101,18 +101,19 @@ $vendas = $stmt_vendas->get_result();
     <button onclick="window.print()" class="btn btn-success no-print mt-3"><i class="fas fa-print"></i> Imprimir</button>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="modalRomaneio" tabindex="-1" role="dialog" aria-labelledby="modalRomaneioLabel" aria-hidden="true">
+
+<!-- Modal para exibir o romaneio -->
+<div class="modal fade" id="modalRomaneio" tabindex="-1" role="dialog" aria-labelledby="romaneioLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content text-dark">
+    <div class="modal-content bg-dark text-light">
       <div class="modal-header">
-        <h5 class="modal-title">Romaneio da Venda</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span>&times;</span></button>
+        <h5 class="modal-title" id="romaneioLabel">Romaneio da Venda</h5>
+        <button type="button" class="close text-light" data-dismiss="modal" aria-label="Fechar">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
-      <div class="modal-body" id="conteudoRomaneio">Carregando...</div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-danger" id="btnCancelarVenda"><i class="fas fa-times-circle"></i> Cancelar Venda</button>
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+      <div class="modal-body" id="conteudoRomaneio">
+        <p>Carregando...</p>
       </div>
     </div>
   </div>
@@ -142,6 +143,7 @@ $(function() {
         }
     });
 });
+
 </script>
 </body>
 </html>

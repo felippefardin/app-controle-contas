@@ -1,19 +1,21 @@
 <?php
-require '../database.php';
-header('Content-Type: application/json');
+require_once '../includes/session_init.php';
+require_once '../database.php';
 
-$id = $_POST['id'] ?? 0;
-if (!$id) {
-    echo json_encode(["success" => false, "message" => "Venda inválida."]);
+if (!isset($_GET['id'])) {
+    echo "ID da venda não informado.";
     exit;
 }
 
-$stmt = $conn->prepare("DELETE FROM venda_items WHERE id_venda = ?");
-$stmt->bind_param("i", $id);
-$stmt->execute();
+$id = intval($_GET['id']);
 
-$stmt2 = $conn->prepare("DELETE FROM vendas WHERE id = ?");
-$stmt2->bind_param("i", $id);
-$stmt2->execute();
+// Deleta os itens da venda primeiro
+$conn->query("DELETE FROM venda_items WHERE id_venda = $id");
 
-echo json_encode(["success" => true, "message" => "Venda cancelada com sucesso!"]);
+// Deleta a venda
+if ($conn->query("DELETE FROM vendas WHERE id = $id")) {
+    echo "Venda cancelada com sucesso!";
+} else {
+    echo "Erro ao cancelar venda.";
+}
+?>
