@@ -1,7 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 
-// --- BLOCO DE PROCESSAMENTO AJAX ---
+// --- BLOCO DE PROCESSAMENTO AJAX PARA BUSCAS ---
 if (isset($_GET['action'])) {
     include('../database.php');
     
@@ -28,16 +28,16 @@ if (isset($_GET['action'])) {
     
     // Busca de Produtos
     if ($_GET['action'] === 'search_produtos') {
-        $stmt = $conn->prepare("SELECT id, nome, preco_venda, quantidade FROM produtos WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
+        $stmt = $conn->prepare("SELECT id, nome, preco_venda, quantidade_estoque FROM produtos WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
         $stmt->bind_param("is", $id_usuario, $term);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
             $response[] = [
                 'id' => $row['id'],
-                'text' => $row['nome'] . " (Estoque: " . $row['quantidade'] . ")",
+                'text' => $row['nome'] . " (Estoque: " . $row['quantidade_estoque'] . ")",
                 'preco_venda' => $row['preco_venda'],
-                'estoque' => $row['quantidade']
+                'estoque' => $row['quantidade_estoque']
             ];
         }
     }
@@ -47,6 +47,8 @@ if (isset($_GET['action'])) {
     exit;
 }
 
+
+// --- CARREGAMENTO NORMAL DA PÁGINA ---
 include('../includes/header.php');
 include('../database.php');
 
@@ -59,58 +61,54 @@ if (!isset($_SESSION['usuario'])) {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Registro de Venda</title>
+    <title>Caixa de Vendas (PDV)</title>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
         body { background-color: #121212; color: #eee; }
         .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
         h1, h2 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; }
+        label { font-weight: bold; }
         .form-control, .select2-container .select2-selection--single { background-color: #333; color: #eee; border-color: #444; height: calc(1.5em + .75rem + 2px); }
         .select2-container--default .select2-selection--single .select2-selection__rendered { color: #eee; line-height: 38px; }
         .select2-dropdown { background-color: #333; border-color: #444; }
         .select2-results__option { color: #eee; }
         .select2-results__option--highlighted { background-color: #0af !important; }
         .table { color: #eee; }
-        .total-venda { font-size: 1.5rem; font-weight: bold; color: #28a745; }
+        .table thead th { background-color: #0af; color: #fff; }
+        .total-venda { font-size: 1.8rem; font-weight: bold; color: #28a745; }
+        .btn-primary { background-color: #007bff; border-color: #007bff; }
+        .btn-primary:hover { background-color: #0069d9; border-color: #0062cc; }
+        .btn-success { background-color: #28a745; border-color: #28a745; }
+        .btn-success:hover { background-color: #218838; border-color: #1e7e34; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-cash-register"></i> Registrar Venda</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-cash-register"></i> Caixa de Vendas (PDV)</h1>
         <a href="fechamento_caixa.php" class="btn btn-info"><i class="fas fa-print"></i> Fechamento de Caixa</a>
     </div>
     
-    <?php if (isset($_SESSION['success_message'])): ?>
-        <div class="alert alert-success"><?= $_SESSION['success_message'] ?></div>
-        <?php unset($_SESSION['success_message']); ?>
-    <?php endif; ?>
-    <?php if (isset($_SESSION['error_message'])): ?>
-        <div class="alert alert-danger"><?= $_SESSION['error_message'] ?></div>
-        <?php unset($_SESSION['error_message']); ?>
-    <?php endif; ?>
+    <div id="alert-container"></div>
 
-    <form action="../actions/registrar_venda.php" method="POST" id="form-venda">
+    <form id="form-venda">
         <div class="form-group">
             <label for="cliente_id">Cliente</label>
-            <select id="cliente_id" name="id_cliente" class="form-control" required></select>
+            <select id="cliente_id" name="cliente_id" class="form-control" required></select>
         </div>
         
         <div class="card bg-dark text-white mb-4">
-            <div class="card-header">
-                <h2>Adicionar Produtos</h2>
-            </div>
+            <div class="card-header"><h2>Adicionar Produtos</h2></div>
             <div class="card-body">
-                <div class="form-row">
+                <div class="form-row align-items-end">
                     <div class="form-group col-md-8">
-                        <label>Produto</label>
+                        <label for="produto_select">Produto</label>
                         <select id="produto_select" class="form-control"></select>
                     </div>
                     <div class="form-group col-md-4">
-                        <label>&nbsp;</label>
-                        <button type="button" id="add-produto" class="btn btn-success btn-block">Adicionar à Venda</button>
+                        <button type="button" id="add-produto" class="btn btn-success btn-block"><i class="fas fa-plus"></i> Adicionar à Venda</button>
                     </div>
                 </div>
             </div>
@@ -119,57 +117,51 @@ if (!isset($_SESSION['usuario'])) {
         <h2><i class="fas fa-shopping-cart"></i> Itens da Venda</h2>
         <div class="table-responsive">
             <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Quantidade</th>
-                        <th>Preço Unitário</th>
-                        <th>Subtotal</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody id="venda-items">
-                </tbody>
+                <thead><tr><th>Produto</th><th style="width: 120px;">Quantidade</th><th style="width: 150px;">Preço Unit.</th><th style="width: 150px;">Subtotal</th><th style="width: 100px;">Ação</th></tr></thead>
+                <tbody id="venda-items"></tbody>
             </table>
         </div>
         <div class="text-right mt-3">
             <h3 class="total-venda">Total: R$ <span id="total-geral">0.00</span></h3>
-            <input type="hidden" name="valor_total" id="valor_total_hidden" value="0">
         </div>
 
         <div class="form-row mt-4">
             <div class="form-group col-md-4">
                 <label for="forma_pagamento">Forma de Pagamento</label>
                 <select id="forma_pagamento" name="forma_pagamento" class="form-control" required>
-                    <option value="dinheiro">Dinheiro</option>
+                    <option value="dinheiro" selected>Dinheiro</option>
+                    <option value="pix">PIX</option>
                     <option value="cartao_debito">Cartão de Débito</option>
                     <option value="cartao_credito">Cartão de Crédito</option>
-                    <option value="a_receber">A Receber</option>
-                    <option value="boleto">Boleto</option>
+                    <option value="fiado">Fiado (A Prazo)</option>
                 </select>
             </div>
-            <div class="form-group col-md-2" id="parcelas-group" style="display: none;">
-                <label for="numero_parcelas">Nº de Parcelas</label>
-                <input type="number" id="numero_parcelas" name="numero_parcelas" class="form-control" value="1" min="1">
+             <div class="form-group col-md-3">
+                <label for="desconto">Desconto (R$)</label>
+                <input type="text" id="desconto" name="desconto" class="form-control" placeholder="0.00">
             </div>
         </div>
-
-        <div class="form-group mt-2">
-            <label for="observacao">Observações</label>
-            <textarea name="observacao" class="form-control"></textarea>
-        </div>
         
-        <button type="submit" class="btn btn-primary btn-lg mt-3">Finalizar Venda</button>
+        <div class="mt-4">
+            <button type="button" id="btn-recibo" class="btn btn-primary btn-lg mr-2">
+                <i class="fas fa-receipt"></i> Finalizar e Gerar Recibo
+            </button>
+            <button type="button" id="btn-nfe" class="btn btn-success btn-lg">
+                <i class="fas fa-file-invoice"></i> Finalizar e Emitir NF-e
+            </button>
+        </div>
     </form>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Select2 para Clientes
+    let tipoFinalizacao = 'recibo';
+
     $('#cliente_id').select2({
-        placeholder: 'Selecione um cliente',
+        placeholder: 'Selecione ou digite o nome de um cliente',
         ajax: {
             url: 'vendas.php?action=search_clientes',
             dataType: 'json',
@@ -179,9 +171,8 @@ $(document).ready(function() {
         }
     });
 
-    // Select2 para Produtos
     $('#produto_select').select2({
-        placeholder: 'Pesquisar produto...',
+        placeholder: 'Pesquisar produto pelo nome...',
         ajax: {
             url: 'vendas.php?action=search_produtos',
             dataType: 'json',
@@ -191,89 +182,162 @@ $(document).ready(function() {
         }
     });
 
-    // Adicionar produto
     $('#add-produto').on('click', function() {
         var produtoData = $('#produto_select').select2('data')[0];
         if (!produtoData || !produtoData.id) {
-            alert('Selecione um produto.');
+            showAlert('Selecione um produto para adicionar.', 'warning');
             return;
         }
-
         var produtoId = produtoData.id;
         var produtoNome = produtoData.text.split(' (Estoque:')[0];
         var precoVenda = parseFloat(produtoData.preco_venda || 0).toFixed(2);
         var estoque = parseInt(produtoData.estoque);
 
         if ($('#venda-items').find(`tr[data-id="${produtoId}"]`).length > 0) {
-            alert('Este produto já foi adicionado.');
+            showAlert('Este produto já foi adicionado.', 'warning');
+            return;
+        }
+        if (estoque <= 0) {
+            showAlert('Este produto não tem estoque disponível.', 'danger');
             return;
         }
         
-        var row = `<tr data-id="${produtoId}">
-                <td>${produtoNome}<input type="hidden" name="produtos[${produtoId}][id]" value="${produtoId}"></td>
-                <td><input type="number" name="produtos[${produtoId}][quantidade]" class="form-control quantidade" value="1" min="1" max="${estoque}" required></td>
-                <td><input type="text" name="produtos[${produtoId}][preco]" class="form-control preco" value="${precoVenda}" required></td>
-                <td class="subtotal">${precoVenda}</td>
-                <td><button type="button" class="btn btn-danger btn-sm remover-item">Remover</button></td>
-            </tr>`;
+        var row = `<tr data-id="${produtoId}" data-preco="${precoVenda}" data-nome="${produtoNome}">
+            <td>${produtoNome}</td>
+            <td><input type="number" class="form-control quantidade" value="1" min="1" max="${estoque}" required></td>
+            <td class="preco-unitario">R$ ${precoVenda}</td>
+            <td class="subtotal">R$ ${precoVenda}</td>
+            <td><button type="button" class="btn btn-danger btn-sm remover-item"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
         $('#venda-items').append(row);
         atualizarTotal();
+        $('#produto_select').val(null).trigger('change');
     });
 
-    // Remover item
-    $('#venda-items').on('click', '.remover-item', function() {
-        $(this).closest('tr').remove();
-        atualizarTotal();
-    });
+    $('#venda-items').on('click', '.remover-item', function() { $(this).closest('tr').remove(); atualizarTotal(); });
+    $('#venda-items').on('input', '.quantidade', atualizarLinha);
+    $('#desconto').on('input', atualizarTotal);
 
-    // Atualizar totais
-    $('#venda-items').on('input', '.quantidade, .preco', function() {
+    function atualizarLinha() {
         var tr = $(this).closest('tr');
         var quantidade = parseInt(tr.find('.quantidade').val());
         var estoque = parseInt(tr.find('.quantidade').attr('max'));
-        var preco = parseFloat(tr.find('.preco').val().replace(',', '.'));
-
+        var preco = parseFloat(tr.data('preco'));
         if (quantidade > estoque) {
-            alert('Quantidade não pode ser maior que o estoque (' + estoque + ').');
+            showAlert('Quantidade excede o estoque (' + estoque + ').', 'warning');
             tr.find('.quantidade').val(estoque);
             quantidade = estoque;
         }
-        if (isNaN(quantidade) || isNaN(preco)) return;
-
+        if (isNaN(quantidade) || quantidade < 1) {
+            quantidade = 1;
+            tr.find('.quantidade').val(1);
+        }
         var subtotal = (quantidade * preco).toFixed(2);
-        tr.find('.subtotal').text(subtotal);
+        tr.find('.subtotal').text('R$ ' + subtotal);
         atualizarTotal();
+    }
+
+    function atualizarTotal() {
+        var total = 0;
+        $('#venda-items tr').each(function() {
+            total += parseFloat($(this).find('.subtotal').text().replace('R$ ', ''));
+        });
+        var desconto = parseFloat($('#desconto').val().replace(',', '.')) || 0;
+        var totalLiquido = total - desconto;
+        if(totalLiquido < 0) totalLiquido = 0;
+        $('#total-geral').text(totalLiquido.toFixed(2));
+    }
+
+    $('#btn-recibo').on('click', function() {
+        tipoFinalizacao = 'recibo';
+        $('#form-venda').submit();
     });
 
-    // Mostrar/ocultar parcelas
-    $('#forma_pagamento').on('change', function() {
-        if ($(this).val() === 'cartao_credito') {
-            $('#parcelas-group').show();
-        } else {
-            $('#parcelas-group').hide();
-        }
+    $('#btn-nfe').on('click', function() {
+        tipoFinalizacao = 'nfe';
+        $('#form-venda').submit();
     });
 
-    // Submissão do formulário
-    $('#form-venda').on('submit', function(e){
+    $('#form-venda').on('submit', function(e) {
+        e.preventDefault();
         if ($('#venda-items tr').length === 0) {
-            e.preventDefault();
-            alert('Adicione pelo menos um produto à venda.');
+            showAlert('Adicione pelo menos um produto à venda.', 'danger');
+            return;
         }
-    });
-});
+        
+        let itens = [];
+        $('#venda-items tr').each(function() {
+            let tr = $(this);
+            itens.push({ id: tr.data('id'), quantidade: parseInt(tr.find('.quantidade').val()), preco: parseFloat(tr.data('preco')) });
+        });
 
-function atualizarTotal() {
-    var total = 0;
-    $('#venda-items tr').each(function() {
-        var subtotal = parseFloat($(this).find('.subtotal').text());
-        if (!isNaN(subtotal)) {
-            total += subtotal;
-        }
+        const formData = new FormData(this);
+        formData.append('itens', JSON.stringify(itens));
+        formData.append('tipo_finalizacao', tipoFinalizacao);
+
+        showAlert('Processando venda...', 'info');
+
+        fetch('../actions/registrar_venda.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) { throw new Error('Falha na resposta do servidor. Verifique o log de erros do PHP.'); }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                if (data.tipo_finalizacao === 'recibo') {
+                    window.open('recibo_venda.php?id=' + data.venda_id, '_blank');
+                } else if (data.tipo_finalizacao === 'nfe') {
+                    emitirNFe(data.venda_id);
+                }
+                limparFormulario();
+            } else {
+                showAlert('Erro ao registrar venda: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição fetch:', error);
+            showAlert('Ocorreu um erro de comunicação com o servidor. Verifique o console (F12).', 'danger');
+        });
     });
-    $('#total-geral').text(total.toFixed(2));
-    $('#valor_total_hidden').val(total.toFixed(2));
-}
+
+    function emitirNFe(vendaId) {
+        showAlert('Venda registrada! Iniciando emissão da NF-e...', 'info');
+        const nfeData = new FormData();
+        nfeData.append('id_venda', vendaId);
+
+        fetch('../actions/emitir_nfce.php', {
+            method: 'POST',
+            body: nfeData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('NF-e emitida com sucesso! Chave: ' + data.chave, 'success');
+            } else {
+                showAlert('Falha ao emitir NF-e: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erro na emissão da NF-e:', error);
+            showAlert('Erro de comunicação ao tentar emitir a NF-e.', 'danger');
+        });
+    }
+
+    function limparFormulario() {
+        $('#form-venda')[0].reset();
+        $('#cliente_id').val(null).trigger('change');
+        $('#venda-items').empty();
+        atualizarTotal();
+    }
+    
+    function showAlert(message, type) {
+        $('#alert-container').html(`<div class="alert alert-${type} alert-dismissible fade show" role="alert">${message}<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>`);
+    }
+});
 </script>
 </body>
 </html>

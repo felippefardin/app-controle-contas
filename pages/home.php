@@ -10,6 +10,7 @@ if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
 }
 
 include('../includes/header_home.php');
+include('../database.php'); // Garanta que a conexão está inclusa
 
 $usuario_ativo = $_SESSION['usuario'];
 $nome = $usuario_ativo['nome'];
@@ -17,10 +18,13 @@ $perfil = $usuario_ativo['perfil'];
 
 $mensagem = $_SESSION['mensagem'] ?? null;
 unset($_SESSION['mensagem']);
+
 // --- INÍCIO DO CÓDIGO DE ALERTA DE ESTOQUE ---
-include('../database.php'); // Garanta que a conexão está inclusa
 $id_usuario_ativo = $_SESSION['usuario']['id'];
-$stmt_estoque = $conn->prepare("SELECT nome FROM produtos WHERE id_usuario = ? AND quantidade <= quantidade_minima AND quantidade_minima > 0");
+
+// CORREÇÃO APLICADA AQUI: Trocado 'quantidade' por 'quantidade_estoque'
+$stmt_estoque = $conn->prepare("SELECT nome FROM produtos WHERE id_usuario = ? AND quantidade_estoque <= quantidade_minima AND quantidade_minima > 0");
+
 $stmt_estoque->bind_param("i", $id_usuario_ativo);
 $stmt_estoque->execute();
 $result_estoque = $stmt_estoque->get_result();
@@ -97,15 +101,13 @@ while ($produto = $result_estoque->fetch_assoc()) {
   </nav>
    <nav>  
         <a href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
-        <a href="../pages/banco_cadastro.php">Contas Bancárias</a>         
+        <a href="../pages/banco_cadastro.php">Contas Bancárias</a>      
         <a href="../pages/categorias.php">Categorias</a> 
         <a href="relatorios.php">Relatórios</a>
         <a href="lancamento_caixa.php">Fluxo de Caixa Diário</a> 
         <a href="controle_estoque.php">Controle de Estoque</a>
         <a href="vendas.php">Caixa de Vendas</a>
-        <!-- <a href="compras.php">Registrar Compra</a> -->
-
-    </nav>
+        </nav>
 
   <p>Bem-vindo ao sistema!</p>
 

@@ -242,3 +242,23 @@ CREATE TABLE `vendas` (
   KEY `id_usuario` (`id_usuario`),
   KEY `id_cliente` (`id_cliente`)
 ) ENGINE=MyISAM AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `empresa_config` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `razao_social` VARCHAR(255) NOT NULL,
+    `cnpj` VARCHAR(14) NOT NULL UNIQUE,
+    `fantasia` VARCHAR(255),
+    `ie` VARCHAR(20), -- Inscrição Estadual
+    `logradouro` VARCHAR(255),
+    `numero` VARCHAR(10),
+    `bairro` VARCHAR(100),
+    `municipio` VARCHAR(100),
+    `uf` CHAR(2),
+    `cep` VARCHAR(8),
+    `cod_municipio` VARCHAR(7), -- Código IBGE do Município
+    `regime_tributario` INT, -- 1=Simples Nacional; 3=Regime Normal
+    `csc` VARCHAR(100) NOT NULL, -- Código de Segurança do Contribuinte
+    `csc_id` VARCHAR(10) NOT NULL, -- ID do CSC
+    `certificado_a1_path` VARCHAR(255), -- Caminho para o arquivo .pfx
+    `certificado_senha` VARCHAR(255) -- Senha (criptografada)
+);
