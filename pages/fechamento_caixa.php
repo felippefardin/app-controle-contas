@@ -12,21 +12,31 @@ $id_usuario = $_SESSION['usuario']['id'];
 $data_hoje = date('Y-m-d');
 $data_selecionada = $_GET['data'] ?? $data_hoje;
 
-// Totais por forma de pagamento
-$stmt = $conn->prepare("SELECT forma_pagamento, SUM(valor_total) as total FROM vendas WHERE id_usuario = ? AND DATE(data_venda) = ? GROUP BY forma_pagamento");
+// 🔹 Totais por forma de pagamento
+$stmt = $conn->prepare("
+    SELECT forma_pagamento, SUM(valor_total) as total 
+    FROM vendas 
+    WHERE id_usuario = ? AND DATE(data_venda) = ? 
+    GROUP BY forma_pagamento
+");
 $stmt->bind_param("is", $id_usuario, $data_selecionada);
 $stmt->execute();
 $result = $stmt->get_result();
 
 $totais = [];
 $total_geral = 0;
-while($row = $result->fetch_assoc()) {
+while ($row = $result->fetch_assoc()) {
     $totais[$row['forma_pagamento']] = $row['total'];
     $total_geral += $row['total'];
 }
 
-// Listagem de vendas
-$stmt_vendas = $conn->prepare("SELECT id, data_venda, valor_total, forma_pagamento FROM vendas WHERE id_usuario = ? AND DATE(data_venda) = ? ORDER BY id DESC");
+// 🔹 Listagem das vendas
+$stmt_vendas = $conn->prepare("
+    SELECT id, data_venda, valor_total, forma_pagamento 
+    FROM vendas 
+    WHERE id_usuario = ? AND DATE(data_venda) = ? 
+    ORDER BY id DESC
+");
 $stmt_vendas->bind_param("is", $id_usuario, $data_selecionada);
 $stmt_vendas->execute();
 $vendas = $stmt_vendas->get_result();
@@ -40,69 +50,111 @@ $vendas = $stmt_vendas->get_result();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body { background-color: #121212; color: #eee; }
-        .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
+        body {
+            background-color: #121212;
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .container {
+            background-color: #1f1f1f;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
         h1 { color: #0af; }
+        .card-resumo {
+            border-left: 5px solid;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        .card-resumo strong {
+            font-size: 1rem;
+        }
+        .forma-dinheiro { border-color: #28a745; background-color: rgba(40,167,69,0.1); }
+        .forma-pix { border-color: #20c997; background-color: rgba(32,201,151,0.1); }
+        .forma-debito { border-color: #17a2b8; background-color: rgba(23,162,184,0.1); }
+        .forma-credito { border-color: #ffc107; background-color: rgba(255,193,7,0.1); }
+        .forma-outros { border-color: #6c757d; background-color: rgba(108,117,125,0.1); }
         tr.venda:hover { background-color: #333; cursor: pointer; }
+        .total-geral {
+            background-color: #0d6efd;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 6px;
+            padding: 10px;
+        }
         @media print {
             body { background-color: #fff; color: #000; }
-            .container { background-color: #fff; box-shadow: none; margin-top: 0; }
+            .container { background-color: #fff; box-shadow: none; }
             .no-print { display: none; }
+            .total-geral { background-color: #000; color: #fff; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="d-flex justify-content-between align-items-center no-print">
+    <div class="d-flex justify-content-between align-items-center no-print mb-3">
         <h1><i class="fas fa-cash-register"></i> Fechamento de Caixa</h1>
         <a href="vendas.php" class="btn btn-secondary">Voltar</a>
     </div>
 
     <form method="GET" class="form-inline mb-4 no-print">
         <label for="data" class="mr-2">Selecione a Data:</label>
-        <input type="date" name="data" id="data" class="form-control mr-2" value="<?= $data_selecionada ?>">
+        <input type="date" name="data" id="data" class="form-control mr-2" value="<?= htmlspecialchars($data_selecionada) ?>">
         <button type="submit" class="btn btn-primary">Buscar</button>
     </form>
 
-    <h4>Resumo por Forma de Pagamento</h4>
-    <table class="table table-dark table-striped">
-        <thead><tr><th>Forma de Pagamento</th><th>Total</th></tr></thead>
+    <h4 class="mb-3">Resumo por Forma de Pagamento</h4>
+    <?php if (count($totais) > 0): ?>
+        <?php foreach ($totais as $forma => $total): ?>
+            <?php
+                $classe = 'forma-outros';
+                $nome = ucfirst(str_replace('_', ' ', $forma));
+
+                if (stripos($forma, 'dinheiro') !== false) $classe = 'forma-dinheiro';
+                elseif (stripos($forma, 'pix') !== false) $classe = 'forma-pix';
+                elseif (stripos($forma, 'débito') !== false || stripos($forma, 'debito') !== false) $classe = 'forma-debito';
+                elseif (stripos($forma, 'crédito') !== false || stripos($forma, 'credito') !== false) $classe = 'forma-credito';
+            ?>
+            <div class="card-resumo <?= $classe ?>">
+                <strong><?= $nome ?>:</strong> 
+                <span class="float-right">R$ <?= number_format($total, 2, ',', '.') ?></span>
+            </div>
+        <?php endforeach; ?>
+        <div class="total-geral mt-3">
+            Total Geral: R$ <?= number_format($total_geral, 2, ',', '.') ?>
+        </div>
+    <?php else: ?>
+        <p>Nenhuma venda encontrada nesta data.</p>
+    <?php endif; ?>
+
+    <h4 class="mt-5 mb-3">Vendas do Dia</h4>
+    <table class="table table-dark table-hover">
+        <thead>
+            <tr><th>ID</th><th>Data</th><th>Forma de Pagamento</th><th>Valor Total</th></tr>
+        </thead>
         <tbody>
-            <?php foreach ($totais as $forma => $total): ?>
-            <tr>
-                <td><?= ucfirst(str_replace('_', ' ', $forma)) ?></td>
-                <td>R$ <?= number_format($total, 2, ',', '.') ?></td>
+            <?php while ($venda = $vendas->fetch_assoc()): ?>
+            <tr class="venda" data-id="<?= $venda['id'] ?>">
+                <td><?= $venda['id'] ?></td>
+                <td><?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></td>
+                <td><?= ucfirst(str_replace('_', ' ', $venda['forma_pagamento'])) ?></td>
+                <td>R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></td>
             </tr>
-            <?php endforeach; ?>
+            <?php endwhile; ?>
         </tbody>
-        <tfoot>
-            <tr class="font-weight-bold">
-                <td>Total Geral</td>
-                <td>R$ <?= number_format($total_geral, 2, ',', '.') ?></td>
-            </tr>
-        </tfoot>
     </table>
 
-    <h4 class="mt-5">Vendas do Dia</h4>
-<table class="table table-dark table-hover">
-    <thead><tr><th>ID</th><th>Data</th><th>Forma de Pagamento</th><th>Valor Total</th></tr></thead>
-    <tbody>
-        <?php while($venda = $vendas->fetch_assoc()): ?>
-        <tr class="venda" data-id="<?= $venda['id'] ?>">
-            <td><?= $venda['id'] ?></td>
-            <td><?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></td>
-            <td><?= ucfirst(str_replace('_', ' ', $venda['forma_pagamento'])) ?></td>
-            <td>R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></td>
-        </tr>
-        <?php endwhile; ?>
-    </tbody>
-</table>
-
-    <button onclick="window.print()" class="btn btn-success no-print mt-3"><i class="fas fa-print"></i> Imprimir</button>
+    <button onclick="window.print()" class="btn btn-success no-print mt-3">
+        <i class="fas fa-print"></i> Imprimir
+    </button>
 </div>
 
-
-<!-- Modal para exibir o romaneio -->
+<!-- Modal do romaneio -->
 <div class="modal fade" id="modalRomaneio" tabindex="-1" role="dialog" aria-labelledby="romaneioLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content bg-dark text-light">
@@ -133,17 +185,7 @@ $(function() {
             $("#conteudoRomaneio").html(data);
         });
     });
-
-    $("#btnCancelarVenda").click(function() {
-        if (confirm("Tem certeza que deseja cancelar esta venda?")) {
-            $.post("cancelar_venda.php", { id: vendaId }, function(res) {
-                alert(res.message);
-                if (res.success) location.reload();
-            }, "json");
-        }
-    });
 });
-
 </script>
 </body>
 </html>
