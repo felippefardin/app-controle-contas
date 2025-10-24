@@ -45,15 +45,18 @@ while ($produto = $result_estoque->fetch_assoc()) {
     h3 { margin-bottom: 5px; font-weight: 400; text-align: center; color: #ddd; }
     h4 { margin-bottom: 20px; font-weight: 400; text-align: center; color: #999; }
     .alert-estoque {
-            background-color: #f39c12;
-            color: white;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            max-width: 800px;
-            width: 100%;
-            text-align: left;
-        }
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #dc3545;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        z-index: 1000;
+        text-align: left;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
     .mensagem-sucesso { background-color: #28a745; color: white; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); font-weight: 600; font-size: 1rem; }
     nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 30px; width: 100%; max-width: 800px; }
     nav a { background-color: #00bfff; color: #121212; text-decoration: none; padding: 12px 22px; border-radius: 8px; font-weight: 600; box-shadow: 0 3px 6px rgba(0,191,255,0.4); transition: background-color 0.3s ease, color 0.3s ease; flex: 1 1 130px; text-align: center; user-select: none; }
@@ -72,7 +75,7 @@ while ($produto = $result_estoque->fetch_assoc()) {
   <?php endif; ?>
 
     <?php if (!empty($produtos_estoque_baixo)): ?>
-        <div class="alert-estoque">
+        <div id="alert-estoque" class="alert-estoque">
             <strong><i class="fas fa-exclamation-triangle"></i> Atenção:</strong> Os seguintes produtos estão com estoque baixo ou zerado:
             <ul>
                 <?php foreach ($produtos_estoque_baixo as $nome_produto): ?>
@@ -100,10 +103,21 @@ while ($produto = $result_estoque->fetch_assoc()) {
         <a href="lancamento_caixa.php">Fluxo de Caixa Diário</a> 
         <a href="controle_estoque.php">Controle de Estoque</a>
         <a href="vendas.php">Caixa de Vendas</a>
-        <a href="compras.php">Registrar Compra</a>
+        <!-- <a href="compras.php">Registrar Compra</a> -->
 
     </nav>
 
   <p>Bem-vindo ao sistema!</p>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var alertEstoque = document.getElementById('alert-estoque');
+        if (alertEstoque) {
+            setTimeout(function() {
+                alertEstoque.style.display = 'none';
+            }, 6000); // 6 segundos
+        }
+    });
+</script>
 </body>
 </html>

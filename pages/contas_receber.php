@@ -293,7 +293,7 @@ if ($result && $result->num_rows > 0) {
         }
         echo "<tr class='{$classeVencido}'>";
         // AJUSTE: Prioriza o nome vindo da tabela de pessoas, se não houver, usa o campo de texto antigo.
-        $responsavelDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : $row['responsavel'];
+        $responsavelDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['responsavel'] ?? '');
         echo "<td data-label='Responsável'>".htmlspecialchars($responsavelDisplay)."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
@@ -303,9 +303,9 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Ações'>
                     <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
                     <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
-                    <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+                    <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."')\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
                     <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\"><i class='fa-solid fa-envelope-open-text'></i> Gerar Cobrança</button>
-                    <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
+                    <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
                 </td>";
         echo "</tr>";
     }

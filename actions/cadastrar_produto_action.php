@@ -14,9 +14,10 @@ $preco_compra = $_POST['preco_compra'];
 $preco_venda = $_POST['preco_venda'];
 $quantidade = $_POST['quantidade'];
 $unidade_medida = $_POST['unidade_medida'];
+$quantidade_minima = $_POST['quantidade_minima'];
 
-$stmt = $conn->prepare("INSERT INTO produtos (id_usuario, nome, descricao, preco_compra, preco_venda, quantidade, unidade_medida) VALUES (?, ?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("isssdis", $id_usuario, $nome, $descricao, $preco_compra, $preco_venda, $quantidade, $unidade_medida);
+$stmt = $conn->prepare("INSERT INTO produtos (id_usuario, nome, descricao, preco_compra, preco_venda, quantidade, unidade_medida, quantidade_minima) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("isssdisi", $id_usuario, $nome, $descricao, $preco_compra, $preco_venda, $quantidade, $unidade_medida, $quantidade_minima);
 
 if ($stmt->execute()) {
     header('Location: ../pages/controle_estoque.php');

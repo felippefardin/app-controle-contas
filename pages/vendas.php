@@ -2,9 +2,8 @@
 require_once '../includes/session_init.php';
 
 // --- BLOCO DE PROCESSAMENTO AJAX ---
-// Este bloco é executado PRIMEIRO se for uma requisição de busca
 if (isset($_GET['action'])) {
-    include('../database.php'); // Conecta ao banco SÓ para a busca
+    include('../database.php');
     
     if (!isset($_SESSION['usuario']['id'])) {
         header('Content-Type: application/json');
@@ -45,11 +44,9 @@ if (isset($_GET['action'])) {
 
     header('Content-Type: application/json');
     echo json_encode(['results' => $response]);
-    exit; // Finaliza o script para não carregar o HTML abaixo
+    exit;
 }
 
-// --- CARREGAMENTO NORMAL DA PÁGINA ---
-// O código abaixo só é executado se NÃO for uma busca AJAX
 include('../includes/header.php');
 include('../database.php');
 
@@ -81,7 +78,10 @@ if (!isset($_SESSION['usuario'])) {
 </head>
 <body>
 <div class="container">
-    <h1><i class="fas fa-cash-register"></i> Registrar Venda</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <h1><i class="fas fa-cash-register"></i> Registrar Venda</h1>
+        <a href="fechamento_caixa.php" class="btn btn-info"><i class="fas fa-print"></i> Fechamento de Caixa</a>
+    </div>
     
     <?php if (isset($_SESSION['success_message'])): ?>
         <div class="alert alert-success"><?= $_SESSION['success_message'] ?></div>
@@ -137,7 +137,24 @@ if (!isset($_SESSION['usuario'])) {
             <input type="hidden" name="valor_total" id="valor_total_hidden" value="0">
         </div>
 
-        <div class="form-group mt-4">
+        <div class="form-row mt-4">
+            <div class="form-group col-md-4">
+                <label for="forma_pagamento">Forma de Pagamento</label>
+                <select id="forma_pagamento" name="forma_pagamento" class="form-control" required>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="cartao_debito">Cartão de Débito</option>
+                    <option value="cartao_credito">Cartão de Crédito</option>
+                    <option value="a_receber">A Receber</option>
+                    <option value="boleto">Boleto</option>
+                </select>
+            </div>
+            <div class="form-group col-md-2" id="parcelas-group" style="display: none;">
+                <label for="numero_parcelas">Nº de Parcelas</label>
+                <input type="number" id="numero_parcelas" name="numero_parcelas" class="form-control" value="1" min="1">
+            </div>
+        </div>
+
+        <div class="form-group mt-2">
             <label for="observacao">Observações</label>
             <textarea name="observacao" class="form-control"></textarea>
         </div>
@@ -150,35 +167,31 @@ if (!isset($_SESSION['usuario'])) {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Inicializar Select2 para Clientes
+    // Select2 para Clientes
     $('#cliente_id').select2({
         placeholder: 'Selecione um cliente',
         ajax: {
             url: 'vendas.php?action=search_clientes',
             dataType: 'json',
             delay: 250,
-            processResults: function (data) {
-                return { results: data.results };
-            },
+            processResults: function (data) { return { results: data.results }; },
             cache: true
         }
     });
 
-    // Inicializar Select2 para Produtos
+    // Select2 para Produtos
     $('#produto_select').select2({
         placeholder: 'Pesquisar produto...',
         ajax: {
             url: 'vendas.php?action=search_produtos',
             dataType: 'json',
             delay: 250,
-            processResults: function (data) {
-                return { results: data.results };
-            },
+            processResults: function (data) { return { results: data.results }; },
             cache: true
         }
     });
 
-    // Adicionar produto à tabela
+    // Adicionar produto
     $('#add-produto').on('click', function() {
         var produtoData = $('#produto_select').select2('data')[0];
         if (!produtoData || !produtoData.id) {
@@ -196,8 +209,7 @@ $(document).ready(function() {
             return;
         }
         
-        var row = `
-            <tr data-id="${produtoId}">
+        var row = `<tr data-id="${produtoId}">
                 <td>${produtoNome}<input type="hidden" name="produtos[${produtoId}][id]" value="${produtoId}"></td>
                 <td><input type="number" name="produtos[${produtoId}][quantidade]" class="form-control quantidade" value="1" min="1" max="${estoque}" required></td>
                 <td><input type="text" name="produtos[${produtoId}][preco]" class="form-control preco" value="${precoVenda}" required></td>
@@ -208,13 +220,13 @@ $(document).ready(function() {
         atualizarTotal();
     });
 
-    // Remover item da tabela
+    // Remover item
     $('#venda-items').on('click', '.remover-item', function() {
         $(this).closest('tr').remove();
         atualizarTotal();
     });
 
-    // Atualizar subtotal e total geral ao mudar quantidade ou preço
+    // Atualizar totais
     $('#venda-items').on('input', '.quantidade, .preco', function() {
         var tr = $(this).closest('tr');
         var quantidade = parseInt(tr.find('.quantidade').val());
@@ -222,11 +234,10 @@ $(document).ready(function() {
         var preco = parseFloat(tr.find('.preco').val().replace(',', '.'));
 
         if (quantidade > estoque) {
-            alert('Quantidade não pode ser maior que o estoque disponível (' + estoque + ').');
+            alert('Quantidade não pode ser maior que o estoque (' + estoque + ').');
             tr.find('.quantidade').val(estoque);
             quantidade = estoque;
         }
-
         if (isNaN(quantidade) || isNaN(preco)) return;
 
         var subtotal = (quantidade * preco).toFixed(2);
@@ -234,18 +245,16 @@ $(document).ready(function() {
         atualizarTotal();
     });
 
-    function atualizarTotal() {
-        var total = 0;
-        $('#venda-items tr').each(function() {
-            var subtotal = parseFloat($(this).find('.subtotal').text());
-            if (!isNaN(subtotal)) {
-                total += subtotal;
-            }
-        });
-        $('#total-geral').text(total.toFixed(2));
-        $('#valor_total_hidden').val(total.toFixed(2));
-    }
+    // Mostrar/ocultar parcelas
+    $('#forma_pagamento').on('change', function() {
+        if ($(this).val() === 'cartao_credito') {
+            $('#parcelas-group').show();
+        } else {
+            $('#parcelas-group').hide();
+        }
+    });
 
+    // Submissão do formulário
     $('#form-venda').on('submit', function(e){
         if ($('#venda-items tr').length === 0) {
             e.preventDefault();
@@ -253,6 +262,18 @@ $(document).ready(function() {
         }
     });
 });
+
+function atualizarTotal() {
+    var total = 0;
+    $('#venda-items tr').each(function() {
+        var subtotal = parseFloat($(this).find('.subtotal').text());
+        if (!isNaN(subtotal)) {
+            total += subtotal;
+        }
+    });
+    $('#total-geral').text(total.toFixed(2));
+    $('#valor_total_hidden').val(total.toFixed(2));
+}
 </script>
 </body>
 </html>
