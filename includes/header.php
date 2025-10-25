@@ -13,50 +13,44 @@
   <title>App Controle de Contas</title>
 
   <style>
-    body {
-      background-color: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      transition: font-size 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    .font-controls {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin: 20px 0;
-    }
-
-    .font-controls button,
-    .font-controls a {
-      border: none;
-      padding: 10px 16px;
-      font-size: 16px;
-      font-weight: bold;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-      text-decoration: none;
-      display: inline-block;
-      color: white;
-      text-align: center;
-    }
-
-    .btn-font { background-color: #007BFF; }
-    .btn-font:hover { background-color: #0056b3; transform: translateY(-2px); }
-
-    .btn-home { background-color: #28a745; }
-    .btn-home:hover { transform: translateY(-2px); }
-
-    .btn-exit { background-color: #dc3545; }
-    .btn-exit:hover { transform: translateY(-2px); }
+   /* Estilos para o corpo da página e o header, garantindo consistência */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #121212; /* Fundo escuro padrão */
+        }
+        main {
+            flex: 1; /* Faz o conteúdo principal crescer e ocupar o espaço */
+        }
+        .header-controls {
+            background-color: #1f1f1f;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1001;
+        }
+        .header-controls .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            transition: opacity 0.3s ease;
+        }
+        .header-controls .btn-home { background-color: #28a745; }
+        .header-controls .btn-exit { background-color: #dc3545; }
+        .header-controls .btn:hover { opacity: 0.8; }
 
     @media (max-width: 768px) {
       .font-controls {
@@ -84,12 +78,12 @@
 </head>
 
 <body>
-  <div class="font-controls">
-    <button type="button" class="btn-font" onclick="adjustFontSize(-1)">A-</button>
-    <button type="button" class="btn-font" onclick="adjustFontSize(1)">A+</button>
-    <button type="button" class="btn-font" onclick="resetFontSize()">Resetar Fonte</button>
-    <a href="../pages/home.php" class="btn-home">Voltar Home</a>
-    <a href="../pages/logout.php" class="btn-exit">Sair</a> 
-  </div>
+  <header class="header-controls">
+    <button type="button" class="btn" onclick="adjustFontSize(-1)" title="Diminuir fonte">A-</button>
+    <button type="button" class="btn" onclick="adjustFontSize(1)" title="Aumentar fonte">A+</button>
+    <button type="button" class="btn" onclick="resetFontSize()" title="Restaurar fonte">Resetar</button>
+    <a href="../pages/home.php" class="btn btn-home" title="Página Inicial"><i class="fas fa-home"></i> Home</a>
+    <a href="../pages/logout.php" class="btn btn-exit" title="Sair do sistema"><i class="fas fa-sign-out-alt"></i> Sair</a>
+</header>
 
   <main>

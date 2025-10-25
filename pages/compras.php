@@ -28,14 +28,16 @@ if (isset($_GET['action'])) {
     
     // Busca de Produtos
     if ($_GET['action'] === 'search_produtos') {
-        $stmt = $conn->prepare("SELECT id, nome, preco_compra, quantidade FROM produtos WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
+        // CORREÇÃO: Alterado "quantidade" para "quantidade_estoque"
+        $stmt = $conn->prepare("SELECT id, nome, preco_compra, quantidade_estoque FROM produtos WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
         $stmt->bind_param("is", $id_usuario, $term);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
             $response[] = [
                 'id' => $row['id'],
-                'text' => $row['nome'] . " (Estoque atual: " . $row['quantidade'] . ")",
+                // CORREÇÃO: Alterado "quantidade" para "quantidade_estoque"
+                'text' => $row['nome'] . " (Estoque atual: " . $row['quantidade_estoque'] . ")",
                 'preco_compra' => $row['preco_compra']
             ];
         }

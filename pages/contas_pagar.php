@@ -283,20 +283,28 @@ if ($result->num_rows > 0) {
         }
 
         echo "<tr class='$classeVencimento'>";
-        // AJUSTE: Prioriza o nome vindo da tabela de pessoas, se não houver, usa o campo de texto antigo.
-        $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : $row['fornecedor'];
+        
+        // **INÍCIO DA CORREÇÃO**
+        // Garante que a variável $fornecedorDisplay sempre tenha um valor para ser usado.
+        $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? '');
+        
         echo "<td data-label='Fornecedor'>".htmlspecialchars($fornecedorDisplay)."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format($row['valor'],2,',','.')."</td>";
         echo "<td data-label='Status de Vencimento'>". $statusData ."</td>";
+        
+        // **CORREÇÃO APLICADA AQUI TAMBÉM**
+        // Usa a variável $fornecedorDisplay que já foi tratada, em vez de acessar $row['fornecedor'] diretamente.
         echo "<td data-label='Ações'>
             <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
             <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
-            <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
-            <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
+            <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+            <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
         </td>";
+        // **FIM DA CORREÇÃO**
+        
         echo "</tr>";
     }
     echo "</tbody></table>";
@@ -351,7 +359,7 @@ if ($result->num_rows > 0) {
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
     document.getElementById('formExportarPagar').addEventListener('submit', function(e) {
-        let formato = e.submitter.value;
+        let formato = e.submitter ? e.submitter.value : 'csv';
         this.action = `../actions/exportar_contas_pagar.php?formato=${formato}`;
     });
 

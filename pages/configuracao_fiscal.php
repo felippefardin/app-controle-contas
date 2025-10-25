@@ -19,7 +19,164 @@ if (!$config) {
     <title>Configurações Fiscais - App Contas</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+    /* ===== Estilo geral (Dark Mode) ===== */
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        background-color: #121212;
+        color: #eee;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* ===== Container principal ===== */
+    .container {
+        background-color: #1e1e1e;
+        border-radius: 10px;
+        padding: 30px;
+        margin: 30px auto;
+        width: 95%;
+        max-width: 1200px; /* full para desktop */
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+    }
+
+    h2 {
+        color: #00bfff;
+        text-align: center;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    p {
+        text-align: center;
+        color: #bbb;
+        margin-bottom: 25px;
+    }
+
+    /* ===== Cards ===== */
+    .card {
+        background-color: #222;
+        border: 1px solid #333;
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+
+    .card-header {
+        background-color: #2a2a2a;
+        border-bottom: 1px solid #333;
+        color: #00bfff;
+        font-weight: bold;
+        padding: 12px 18px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    /* ===== Labels e Inputs ===== */
+    .form-label {
+        color: #ccc;
+        font-weight: 500;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    input.form-control,
+    select.form-control,
+    textarea.form-control {
+        background-color: #2a2a2a;
+        color: #eee;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 10px;
+        width: 100%;
+        transition: all 0.3s;
+    }
+
+    input.form-control:focus,
+    select.form-control:focus,
+    textarea.form-control:focus {
+        background-color: #333;
+        color: #fff;
+        border-color: #00bfff;
+        box-shadow: 0 0 5px rgba(0, 191, 255, 0.5);
+    }
+
+    /* ===== Botões ===== */
+    .btn-primary {
+        background-color: #00bfff;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 25px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #0095cc;
+        transform: translateY(-1px);
+    }
+
+    /* ===== Alertas ===== */
+    .alert {
+        border-radius: 6px;
+        padding: 12px 20px;
+        margin-bottom: 20px;
+    }
+
+    /* ===== Responsividade ===== */
+    @media (max-width: 992px) {
+        .container {
+            width: 95%;
+            padding: 20px;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .col-md-6,
+        .col-md-4,
+        .col-md-8 {
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        body {
+            padding: 10px;
+        }
+
+        .container {
+            padding: 15px;
+            margin: 10px;
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            width: 100%;
+            font-size: 1rem;
+            padding: 12px;
+        }
+
+        .card-header {
+            font-size: 1rem;
+        }
+    }
+</style>
+
 </head>
 <body>
 

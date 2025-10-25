@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_compra = $conn->insert_id;
 
         $descricao_conta = "Compra #" . $id_compra;
-
+        
         // 2. Loop para processar cada produto
         foreach ($produtos as $produto) {
             $id_produto = (int)$produto['id'];
@@ -42,8 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_item->bind_param("iiid", $id_compra, $id_produto, $quantidade, $preco);
             $stmt_item->execute();
 
-            // 2b. Atualizar (adicionar) a quantidade no estoque
-            $stmt_update_prod = $conn->prepare("UPDATE produtos SET quantidade = quantidade + ? WHERE id = ? AND id_usuario = ?");
+            // 2b. CORREÇÃO: Atualizar a coluna correta 'quantidade_estoque'
+            $stmt_update_prod = $conn->prepare("UPDATE produtos SET quantidade_estoque = quantidade_estoque + ? WHERE id = ? AND id_usuario = ?");
             $stmt_update_prod->bind_param("iii", $quantidade, $id_produto, $id_usuario);
             $stmt_update_prod->execute();
 

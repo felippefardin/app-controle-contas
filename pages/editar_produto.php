@@ -16,6 +16,7 @@ if (isset($_GET['id'])) {
     $id_produto = $_GET['id'];
     $id_usuario = $_SESSION['usuario']['id'];
 
+    // Seleciona todos os campos do produto, incluindo a quantidade_minima
     $stmt = $conn->prepare("SELECT * FROM produtos WHERE id = ? AND id_usuario = ?");
     $stmt->bind_param("ii", $id_produto, $id_usuario);
     $stmt->execute();
@@ -71,9 +72,6 @@ if (isset($_GET['id'])) {
             border-color: #0af;
             box-shadow: none;
         }
-        .form-control::placeholder {
-            color: #888;
-        }
         .btn-primary {
             background-color: #0af;
             border: none;
@@ -85,9 +83,6 @@ if (isset($_GET['id'])) {
         hr {
             border-top: 1px solid #444;
         }
-        .form-text {
-            color: #aaa !important;
-        }
     </style>
 </head>
 <body>
@@ -97,42 +92,44 @@ if (isset($_GET['id'])) {
         <form action="../actions/editar_produto_action.php" method="POST">
             <input type="hidden" name="id" value="<?= htmlspecialchars($produto['id']) ?>">
             
-            <div class="mb-3">
-                <label for="nome" class="form-label">Nome do Produto</label>
-                <input type="text" class="form-control" id="nome" name="nome" value="<?= htmlspecialchars($produto['nome']) ?>" required>
-            </div>
-            
-            <div class="mb-3">
-                <label for="descricao" class="form-label">Descrição</label>
-                <textarea class="form-control" id="descricao" name="descricao" rows="2"><?= htmlspecialchars($produto['descricao']) ?></textarea>
-            </div>
-
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label for="preco_compra" class="form-label">Preço de Compra</label>
-                    <input type="text" class="form-control" id="preco_compra" name="preco_compra" placeholder="0.00" value="<?= htmlspecialchars($produto['preco_compra']) ?>">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="nome">Nome do Produto</label>
+                    <input type="text" class="form-control" name="nome" value="<?= htmlspecialchars($produto['nome']) ?>" required>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label for="preco_venda" class="form-label">Preço de Venda</label>
-                    <input type="text" class="form-control" id="preco_venda" name="preco_venda" placeholder="0.00" value="<?= htmlspecialchars($produto['preco_venda']) ?>" required>
+                <div class="form-group col-md-3">
+                    <label for="quantidade_estoque">Quantidade em Estoque</label>
+                    <input type="number" class="form-control" name="quantidade_estoque" value="<?= htmlspecialchars($produto['quantidade_estoque']) ?>" required>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label for="quantidade_estoque" class="form-label">Quantidade em Estoque</label>
-                    <input type="number" class="form-control" id="quantidade_estoque" name="quantidade_estoque" value="<?= htmlspecialchars($produto['quantidade_estoque']) ?>" required>
+                <div class="form-group col-md-3">
+                    <label for="quantidade_minima">Quantidade Mínima</label>
+                    <input type="number" class="form-control" name="quantidade_minima" value="<?= htmlspecialchars($produto['quantidade_minima']) ?>" required>
                 </div>
             </div>
-
+            <div class="form-group">
+                <label for="descricao">Descrição</label>
+                <textarea class="form-control" name="descricao" rows="2"><?= htmlspecialchars($produto['descricao']) ?></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="preco_compra">Preço de Compra</label>
+                    <input type="text" class="form-control" name="preco_compra" placeholder="0.00" value="<?= htmlspecialchars($produto['preco_compra']) ?>">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="preco_venda">Preço de Venda</label>
+                    <input type="text" class="form-control" name="preco_venda" placeholder="0.00" value="<?= htmlspecialchars($produto['preco_venda']) ?>" required>
+                </div>
+            </div>
             <hr>
-            <h5>Informações Fiscais</h5>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="ncm" class="form-label">NCM</label>
-                    <input type="text" class="form-control" id="ncm" name="ncm" value="<?= htmlspecialchars($produto['ncm'] ?? '') ?>" placeholder="Ex: 84713000">
+            <h5>Informações Fiscais (para emissão de NFe)</h5>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="ncm">NCM</label>
+                    <input type="text" class="form-control" name="ncm" value="<?= htmlspecialchars($produto['ncm'] ?? '') ?>" placeholder="Ex: 84713000">
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label for="cfop" class="form-label">CFOP</label>
-                    <input type="text" class="form-control" id="cfop" name="cfop" value="<?= htmlspecialchars($produto['cfop'] ?? '') ?>" placeholder="Ex: 5102">
+                <div class="form-group col-md-6">
+                    <label for="cfop">CFOP</label>
+                    <input type="text" class="form-control" name="cfop" value="<?= htmlspecialchars($produto['cfop'] ?? '') ?>" placeholder="Ex: 5102">
                 </div>
             </div>
 
