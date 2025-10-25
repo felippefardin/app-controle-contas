@@ -21,9 +21,10 @@ if ($perfil !== 'admin') {
     $where[] = "c.usuario_id IN ({$subUsersQuery})";
 }
 
-$sql = "SELECT c.*, u.nome AS usuario_baixou
+$sql = "SELECT c.*, u.nome AS usuario_baixou, pf.nome AS nome_pessoa_fornecedor
         FROM contas_pagar c
         LEFT JOIN usuarios u ON c.baixado_por = u.id
+        LEFT JOIN pessoas_fornecedores pf ON c.id_pessoa_fornecedor = pf.id
         WHERE " . implode(" AND ", $where) . "
         ORDER BY c.data_baixa DESC";
 
@@ -115,8 +116,10 @@ if ($result && $result->num_rows > 0) {
             $stmtCat->close();
         }
 
+        $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? '');
+
         echo "<tr>";
-        echo "<td data-label='Fornecedor'>".htmlspecialchars($row['fornecedor'])."</td>";
+        echo "<td data-label='Fornecedor'>".htmlspecialchars($fornecedorDisplay)."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y', strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
@@ -133,7 +136,7 @@ if ($result && $result->num_rows > 0) {
         }
 
         echo "<td data-label='Ações'>
-                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['fornecedor']))."')\" class='btn-action btn-excluir'>Excluir</a>
+                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."')\" class='btn-action btn-excluir'>Excluir</a>
               </td>";
         echo "</tr>";
     }

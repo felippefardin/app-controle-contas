@@ -253,7 +253,7 @@ include('../includes/header.php');
                 alertEstoque.style.transition = 'opacity 0.5s';
                 alertEstoque.style.opacity = '0';
                 setTimeout(() => alertEstoque.remove(), 500);
-            }, 8000); // 8 segundos
+            }, 3000); // 8 segundos
         }
     });
 </script>

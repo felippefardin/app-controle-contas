@@ -54,8 +54,8 @@ $stmt_categorias->close();
 $where = ["cp.status='pendente'"];
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-    $where[] = "(cp.usuario_id = {$mainUserId} OR cp.usuario_id IN ({$subUsersQuery}))";
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    $where[] = "cp.usuario_id IN ({$subUsersQuery})";
 }
 if (!empty($_GET['fornecedor'])) {
     $where[] = "cp.fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";

@@ -3,19 +3,39 @@ require_once '../includes/session_init.php';
 require_once '../includes/header.php';
 require_once '../database.php'; // Este arquivo cria a variável $conn
 
+// 2. VERIFICAÇÃO DE LOGIN
+if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
+
 // Verificação de sessão correta
 if (!isset($_SESSION['usuario'])) {
     header('Location: ../pages/login.php');
     exit;
 }
 
-$id_usuario = $_SESSION['usuario']['id'];
+$usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
+$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// Voltando a usar a conexão original "$conn" com "bind_param"
-$stmt = $conn->prepare("SELECT * FROM produtos WHERE id_usuario = ? ORDER BY nome ASC");
-$stmt->bind_param("i", $id_usuario);
-$stmt->execute();
-$result = $stmt->get_result();
+// Monta filtros SQL
+$where = [];
+if ($perfil !== 'admin') {
+    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    $where[] = "id_usuario IN ({$subUsersQuery})";
+}
+
+$sql = "SELECT * FROM produtos";
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
+$sql .= " ORDER BY nome ASC";
+
+$result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

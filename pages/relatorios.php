@@ -3,6 +3,13 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 require_once '../includes/header.php';
 
+// 2. VERIFICAÇÃO DE LOGIN
+if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
 // Verifica login
 if (!isset($_SESSION['usuario']['id'])) {
     header('Location: login.php');
@@ -10,11 +17,23 @@ if (!isset($_SESSION['usuario']['id'])) {
 }
 
 $usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
+$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
+
+$userFilter = "usuario_id = {$usuarioId}";
+$userFilterCategorias = "id_usuario = {$usuarioId}";
+
+if ($perfil !== 'admin') {
+    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    $userFilter = "usuario_id IN ({$subUsersQuery})";
+    $userFilterCategorias = "id_usuario IN ({$subUsersQuery})";
+}
 
 // Função para reduzir repetições nas consultas
-function getTotais($conn, $tabela, $status, $usuarioId) {
-    $stmt = $conn->prepare("SELECT COUNT(id) AS total_contas, SUM(valor) AS valor_total FROM $tabela WHERE status = ? AND usuario_id = ?");
-    $stmt->bind_param("si", $status, $usuarioId);
+function getTotais($conn, $tabela, $status, $userFilter) {
+    $stmt = $conn->prepare("SELECT COUNT(id) AS total_contas, SUM(valor) AS valor_total FROM $tabela WHERE status = ? AND $userFilter");
+    $stmt->bind_param("s", $status);
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -22,14 +41,13 @@ function getTotais($conn, $tabela, $status, $usuarioId) {
 }
 
 // Totais principais
-$totaisPagarPendentes = getTotais($conn, 'contas_pagar', 'pendente', $usuarioId);
-$totaisPagarBaixadas  = getTotais($conn, 'contas_pagar', 'baixada', $usuarioId);
-$totaisReceberPendentes = getTotais($conn, 'contas_receber', 'pendente', $usuarioId);
-$totaisReceberBaixadas  = getTotais($conn, 'contas_receber', 'baixada', $usuarioId);
+$totaisPagarPendentes = getTotais($conn, 'contas_pagar', 'pendente', $userFilter);
+$totaisPagarBaixadas  = getTotais($conn, 'contas_pagar', 'baixada', $userFilter);
+$totaisReceberPendentes = getTotais($conn, 'contas_receber', 'pendente', $userFilter);
+$totaisReceberBaixadas  = getTotais($conn, 'contas_receber', 'baixada', $userFilter);
 
 // Caixa diário
-$stmtCaixa = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE usuario_id = ?");
-$stmtCaixa->bind_param("i", $usuarioId);
+$stmtCaixa = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE $userFilter");
 $stmtCaixa->execute();
 $totalCaixa = $stmtCaixa->get_result()->fetch_assoc()['total'] ?? 0;
 $stmtCaixa->close();
@@ -46,54 +64,67 @@ for ($i = 11; $i >= 0; $i--) {
     $labels[] = date('M/Y', strtotime($mes . '-01'));
 
     // Entradas previstas e realizadas
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE usuario_id=? AND status=? AND DATE_FORMAT(IF(status='baixada',data_baixa,data_vencimento),'%Y-%m')=?");
-    $status = 'pendente'; $stmt->bind_param("iss", $usuarioId, $status, $mes);
-    $stmt->execute(); $entradasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status=? AND DATE_FORMAT(IF(status='baixada',data_baixa,data_vencimento),'%Y-%m')=?");
+    $status = 'pendente';
+    $stmt->bind_param("ss", $status, $mes);
+    $stmt->execute();
+    $entradasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    $status = 'baixada'; $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE usuario_id=? AND status=? AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
-    $stmt->bind_param("iss", $usuarioId, $status, $mes);
-    $stmt->execute(); $total_receber = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $status = 'baixada';
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status=? AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
+    $stmt->bind_param("ss", $status, $mes);
+    $stmt->execute();
+    $total_receber = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
     // Caixa do mês
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE usuario_id=? AND DATE_FORMAT(data,'%Y-%m')=?");
-    $stmt->bind_param("is", $usuarioId, $mes);
-    $stmt->execute(); $total_caixa = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE $userFilter AND DATE_FORMAT(data,'%Y-%m')=?");
+    $stmt->bind_param("s", $mes);
+    $stmt->execute();
+    $total_caixa = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
     $entradasBaixadas[] = $total_receber + $total_caixa;
 
     // Saídas previstas e realizadas
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE usuario_id=? AND status=? AND DATE_FORMAT(IF(status='baixada',data_baixa,data_vencimento),'%Y-%m')=?");
-    $status = 'pendente'; $stmt->bind_param("iss", $usuarioId, $status, $mes);
-    $stmt->execute(); $saidasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status=? AND DATE_FORMAT(IF(status='baixada',data_baixa,data_vencimento),'%Y-%m')=?");
+    $status = 'pendente';
+    $stmt->bind_param("ss", $status, $mes);
+    $stmt->execute();
+    $saidasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    $status = 'baixada'; $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE usuario_id=? AND status=? AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
-    $stmt->bind_param("iss", $usuarioId, $status, $mes);
-    $stmt->execute(); $saidasBaixadas[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $status = 'baixada';
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status=? AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
+    $stmt->bind_param("ss", $status, $mes);
+    $stmt->execute();
+    $saidasBaixadas[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 }
 
 // Categorias
-$stmt = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? OR id_usuario IS NULL ORDER BY nome");
-$stmt->bind_param("i", $usuarioId);
+$stmt = $conn->prepare("SELECT id, nome FROM categorias WHERE $userFilterCategorias OR id_usuario IS NULL ORDER BY nome");
 $stmt->execute();
 $categorias = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 $totaisPorCategoria = [];
 foreach ($categorias as $c) {
-    $id = $c['id']; $nome = $c['nome'];
+    $id = $c['id'];
+    $nome = $c['nome'];
 
-    $stmt = $conn->prepare("SELECT SUM(valor) as total FROM contas_receber WHERE usuario_id=? AND id_categoria=? AND status='baixada'");
-    $stmt->bind_param("ii", $usuarioId, $id); $stmt->execute();
-    $receber = $stmt->get_result()->fetch_assoc()['total'] ?? 0; $stmt->close();
+    $stmt = $conn->prepare("SELECT SUM(valor) as total FROM contas_receber WHERE $userFilter AND id_categoria=? AND status='baixada'");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $receber = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+    $stmt->close();
 
-    $stmt = $conn->prepare("SELECT SUM(valor) as total FROM contas_pagar WHERE usuario_id=? AND id_categoria=? AND status='baixada'");
-    $stmt->bind_param("ii", $usuarioId, $id); $stmt->execute();
-    $pagar = $stmt->get_result()->fetch_assoc()['total'] ?? 0; $stmt->close();
+    $stmt = $conn->prepare("SELECT SUM(valor) as total FROM contas_pagar WHERE $userFilter AND id_categoria=? AND status='baixada'");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $pagar = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+    $stmt->close();
 
     if ($receber > 0 || $pagar > 0)
         $totaisPorCategoria[$nome] = ['receber' => $receber, 'pagar' => $pagar];

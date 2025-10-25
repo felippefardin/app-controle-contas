@@ -13,14 +13,17 @@ if (!isset($_SESSION['usuario']['id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Pega os dados do formulário
     $fornecedor_nome = trim($_POST['fornecedor_nome']);
-    // AJUSTE: Captura o ID do fornecedor do campo hidden
     $id_pessoa_fornecedor = !empty($_POST['fornecedor_id']) ? (int)$_POST['fornecedor_id'] : null;
     $numero = trim($_POST['numero']);
     $valor = str_replace(['.', ','], ['', '.'], $_POST['valor']);
     $data_vencimento = $_POST['data_vencimento'];
     $id_categoria = $_POST['id_categoria'];
-    $usuario_id = $_SESSION['usuario']['id'];
     $enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N';
+
+    // AJUSTE: Garante que a conta seja sempre salva sob o ID do usuário principal
+    $actor_user_id = $_SESSION['usuario']['id'];
+    $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
+    $usuario_id_to_save = ($id_criador > 0) ? $id_criador : $actor_user_id;
 
     // Validação básica
     if (empty($fornecedor_nome) || empty($numero) || !is_numeric($valor) || empty($data_vencimento) || empty($id_categoria)) {
@@ -30,12 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        // AJUSTE: Adiciona id_pessoa_fornecedor ao INSERT
+        // AJUSTE: Adiciona id_pessoa_fornecedor e o ID do usuário principal ao INSERT
         $stmt = $conn->prepare(
             "INSERT INTO contas_pagar (fornecedor, id_pessoa_fornecedor, numero, valor, data_vencimento, usuario_id, enviar_email, id_categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
-        // AJUSTE: Atualiza o bind_param para incluir o novo campo (i para integer)
-        $stmt->bind_param("sisdsisi", $fornecedor_nome, $id_pessoa_fornecedor, $numero, $valor, $data_vencimento, $usuario_id, $enviar_email, $id_categoria);
+        // AJUSTE: Atualiza o bind_param para usar o ID do usuário principal
+        $stmt->bind_param("sisdsisi", $fornecedor_nome, $id_pessoa_fornecedor, $numero, $valor, $data_vencimento, $usuario_id_to_save, $enviar_email, $id_categoria);
 
         if ($stmt->execute()) {
             $_SESSION['success_message'] = "Conta a pagar adicionada com sucesso!";

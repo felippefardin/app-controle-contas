@@ -9,17 +9,28 @@ if (!isset($_SESSION['usuario'])) {
 }
 
 $usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
+$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
-// Buscar categorias e subcategorias
-$stmt = $conn->prepare("SELECT * FROM categorias WHERE id_usuario = ? ORDER BY tipo, nome ASC");
-$stmt->bind_param("i", $usuarioId);
-$stmt->execute();
-$result = $stmt->get_result();
+// Monta filtros SQL
+$where = [];
+if ($perfil !== 'admin') {
+    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    $where[] = "id_usuario IN ({$subUsersQuery})";
+}
+
+$sql = "SELECT * FROM categorias";
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
+$sql .= " ORDER BY tipo, nome ASC";
+
+$result = $conn->query($sql);
 $categorias = [];
 while ($row = $result->fetch_assoc()) {
     $categorias[] = $row;
 }
-$stmt->close();
 
 // Mensagens da sessão
 $success_message = $_SESSION['success_message'] ?? null;

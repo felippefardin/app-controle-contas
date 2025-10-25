@@ -3,6 +3,8 @@ require_once '../includes/session_init.php';
 require_once '../includes/header.php';
 require_once '../database.php';
 
+
+
 // Busca todos os lançamentos de caixa
 $lancamentos = [];
 $sql = "SELECT id, data, valor FROM caixa_diario ORDER BY data DESC";

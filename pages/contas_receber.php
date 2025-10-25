@@ -66,8 +66,8 @@ $stmt_categorias->close();
 $where = ["cr.status='pendente'"];
 if ($perfil !== 'admin') {
     $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId}";
-    $where[] = "(cr.usuario_id = {$mainUserId} OR cr.usuario_id IN ({$subUsersQuery}))";
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    $where[] = "cr.usuario_id IN ({$subUsersQuery})";
 }
 if (!empty($_GET['responsavel'])) {
     $where[] = "cr.responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";

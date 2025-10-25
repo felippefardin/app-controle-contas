@@ -2,8 +2,21 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// A consulta foi corrigida para buscar pelo ID da configuração,
-$result = $conn->query("SELECT * FROM empresa_config WHERE id = 1");
+// 2. VERIFICAÇÃO DE LOGIN
+if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
+// Pega o ID do usuário principal da sessão
+$mainUserId = $_SESSION['usuario_principal']['id'];
+
+// A consulta agora busca a configuração correspondente ao ID do usuário principal
+$stmt = $conn->prepare("SELECT * FROM empresa_config WHERE id = ?");
+$stmt->bind_param("i", $mainUserId);
+$stmt->execute();
+$result = $stmt->get_result();
 $config = $result->fetch_assoc();
 
 if (!$config) {
@@ -197,7 +210,7 @@ if (!$config) {
     <?php endif; ?>
 
     <form action="../actions/salvar_configuracao_fiscal.php" method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="id" value="1">
+        <input type="hidden" name="id" value="<?= htmlspecialchars($mainUserId) ?>">
         <div class="card mb-4">
             <div class="card-header">
                 Dados da Empresa

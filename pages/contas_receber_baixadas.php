@@ -25,9 +25,10 @@ if (!empty($_GET['responsavel'])) $where[] = "cr.responsavel LIKE '%" . $conn->r
 if (!empty($_GET['numero'])) $where[] = "cr.numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";
 if (!empty($_GET['data_vencimento'])) $where[] = "cr.data_vencimento = '" . $conn->real_escape_string($_GET['data_vencimento']) . "'";
 
-$sql = "SELECT cr.*, u.nome AS baixado_por_nome 
+$sql = "SELECT cr.*, u.nome AS baixado_por_nome, pf.nome AS nome_pessoa_fornecedor
         FROM contas_receber cr 
         LEFT JOIN usuarios u ON cr.baixado_por_usuario_id = u.id 
+        LEFT JOIN pessoas_fornecedores pf ON cr.id_pessoa_fornecedor = pf.id
         WHERE " . implode(" AND ", $where) . " 
         ORDER BY cr.data_baixa DESC";
 
@@ -124,8 +125,10 @@ if ($result && $result->num_rows > 0) {
             $stmtCat->close();
         }
 
+        $responsavelDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['responsavel'] ?? '');
+
         echo "<tr>";
-        echo "<td data-label='Responsável'>".htmlspecialchars($row['responsavel'])."</td>";
+        echo "<td data-label='Responsável'>".htmlspecialchars($responsavelDisplay)."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Data Baixa'>".($row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
@@ -141,7 +144,7 @@ if ($result && $result->num_rows > 0) {
 
         // --- BOTÃO EXCLUIR ADICIONADO ---
         echo "<td data-label='Ações'>
-                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($row['responsavel']))."')\" class='btn-action btn-excluir'>Excluir</a>
+                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."')\" class='btn-action btn-excluir'>Excluir</a>
               </td>";
         echo "</tr>";
     }

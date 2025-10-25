@@ -8,13 +8,25 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-$id_usuario = $_SESSION['usuario']['id'];
+$usuarioId = $_SESSION['usuario']['id'];
+$perfil = $_SESSION['usuario']['perfil'];
+$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // Lógica para buscar contas bancárias já cadastradas
-$stmt = $conn->prepare("SELECT * FROM contas_bancarias WHERE id_usuario = ? ORDER BY nome_banco ASC");
-$stmt->bind_param("i", $id_usuario);
-$stmt->execute();
-$result = $stmt->get_result();
+$where = [];
+if ($perfil !== 'admin') {
+    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    $where[] = "id_usuario IN ({$subUsersQuery})";
+}
+
+$sql = "SELECT * FROM contas_bancarias";
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
+$sql .= " ORDER BY nome_banco ASC";
+
+$result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

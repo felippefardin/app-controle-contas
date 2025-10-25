@@ -4,32 +4,55 @@ require_once '../includes/session_init.php';
 // --- BLOCO DE PROCESSAMENTO AJAX PARA BUSCAS ---
 if (isset($_GET['action'])) {
     include('../database.php');
-    
+
+    // 2. VERIFICAÇÃO DE LOGIN
+    if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
+        session_destroy();
+        header('Location: login.php');
+        exit;
+    }
+
     if (!isset($_SESSION['usuario']['id'])) {
         header('Content-Type: application/json');
         echo json_encode(['results' => []]);
         exit;
     }
 
-    $id_usuario = $_SESSION['usuario']['id'];
+    $usuarioId = $_SESSION['usuario']['id'];
+    $perfil = $_SESSION['usuario']['perfil'];
+    $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
     $term = "%" . ($_GET['term'] ?? '') . "%";
     $response = [];
 
+    $subUsersQuery = '';
+    if ($perfil !== 'admin') {
+        $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
+        $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
+    }
+
     // Busca de Clientes
     if ($_GET['action'] === 'search_clientes') {
-        $stmt = $conn->prepare("SELECT id, nome FROM pessoas_fornecedores WHERE id_usuario = ? AND tipo = 'pessoa' AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
-        $stmt->bind_param("is", $id_usuario, $term);
+        $sql = "SELECT id, nome FROM pessoas_fornecedores WHERE tipo = 'pessoa' AND nome LIKE ?";
+        if (!empty($subUsersQuery)) {
+            $sql .= " AND id_usuario IN ({$subUsersQuery})";
+        }
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $term);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
             $response[] = ['id' => $row['id'], 'text' => $row['nome']];
         }
     }
-    
+
     // Busca de Produtos
     if ($_GET['action'] === 'search_produtos') {
-        $stmt = $conn->prepare("SELECT id, nome, preco_venda, quantidade_estoque FROM produtos WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
-        $stmt->bind_param("is", $id_usuario, $term);
+        $sql = "SELECT id, nome, preco_venda, quantidade_estoque FROM produtos WHERE nome LIKE ?";
+        if (!empty($subUsersQuery)) {
+            $sql .= " AND id_usuario IN ({$subUsersQuery})";
+        }
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $term);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
