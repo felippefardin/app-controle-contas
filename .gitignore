@@ -2,33 +2,36 @@
 .DS_Store
 Thumbs.db
 
-# IDEs / Editor
+# IDEs / Editores
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
 
-# Arquivos temporários / cache
+# Arquivos de log e cache
+/logs/
 /tmp/
 /cache/
-/*.log
+*.log
 *.tmp
 
-# Composer
+# Dependências do Composer
 /vendor/
-/composer.lock
+composer.lock
 
-# PHPMailer e bibliotecas externas (se não estiverem versionadas)
-lib/PHPMailer/PHPMailer.php
-lib/PHPMailer/SMTP.php
-lib/PHPMailer/Exception.php
+# Bibliotecas de terceiros (não gerenciadas pelo Composer)
+/lib/
 
-# FPDF (se quiser manter versão local fora do Git)
-/lib/fpdf/
-
-# Configurações sensíveis
+# Arquivos de configuração sensíveis
 .env
 *.env
+*.env.*
+!.env.example
+
+# Arquivos de banco de dados
+*.sqlite
+*.db
+banco-dados
 
 # Arquivos de backup
 *~
@@ -36,7 +39,6 @@ lib/PHPMailer/Exception.php
 *.old
 *.orig
 
-# Sistema de banco de dados local (se estiver usando arquivos)
-*.sqlite
-*.db
-.env
+# Arquivos gerados pelo usuário
+/comprovantes/
+/img/usuarios/
