@@ -16,82 +16,165 @@ if (!isset($_SESSION['usuario'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        body {
-            background-color: #121212;
-            color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
+    /* ======= Estilo Global ======= */
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        background-color: #121212;
+        color: #eee;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        line-height: 1.6;
+    }
+
+    main {
+        padding: 90px 20px 40px; /* espaço para não colar no header */
+        min-height: calc(100vh - 160px); /* garante espaço entre header e footer */
+    }
+
+    /* ======= Container Central ======= */
+    .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background-color: #1f1f1f;
+        padding: 40px 35px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 191, 255, 0.15);
+        box-shadow: 0 0 25px rgba(0, 191, 255, 0.07);
+    }
+
+    /* ======= Títulos ======= */
+    h1, h2, h3 {
+        color: #00bfff;
+        text-align: center;
+        margin-bottom: 25px;
+        letter-spacing: 0.5px;
+    }
+
+    h1 {
+        font-size: 1.8em;
+        border-bottom: 2px solid #00bfff;
+        padding-bottom: 10px;
+    }
+
+    h3 {
+        color: #27ae60;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        font-size: 1.2em;
+        border: none;
+    }
+
+    /* ======= Seções do Tutorial ======= */
+    .secao-tutorial {
+        margin-bottom: 45px;
+    }
+
+    .secao-tutorial p {
+        color: #ccc;
+        text-align: justify;
+        margin-bottom: 12px;
+        font-size: 0.95em;
+    }
+
+    .secao-tutorial ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .secao-tutorial li {
+        background-color: #2a2a2a;
+        padding: 12px 14px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: flex-start;
+        border-left: 4px solid #00bfff;
+        gap: 10px;
+    }
+
+    .secao-tutorial li i {
+        color: #00bfff;
+        font-size: 1.1em;
+        margin-top: 3px;
+        flex-shrink: 0;
+    }
+
+    /* ======= Ícones ======= */
+    h1 i,
+    h3 i {
+        color: #00bfff;
+    }
+
+    /* ======= Responsividade ======= */
+    @media (max-width: 992px) {
+        main {
+            padding: 100px 15px 60px;
         }
 
         .container {
-            max-width: 900px;
-            margin: 40px auto;
-            background-color: #1f1f1f;
-            padding: 35px;
-            border-radius: 12px;
-            border: 1px solid rgba(0, 191, 255, 0.2);
-            box-shadow: 0 0 25px rgba(0, 191, 255, 0.08);
+            width: 95%;
+            padding: 25px 20px;
         }
 
-        h1, h2, h3 {
-            color: #00bfff;
-            text-align: center;
-            border-bottom: 2px solid #00bfff;
-            padding-bottom: 10px;
-            margin-bottom: 25px;
-            letter-spacing: 0.5px;
+        h1 {
+            font-size: 1.5em;
         }
 
-        .secao-tutorial {
-            margin-bottom: 45px;
+        h3 {
+            font-size: 1.1em;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .container {
+            padding: 20px 15px;
+            border-radius: 8px;
         }
 
-        .secao-tutorial h3 {
-            color: #27ae60;
-            border-bottom: none;
-            text-align: left;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .secao-tutorial p {
-            line-height: 1.7;
-            text-align: justify;
-            margin-bottom: 12px;
-            color: #ccc;
-        }
-
-        .secao-tutorial ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+        h1 {
+            font-size: 1.3em;
         }
 
         .secao-tutorial li {
-            background-color: #2a2a2a;
-            padding: 12px 14px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            border-left: 4px solid #00bfff;
+            font-size: 0.9em;
+            padding: 10px 12px;
         }
+    }
 
-        .secao-tutorial li i {
-            margin-right: 10px;
-            color: #00bfff;
-            font-size: 1.1em;
-        }
-    </style>
+    /* ======= Footer ======= */
+    footer {
+        background-color: #1a1a1a;
+        color: #aaa;
+        text-align: center;
+        padding: 15px 0;
+        font-size: 0.9em;
+        border-top: 1px solid #222;
+    }
+</style>
+
 </head>
 <body>
 
 <div class="container">
     <h1><i class="fas fa-book-open"></i> Tutorial do Sistema de Controle de Contas</h1>
+
+    <div class="secao-tutorial">
+        <h3><i class="fas fa-users-cog"></i> Tipos de Conta e Acessos</h3>
+        <p>O sistema possui diferentes níveis de acesso para organizar e gerenciar as informações de forma segura e eficiente.</p>
+        <ul>
+            <li><i class="fas fa-user-tie"></i> <strong>Conta Principal:</strong> É a conta que gerencia um conjunto de operações. O usuário de uma conta principal pode cadastrar outros usuários (sub-usuários) que estarão vinculados a ela. Todas as informações de vendas, compras e finanças são restritas à sua conta principal e aos seus usuários.</li>
+            <li><i class="fas fa-user"></i> <strong>Conta de Usuário:</strong> São os usuários cadastrados por uma conta principal. Eles podem realizar operações no sistema, como vendas e registros financeiros, mas todo o histórico fica atrelado à conta principal que os criou.</li>
+            <li><i class="fas fa-user-shield"></i> <strong>Acesso Proprietário:</strong> Um nível de acesso especial que permite a um administrador (proprietário) visualizar e gerenciar as contas de outros usuários principais do sistema. Ao acessar como proprietário, você pode "incorporar" uma conta principal para ver todos os seus dados e de seus sub-usuários.</li>
+        </ul>
+    </div>
 
     <div class="secao-tutorial">
         <h3><i class="fas fa-tachometer-alt"></i> Dashboard (Página Inicial)</h3>
@@ -192,15 +275,6 @@ if (!isset($_SESSION['usuario'])) {
             <li><i class="fas fa-balance-scale"></i> Visualize balanços de valores previstos (contas em aberto) e realizados (contas baixadas).</li>
             <li><i class="fas fa-chart-bar"></i> Analise um gráfico de fluxo de caixa dos últimos 12 meses.</li>
              <li><i class="fas fa-file-pdf"></i> Exporte um resumo completo do dashboard em formato PDF.</li>
-        </ul>
-    </div>
-
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-user-shield"></i> Acesso Proprietário</h3>
-        <p>Um nível de acesso especial que permite a um administrador (proprietário) visualizar e gerenciar as contas de outros usuários principais do sistema.</p>
-        <ul>
-            <li><i class="fas fa-eye"></i> Selecione a conta de um usuário principal para acessar seu ambiente como se fosse ele.</li>
-            <li><i class="fas fa-arrow-left"></i> Um banner no topo da tela indicará que você está em modo de visualização e permitirá "Voltar para o Acesso Proprietário" a qualquer momento.</li>
         </ul>
     </div>
 

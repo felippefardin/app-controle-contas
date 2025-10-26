@@ -19,7 +19,7 @@
       <button onclick="adicionarAoDisplay('4')">4</button>
       <button onclick="adicionarAoDisplay('5')">5</button>
       <button onclick="adicionarAoDisplay('6')">6</button>
-      
+
       <button onclick="adicionarAoDisplay('1')">1</button>
       <button onclick="adicionarAoDisplay('2')">2</button>
       <button onclick="adicionarAoDisplay('3')">3</button>
@@ -32,73 +32,126 @@
 </div>
 
 <style>
-  /* O CSS permanece o mesmo da sua versão anterior */
+/* === CALCULADORA PADRÃO SISTEMA === */
+#calculadora-container {
+  position: fixed;
+  top: 100px;
+  left: 100px;
+  width: 260px;
+  background-color: #1e1e1e;
+  color: #eee;
+  font-family: "Segoe UI", Arial, sans-serif;
+  border-radius: 12px;
+  border: 1px solid #2a2a2a;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  z-index: 1200;
+  transition: all 0.3s ease;
+}
+
+#calculadora-container.ativa {
+  border-color: #00bfff;
+  box-shadow: 0 0 15px rgba(0, 191, 255, 0.5);
+}
+
+#calculadora-header {
+  background-color: #2c2c2c;
+  color: #00bfff;
+  font-weight: bold;
+  padding: 10px 14px;
+  border-radius: 12px 12px 0 0;
+  cursor: move;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+#fechar-calculadora {
+  cursor: pointer;
+  color: #ccc;
+  font-size: 18px;
+  transition: 0.2s;
+}
+#fechar-calculadora:hover {
+  color: #ff5555;
+}
+
+#calculadora {
+  padding: 15px;
+  background-color: #1e1e1e;
+  border-radius: 0 0 12px 12px;
+}
+
+#display {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.4em;
+  text-align: right;
+  background-color: #2a2a2a;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.botoes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.botoes button {
+  padding: 15px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 8px;
+  background-color: #333;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.botoes button:hover {
+  background-color: #444;
+}
+
+.botoes button.operador {
+  background-color: #ff9500;
+  color: #fff;
+}
+.botoes button.operador:hover {
+  background-color: #e08900;
+}
+
+.botoes button.igual {
+  background-color: #00bfff;
+  color: #fff;
+  font-weight: bold;
+}
+.botoes button.igual:hover {
+  background-color: #0095cc;
+}
+
+.botoes button.zero {
+  grid-column: span 2;
+}
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
   #calculadora-container {
-    position: fixed;
-    top: 100px;
-    left: 100px;
-    width: 260px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    z-index: 1000;
-    background-color: #1e1e1e;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    border: 2px solid #1e1e1e; /* Borda padrão */
-    transition: border-color 0.3s;
+    width: 90%;
+    left: 5%;
+    top: 80px;
   }
-
-  /* Estilo para quando a calculadora estiver ativa */
-  #calculadora-container.ativa {
-    border-color: #0af; /* Borda azul para indicar foco */
-  }
-
-  #calculadora-header {
-    padding: 10px;
-    cursor: move;
-    background-color: #272727;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    user-select: none;
-    font-weight: bold;
-  }
-
-  #fechar-calculadora { cursor:pointer; font-size:18px; font-weight:bold; }
-  #calculadora { padding: 10px; }
   #display {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 10px;
-    font-size: 1.4em;
-    text-align: right;
-    border-radius: 6px;
-    border: none;
-    background-color: #2b2b2b;
-    color: #fff;
-  }
-  .botoes {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    font-size: 1.2em;
   }
   .botoes button {
-    padding: 15px;
-    font-size: 1.1em;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    background-color: #3a3a3a;
-    color: #fff;
-    transition: 0.2s;
+    padding: 12px;
+    font-size: 1em;
   }
-  .botoes button:hover { background-color: #555; }
-  .botoes button.operador { background-color: #ff9500; color: #fff; }
-  .botoes button.operador:hover { background-color: #e08900; }
-  .botoes button.igual { background-color: #0af; color: #fff; }
-  .botoes button.igual:hover { background-color: #0077cc; }
-  .botoes button.zero { grid-column: span 2; }
+}
 </style>
 
 <script>
@@ -107,9 +160,8 @@ const container = document.getElementById('calculadora-container');
 const header = document.getElementById('calculadora-header');
 
 let offsetX, offsetY;
-let calculadoraAtiva = false; // Flag para controlar a interatividade
+let calculadoraAtiva = false;
 
-// Funções da calculadora agora verificam se ela está ativa
 function adicionarAoDisplay(valor) { 
   if (!calculadoraAtiva) return; 
   display.value += valor; 
@@ -122,35 +174,27 @@ function calcular() {
   if (!calculadoraAtiva) return; 
   try { 
     display.value = eval(display.value); 
-  }
-  catch { 
+  } catch { 
     display.value = 'Erro'; 
   }
 }
 
-// --- LÓGICA DE ATIVAÇÃO E DESATIVAÇÃO ---
-
-// Ativar calculadora ao clicar em qualquer parte dela
+// Ativar/desativar interatividade
 container.addEventListener('click', (e) => {
   if (!calculadoraAtiva) {
     calculadoraAtiva = true;
-    container.classList.add('ativa'); // Adiciona classe para feedback visual
+    container.classList.add('ativa');
   }
-  e.stopPropagation(); // Impede que o clique se propague para o document
+  e.stopPropagation();
 });
-
-// Desativar calculadora ao clicar fora dela
 document.addEventListener('click', () => {
   if (calculadoraAtiva) {
     calculadoraAtiva = false;
-    container.classList.remove('ativa'); // Remove a classe
+    container.classList.remove('ativa');
   }
 });
 
-
-// --- LÓGICA DE MOVIMENTAÇÃO E FECHAMENTO ---
-
-// Movimentação da calculadora
+// Movimentação
 header.addEventListener('mousedown', e => {
   e.preventDefault();
   offsetX = e.clientX - container.offsetLeft;
@@ -158,7 +202,6 @@ header.addEventListener('mousedown', e => {
   document.addEventListener('mousemove', mover);
   document.addEventListener('mouseup', pararMover);
 });
-
 function mover(e) {
   container.style.left = (e.clientX - offsetX) + 'px';
   container.style.top = (e.clientY - offsetY) + 'px';
@@ -168,19 +211,17 @@ function pararMover() {
   document.removeEventListener('mouseup', pararMover);
 }
 
-// Fechar calculadora
+// Fechar
 document.getElementById('fechar-calculadora').addEventListener('click', (e) => {
   container.style.display = 'none';
-  calculadoraAtiva = false; // Garante que a calculadora seja desativada ao fechar
+  calculadoraAtiva = false;
   container.classList.remove('ativa');
-  e.stopPropagation(); // Impede que o clique ative a calculadora novamente
+  e.stopPropagation();
 });
 
-// Interação com o Teclado
+// Teclado
 document.addEventListener('keydown', (e) => {
-  // Só funciona se a calculadora estiver visível e ativa
   if (container.style.display === 'none' || !calculadoraAtiva) return;
-  
   if (e.key >= '0' && e.key <= '9') adicionarAoDisplay(e.key);
   else if (['+', '-', '*', '/','.'].includes(e.key)) adicionarAoDisplay(e.key);
   else if (e.key === 'Enter' || e.key === '=') calcular();
