@@ -24,6 +24,7 @@ Este projeto ainda está em desenvolvimento e pode conter erros, falhas e funcio
 
 ## Como instalar e executar
 
-1. Clone este repositório:
-   ```bash
-   git clone https://github.com/seu-usuario/seu-repositorio.git
+1.  Clone este repositório:
+    ```bash
+    git clone [https://github.com/seu-usuario/seu-repositorio.git](https://github.com/seu-usuario/seu-repositorio.git)
+    ```
