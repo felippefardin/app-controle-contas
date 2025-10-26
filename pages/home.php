@@ -35,6 +35,7 @@ $stmt_estoque->close();
 
 // INCLUI O HEADER PADRÃO (APÓS TODA A LÓGICA PHP)
 include('../includes/header.php');
+
 ?>
 
 <!DOCTYPE html>

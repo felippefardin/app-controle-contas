@@ -27,6 +27,7 @@ if (isset($_GET['erro'])) {
             $mensagem_erro = "Ocorreu um erro inesperado ao salvar o usuário.";
     }
 }
+include('../includes/header.php');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

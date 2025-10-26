@@ -115,5 +115,10 @@ include '../includes/header.php'; // Inclui o header
     </div>
 </div>
 
+<?php
+;
+include '../includes/footer.php'; // Inclui o header
+?>
+
 </body>
 </html>

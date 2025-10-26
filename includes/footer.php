@@ -1,48 +1,62 @@
-<?php include('../pages/calculadora.php'); ?>
-<?php include('../pages/calendario.php'); ?>
+</main>
+
+<?php
+// Inclui os componentes da calculadora e do calendário que ficarão ocultos
+include(__DIR__ . '/../pages/calculadora.php');
+include(__DIR__ . '/../pages/calendario.php');
+?>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
- </main>
+<div class="action-buttons">
+    <a href="#" id="abrir-calculadora" title="Abrir Calculadora">
+        <i class="fas fa-calculator"></i>
+    </a>
+    <a href="#" id="abrir-calendario" title="Abrir Calendário">
+        <i class="fas fa-calendar-alt"></i>
+    </a>
+</div>
 
-  <footer class="footer">
-      <p>
-          © <?php echo date("Y"); ?> App Controle de Contas. Todos os direitos reservados.
-          <a href="tutorial.php">Tutorial</a>
-          <a href="protecao_de_dados.php">Proteção de Dados</a>
-      </p>
-  </footer>
+<footer>
+  <p>
+      &copy; <?= date("Y") ?> App Controle de Contas. Desenvolvido por Felippe Fardin.
+      <a href="../pages/tutorial.php">Tutorial</a>
+      <a href="../pages/protecao_de_dados.php">Proteção de Dados</a>
+  </p>
+</footer>
 
-  <div class="action-buttons">
-      <a href="#" id="abrir-calculadora" title="Abrir Calculadora">
-          <i class="fas fa-calculator"></i>
-      </a>
-      <a href="#" id="abrir-calendario" title="Abrir Calendário">
-          <i class="fas fa-calendar-alt"></i>
-      </a>
-  </div>
-
-  <style>
-    .footer {
-        background-color: #222;
+<style>
+    /* Estilos para o rodapé fixo */
+    footer {
+        background-color: #1f1f1f;
         color: #aaa;
-        padding: 15px 0;
         text-align: center;
-        width: 100%;
-        font-size: 0.9em;
+        padding: 15px 20px;
         box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
-        margin-top: auto;
+        font-size: 0.9em;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        box-sizing: border-box;
     }
 
-    .footer a {
+    footer p {
+        margin: 0;
+    }
+
+    footer a {
         color: #0af;
         text-decoration: none;
         margin: 0 10px;
     }
-    .footer a:hover { text-decoration: underline; }
+    footer a:hover { text-decoration: underline; }
 
+    /* Estilos para os botões de ação flutuantes */
     .action-buttons {
         position: fixed;
-        bottom: 80px;
+        bottom: 70px; /* Ajustado para ficar acima do novo footer */
         left: 20px;
         display: flex;
         flex-direction: column;
@@ -67,53 +81,56 @@
         background-color: #0056b3;
         transform: scale(1.1);
     }
-  </style>
+</style>
 
-  <script>
-    let mainElement = document.querySelector('main');
-    let fontSize = 100;
+<script>
+    // Funções de ajuste de fonte do header (mantidas)
     function adjustFontSize(amount) {
-      fontSize += amount * 10;
-       if (mainElement) {
-        mainElement.style.fontSize = fontSize + '%';
-      }
+        const body = document.body;
+        let currentSize = parseFloat(window.getComputedStyle(body, null).getPropertyValue('font-size'));
+        body.style.fontSize = (currentSize + amount) + 'px';
     }
+
     function resetFontSize() {
-      fontSize = 100;
-       if (mainElement) {
-        mainElement.style.fontSize = '100%';
-      }
+        document.body.style.fontSize = '';
     }
-   
-// Botões flutuantes
-const botaoCalc = document.getElementById('abrir-calculadora');
-const botaoCal = document.getElementById('abrir-calendario');
 
-// Containers das janelas
-const calcContainer = document.getElementById('calculadora-container');
-const calContainer = document.getElementById('calendario-container');
+    // Script para os botões flutuantes (adicionado)
+    document.addEventListener('DOMContentLoaded', () => {
+        const botaoCalc = document.getElementById('abrir-calculadora');
+        const botaoCal = document.getElementById('abrir-calendario');
+        const calcContainer = document.getElementById('calculadora-container');
+        const calContainer = document.getElementById('calendario-container');
 
-// Abertura
-botaoCalc.addEventListener('click', (e) => {
-  e.preventDefault();
-  fecharAmbos();
-  calcContainer.style.display = 'block';
-});
+        // Garante que os containers existem antes de adicionar eventos
+        if (botaoCalc && botaoCal && calcContainer && calContainer) {
+            const fecharAmbos = () => {
+                calcContainer.style.display = 'none';
+                calContainer.style.display = 'none';
+            };
 
-botaoCal.addEventListener('click', (e) => {
-  e.preventDefault();
-  fecharAmbos();
-  calContainer.style.display = 'block';
-});
+            botaoCalc.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isCalculadoraVisivel = calcContainer.style.display === 'block';
+                fecharAmbos();
+                if (!isCalculadoraVisivel) {
+                    calcContainer.style.display = 'block';
+                }
+            });
 
-// Fecha uma ao abrir outra
-function fecharAmbos() {
-  calcContainer.style.display = 'none';
-  calContainer.style.display = 'none';
-}
-
-
-  </script>
+            botaoCal.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isCalendarioVisivel = calContainer.style.display === 'block';
+                fecharAmbos();
+                if (!isCalendarioVisivel) {
+                    calContainer.style.display = 'block';
+                }
+            });
+        }
+    });
+</script>
 
 </body>
 </html>

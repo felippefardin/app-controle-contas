@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+include('../includes/header.php');
 
 // 2. VERIFICAÇÃO DE LOGIN
 if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {

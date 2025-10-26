@@ -145,7 +145,7 @@ $mail->Body = '
     }
 }
 ?>
-
+<?php include('../includes/header.php'); ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

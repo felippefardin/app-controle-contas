@@ -93,6 +93,7 @@
   color: #fff;
   margin-bottom: 12px;
   outline: none;
+  box-sizing: border-box; /* Adicione esta linha */
 }
 
 .botoes {
