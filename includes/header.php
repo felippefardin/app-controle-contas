@@ -1,7 +1,7 @@
 <?php if (isset($_SESSION['proprietario_id_original'])): ?>
-    <div style="background-color: #ffc107; color: #000; text-align: center; padding: 10px;">
+    <div class="admin-view-banner">
         Você está visualizando como <strong><?= htmlspecialchars($_SESSION['usuario_principal']['nome']); ?></strong>.
-        <a href="../actions/retornar_admin.php" style="margin-left: 20px; color: #000; font-weight: bold;">Voltar para o Acesso Proprietário</a>
+        <a href="../actions/retornar_admin.php">Voltar para o Acesso Proprietário</a>
     </div>
 <?php endif; ?>
 
@@ -79,11 +79,11 @@
 
 <body>
   <header class="header-controls">
-    <button type="button" class="btn" onclick="adjustFontSize(-1)" title="Diminuir fonte">A-</button>
-    <button type="button" class="btn" onclick="adjustFontSize(1)" title="Aumentar fonte">A+</button>
-    <button type="button" class="btn" onclick="resetFontSize()" title="Restaurar fonte">Resetar</button>
-    <a href="../pages/home.php" class="btn btn-home" title="Página Inicial"><i class="fas fa-home"></i> Home</a>
-    <a href="../pages/logout.php" class="btn btn-exit" title="Sair do sistema"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    <button type="button" class="btn btn-header" onclick="adjustFontSize(-1)" title="Diminuir fonte">A-</button>
+    <button type="button" class="btn btn-header" onclick="adjustFontSize(1)" title="Aumentar fonte">A+</button>
+    <button type="button" class="btn btn-header" onclick="resetFontSize()" title="Restaurar fonte">Resetar</button>
+    <a href="../pages/home.php" class="btn btn-home btn-header" title="Página Inicial"><i class="fas fa-home"></i> Home</a>
+    <a href="../pages/logout.php" class="btn btn-exit btn-header" title="Sair do sistema"><i class="fas fa-sign-out-alt"></i> Sair</a>
 </header>
 
   <main>

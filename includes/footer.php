@@ -1,4 +1,4 @@
- <?php include('../pages/calculadora.php'); ?>
+<?php include('../pages/calculadora.php'); ?>
 <?php include('../pages/calendario.php'); ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
@@ -70,14 +70,19 @@
   </style>
 
   <script>
+    let mainElement = document.querySelector('main');
     let fontSize = 100;
     function adjustFontSize(amount) {
       fontSize += amount * 10;
-      document.body.style.fontSize = fontSize + '%';
+       if (mainElement) {
+        mainElement.style.fontSize = fontSize + '%';
+      }
     }
     function resetFontSize() {
       fontSize = 100;
-      document.body.style.fontSize = '100%';
+       if (mainElement) {
+        mainElement.style.fontSize = '100%';
+      }
     }
    
 // Botões flutuantes

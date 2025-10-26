@@ -4,9 +4,38 @@ body {
   color: #eee;
   font-family: Arial, sans-serif;
   padding: 40px 20px 20px 20px; /* Aumentei o padding-top de 20px para 40px */
-  font-size: 16px;
-  transition: background-color 0.3s, color 0.3s, font-size 0.2s;
+  transition: background-color 0.3s, color 0.3s;
 }
+
+main {
+  font-size: 16px;
+  transition: font-size 0.2s;
+}
+
+/* Banner de visualização de admin */
+.admin-view-banner {
+    background-color: #ffc107;
+    color: #000;
+    text-align: center;
+    padding: 10px;
+}
+
+.admin-view-banner a {
+    margin-left: 20px;
+    color: #000;
+    font-weight: bold;
+    font-size: 1em; /* Tamanho padronizado */
+    padding: 8px 14px; /* Padding para parecer um botão */
+    text-decoration: none;
+    border-radius: 5px;
+    background-color: #f0ad4e;
+    transition: background-color 0.3s;
+}
+
+.admin-view-banner a:hover {
+    background-color: #ec971f;
+}
+
 
 /* Caso queira espaçamento adicional somente no header */
 header {
@@ -50,6 +79,14 @@ button, .btn {
 button:hover, .btn:hover {
   background-color: #08c;
 }
+
+/* Botões do cabeçalho com tamanho padronizado */
+.btn-header {
+    padding: 8px 14px;
+    font-size: 1em;
+    margin: 0 5px;
+}
+
 
 /* Tabelas */
 table {
@@ -123,7 +160,9 @@ a:hover {
 @media (max-width: 600px) {
   body {
     padding: 10px;
-    font-size: 15px;
+  }
+  main {
+      font-size: 15px;
   }
   form, .container, table {
     width: 100%;
@@ -233,4 +272,3 @@ a:hover {
     margin: 2px;
     border: none; /* Garante que links pareçam botões */
 }
-

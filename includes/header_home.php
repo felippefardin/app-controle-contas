@@ -79,16 +79,21 @@
 
 
 <script>
+let mainElement = document.querySelector('main');
 let fontSize = 100;
 
 function adjustFontSize(amount) {
     fontSize += amount * 10;
-    document.body.style.fontSize = fontSize + '%';
+    if (mainElement) {
+        mainElement.style.fontSize = fontSize + '%';
+    }
 }
 
 function resetFontSize() {
     fontSize = 100;
-    document.body.style.fontSize = '100%';
+    if (mainElement) {
+        mainElement.style.fontSize = '100%';
+    }
 }
 </script>
 

@@ -89,23 +89,182 @@ if (!isset($_SESSION['usuario'])) {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
-        body { background-color: #121212; color: #eee; }
-        .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
-        h1, h2 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; }
-        label { font-weight: bold; }
-        .form-control, .select2-container .select2-selection--single { background-color: #333; color: #eee; border-color: #444; height: calc(1.5em + .75rem + 2px); }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { color: #eee; line-height: 38px; }
-        .select2-dropdown { background-color: #333; border-color: #444; }
-        .select2-results__option { color: #eee; }
-        .select2-results__option--highlighted { background-color: #0af !important; }
-        .table { color: #eee; }
-        .table thead th { background-color: #0af; color: #fff; }
-        .total-venda { font-size: 1.8rem; font-weight: bold; color: #28a745; }
-        .btn-primary { background-color: #007bff; border-color: #007bff; }
-        .btn-primary:hover { background-color: #0069d9; border-color: #0062cc; }
-        .btn-success { background-color: #28a745; border-color: #28a745; }
-        .btn-success:hover { background-color: #218838; border-color: #1e7e34; }
-    </style>
+    /* ======= PADRÃO GERAL ======= */
+    body {
+        background-color: #121212;
+        color: #eee;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        background-color: #1e1e1e;
+        padding: 25px;
+        border-radius: 10px;
+        margin: 30px auto;
+        box-shadow: 0 0 15px rgba(0,0,0,0.4);
+        max-width: 1200px;
+    }
+
+    h1, h2 {
+        color: #00bfff;
+        border-bottom: 2px solid #00bfff;
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    label { font-weight: bold; color: #ccc; }
+
+    .form-control,
+    .select2-container .select2-selection--single {
+        background-color: #2a2a2a;
+        color: #eee;
+        border: 1px solid #444;
+        border-radius: 6px;
+        height: calc(1.5em + .75rem + 2px);
+        transition: border-color 0.3s;
+    }
+
+    .form-control:focus {
+        border-color: #00bfff;
+        box-shadow: 0 0 5px #00bfff33;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #eee;
+        line-height: 38px;
+    }
+
+    .select2-dropdown {
+        background-color: #333;
+        border: 1px solid #444;
+    }
+
+    .select2-results__option { color: #eee; }
+    .select2-results__option--highlighted { background-color: #00bfff !important; }
+
+    /* ======= BOTÕES ======= */
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    .btn-primary:hover {
+        background-color: #0069d9;
+        border-color: #0062cc;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+
+    /* ======= TABELA DE ITENS ======= */
+    .table-responsive {
+        background-color: #1a1a1a;
+        border-radius: 8px;
+        overflow-x: auto;
+        box-shadow: inset 0 0 5px rgba(255,255,255,0.05);
+    }
+
+    .table {
+        color: #ddd;
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #00bfff;
+        color: #fff;
+        text-align: center;
+        padding: 10px;
+        border: none;
+        font-weight: 600;
+    }
+
+    .table tbody tr {
+        background-color: #2a2a2a;
+        transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .table tbody tr:hover {
+        background-color: #333;
+        transform: scale(1.01);
+    }
+
+    .table td {
+        vertical-align: middle;
+        text-align: center;
+        border-top: 1px solid #444;
+        padding: 10px;
+    }
+
+    .table input.form-control {
+        background-color: #2b2b2b;
+        border: 1px solid #444;
+        color: #fff;
+        text-align: center;
+        padding: 5px;
+        border-radius: 5px;
+    }
+
+    /* ======= TOTAL ======= */
+    .total-venda {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #28a745;
+        text-shadow: 0 0 8px #28a74555;
+    }
+
+    /* ======= ALERTAS ======= */
+    .alert {
+        border-radius: 6px;
+        font-weight: 500;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    /* ======= CARD DE PRODUTOS ======= */
+    .card.bg-dark {
+        background-color: #1a1a1a !important;
+        border: 1px solid #333;
+    }
+
+    .card-header {
+        background-color: #00bfff22;
+        border-bottom: 1px solid #00bfff55;
+        color: #00bfff;
+        font-weight: 600;
+    }
+
+    /* ======= ROLAGEM SUAVE ======= */
+    ::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background-color: #555;
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: #00bfff;
+    }
+</style>
+
 </head>
 <body>
 <div class="container">
@@ -175,6 +334,8 @@ if (!isset($_SESSION['usuario'])) {
         </div>
     </form>
 </div>
+
+<?php include('../includes/footer.php'); ?>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
