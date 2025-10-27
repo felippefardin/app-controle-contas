@@ -1,37 +1,32 @@
 <?php
-// 1. INICIALIZAÇÃO DA SESSÃO (DEVE SER A PRIMEIRA COISA NO ARQUIVO)
-require_once '../includes/session_init.php';
+// Inicia a sessão (este arquivo já faz isso, o que é ótimo)
+include_once '../includes/session_init.php';
 
-// 2. VERIFICAÇÃO DE LOGIN
-// Se faltar o usuário principal ou o ativo, destrói a sessão e volta para o login.
-if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
-    session_destroy();
-    header('Location: login.php');
-    exit;
+// Inclui o cabeçalho
+include_once '../includes/header_home.php';
+
+// Proteção para verificar se o usuário está logado
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../pages/login.php");
+    exit();
 }
 
-// 3. INCLUDES E DEFINIÇÃO DE VARIÁVEIS
-// Apenas inclua outros arquivos APÓS a verificação de sessão.
-include('../database.php');
+// Inclui o novo arquivo de banco de dados
+require_once '../database.php';
+// ***** LINHA ADICIONADA *****
+// Pega a conexão correta para este cliente
+$conn = getTenantConnection(); 
 
-$usuario_ativo = $_SESSION['usuario'];
-$nome = $usuario_ativo['nome'];
-$perfil = $usuario_ativo['perfil'];
+// Pega o ID do usuário da sessão
+$user_id = $_SESSION['user_id'];
 
-$mensagem = $_SESSION['mensagem'] ?? null;
-unset($_SESSION['mensagem']);
-
-// --- CÓDIGO DE ALERTA DE ESTOQUE ---
-$id_usuario_ativo = $_SESSION['usuario']['id'];
-$stmt_estoque = $conn->prepare("SELECT nome, quantidade_estoque FROM produtos WHERE id_usuario = ? AND quantidade_estoque <= quantidade_minima AND quantidade_minima > 0");
-$stmt_estoque->bind_param("i", $id_usuario_ativo);
-$stmt_estoque->execute();
-$result_estoque = $stmt_estoque->get_result();
-$produtos_estoque_baixo = [];
-while ($produto = $result_estoque->fetch_assoc()) {
-    $produtos_estoque_baixo[] = $produto; // Salva o array completo do produto
-}
-$stmt_estoque->close();
+// O restante do seu código continua normalmente...
+// Exemplo da sua lógica original que agora vai funcionar:
+$stmt = $conn->prepare("SELECT SUM(valor) AS total_receber FROM contas_a_receber WHERE baixada = 0 AND id_usuario = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result_receber = $stmt->get_result();
+$total_receber = $result_receber->fetch_assoc()['total_receber'] ?? 0;
 
 // INCLUI O HEADER PADRÃO (APÓS TODA A LÓGICA PHP)
 include('../includes/header.php');
