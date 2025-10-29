@@ -1,5 +1,5 @@
 <?php
-// Ficheiro: includes/session_init.php
+// // Ficheiro: includes/session_init.php
 
 // --- INÍCIO DA SESSÃO ---
 // Garante que uma sessão seja iniciada se ainda não houver uma ativa.

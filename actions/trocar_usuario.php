@@ -42,9 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['usuario_id']) && isse
         // Verifica se a senha fornecida corresponde à senha no banco de dados
         if (password_verify($senha_fornecida, $usuario_selecionado['senha'])) {
             unset($usuario_selecionado['senha']);
+            
+            // Define as sessões do utilizador ativo
             $_SESSION['usuario'] = $usuario_selecionado;
+            $_SESSION['user_id'] = $usuario_selecionado['id']; // <<-- LINHA ESSENCIAL ADICIONADA
 
-            session_write_close();
             header('Location: ../pages/home.php');
             exit;
         }
@@ -54,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['usuario_id']) && isse
 // Se chegou até aqui, houve um erro
 $_SESSION['erro_selecao'] = "Usuário ou senha inválida.";
 
-session_write_close();
 header('Location: ../pages/selecionar_usuario.php');
 exit;
 ?>

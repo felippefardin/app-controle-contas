@@ -1,15 +1,24 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php'; // Inclui o novo arquivo de banco de dados
+
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    header("Location: ../pages/login.php");
+    exit();
+}
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso'];
 
 // Bloco para lidar com a pesquisa de responsáveis/clientes via AJAX
 if (isset($_GET['action']) && in_array($_GET['action'], ['search_responsavel', 'search_cliente'])) {
-    include '../database.php';
-    if (!isset($_SESSION['usuario']['id'])) {
-        echo json_encode([]);
-        exit;
-    }
-
-    $usuarioId = $_SESSION['usuario']['id'];
     $term = $_GET['term'] ?? '';
 
     $stmt = $conn->prepare("SELECT id, nome, email FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? ORDER BY nome ASC LIMIT 10");
@@ -28,17 +37,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['search_responsavel', '
     exit;
 }
 
-include '../database.php';
 include('../includes/header.php');
-
-if (!isset($_SESSION['usuario'])) {
-    header('Location: login.php');
-    exit;
-}
-
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
-$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
 
 // Buscar contas bancárias
 $stmt_bancos = $conn->prepare("SELECT id, nome_banco, chave_pix FROM contas_bancarias WHERE id_usuario = ? ORDER BY nome_banco ASC");
@@ -62,13 +61,11 @@ while ($row_cat = $result_categorias->fetch_assoc()) {
 }
 $stmt_categorias->close();
 
-// Monta filtros SQL
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
 $where = ["cr.status='pendente'"];
-if ($perfil !== 'admin') {
-    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
-    $where[] = "cr.usuario_id IN ({$subUsersQuery})";
-}
+// Filtra apenas pelo ID do usuário logado
+$where[] = "cr.usuario_id = " . intval($usuarioId);
+
 if (!empty($_GET['responsavel'])) {
     $where[] = "cr.responsavel LIKE '%".$conn->real_escape_string($_GET['responsavel'])."%'";
 }
@@ -77,13 +74,8 @@ if (!empty($_GET['numero'])) {
 }
 if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
     $where[] = "cr.data_vencimento BETWEEN '".$conn->real_escape_string($_GET['data_inicio'])."' AND '".$conn->real_escape_string($_GET['data_fim'])."'";
-} elseif (!empty($_GET['data_inicio'])) {
-    $where[] = "cr.data_vencimento >= '".$conn->real_escape_string($_GET['data_inicio'])."'";
-} elseif (!empty($_GET['data_fim'])) {
-    $where[] = "cr.data_vencimento <= '".$conn->real_escape_string($_GET['data_fim'])."'";
 }
 
-// AJUSTE: Query agora faz LEFT JOIN com pessoas_fornecedores para buscar o nome correto.
 $sql = "SELECT cr.*, c.nome as nome_categoria, pf.nome AS nome_pessoa_fornecedor
         FROM contas_receber AS cr
         LEFT JOIN categorias AS c ON cr.id_categoria = c.id

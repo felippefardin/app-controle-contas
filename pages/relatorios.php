@@ -1,37 +1,32 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php';
+require_once '../database.php'; // Incluído no início
+
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: login.php');
+    exit;
+}
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso'];
+
 require_once '../includes/header.php';
 
-// 2. VERIFICAÇÃO DE LOGIN
-if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
-    session_destroy();
-    header('Location: login.php');
-    exit;
-}
+// ✅ 3. SIMPLIFICA OS FILTROS PARA O MODELO SAAS
+$userFilter = "usuario_id = " . intval($usuarioId);
+$userFilterCategorias = "id_usuario = " . intval($usuarioId);
 
-// Verifica login
-if (!isset($_SESSION['usuario']['id'])) {
-    header('Location: login.php');
-    exit;
-}
-
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
-$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
-
-$userFilter = "usuario_id = {$usuarioId}";
-$userFilterCategorias = "id_usuario = {$usuarioId}";
-
-if ($perfil !== 'admin') {
-    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
-    $userFilter = "usuario_id IN ({$subUsersQuery})";
-    $userFilterCategorias = "id_usuario IN ({$subUsersQuery})";
-}
 
 // Função para reduzir repetições nas consultas
 function getTotais($conn, $tabela, $status, $userFilter) {
+    // Usando prepared statements para segurança
     $stmt = $conn->prepare("SELECT COUNT(id) AS total_contas, SUM(valor) AS valor_total FROM $tabela WHERE status = ? AND $userFilter");
     $stmt->bind_param("s", $status);
     $stmt->execute();
@@ -71,9 +66,8 @@ for ($i = 11; $i >= 0; $i--) {
     $entradasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    $status = 'baixada';
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status=? AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
-    $stmt->bind_param("ss", $status, $mes);
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
+    $stmt->bind_param("s", $mes);
     $stmt->execute();
     $total_receber = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
@@ -95,16 +89,15 @@ for ($i = 11; $i >= 0; $i--) {
     $saidasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    $status = 'baixada';
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status=? AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
-    $stmt->bind_param("ss", $status, $mes);
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
+    $stmt->bind_param("s", $mes);
     $stmt->execute();
     $saidasBaixadas[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 }
 
 // Categorias
-$stmt = $conn->prepare("SELECT id, nome FROM categorias WHERE $userFilterCategorias OR id_usuario IS NULL ORDER BY nome");
+$stmt = $conn->prepare("SELECT id, nome FROM categorias WHERE $userFilterCategorias ORDER BY nome");
 $stmt->execute();
 $categorias = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
@@ -137,39 +130,33 @@ foreach ($categorias as $c) {
 <title>Relatórios Financeiros</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
+/* Seus estilos CSS permanecem os mesmos */
 body { font-family:'Segoe UI',sans-serif; background:#121212; color:#eee; margin:0; padding:20px; }
 .container { max-width:1300px; margin:auto; background:#1e1e1e; padding:25px; border-radius:10px; box-shadow:0 0 10px #000; }
 h2 { text-align:center; color:#00bfff; font-weight:600; margin-bottom:25px; }
 .section-title { border-bottom:1px solid #333; color:#ccc; padding-bottom:8px; margin-top:30px; margin-bottom:20px; font-size:1.3rem; }
-
 .row { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px; }
-
 .summary-card { background:#242424; border-left:5px solid #00bfff33; padding:20px; border-radius:10px; transition:.3s; }
 .summary-card:hover { transform:translateY(-3px); background:#2b2b2b; }
 .summary-card i { font-size:1.8rem; color:#00bfff; margin-bottom:8px; }
 .summary-card h5 { font-size:1rem; margin:0; color:#bbb; }
 .summary-card p { font-size:1.6rem; margin:5px 0; font-weight:600; color:#fff; }
 .summary-card span { font-size:.9rem; color:#999; }
-
 .card-positive { border-left-color:#2ecc71; }
 .card-negative { border-left-color:#e74c3c; }
-
 .table-container { background:#242424; border-radius:10px; padding:20px; margin-top:30px; overflow-x:auto; }
 .table-container table { width:100%; }
-.table-container th, .table-container td { padding:12px;  border-bottom:1px solid #333; }
+.table-container th, .table-container td { padding:12px; border-bottom:1px solid #333; }
 .table-container th { background:#2a2a2a; color:#00bfff; }
 .table-container td.currency { text-align:center; }
 .table-container .total-recebido { color:#2ecc71; }
 .table-container .total-pago { color:#e74c3c; }
-
 .chart-container { background:#242424; border-radius:10px; padding:25px; margin-top:30px; }
 .chart-container canvas { width:100%; height:400px !important; }
 .chart-container h4 { color:#eee; margin-bottom:15px; }
-
 #exportOptions { display:flex; gap:10px; margin-top:15px; }
 button.export-btn { background:#00bfff; border:none; color:#fff; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:15px; }
 button.export-btn:hover { background:#0099cc; }
-
 @media (max-width:768px){
     body{padding:10px;}
     h2{font-size:1.5rem;}

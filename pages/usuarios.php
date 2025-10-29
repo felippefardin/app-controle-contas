@@ -1,12 +1,23 @@
 <?php
-session_start();
-include('../includes/header.php');
-include('../database.php');
+require_once '../includes/session_init.php';
+require_once '../database.php'; // Incluído no início
 
-if (!isset($_SESSION['usuario_principal'])) {
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuario_logado_id = $usuario_logado['id'];
+
+// Inclui o header após a lógica inicial
+include('../includes/header.php');
 
 // Mensagens
 $mensagem_sucesso = '';
@@ -33,11 +44,10 @@ if (isset($_GET['erro'])) {
     }
 }
 
-$usuario_principal_id = $_SESSION['usuario_principal']['id'];
-$stmt = $conn->prepare("SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? OR id_criador = ? OR owner_id = ? OR criado_por_usuario_id = ? ORDER BY nome ASC");
-$stmt->bind_param("iiii", $usuario_principal_id, $usuario_principal_id, $usuario_principal_id, $usuario_principal_id);
-$stmt->execute();
-$result = $stmt->get_result();
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
+// A consulta agora busca todos os usuários do banco de dados do tenant atual.
+$sql = "SELECT id, nome, email, cpf, telefone FROM usuarios ORDER BY nome ASC";
+$result = $conn->query($sql);
 
 if (!$result) {
     die("Erro na consulta: " . $conn->error);
@@ -78,7 +88,6 @@ if (!$result) {
     .modal-content .close-btn:hover { color: #00bfff; }
     .modal-content h3 { color: #00bfff; margin-bottom: 15px; }
     .modal-content p { margin-bottom: 25px; }
-    /* Barra de pesquisa */
     #searchInput {
         margin-bottom: 15px;
         background-color: #333;
@@ -104,7 +113,6 @@ if (!$result) {
 
     <a href="add_usuario.php" class="btn btn-primary" style="margin-bottom: 20px;"><i class="fa-solid fa-plus"></i> Adicionar Novo Usuário</a>
 
-    <!-- Barra de pesquisa -->
     <input type="text" id="searchInput" placeholder="Pesquisar por Nome, Email ou CPF...">
 
     <div class="table-responsive">
@@ -151,7 +159,6 @@ if (!$result) {
 <?php include('../includes/footer.php'); ?>
 
 <script>
-    // Modal de exclusão
     function openDeleteModal(id, nome) {
         const modal = document.getElementById('deleteModal');
         const modalContent = modal.querySelector('.modal-content');
@@ -172,7 +179,6 @@ if (!$result) {
         if (e.target === modal) modal.style.display = 'none';
     });
 
-    // Mensagens desaparecem após 4s
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.alert').forEach(alert => {
             setTimeout(() => {
@@ -182,7 +188,6 @@ if (!$result) {
         });
     });
 
-    // Pesquisa em tempo real
     const searchInput = document.getElementById('searchInput');
     searchInput.addEventListener('keyup', function() {
         const filter = this.value.toLowerCase();

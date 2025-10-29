@@ -1,33 +1,27 @@
 <?php
-require_once '../includes/session_init.php';
-require_once '../includes/header.php';
-require_once '../database.php'; // Este arquivo cria a variável $conn
 
-// 2. VERIFICAÇÃO DE LOGIN
-if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
-    session_destroy();
+require_once '../includes/session_init.php';
+require_once '../database.php'; // Incluído no início
+
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
-
-
-// Verificação de sessão correta
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
-    exit;
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
-$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso'];
 
-// Monta filtros SQL
-$where = [];
-if ($perfil !== 'admin') {
-    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
-    $where[] = "id_usuario IN ({$subUsersQuery})";
-}
+require_once '../includes/header.php';
+
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
+$where = ["id_usuario = " . intval($usuarioId)];
 
 $sql = "SELECT * FROM produtos";
 if (!empty($where)) {
@@ -37,6 +31,7 @@ $sql .= " ORDER BY nome ASC";
 
 $result = $conn->query($sql);
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

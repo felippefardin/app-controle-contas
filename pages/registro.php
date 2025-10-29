@@ -142,7 +142,7 @@
   <form id="cadastroForm" action="registro_processa.php" method="post" novalidate>
     <h2>Cadastro de Usuário</h2>
 
-    <label for="nome">Nome completo:</label>
+    <label for="nome">Nome da Empresa ou Seu Nome:</label>
     <input type="text" id="nome" name="nome" required>
 
     <label for="cpf">CPF:</label>

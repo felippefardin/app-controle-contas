@@ -1,43 +1,34 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php'; // Incluído no início
+
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    // Se não estiver logado, redireciona para o login
+    header('Location: login.php');
+    exit;
+}
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso'];
 
 // --- BLOCO DE PROCESSAMENTO AJAX PARA BUSCAS ---
 if (isset($_GET['action'])) {
-    include('../database.php');
-
-    // 2. VERIFICAÇÃO DE LOGIN
-    if (!isset($_SESSION['usuario_principal']) || !isset($_SESSION['usuario'])) {
-        session_destroy();
-        header('Location: login.php');
-        exit;
-    }
-
-    if (!isset($_SESSION['usuario']['id'])) {
-        header('Content-Type: application/json');
-        echo json_encode(['results' => []]);
-        exit;
-    }
-
-    $usuarioId = $_SESSION['usuario']['id'];
-    $perfil = $_SESSION['usuario']['perfil'];
-    $id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
     $term = "%" . ($_GET['term'] ?? '') . "%";
     $response = [];
 
-    $subUsersQuery = '';
-    if ($perfil !== 'admin') {
-        $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-        $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
-    }
-
+    // ✅ 3. SIMPLIFICA A QUERY AJAX PARA O MODELO SAAS
     // Busca de Clientes
     if ($_GET['action'] === 'search_clientes') {
-        $sql = "SELECT id, nome FROM pessoas_fornecedores WHERE tipo = 'pessoa' AND nome LIKE ?";
-        if (!empty($subUsersQuery)) {
-            $sql .= " AND id_usuario IN ({$subUsersQuery})";
-        }
+        $sql = "SELECT id, nome FROM pessoas_fornecedores WHERE tipo = 'pessoa' AND nome LIKE ? AND id_usuario = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $term);
+        $stmt->bind_param("si", $term, $usuarioId);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
@@ -47,12 +38,9 @@ if (isset($_GET['action'])) {
 
     // Busca de Produtos
     if ($_GET['action'] === 'search_produtos') {
-        $sql = "SELECT id, nome, preco_venda, quantidade_estoque FROM produtos WHERE nome LIKE ?";
-        if (!empty($subUsersQuery)) {
-            $sql .= " AND id_usuario IN ({$subUsersQuery})";
-        }
+        $sql = "SELECT id, nome, preco_venda, quantidade_estoque FROM produtos WHERE nome LIKE ? AND id_usuario = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $term);
+        $stmt->bind_param("si", $term, $usuarioId);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
@@ -73,12 +61,6 @@ if (isset($_GET['action'])) {
 
 // --- CARREGAMENTO NORMAL DA PÁGINA ---
 include('../includes/header.php');
-include('../database.php');
-
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
-    exit;
-}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

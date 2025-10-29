@@ -1,17 +1,27 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php'; // Inclui o novo arquivo de banco de dados
 
-// Bloco para lidar com a pesquisa de fornecedores via AJAX
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    header("Location: ../pages/login.php");
+    exit();
+}
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso']; // Usa a coluna correta
+
+// Bloco para lidar com a pesquisa de fornecedores via AJAX (já usando a conexão correta)
 if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
-    include '../database.php';
-    if (!isset($_SESSION['usuario']['id'])) {
-        echo json_encode([]);
-        exit;
-    }
-
-    $usuarioId = $_SESSION['usuario']['id'];
     $term = $_GET['term'] ?? '';
 
+    // A query agora usa 'id_criador' que aponta para o dono da conta principal
     $stmt = $conn->prepare("SELECT id, nome FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? AND tipo = 'fornecedor' ORDER BY nome ASC LIMIT 10");
     $searchTerm = "%{$term}%";
     $stmt->bind_param("is", $usuarioId, $searchTerm);
@@ -28,18 +38,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
     exit;
 }
 
-include '../database.php';
+// Inclui o cabeçalho após a lógica AJAX para não interferir
 include('../includes/header.php');
 
-if ($conn->connect_error) {
-    die("Conexão falhou: " . $conn->connect_error);
-}
-
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
-$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
-
-// Buscar categorias de despesa
+// Buscar categorias de despesa (agora usa o ID do usuário logado)
 $stmt_categorias = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? AND tipo = 'despesa' ORDER BY nome ASC");
 $stmt_categorias->bind_param("i", $usuarioId);
 $stmt_categorias->execute();
@@ -50,13 +52,12 @@ while ($row_cat = $result_categorias->fetch_assoc()) {
 }
 $stmt_categorias->close();
 
-// Monta filtros SQL
+// ✅ 3. SIMPLIFICA A MONTAGEM DA QUERY SQL
 $where = ["cp.status='pendente'"];
-if ($perfil !== 'admin') {
-    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id_criador = {$mainUserId} OR id = {$mainUserId}";
-    $where[] = "cp.usuario_id IN ({$subUsersQuery})";
-}
+// No modelo SaaS, cada usuário só vê seus próprios dados. A verificação complexa é removida.
+// Apenas garantimos que a conta pertence ao usuário logado.
+$where[] = "cp.usuario_id = " . intval($usuarioId);
+
 if (!empty($_GET['fornecedor'])) {
     $where[] = "cp.fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";
 }
@@ -65,13 +66,8 @@ if (!empty($_GET['numero'])) {
 }
 if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
     $where[] = "cp.data_vencimento BETWEEN '" . $conn->real_escape_string($_GET['data_inicio']) . "' AND '" . $conn->real_escape_string($_GET['data_fim']) . "'";
-} elseif (!empty($_GET['data_inicio'])) {
-    $where[] = "cp.data_vencimento >= '" . $conn->real_escape_string($_GET['data_inicio']) . "'";
-} elseif (!empty($_GET['data_fim'])) {
-    $where[] = "cp.data_vencimento <= '" . $conn->real_escape_string($_GET['data_fim']) . "'";
 }
 
-// AJUSTE: Query agora faz LEFT JOIN com pessoas_fornecedores para buscar o nome correto.
 $sql = "SELECT cp.*, c.nome as nome_categoria, pf.nome as nome_pessoa_fornecedor
         FROM contas_pagar AS cp
         LEFT JOIN categorias AS c ON cp.id_categoria = c.id
@@ -79,6 +75,7 @@ $sql = "SELECT cp.*, c.nome as nome_categoria, pf.nome as nome_pessoa_fornecedor
         WHERE " . implode(" AND ", $where) . "
         ORDER BY cp.data_vencimento ASC";
 $result = $conn->query($sql);
+
 ?>
 
 <!DOCTYPE html>

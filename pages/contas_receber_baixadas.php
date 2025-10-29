@@ -1,25 +1,28 @@
 <?php
 require_once '../includes/session_init.php';
-include('../includes/header.php');
-include('../database.php');
+require_once '../database.php'; // Incluído no início
 
-if (!isset($_SESSION['usuario'])) {
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
-
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
-$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
-
-// Monta filtros SQL
-$where = ["cr.status = 'baixada'"];
-
-if ($perfil !== 'admin') {
-    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id = {$mainUserId} OR id_criador = {$mainUserId}";
-    $where[] = "(cr.usuario_id IN ({$subUsersQuery}))";
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso'];
+
+include('../includes/header.php');
+
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
+$where = ["cr.status = 'baixada'"];
+// Filtra apenas pelo ID do usuário logado
+$where[] = "cr.usuario_id = " . intval($usuarioId);
 
 if (!empty($_GET['responsavel'])) $where[] = "cr.responsavel LIKE '%" . $conn->real_escape_string($_GET['responsavel']) . "%'";
 if (!empty($_GET['numero'])) $where[] = "cr.numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";

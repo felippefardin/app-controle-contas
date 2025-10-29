@@ -1,25 +1,28 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php'; // Inclui o novo arquivo de banco de dados
 
-if (!isset($_SESSION['usuario'])) {
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$usuarioId = $usuario_logado['id'];
+$perfil = $usuario_logado['nivel_acesso'];
 
 include('../includes/header.php');
-include('../database.php');
 
-$usuarioId = $_SESSION['usuario']['id'];
-$perfil = $_SESSION['usuario']['perfil'];
-$id_criador = $_SESSION['usuario']['id_criador'] ?? 0;
-
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
 $where = ["c.status='baixada'"];
-
-if ($perfil !== 'admin') {
-    $mainUserId = ($id_criador > 0) ? $id_criador : $usuarioId;
-    $subUsersQuery = "SELECT id FROM usuarios WHERE id = {$mainUserId} OR id_criador = {$mainUserId}";
-    $where[] = "c.usuario_id IN ({$subUsersQuery})";
-}
+// No modelo SaaS, cada usuário só pode ver seus próprios dados.
+$where[] = "c.usuario_id = " . intval($usuarioId);
 
 $sql = "SELECT c.*, u.nome AS usuario_baixou, pf.nome AS nome_pessoa_fornecedor
         FROM contas_pagar c

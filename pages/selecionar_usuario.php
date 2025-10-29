@@ -1,20 +1,25 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php'; // Incluído no início
 
-// Se o usuário principal não estiver logado, redireciona para o login
-if (!isset($_SESSION['usuario_principal'])) {
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
 
-include('../database.php');
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+$usuario_logado = $_SESSION['usuario_logado'];
+$id_usuario_atual = $usuario_logado['id'];
 
-$usuario_principal = $_SESSION['usuario_principal'];
-
-// Busca o usuário principal e seus usuários secundários
-$sql = "SELECT id, nome FROM usuarios WHERE id = ? OR id_criador = ? ORDER BY nome ASC";
+// ✅ 3. BUSCA TODOS OS USUÁRIOS DO CLIENTE (TENANT) ATUAL
+// A consulta é simplificada, pois todos os usuários no banco de dados do tenant pertencem a ele.
+$sql = "SELECT id, nome, nivel_acesso FROM usuarios ORDER BY nome ASC";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('ii', $usuario_principal['id'], $usuario_principal['id']);
 $stmt->execute();
 $result_usuarios = $stmt->get_result();
 ?>
@@ -51,17 +56,17 @@ $result_usuarios = $stmt->get_result();
         .form-group {
             margin-bottom: 20px;
             text-align: left;
-            position: relative; /* importante para posicionar o ícone dentro */
+            position: relative;
         }
         label {
             display: block;
             margin-bottom: 8px;
             color: #bbb;
         }
-        select, input[type="password"], input[type="text"] {
+        select, input[type="password"] {
             width: 100%;
             padding: 12px;
-            padding-right: 40px; /* espaço pro ícone */
+            padding-right: 40px;
             border-radius: 5px;
             border: 1px solid #444;
             background-color: #333;
@@ -70,7 +75,7 @@ $result_usuarios = $stmt->get_result();
         }
         .toggle-password {
             position: absolute;
-            top: 37px; /* alinhamento vertical com o campo */
+            top: 37px;
             right: 12px;
             color: #aaa;
             cursor: pointer;
@@ -116,9 +121,9 @@ $result_usuarios = $stmt->get_result();
                 <label for="usuario_id">Acessar como:</label>
                 <select name="usuario_id" id="usuario_id" required>
                     <?php while ($usuario = $result_usuarios->fetch_assoc()): ?>
-                        <option value="<?= $usuario['id'] ?>">
+                        <option value="<?= $usuario['id'] ?>" <?= ($usuario['id'] === $id_usuario_atual) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($usuario['nome']) ?>
-                            <?= ($usuario['id'] === $usuario_principal['id']) ? '(Principal)' : '' ?>
+                            <?= ($usuario['nivel_acesso'] === 'proprietario') ? '(Principal)' : '' ?>
                         </option>
                     <?php endwhile; ?>
                 </select>

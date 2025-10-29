@@ -1,36 +1,42 @@
 <?php
-// Inicia a sessão (este arquivo já faz isso, o que é ótimo)
+// Inicia a sessão
 include_once '../includes/session_init.php';
 
-// Inclui o cabeçalho
-include_once '../includes/header_home.php';
-
-// Proteção para verificar se o usuário está logado
-if (!isset($_SESSION['user_id'])) {
+// Proteção para verificar se o usuário (cliente) está logado
+if (!isset($_SESSION['usuario_logado'])) {
     header("Location: ../pages/login.php");
     exit();
 }
 
-// Inclui o novo arquivo de banco de dados
+// Inclui o arquivo de banco de dados
 require_once '../database.php';
-// ***** LINHA ADICIONADA *****
-// Pega a conexão correta para este cliente
+
+// Pega a conexão correta para o banco de dados deste cliente
 $conn = getTenantConnection(); 
 
-// Pega o ID do usuário da sessão
-$user_id = $_SESSION['user_id'];
+// Se a conexão com o banco do tenant falhar (por exemplo, se a sessão expirar), redireciona para o login
+if ($conn === null) {
+    session_destroy(); // Limpa a sessão para evitar loops
+    header("Location: ../pages/login.php?erro=db_tenant");
+    exit();
+}
 
-// O restante do seu código continua normalmente...
-// Exemplo da sua lógica original que agora vai funcionar:
-$stmt = $conn->prepare("SELECT SUM(valor) AS total_receber FROM contas_a_receber WHERE baixada = 0 AND id_usuario = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result_receber = $stmt->get_result();
-$total_receber = $result_receber->fetch_assoc()['total_receber'] ?? 0;
+// Pega os dados do usuário da sessão correta
+$usuario_logado = $_SESSION['usuario_logado'];
+$user_id = $usuario_logado['id'];
+$nome = $usuario_logado['nome'];
+$perfil = $usuario_logado['nivel_acesso']; // 'nivel_acesso' é a coluna correta
 
-// INCLUI O HEADER PADRÃO (APÓS TODA A LÓGICA PHP)
+// Lógica para buscar as mensagens (se houver)
+$mensagem = $_SESSION['sucesso_mensagem'] ?? null;
+unset($_SESSION['sucesso_mensagem']);
+
+// Lógica para alerta de estoque baixo (se houver)
+$produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
+unset($_SESSION['produtos_estoque_baixo']);
+
+// Inclui o cabeçalho principal da página
 include('../includes/header.php');
-
 ?>
 
 <!DOCTYPE html>
@@ -179,7 +185,6 @@ include('../includes/header.php');
 <div class="home-container">
     <h1>App Controle de Contas</h1>
     <h3>Usuário Ativo: <?= htmlspecialchars($nome) ?> (<?= htmlspecialchars($perfil) ?>)</h3>
-    <h4>Conta Principal: <?= htmlspecialchars($_SESSION['usuario_principal']['nome']) ?></h4>
     <p class="saudacao" id="saudacao"></p>
 
     <?php if ($mensagem): ?>
@@ -249,7 +254,7 @@ include('../includes/header.php');
                 alertEstoque.style.transition = 'opacity 0.5s';
                 alertEstoque.style.opacity = '0';
                 setTimeout(() => alertEstoque.remove(), 500);
-            }, 3000); // 8 segundos
+            }, 8000); // 8 segundos
         }
     });
 </script>
