@@ -1,6 +1,6 @@
--- =================================================================
+
 -- Schema para a criação de um novo banco de dados de cliente (tenant)
--- =================================================================
+
 
 -- Tabela de Usuários do Cliente
 CREATE TABLE `usuarios` (
@@ -13,7 +13,7 @@ CREATE TABLE `usuarios` (
   `senha` varchar(255) NOT NULL,
   `perfil` enum('padrao','admin') DEFAULT 'padrao',
   `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `foto` varchar(255) DEFAULT 'default-profile.png', -- ✅ LINHA ADICIONADA
+  `foto` varchar(255) DEFAULT 'default-profile.png', 
   `status` varchar(20) NOT NULL DEFAULT 'ativo',
   `nivel_acesso` varchar(20) DEFAULT 'padrao',
   PRIMARY KEY (`id`),

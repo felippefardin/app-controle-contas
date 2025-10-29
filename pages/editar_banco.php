@@ -1,17 +1,30 @@
 <?php
 require_once '../includes/session_init.php';
-include('../includes/header.php');
-include('../database.php');
+require_once '../database.php';
 
-if (!isset($_SESSION['usuario'])) {
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
 
-$id_usuario = $_SESSION['usuario']['id'];
-$id_registro = $_GET['id'] ?? 0;
+// Pega os IDs da sessão e da URL
+$id_usuario = $_SESSION['usuario_logado']['id'];
+$id_registro = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// Busca os dados da conta bancária para preencher o formulário
+include('../includes/header.php');
+
+if ($id_registro === 0) {
+    echo "<div class='container'><h1>ID de registro inválido.</h1></div>";
+    include('../includes/footer.php');
+    exit;
+}
+
+// 2. BUSCA OS DADOS DA CONTA COM SEGURANÇA
 $stmt = $conn->prepare("SELECT * FROM contas_bancarias WHERE id = ? AND id_usuario = ?");
 $stmt->bind_param("ii", $id_registro, $id_usuario);
 $stmt->execute();
@@ -19,7 +32,8 @@ $result = $stmt->get_result();
 $registro = $result->fetch_assoc();
 
 if (!$registro) {
-    echo "<p>Conta bancária não encontrada ou você não tem permissão para editá-la.</p>";
+    echo "<div class='container'><h1>Conta bancária não encontrada ou você não tem permissão para editá-la.</h1></div>";
+    include('../includes/footer.php');
     exit;
 }
 ?>
@@ -31,11 +45,11 @@ if (!$registro) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; padding: 20px; }
+        body { background-color: #121212; color: #eee; }
         .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
-        h1 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; margin-bottom: 1rem; }
+        h1 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; }
         .form-control { background-color: #333; color: #eee; border: 1px solid #444; }
-        .form-control:focus { background-color: #333; color: #eee; border-color: #0af; box-shadow: none; }
+        .form-control:focus { background-color: #333; color: #eee; border-color: #0af; }
         .btn-primary { background-color: #0af; border: none; }
         .btn-secondary { background-color: #6c757d; border: none; }
     </style>

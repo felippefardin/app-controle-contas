@@ -1,22 +1,25 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../includes/header.php';
 require_once '../database.php';
 
-// Verifica se o usuário está logado
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
 
-$produto = null; // Inicializa a variável
+$produto = null;
+include('../includes/header.php');
 
-// Pega o ID do produto da URL e busca no banco de dados
 if (isset($_GET['id'])) {
-    $id_produto = $_GET['id'];
-    $id_usuario = $_SESSION['usuario']['id'];
+    $id_produto = (int)$_GET['id'];
+    $id_usuario = $_SESSION['usuario_logado']['id'];
 
-    // Seleciona todos os campos do produto, incluindo a quantidade_minima
+    // 2. SELECIONA O PRODUTO COM SEGURANÇA
     $stmt = $conn->prepare("SELECT * FROM produtos WHERE id = ? AND id_usuario = ?");
     $stmt->bind_param("ii", $id_produto, $id_usuario);
     $stmt->execute();
@@ -25,7 +28,6 @@ if (isset($_GET['id'])) {
     if ($result->num_rows > 0) {
         $produto = $result->fetch_assoc();
     } else {
-        // Se não encontrar o produto, exibe uma mensagem e encerra
         echo "<div class='container mt-4 alert alert-danger'>Produto não encontrado ou não pertence a este usuário.</div>";
         include('../includes/footer.php');
         exit;
@@ -45,44 +47,13 @@ if (isset($_GET['id'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body {
-            background-color: #121212;
-            color: #eee;
-        }
-        .container {
-            background-color: #222;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
-        }
-        h2 {
-            color: #eee;
-            border-bottom: 2px solid #0af;
-            padding-bottom: 10px;
-            margin-bottom: 1rem;
-        }
-        .form-control {
-            background-color: #333;
-            color: #eee;
-            border: 1px solid #444;
-        }
-        .form-control:focus {
-            background-color: #333;
-            color: #eee;
-            border-color: #0af;
-            box-shadow: none;
-        }
-        .btn-primary {
-            background-color: #0af;
-            border: none;
-        }
-        .btn-secondary {
-            background-color: #555;
-            border: none;
-        }
-        hr {
-            border-top: 1px solid #444;
-        }
+        body { background-color: #121212; color: #eee; }
+        .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
+        h2 { border-bottom: 2px solid #0af; padding-bottom: 10px; margin-bottom: 1rem; }
+        .form-control { background-color: #333; color: #eee; border: 1px solid #444; }
+        .form-control:focus { background-color: #333; color: #eee; border-color: #0af; box-shadow: none; }
+        .btn-primary { background-color: #0af; border: none; }
+        .btn-secondary { background-color: #555; border: none; }
     </style>
 </head>
 <body>
@@ -98,11 +69,11 @@ if (isset($_GET['id'])) {
                     <input type="text" class="form-control" name="nome" value="<?= htmlspecialchars($produto['nome']) ?>" required>
                 </div>
                 <div class="form-group col-md-3">
-                    <label for="quantidade_estoque">Quantidade em Estoque</label>
+                    <label for="quantidade_estoque">Qtd. em Estoque</label>
                     <input type="number" class="form-control" name="quantidade_estoque" value="<?= htmlspecialchars($produto['quantidade_estoque']) ?>" required>
                 </div>
                 <div class="form-group col-md-3">
-                    <label for="quantidade_minima">Quantidade Mínima</label>
+                    <label for="quantidade_minima">Qtd. Mínima</label>
                     <input type="number" class="form-control" name="quantidade_minima" value="<?= htmlspecialchars($produto['quantidade_minima']) ?>" required>
                 </div>
             </div>
@@ -113,15 +84,15 @@ if (isset($_GET['id'])) {
             <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="preco_compra">Preço de Compra</label>
-                    <input type="text" class="form-control" name="preco_compra" placeholder="0.00" value="<?= htmlspecialchars($produto['preco_compra']) ?>">
+                    <input type="text" class="form-control" name="preco_compra" placeholder="0,00" value="<?= number_format($produto['preco_compra'], 2, ',', '.') ?>">
                 </div>
                 <div class="form-group col-md-6">
                     <label for="preco_venda">Preço de Venda</label>
-                    <input type="text" class="form-control" name="preco_venda" placeholder="0.00" value="<?= htmlspecialchars($produto['preco_venda']) ?>" required>
+                    <input type="text" class="form-control" name="preco_venda" placeholder="0,00" value="<?= number_format($produto['preco_venda'], 2, ',', '.') ?>" required>
                 </div>
             </div>
-            <hr>
-            <h5>Informações Fiscais (para emissão de NFe)</h5>
+            <hr style="border-top: 1px solid #444;">
+            <h5>Informações Fiscais (Opcional)</h5>
             <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="ncm">NCM</label>

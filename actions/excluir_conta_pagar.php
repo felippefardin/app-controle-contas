@@ -1,42 +1,44 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php';
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
 
-include('../database.php');
-
 if (isset($_GET['id'])) {
-    $id = intval($_GET['id']);
+    $conn = getTenantConnection();
+    if ($conn === null) {
+        $_SESSION['error_message'] = "Falha na conexão com o banco de dados.";
+        header('Location: ../pages/contas_pagar.php');
+        exit;
+    }
 
+    $id_usuario = $_SESSION['usuario_logado']['id'];
+    $id_conta = (int)$_GET['id'];
+    
     $origem = $_GET['origem'] ?? 'pendentes';
     $redirectPage = ($origem === 'baixadas') ? 'contas_pagar_baixadas.php' : 'contas_pagar.php';
 
-    $stmt = $conn->prepare("DELETE FROM contas_pagar WHERE id = ?");
-    if ($stmt === false) {
-        // $_SESSION['error_message'] = "Erro ao preparar a exclusão.";
-        header("Location: ../pages/{$redirectPage}");
-        exit();
-    }
-
-    $stmt->bind_param("i", $id);
+    // 2. EXCLUI A CONTA COM SEGURANÇA
+    // A cláusula `AND usuario_id = ?` é crucial para a segurança
+    $stmt = $conn->prepare("DELETE FROM contas_pagar WHERE id = ? AND usuario_id = ?");
+    $stmt->bind_param("ii", $id_conta, $id_usuario);
 
     if ($stmt->execute()) {
         $_SESSION['success_message'] = "Conta excluída com sucesso!";
     } else {
-        // $_SESSION['error_message'] = "Erro ao executar a exclusão.";
+        $_SESSION['error_message'] = "Erro ao excluir a conta.";
     }
     
     $stmt->close();
-    $conn->close();
-    
     header("Location: ../pages/{$redirectPage}");
-    exit();
+    exit;
 } else {
-    // $_SESSION['error_message'] = "ID da conta não especificado.";
+    $_SESSION['error_message'] = "ID da conta não especificado.";
     header("Location: ../pages/contas_pagar.php");
-    exit();
+    exit;
 }
 ?>

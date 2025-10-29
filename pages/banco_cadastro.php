@@ -1,6 +1,6 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php'; 
 
 // ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
 if (!isset($_SESSION['usuario_logado'])) {

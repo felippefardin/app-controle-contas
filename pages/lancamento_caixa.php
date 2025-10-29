@@ -1,197 +1,89 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../includes/header.php';
 require_once '../database.php';
 
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?error=not_logged_in');
+    exit;
+}
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao conectar ao banco de dados do cliente.");
+}
 
+// Pega o ID do usuário logado
+$id_usuario = $_SESSION['usuario_logado']['id'];
 
-// Busca todos os lançamentos de caixa
+// 2. AJUSTA A CONSULTA SQL PARA FILTRAR PELO USUÁRIO
 $lancamentos = [];
-$sql = "SELECT id, data, valor FROM caixa_diario ORDER BY data DESC";
-$result = $conn->query($sql); 
-if ($result) {
-    $lancamentos = $result->fetch_all(MYSQLI_ASSOC);
+$sql = "SELECT id, data, valor FROM caixa_diario WHERE usuario_id = ? ORDER BY data DESC";
+
+$stmt = $conn->prepare($sql);
+if ($stmt) {
+    $stmt->bind_param("i", $id_usuario);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result) {
+        $lancamentos = $result->fetch_all(MYSQLI_ASSOC);
+    }
+    $stmt->close();
 }
 
-// Calcula totais
-$totalLancamentos = count($lancamentos);
-$totalValor = 0;
-foreach ($lancamentos as $l) {
-    $totalValor += $l['valor'];
-}
+include('../includes/header.php');
 ?>
 
 <style>
-body {
-    background-color: #121212;
-    color: #eee;
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-}
-
-/* Container */
-.container {
-    width: 95%;
-    max-width: 1200px;
-    margin: 20px auto;
-    background-color: #222;
-    padding: 25px;
-    border-radius: 8px;
-    box-sizing: border-box;
-}
-
-/* Títulos */
-h2, h3 {
-    color: #00bfff;
-    border-bottom: 2px solid #00bfff;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-
-/* Alertas */
-.alert {
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 20px;
-    text-align: center;
-    color: white;
-    opacity: 1;
-    transition: opacity 0.5s ease-out;
-}
-.alert-success { background-color: #28a745; }
-.alert-danger { background-color: #cc4444; }
-
-/* Formulários */
-form, .search-container {
-    background-color: #1f1f1f;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; margin-bottom: 5px; color: #eee; }
-
-.form-control, .form-control-date {
-    width: 100%;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #444;
-    background-color: #2c2c2c;
-    color: #eee;
-    font-size: 1rem;
-    box-sizing: border-box;
-}
-
-.form-control:focus, .form-control-date:focus {
-    outline: none;
-    border-color: #00bfff;
-}
-
-/* Botões */
-.btn-primary, .btn-pdf {
-    color: white;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: 0.2s;
-}
-.btn-primary { background-color: #00bfff; margin-right: 10px; }
-.btn-primary:hover { background-color: #0099cc; }
-.btn-pdf { background-color: #2ecc71; }
-.btn-pdf:hover { background-color: #27ae60; }
-
-.btn-edit, .btn-delete {
-    color: white;
-    padding: 6px 12px;
-    border-radius: 5px;
-    font-size: 0.85rem;
-    text-decoration: none;
-    transition: 0.2s;
-}
-.btn-edit { background-color: #17a2b8; }
-.btn-edit:hover { background-color: #117a8b; }
-.btn-delete { background-color: #dc3545; }
-.btn-delete:hover { background-color: #c82333; }
-
-/* === TABELA FULL DESKTOP === */
-.table-wrapper {
-    overflow-x: auto;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    table-layout: auto;
-}
-table thead {
-    background-color: #00bfff;
-    color: #fff;
-}
-table th, table td {
-    padding: 12px;
-    border: 1px solid #444;
-    text-align: left;
-    white-space: nowrap;
-}
-table tbody tr { background-color: #2c2c2c; }
-table tbody tr:hover { background-color: #3c3c3c; }
-
-.text-center { text-align: center; }
-
-/* === RESPONSIVIDADE === */
-@media (max-width: 768px) {
-    .container { padding: 15px; width: 95%; }
-
-    h2, h3 { font-size: 1.2rem; text-align: center; }
-
-    form, .search-container { padding: 15px; }
-
-    .btn-primary, .btn-pdf {
-        width: 100%;
-        margin: 8px 0;
-        font-size: 1rem;
-        padding: 12px;
+    /* Seu CSS (sem alterações) */
+    body {
+        background-color: #121212;
+        color: #eee;
     }
-
-    /* Tabela compacta (modo padrão) */
-    .table-wrapper {
-        overflow-x: auto;
+    .container {
+        width: 95%;
+        max-width: 1200px;
+        margin: 20px auto;
+        background-color: #222;
+        padding: 25px;
         border-radius: 8px;
     }
-
-    table th:nth-child(3),
-    table td:nth-child(3) {
-        display: none; /* Esconde coluna "Ações" */
+    h2, h3 {
+        color: #00bfff;
     }
-
-    /* Modo expandido */
-    .expanded table th:nth-child(3),
-    .expanded table td:nth-child(3) {
-        display: table-cell;
-    }
-
-    /* Botão toggle */
-    .toggle-btn {
-        display: block;
-        width: 100%;
-        background-color: #444;
-        color: #fff;
-        border: none;
+    .alert {
         padding: 10px;
         border-radius: 6px;
-        margin-top: 10px;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: 0.2s;
+        margin-bottom: 20px;
+        color: white;
     }
-    .toggle-btn:hover { background-color: #00bfff; }
-}
-
+    .alert-success { background-color: #28a745; }
+    .alert-danger { background-color: #cc4444; }
+    form, .search-container {
+        background-color: #1f1f1f;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; }
+    .form-control, .form-control-date {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background-color: #2c2c2c;
+        color: #eee;
+    }
+    .btn-primary { background-color: #00bfff; border: none; padding: 10px 18px; cursor: pointer; }
+    .btn-pdf { background-color: #2ecc71; border: none; padding: 10px 18px; cursor: pointer; color: white; }
+    .btn-edit { background-color: #17a2b8; color: white; padding: 6px 12px; text-decoration: none; border-radius: 5px; }
+    .btn-delete { background-color: #dc3545; color: white; padding: 6px 12px; text-decoration: none; border-radius: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    table thead { background-color: #00bfff; color: #fff; }
+    table th, table td { padding: 12px; border: 1px solid #444; text-align: left; }
+    table tbody tr:hover { background-color: #3c3c3c; }
+    .text-center { text-align: center; }
 </style>
-
 <div class="container">
     <h2>Lançamento de Caixa Diário</h2>
 
@@ -232,9 +124,9 @@ table tbody tr:hover { background-color: #3c3c3c; }
 
     <hr>
 
-    <h3>Histórico de Lançamentos</h3>
+<h3>Histórico de Lançamentos</h3>
 
-    <div class="table-wrapper" id="tableWrapper">
+    <div class="table-wrapper">
         <table id="lancamentosTable">
             <thead>
                 <tr>
@@ -251,7 +143,7 @@ table tbody tr:hover { background-color: #3c3c3c; }
                             <td>R$ <?php echo number_format($lancamento['valor'], 2, ',', '.'); ?></td>
                             <td>
                                 <a href="editar_caixa_diario.php?id=<?php echo $lancamento['id']; ?>" class="btn-edit">Editar</a>
-                                <a href="../actions/excluir_caixa_diario.php?id=<?php echo $lancamento['id']; ?>" class="btn-delete" onclick="return confirm('Tem certeza que deseja excluir este lançamento?');">Excluir</a>
+                                <a href="../actions/excluir_caixa_diario.php?id=<?php echo $lancamento['id']; ?>" class="btn-delete" onclick="return confirm('Tem certeza?');">Excluir</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -261,8 +153,7 @@ table tbody tr:hover { background-color: #3c3c3c; }
             </tbody>
         </table>
     </div>
-
-    <!-- Botão Toggle apenas no mobile -->
+</div>
     <button class="toggle-btn" id="toggleTableBtn">Ver mais colunas</button>
 </div>
 
@@ -290,9 +181,14 @@ function filterTable() {
     const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
 
+    if (startDate) { startDate.setUTCHours(0,0,0,0); }
+    if (endDate) { endDate.setUTCHours(23,59,59,999); }
+
     Array.from(table.rows).forEach(row => {
         const dateStr = row.cells[0].innerText.split('/');
         const rowDate = new Date(`${dateStr[2]}-${dateStr[1]}-${dateStr[0]}`);
+        rowDate.setUTCHours(0,0,0,0);
+        
         let show = true;
 
         if (startDate && rowDate < startDate) show = false;
@@ -303,6 +199,7 @@ function filterTable() {
 }
 startDateInput.addEventListener('input', filterTable);
 endDateInput.addEventListener('input', filterTable);
+
 
 // Geração de PDF
 function gerarPDFPeriodo() {

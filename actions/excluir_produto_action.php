@@ -1,21 +1,36 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php');
+require_once '../database.php';
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
 
-$id_usuario = $_SESSION['usuario']['id'];
-$id_produto = $_GET['id'];
+if (isset($_GET['id'])) {
+    $conn = getTenantConnection();
+    if ($conn === null) {
+        header('Location: ../pages/controle_estoque.php?error=db_connection');
+        exit;
+    }
 
-$stmt = $conn->prepare("DELETE FROM produtos WHERE id = ? AND id_usuario = ?");
-$stmt->bind_param("ii", $id_produto, $id_usuario);
+    $id_usuario = $_SESSION['usuario_logado']['id'];
+    $id_produto = (int)$_GET['id'];
 
-if ($stmt->execute()) {
-    header('Location: ../pages/controle_estoque.php');
+    // 2. EXCLUI O PRODUTO COM SEGURANÇA
+    $stmt = $conn->prepare("DELETE FROM produtos WHERE id = ? AND id_usuario = ?");
+    $stmt->bind_param("ii", $id_produto, $id_usuario);
+
+    if ($stmt->execute()) {
+        header('Location: ../pages/controle_estoque.php?success=delete');
+    } else {
+        header('Location: ../pages/controle_estoque.php?error=delete_failed');
+    }
+    $stmt->close();
+    exit;
 } else {
-    echo "Erro ao excluir produto: " . $conn->error;
+    header('Location: ../pages/controle_estoque.php');
+    exit;
 }
 ?>

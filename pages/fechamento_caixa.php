@@ -1,29 +1,41 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php';
 include('../includes/header.php');
-include('../database.php');
 
-if (!isset($_SESSION['usuario'])) {
+// ✅ 1. Verifica se o usuário está logado e pega a conexão correta
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: ../pages/login.php');
     exit;
 }
+$conn = getTenantConnection();
 
-$id_usuario = $_SESSION['usuario']['id'];
+// ✅ 2. Pega o ID do usuário da sessão correta
+$id_usuario = $_SESSION['usuario_logado']['id'];
 $data_hoje = date('Y-m-d');
-$data_selecionada = $_GET['data'] ?? $data_hoje;
 
-// 🔹 Totais por forma de pagamento
-$stmt = $conn->prepare("
-    SELECT forma_pagamento, SUM(valor_total) as total 
-    FROM vendas 
-    WHERE id_usuario = ? AND DATE(data_venda) = ? 
-    GROUP BY forma_pagamento
-");
-$stmt->bind_param("is", $id_usuario, $data_selecionada);
+// Pega a data do filtro ou usa a data de hoje como padrão
+$data_selecionada = $_GET['data'] ?? null;
+
+// ✅ 3. Consulta para buscar os lançamentos do CAIXA DIÁRIO
+$sql = "SELECT id, data, valor FROM caixa_diario WHERE usuario_id = ?";
+$params = [$id_usuario];
+$types = "i";
+
+// Adiciona o filtro de data se uma data foi selecionada
+if ($data_selecionada) {
+    $sql .= " AND data = ?";
+    $params[] = $data_selecionada;
+    $types .= "s";
+}
+
+$sql .= " ORDER BY data DESC";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
-$result = $stmt->get_result();
+$lancamentos = $stmt->get_result();
 
-$totais = [];
 $total_geral = 0;
 while ($row = $result->fetch_assoc()) {
     $totais[$row['forma_pagamento']] = $row['total'];

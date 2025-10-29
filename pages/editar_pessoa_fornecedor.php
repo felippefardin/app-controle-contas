@@ -1,25 +1,39 @@
 <?php
 require_once '../includes/session_init.php';
-include('../includes/header.php');
-include('../database.php');
+require_once '../database.php';
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: login.php');
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?error=not_logged_in');
+    exit;
+}
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
+// Pega o ID do usuário e do registro
+$id_usuario = $_SESSION['usuario_logado']['id'];
+$id_registro = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($id_registro === 0) {
+    echo "<p>Registro não especificado.</p>";
     exit;
 }
 
-$id_usuario = $_SESSION['usuario']['id'];
-$id_registro = $_GET['id'] ?? 0;
+include('../includes/header.php');
 
-// Busca os dados do registro específico para preencher o formulário
+// 2. BUSCA OS DADOS DO REGISTRO ESPECÍFICO, GARANTINDO QUE PERTENÇA AO USUÁRIO
 $stmt = $conn->prepare("SELECT * FROM pessoas_fornecedores WHERE id = ? AND id_usuario = ?");
 $stmt->bind_param("ii", $id_registro, $id_usuario);
 $stmt->execute();
 $result = $stmt->get_result();
 $registro = $result->fetch_assoc();
 
+// Se não encontrar o registro, exibe um erro
 if (!$registro) {
-    echo "<p>Registro não encontrado ou você não tem permissão para editá-lo.</p>";
+    echo "<div class='container'><h1>Registro não encontrado ou você не tem permissão para editá-lo.</h1></div>";
+    include('../includes/footer.php');
     exit;
 }
 ?>
@@ -31,9 +45,9 @@ if (!$registro) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; padding: 20px; }
+        body { background-color: #121212; color: #eee; }
         .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
-        h1 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; margin-bottom: 1rem; }
+        h1 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; }
         .form-control, .custom-select { background-color: #333; color: #eee; border: 1px solid #444; }
         .form-control:focus, .custom-select:focus { background-color: #333; color: #eee; border-color: #0af; box-shadow: none; }
         .btn-primary { background-color: #0af; border: none; }
@@ -42,7 +56,7 @@ if (!$registro) {
 </head>
 <body>
 <div class="container">
-    <h1><i class="fa-solid fa-pen-to-square"></i> Editar Cliente/Fornecedor</h1>
+    <h1><i class="fa-solid fa-pen-to-square"></i> Editar: <?= htmlspecialchars($registro['nome']) ?></h1>
     
     <form action="../actions/editar_pessoa_fornecedor_action.php" method="POST">
         <input type="hidden" name="id" value="<?= htmlspecialchars($registro['id']) ?>">
@@ -54,7 +68,7 @@ if (!$registro) {
             </div>
             <div class="form-group col-md-6">
                 <label for="cpf_cnpj">CPF ou CNPJ</label>
-                <input type="text" class="form-control" name="cpf_cnpj" value="<?= htmlspecialchars($registro['cpf_cnpj']) ?>" required>
+                <input type="text" class="form-control" name="cpf_cnpj" value="<?= htmlspecialchars($registro['cpf_cnpj']) ?>">
             </div>
         </div>
         <div class="form-group">
@@ -68,7 +82,7 @@ if (!$registro) {
             </div>
             <div class="form-group col-md-6">
                 <label for="email">E-mail</label>
-                <input type="email" class="form-control" name="email" value="<?= htmlspecialchars($registro['email']) ?>" required>
+                <input type="email" class="form-control" name="email" value="<?= htmlspecialchars($registro['email']) ?>">
             </div>
         </div>
          <div class="form-group">

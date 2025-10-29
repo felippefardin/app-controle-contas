@@ -1,28 +1,34 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php');
+require_once '../database.php';
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: ../pages/login.php');
+// 1. VERIFICA O LOGIN E PEGA A CONEXÃO
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
+$conn = getTenantConnection();
 
 if (isset($_GET['id'])) {
-    $id_usuario = $_SESSION['usuario']['id'];
-    $id_registro = $_GET['id'];
+    $id_usuario = $_SESSION['usuario_logado']['id'];
+    $id_registro = (int)$_GET['id'];
 
-    // A cláusula WHERE id_usuario garante que um usuário não pode excluir o registro de outro
-    $stmt = $conn->prepare("DELETE FROM pessoas_fornecedores WHERE id = ? AND id_usuario = ?");
-    $stmt->bind_param("ii", $id_registro, $id_usuario);
-    
-    if ($stmt->execute()) {
-        header('Location: ../pages/cadastrar_pessoa_fornecedor.php?sucesso_exclusao=1');
+    if ($conn && $id_registro > 0) {
+        // 2. A CLÁUSULA `id_usuario = ?` GARANTE A SEGURANÇA
+        $stmt = $conn->prepare("DELETE FROM pessoas_fornecedores WHERE id = ? AND id_usuario = ?");
+        $stmt->bind_param("ii", $id_registro, $id_usuario);
+        
+        if ($stmt->execute()) {
+            header('Location: ../pages/cadastrar_pessoa_fornecedor.php?sucesso_exclusao=1');
+        } else {
+            header('Location: ../pages/cadastrar_pessoa_fornecedor.php?erro_exclusao=1');
+        }
+        $stmt->close();
     } else {
-        header('Location: ../pages/cadastrar_pessoa_fornecedor.php?erro_exclusao=1');
+        header('Location: ../pages/cadastrar_pessoa_fornecedor.php?erro=db_or_id');
     }
-    $stmt->close();
-    $conn->close();
 } else {
     header('Location: ../pages/cadastrar_pessoa_fornecedor.php');
 }
+exit;
 ?>

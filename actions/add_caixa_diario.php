@@ -1,33 +1,49 @@
 <?php
-require_once '../includes/session_init.php'; // Adicione para ter acesso à sessão
+require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// Verifica se o usuário está logado
-if (!isset($_SESSION['usuario']['id'])) {
-    // Redireciona para o login se não estiver logado
+// 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
 
+// 2. VERIFICA SE O MÉTODO É POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Pega a conexão correta para o cliente
+    $conn = getTenantConnection();
+    if ($conn === null) {
+        header("Location: ../pages/lancamento_caixa.php?error=db_connection");
+        exit;
+    }
+
     $data = $_POST['data'];
     $valor = $_POST['valor'];
-    $usuarioId = $_SESSION['usuario']['id']; // Pega o ID do usuário da sessão
+    $usuarioId = $_SESSION['usuario_logado']['id'];
 
-    // A lógica ON DUPLICATE KEY UPDATE precisa ser ajustada para a chave composta (data, usuario_id)
-    // Primeiro, vamos garantir que a tabela tenha uma chave única para data e usuario_id
-    // Se você ainda não fez, execute: ALTER TABLE caixa_diario ADD UNIQUE KEY (data, usuario_id);
-
+    // 3. LÓGICA PARA INSERIR OU ATUALIZAR O CAIXA
+    // (Lembre-se da chave única na tabela `caixa_diario` para `data` e `usuario_id`)
     $sql = "INSERT INTO caixa_diario (data, valor, usuario_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = valor + VALUES(valor)";
+    
     $stmt = $conn->prepare($sql);
-    // Adiciona o bind_param para o usuario_id
+    if ($stmt === false) {
+        header("Location: ../pages/lancamento_caixa.php?error=prepare_failed");
+        exit;
+    }
+
     $stmt->bind_param("sdi", $data, $valor, $usuarioId);
 
     if ($stmt->execute()) {
         header("Location: ../pages/lancamento_caixa.php?success=1");
     } else {
-        header("Location: ../pages/lancamento_caixa.php?error=1");
+        header("Location: ../pages/lancamento_caixa.php?error=execute_failed");
     }
+
     $stmt->close();
+    exit;
+} else {
+    // Redireciona se não for POST
+    header('Location: ../pages/lancamento_caixa.php');
+    exit;
 }
 ?>

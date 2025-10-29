@@ -326,116 +326,118 @@ include('../includes/header.php');
 $(document).ready(function() {
     let tipoFinalizacao = 'recibo';
 
+    // === Select2: Clientes ===
     $('#cliente_id').select2({
         placeholder: 'Selecione ou digite o nome de um cliente',
         ajax: {
             url: 'vendas.php?action=search_clientes',
             dataType: 'json',
             delay: 250,
-            processResults: function (data) { return { results: data.results }; },
+            processResults: data => ({ results: data.results }),
             cache: true
         }
     });
 
+    // === Select2: Produtos ===
     $('#produto_select').select2({
         placeholder: 'Pesquisar produto pelo nome...',
         ajax: {
             url: 'vendas.php?action=search_produtos',
             dataType: 'json',
             delay: 250,
-            processResults: function (data) { return { results: data.results }; },
+            processResults: data => ({ results: data.results }),
             cache: true
         }
     });
 
+    // === Adicionar Produto ===
     $('#add-produto').on('click', function() {
-        var produtoData = $('#produto_select').select2('data')[0];
-        if (!produtoData || !produtoData.id) {
-            showAlert('Selecione um produto para adicionar.', 'warning');
-            return;
-        }
-        var produtoId = produtoData.id;
-        var produtoNome = produtoData.text.split(' (Estoque:')[0];
-        var precoVenda = parseFloat(produtoData.preco_venda || 0).toFixed(2);
-        var estoque = parseInt(produtoData.estoque);
+        const produtoData = $('#produto_select').select2('data')[0];
+        if (!produtoData || !produtoData.id) return showAlert('Selecione um produto para adicionar.', 'warning');
 
-        if ($('#venda-items').find(`tr[data-id="${produtoId}"]`).length > 0) {
-            showAlert('Este produto já foi adicionado.', 'warning');
-            return;
-        }
-        if (estoque <= 0) {
-            showAlert('Este produto não tem estoque disponível.', 'danger');
-            return;
-        }
-        
-        var row = `<tr data-id="${produtoId}" data-preco="${precoVenda}" data-nome="${produtoNome}">
-            <td>${produtoNome}</td>
-            <td><input type="number" class="form-control quantidade" value="1" min="1" max="${estoque}" required></td>
-            <td class="preco-unitario">R$ ${precoVenda}</td>
-            <td class="subtotal">R$ ${precoVenda}</td>
-            <td><button type="button" class="btn btn-danger btn-sm remover-item"><i class="fas fa-trash"></i></button></td>
-        </tr>`;
+        const produtoId = produtoData.id;
+        const produtoNome = produtoData.text.split(' (Estoque:')[0];
+        const precoVenda = parseFloat(produtoData.preco_venda || 0).toFixed(2);
+        const estoque = parseInt(produtoData.estoque);
+
+        if ($('#venda-items').find(`tr[data-id="${produtoId}"]`).length > 0)
+            return showAlert('Este produto já foi adicionado.', 'warning');
+        if (estoque <= 0)
+            return showAlert('Este produto está sem estoque.', 'danger');
+
+        const row = `
+            <tr data-id="${produtoId}" data-preco="${precoVenda}">
+                <td>${produtoNome}</td>
+                <td><input type="number" class="form-control quantidade" value="1" min="1" max="${estoque}"></td>
+                <td class="preco-unitario">R$ ${precoVenda}</td>
+                <td class="subtotal">R$ ${precoVenda}</td>
+                <td><button type="button" class="btn btn-danger btn-sm remover-item"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
         $('#venda-items').append(row);
         atualizarTotal();
         $('#produto_select').val(null).trigger('change');
     });
 
-    $('#venda-items').on('click', '.remover-item', function() { $(this).closest('tr').remove(); atualizarTotal(); });
-    $('#venda-items').on('input', '.quantidade', atualizarLinha);
-    $('#desconto').on('input', atualizarTotal);
-
-    function atualizarLinha() {
-        var tr = $(this).closest('tr');
-        var quantidade = parseInt(tr.find('.quantidade').val());
-        var estoque = parseInt(tr.find('.quantidade').attr('max'));
-        var preco = parseFloat(tr.data('preco'));
-        if (quantidade > estoque) {
-            showAlert('Quantidade excede o estoque (' + estoque + ').', 'warning');
-            tr.find('.quantidade').val(estoque);
-            quantidade = estoque;
+    // === Atualizar linha quando quantidade mudar ===
+    $('#venda-items').on('input', '.quantidade', function() {
+        const tr = $(this).closest('tr');
+        const qtd = Math.max(1, parseInt($(this).val()) || 1);
+        const estoque = parseInt($(this).attr('max'));
+        if (qtd > estoque) {
+            showAlert(`⚠️ Estoque máximo disponível: ${estoque}`, 'warning');
+            $(this).val(estoque);
         }
-        if (isNaN(quantidade) || quantidade < 1) {
-            quantidade = 1;
-            tr.find('.quantidade').val(1);
-        }
-        var subtotal = (quantidade * preco).toFixed(2);
+        const preco = parseFloat(tr.data('preco'));
+        const subtotal = (qtd * preco).toFixed(2);
         tr.find('.subtotal').text('R$ ' + subtotal);
         atualizarTotal();
-    }
+    });
+
+    // === Remover produto ===
+    $('#venda-items').on('click', '.remover-item', function() {
+        $(this).closest('tr').remove();
+        atualizarTotal();
+    });
+
+    // === Atualizar total com desconto ===
+    $('#desconto').on('input', atualizarTotal);
 
     function atualizarTotal() {
-        var total = 0;
+        let total = 0;
         $('#venda-items tr').each(function() {
-            total += parseFloat($(this).find('.subtotal').text().replace('R$ ', ''));
+            const valor = parseFloat($(this).find('.subtotal').text().replace('R$ ', '')) || 0;
+            total += valor;
         });
-        var desconto = parseFloat($('#desconto').val().replace(',', '.')) || 0;
-        var totalLiquido = total - desconto;
-        if(totalLiquido < 0) totalLiquido = 0;
-        $('#total-geral').text(totalLiquido.toFixed(2));
+        let desconto = parseFloat($('#desconto').val().replace(',', '.')) || 0;
+        if (desconto > total) desconto = total;
+        const totalLiquido = (total - desconto).toFixed(2);
+        $('#total-geral').text(totalLiquido);
     }
 
+    // === Finalizar Venda ===
     $('#btn-recibo').on('click', function() {
         tipoFinalizacao = 'recibo';
         $('#form-venda').submit();
     });
-
     $('#btn-nfe').on('click', function() {
         tipoFinalizacao = 'nfe';
         $('#form-venda').submit();
     });
 
+    // === Envio do formulário ===
     $('#form-venda').on('submit', function(e) {
         e.preventDefault();
-        if ($('#venda-items tr').length === 0) {
-            showAlert('Adicione pelo menos um produto à venda.', 'danger');
-            return;
-        }
-        
-        let itens = [];
-        $('#venda-items tr').each(function() {
-            let tr = $(this);
-            itens.push({ id: tr.data('id'), quantidade: parseInt(tr.find('.quantidade').val()), preco: parseFloat(tr.data('preco')) });
-        });
+        if ($('#venda-items tr').length === 0)
+            return showAlert('Adicione pelo menos um produto à venda.', 'danger');
+
+        const itens = $('#venda-items tr').map(function() {
+            const tr = $(this);
+            return {
+                id: tr.data('id'),
+                quantidade: parseInt(tr.find('.quantidade').val()),
+                preco: parseFloat(tr.data('preco'))
+            };
+        }).get();
 
         const formData = new FormData(this);
         formData.append('itens', JSON.stringify(itens));
@@ -447,49 +449,40 @@ $(document).ready(function() {
             method: 'POST',
             body: formData
         })
-        .then(response => {
-            if (!response.ok) { throw new Error('Falha na resposta do servidor. Verifique o log de erros do PHP.'); }
-            return response.json();
-        })
+        .then(res => res.json())
         .then(data => {
             if (data.success) {
                 showAlert(data.message, 'success');
-                if (data.tipo_finalizacao === 'recibo') {
+                if (tipoFinalizacao === 'recibo') {
                     window.open('recibo_venda.php?id=' + data.venda_id, '_blank');
-                } else if (data.tipo_finalizacao === 'nfe') {
+                } else {
                     emitirNFe(data.venda_id);
                 }
                 limparFormulario();
             } else {
-                showAlert('Erro ao registrar venda: ' + data.message, 'danger');
+                showAlert('Erro: ' + data.message, 'danger');
             }
         })
-        .catch(error => {
-            console.error('Erro na requisição fetch:', error);
-            showAlert('Ocorreu um erro de comunicação com o servidor. Verifique o console (F12).', 'danger');
+        .catch(err => {
+            console.error('Erro:', err);
+            showAlert('Erro ao comunicar com o servidor.', 'danger');
         });
     });
 
     function emitirNFe(vendaId) {
-        showAlert('Venda registrada! Iniciando emissão da NF-e...', 'info');
-        const nfeData = new FormData();
-        nfeData.append('id_venda', vendaId);
-
+        showAlert('⏳ Emitindo NF-e...', 'info');
         fetch('../actions/emitir_nfce.php', {
             method: 'POST',
-            body: nfeData
+            body: new URLSearchParams({ id_venda: vendaId })
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                showAlert('NF-e emitida com sucesso! Chave: ' + data.chave, 'success');
-            } else {
-                showAlert('Falha ao emitir NF-e: ' + data.message, 'danger');
-            }
+            if (data.success) showAlert('✅ NF-e emitida! Chave: ' + data.chave, 'success');
+            else showAlert('❌ Erro ao emitir NF-e: ' + data.message, 'danger');
         })
-        .catch(error => {
-            console.error('Erro na emissão da NF-e:', error);
-            showAlert('Erro de comunicação ao tentar emitir a NF-e.', 'danger');
+        .catch(err => {
+            console.error(err);
+            showAlert('Erro de comunicação com o servidor na emissão da NF-e.', 'danger');
         });
     }
 
@@ -499,9 +492,14 @@ $(document).ready(function() {
         $('#venda-items').empty();
         atualizarTotal();
     }
-    
+
     function showAlert(message, type) {
-        $('#alert-container').html(`<div class="alert alert-${type} alert-dismissible fade show" role="alert">${message}<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>`);
+        $('#alert-container').html(`
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        `);
     }
 });
 </script>
