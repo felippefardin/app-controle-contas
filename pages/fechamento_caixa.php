@@ -3,46 +3,41 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 include('../includes/header.php');
 
-// ✅ 1. Verifica se o usuário está logado e pega a conexão correta
+// ✅ 1. Verifica se o usuário está logado
 if (!isset($_SESSION['usuario_logado'])) {
     header('Location: ../pages/login.php');
     exit;
 }
+
 $conn = getTenantConnection();
 
-// ✅ 2. Pega o ID do usuário da sessão correta
+// ✅ 2. Dados da sessão e data selecionada
 $id_usuario = $_SESSION['usuario_logado']['id'];
 $data_hoje = date('Y-m-d');
+$data_selecionada = $_GET['data'] ?? $data_hoje;
 
-// Pega a data do filtro ou usa a data de hoje como padrão
-$data_selecionada = $_GET['data'] ?? null;
-
-// ✅ 3. Consulta para buscar os lançamentos do CAIXA DIÁRIO
-$sql = "SELECT id, data, valor FROM caixa_diario WHERE usuario_id = ?";
-$params = [$id_usuario];
-$types = "i";
-
-// Adiciona o filtro de data se uma data foi selecionada
-if ($data_selecionada) {
-    $sql .= " AND data = ?";
-    $params[] = $data_selecionada;
-    $types .= "s";
-}
-
-$sql .= " ORDER BY data DESC";
-
+// ✅ 3. Consulta resumo por forma de pagamento (baseada nas vendas)
+$sql = "
+    SELECT forma_pagamento, SUM(valor_total) AS total 
+    FROM vendas 
+    WHERE id_usuario = ? AND DATE(data_venda) = ?
+    GROUP BY forma_pagamento
+";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param($types, ...$params);
+$stmt->bind_param("is", $id_usuario, $data_selecionada);
 $stmt->execute();
 $lancamentos = $stmt->get_result();
 
+$totais = [];
 $total_geral = 0;
-while ($row = $result->fetch_assoc()) {
-    $totais[$row['forma_pagamento']] = $row['total'];
+
+while ($row = $lancamentos->fetch_assoc()) {
+    $forma = $row['forma_pagamento'] ?: 'outros';
+    $totais[$forma] = $row['total'];
     $total_geral += $row['total'];
 }
 
-// 🔹 Listagem das vendas
+// ✅ 4. Listagem das vendas individuais
 $stmt_vendas = $conn->prepare("
     SELECT id, data_venda, valor_total, forma_pagamento 
     FROM vendas 
@@ -53,6 +48,8 @@ $stmt_vendas->bind_param("is", $id_usuario, $data_selecionada);
 $stmt_vendas->execute();
 $vendas = $stmt_vendas->get_result();
 ?>
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

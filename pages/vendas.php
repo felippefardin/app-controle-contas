@@ -293,12 +293,12 @@ include('../includes/header.php');
             <div class="form-group col-md-4">
                 <label for="forma_pagamento">Forma de Pagamento</label>
                 <select id="forma_pagamento" name="forma_pagamento" class="form-control" required>
-                    <option value="dinheiro" selected>Dinheiro</option>
-                    <option value="pix">PIX</option>
-                    <option value="cartao_debito">Cartão de Débito</option>
-                    <option value="cartao_credito">Cartão de Crédito</option>
-                    <option value="fiado">Fiado (A Prazo)</option>
-                </select>
+    <option value="dinheiro" selected>Dinheiro</option>
+    <option value="pix">PIX</option>
+    <option value="cartao_debito">Cartão de Débito</option>
+    <option value="cartao_credito">Cartão de Crédito</option>
+    <option value="receber">A Receber (A Prazo)</option>
+</select>
             </div>
              <div class="form-group col-md-3">
                 <label for="desconto">Desconto (R$)</label>

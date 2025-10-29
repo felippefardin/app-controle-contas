@@ -2,14 +2,7 @@
 require_once '../includes/session_init.php';
 include('../database.php'); 
 
-global $env;
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: registro.php');
-    exit;
-}
-
-// Função para estilizar mensagens (definida no início para ficar organizada)
+// --- Função para estilizar mensagens ---
 function estilizarMensagem($mensagem, $tipo = "info") {
     $cor = $tipo === "sucesso" ? "#27ae60" : ($tipo === "erro" ? "#e74c3c" : "#3498db");
     return "
@@ -29,13 +22,20 @@ function estilizarMensagem($mensagem, $tipo = "info") {
     <body>
         <div class='caixa'>
             <h1>{$mensagem}</h1>
+            <a href='registro.php'>Voltar</a>
         </div>
     </body>
     </html>
     ";
 }
 
-// 1. CAPTURA E VALIDA OS DADOS DO NOVO CLIENTE
+// --- Verifica se o método é POST ---
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: registro.php');
+    exit;
+}
+
+// --- Captura os dados do formulário ---
 $nome_empresa = trim($_POST['nome'] ?? '');
 $email_admin  = trim(strtolower($_POST['email'] ?? ''));
 $senha_admin  = $_POST['senha'] ?? '';
@@ -46,7 +46,7 @@ if (empty($nome_empresa) || empty($email_admin) || empty($senha_admin)) {
     die(estilizarMensagem("Preencha todos os campos obrigatórios.", "erro"));
 }
 
-// --- VERIFICAÇÃO DE DUPLICIDADE NO BANCO MASTER ---
+// --- Verifica duplicidade no banco master ---
 $master_conn = getMasterConnection();
 $stmt = $master_conn->prepare("SELECT id FROM tenants WHERE admin_email = ?");
 $stmt->bind_param("s", $email_admin);
@@ -58,32 +58,36 @@ if ($stmt->get_result()->num_rows > 0) {
 $stmt->close();
 $master_conn->close();
 
-
-// 2. CRIA UM NOVO BANCO DE DADOS E UM USUÁRIO PARA O CLIENTE
 try {
+    // --- Criação do banco e usuário do tenant ---
     $novo_db_nome = 'tenant_' . bin2hex(random_bytes(8));
     $novo_db_user = 'user_' . bin2hex(random_bytes(8));
     $novo_db_pass = bin2hex(random_bytes(16));
 
+    // Conexão admin do MySQL
     $admin_conn = new mysqli($env['DB_HOST'], $env['DB_ADMIN_USER'], $env['DB_ADMIN_PASS']);
+    $admin_conn->set_charset("utf8mb4");
+    if ($admin_conn->connect_error) {
+        throw new Exception("Falha na conexão como admin: " . $admin_conn->connect_error);
+    }
+
     $admin_conn->query("CREATE DATABASE `{$novo_db_nome}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     $admin_conn->query("CREATE USER '{$novo_db_user}'@'localhost' IDENTIFIED BY '{$novo_db_pass}'");
     $admin_conn->query("GRANT ALL PRIVILEGES ON `{$novo_db_nome}`.* TO '{$novo_db_user}'@'localhost'");
     $admin_conn->close();
 
-    // 3. EXECUTA O SCRIPT SQL PARA CRIAR AS TABELAS
+    // --- Executa schema no banco do tenant ---
     $schema_sql = file_get_contents(__DIR__ . '/../schema.sql');
-    if ($schema_sql === false) {
-        throw new Exception("Arquivo de schema (schema.sql) não encontrado na raiz do projeto.");
-    }
+    if ($schema_sql === false) throw new Exception("Arquivo schema.sql não encontrado.");
 
     $tenant_conn = new mysqli($env['DB_HOST'], $novo_db_user, $novo_db_pass, $novo_db_nome);
+    $tenant_conn->set_charset("utf8mb4");
     if (!$tenant_conn->multi_query($schema_sql)) {
-         throw new Exception("Erro ao criar as tabelas no banco de dados do cliente.");
+        throw new Exception("Erro ao criar as tabelas do tenant: " . $tenant_conn->error);
     }
     while ($tenant_conn->next_result()) {;}
-    
-    // 4. INSERE O PRIMEIRO USUÁRIO (ADMIN) NO BANCO DO CLIENTE
+
+    // --- Insere usuário admin ---
     $senha_hash = password_hash($senha_admin, PASSWORD_DEFAULT);
     $stmt = $tenant_conn->prepare(
         "INSERT INTO usuarios (nome, email, cpf, telefone, senha, nivel_acesso, status) 
@@ -94,7 +98,7 @@ try {
     $stmt->close();
     $tenant_conn->close();
 
-    // 5. SALVA AS INFORMAÇÕES DO NOVO TENANT NO BANCO MASTER
+    // --- Salva tenant no banco master ---
     $master_conn = getMasterConnection();
     $stmt = $master_conn->prepare(
         "INSERT INTO tenants (nome_empresa, admin_email, db_host, db_database, db_user, db_password) 
@@ -105,12 +109,10 @@ try {
     $stmt->close();
     $master_conn->close();
 
-    // Sucesso!
     echo estilizarMensagem("Cadastro da empresa realizado com sucesso! <br><a href='login.php'>Ir para o login</a>", "sucesso");
     exit;
 
 } catch (Exception $e) {
-    // Em caso de qualquer erro, exibe a mensagem de falha
     die(estilizarMensagem("Erro crítico no cadastro: " . $e->getMessage(), "erro"));
 }
 ?>

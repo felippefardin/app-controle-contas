@@ -96,19 +96,21 @@ try {
 
     // 4️⃣ Lançamento financeiro
     $descricao = "Referente à Venda #$venda_id";
-    if ($forma_pagamento === 'fiado') {
-        $stmt_fin = $conn->prepare(
-            "INSERT INTO contas_receber (id_pessoa_fornecedor, descricao, valor, data_vencimento, id_venda) VALUES (?, ?, ?, ?, ?)"
-        );
+if ($forma_pagamento === 'receber') {
+    $stmt_fin = $conn->prepare(
+        "INSERT INTO contas_receber (id_pessoa_fornecedor, descricao, valor, data_vencimento, id_venda) VALUES (?, ?, ?, ?, ?)"
+    );
         $data_venc = date('Y-m-d', strtotime('+30 days'));
         $stmt_fin->bind_param("isdsi", $cliente_id, $descricao, $total_venda_liquido, $data_venc, $venda_id);
     } else {
-        $stmt_fin = $conn->prepare(
-            "INSERT INTO caixa_diario (data, valor, tipo, descricao) VALUES (?, ?, 'entrada', ?)"
-        );
-        $hoje = date('Y-m-d');
-        $stmt_fin->bind_param("sds", $hoje, $total_venda_liquido, $descricao);
-    }
+    $stmt_fin = $conn->prepare(
+        // Adicionamos a coluna usuario_id na inserção
+        "INSERT INTO caixa_diario (usuario_id, data, valor, tipo, descricao) VALUES (?, ?, ?, 'entrada', ?)"
+    );
+    $hoje = date('Y-m-d');
+    // Adicionamos o id_usuario ao bind_param e ajustamos os tipos para "isds"
+    $stmt_fin->bind_param("isds", $id_usuario, $hoje, $total_venda_liquido, $descricao);
+}
     $stmt_fin->execute();
 
     $conn->commit();

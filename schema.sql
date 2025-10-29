@@ -165,10 +165,12 @@ CREATE TABLE `caixa_diario` (
   `id` int NOT NULL AUTO_INCREMENT,
   `data` date NOT NULL,
   `valor` decimal(10,2) NOT NULL,
+  `tipo` varchar(50) NOT NULL DEFAULT 'entrada',
+  `descricao` varchar(255) DEFAULT NULL,
   `usuario_id` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `data` (`data`,`usuario_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `movimento_estoque` (
   `id` int NOT NULL AUTO_INCREMENT,
