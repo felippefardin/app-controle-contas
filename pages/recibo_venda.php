@@ -4,14 +4,14 @@ require_once '../includes/session_init.php';
 include('../includes/header.php'); 
 include('../database.php');
 
-if (!isset($_SESSION['usuario']) || !isset($_GET['id'])) {
+if (!isset($_SESSION['usuario_logado']) || !isset($_GET['id'])) {
     header('Location: ../pages/login.php');
     exit;
 }
 
 // AJUSTE: Validar que o ID é um número inteiro
 $id_venda = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-$id_usuario = $_SESSION['usuario']['id'];
+$id_usuario = $_SESSION['usuario_logado']['id'];
 
 if (!$id_venda) {
     // Redireciona ou mostra erro se o ID não for um número válido

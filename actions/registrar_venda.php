@@ -83,10 +83,10 @@ try {
     foreach ($itens_venda as $item) {
         $subtotal_item = $item['quantidade'] * $item['preco'];
 
-        $stmt_item = $conn->prepare(
-            "INSERT INTO venda_items (id_venda, id_produto, quantidade, preco_unitario, subtotal, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?)"
-        );
-        $stmt_item->bind_param("iiidds", $venda_id, $item['id'], $item['quantidade'], $item['preco'], $subtotal_item, $forma_pagamento);
+       $stmt_item = $conn->prepare(
+    "INSERT INTO venda_items (id_venda, id_produto, quantidade, preco_unitario, subtotal, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?)"
+);
+$stmt_item->bind_param("iiidds", $venda_id, $item['id'], $item['quantidade'], $item['preco'], $subtotal_item, $forma_pagamento);
         $stmt_item->execute();
 
         $stmt_estoque = $conn->prepare("UPDATE produtos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ? AND id_usuario = ?");
