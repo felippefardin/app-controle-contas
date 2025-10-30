@@ -7,18 +7,29 @@ CREATE TABLE `usuarios` (
   `id` int NOT NULL AUTO_INCREMENT,
   `id_criador` int DEFAULT NULL,
   `nome` varchar(100) NOT NULL,
-  `cpf` varchar(14) DEFAULT NULL,
+  `tipo_pessoa` varchar(10) NOT NULL,
+  `documento` varchar(20) DEFAULT NULL,
   `telefone` varchar(20) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
   `senha` varchar(255) NOT NULL,
   `perfil` enum('padrao','admin') DEFAULT 'padrao',
   `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `foto` varchar(255) DEFAULT 'default-profile.png', 
+  `tipo` enum('admin','padrao') DEFAULT 'padrao',
+  `owner_id` int DEFAULT NULL,
+  `foto` varchar(255) DEFAULT 'default-profile.png',
+  `banco_usuario` varchar(100) NOT NULL DEFAULT 'app_controle_contas',
+  `criado_por_usuario_id` int DEFAULT NULL,
   `status` varchar(20) NOT NULL DEFAULT 'ativo',
   `nivel_acesso` varchar(20) DEFAULT 'padrao',
+  `tenant_id` int DEFAULT NULL,
+  `documento_clean` varchar(14) GENERATED ALWAYS AS (regexp_replace(`documento`,_utf8mb4'[^0-9]',_utf8mb4'')) STORED,
+  `cpf` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `ux_usuarios_email` (`email`),
+  UNIQUE KEY `email_2` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 -- Tabela de Clientes e Fornecedores
 CREATE TABLE `pessoas_fornecedores` (

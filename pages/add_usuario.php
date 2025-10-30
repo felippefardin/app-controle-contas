@@ -3,9 +3,9 @@ require_once '../includes/session_init.php';
 include('../includes/header.php');
 include('../database.php');
 
-// --- Início da Alteração ---
-// Corrigido para verificar a sessão 'usuario', que é a sessão ativa após a seleção de perfil.
-if (!isset($_SESSION['usuario'])) {
+// --- Início da Correção ---
+// Ajustado para verificar a sessão correta: 'usuario_logado'
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }

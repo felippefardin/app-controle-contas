@@ -52,6 +52,7 @@ $result = $conn->query($sql);
 if (!$result) {
     die("Erro na consulta: " . $conn->error);
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

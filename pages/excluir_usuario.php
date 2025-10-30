@@ -1,39 +1,50 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php');
+require_once '../database.php';
 
-if (!isset($_SESSION['usuario'])) {
-    header('Location: login.php');
+// 1. Verifica se o usuário está logado
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: ../pages/login.php?erro=nao_logado');
     exit;
 }
 
-// 🔹 Conexão com o banco (mesma de contas_pagar.php)
-$servername = "localhost";
-$username   = "root";
-$password   = "";
-$database   = "app_controle_contas";
+// 2. Pega os IDs importantes
+$id_para_excluir = $_GET['id'] ?? 0;
+$usuario_logado_id = $_SESSION['usuario_logado']['id'];
 
-$conn = new mysqli($servername, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
+// Validação básica do ID
+if (empty($id_para_excluir)) {
+    header("Location: ../pages/usuarios.php?erro=id_invalido");
+    exit;
 }
 
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    die("ID do usuário não especificado.");
+// 3. REGRA DE SEGURANÇA: Impede que o usuário exclua a si mesmo
+if ($id_para_excluir == $usuario_logado_id) {
+    header("Location: ../pages/usuarios.php?erro=auto_exclusao");
+    exit;
 }
 
-$id = intval($_GET['id']);
-
-// Proteção simples: você pode adicionar checagem para não excluir a si mesmo ou admin, por exemplo
+// 4. Prepara e executa a exclusão com segurança
+$conn = getTenantConnection();
+if ($conn === null) {
+    header("Location: ../pages/usuarios.php?erro=db_error");
+    exit;
+}
 
 $stmt = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
-$stmt->bind_param("i", $id);
+$stmt->bind_param("i", $id_para_excluir);
 
 if ($stmt->execute()) {
-    $stmt->close();
-    header('Location: ../pages/usuarios.php'); // ajuste o caminho para onde quer voltar
-    exit;
+    if ($stmt->affected_rows > 0) {
+        header("Location: ../pages/usuarios.php?sucesso=excluido");
+    } else {
+        header("Location: ../pages/usuarios.php?erro=permissao");
+    }
 } else {
-    die("Erro ao excluir usuário: " . $conn->error);
+    header("Location: ../pages/usuarios.php?erro=db_error");
 }
+
+$stmt->close();
+$conn->close();
+exit;
 ?>

@@ -3,7 +3,7 @@ include('../includes/header.php');
 include('../database.php');
 require_once '../includes/session_init.php';
 
-if (!isset($_SESSION['usuario'])) {
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
@@ -14,26 +14,46 @@ if (!$id) {
     exit;
 }
 
+$conn = getTenantConnection();
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
+}
+
 // Pega dados do usuário para preencher o formulário
 $stmt = $conn->prepare("SELECT nome, cpf, telefone, email, perfil FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
-$stmt->bind_result($nome, $cpf, $telefone, $email, $perfil);
-$stmt->fetch();
+$stmt->store_result(); // Adicionado para verificar o número de linhas
+
+if ($stmt->num_rows > 0) {
+    $stmt->bind_result($nome, $cpf, $telefone, $email, $perfil);
+    $stmt->fetch();
+} else {
+    // Se nenhum usuário for encontrado, define as variáveis como vazias
+    $nome = $cpf = $telefone = $email = $perfil = "";
+    echo "Usuário não encontrado.";
+    // Você pode redirecionar o usuário de volta para a página de usuários se preferir
+    // header('Location: usuarios.php?erro=usuario_nao_encontrado');
+    // exit;
+}
 $stmt->close();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = $_POST['nome'];
-    $cpf = $_POST['cpf'];
-    $telefone = $_POST['telefone'];
-    $email = $_POST['email'];
-    $perfil = $_POST['perfil'];
+    $nome_post = $_POST['nome'];
+    $cpf_post = $_POST['cpf'];
+    $telefone_post = $_POST['telefone'];
+    $email_post = $_POST['email'];
+    $perfil_post = $_POST['perfil'];
 
     $stmt = $conn->prepare("UPDATE usuarios SET nome = ?, cpf = ?, telefone = ?, email = ?, perfil = ? WHERE id = ?");
-    $stmt->bind_param("sssssi", $nome, $cpf, $telefone, $email, $perfil, $id);
-    $stmt->execute();
-
-    header('Location: usuarios.php?sucesso=1'); // Adicionado feedback de sucesso
+    $stmt->bind_param("sssssi", $nome_post, $cpf_post, $telefone_post, $email_post, $perfil_post, $id);
+    
+    if ($stmt->execute()) {
+        header('Location: usuarios.php?sucesso=1');
+    } else {
+        echo "Erro ao atualizar o usuário.";
+    }
+    $stmt->close();
     exit;
 }
 ?>
@@ -130,21 +150,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2><i class="fa-solid fa-user-pen"></i> Editar Usuário</h2>
 
         <label for="nome">Nome Completo:</label>
-        <input type="text" id="nome" name="nome" value="<?=htmlspecialchars($nome)?>" required>
+        <input type="text" id="nome" name="nome" value="<?= htmlspecialchars($nome ?? '') ?>" required>
 
         <label for="cpf">CPF:</label>
-        <input type="text" id="cpf" name="cpf" value="<?=htmlspecialchars($cpf)?>" required>
+        <input type="text" id="cpf" name="cpf" value="<?= htmlspecialchars($cpf ?? '') ?>" required>
 
         <label for="telefone">Telefone:</label>
-        <input type="text" id="telefone" name="telefone" value="<?=htmlspecialchars($telefone)?>" required>
+        <input type="text" id="telefone" name="telefone" value="<?= htmlspecialchars($telefone ?? '') ?>" required>
 
         <label for="email">Email:</label>
-        <input type="email" id="email" name="email" value="<?=htmlspecialchars($email)?>" required>
+        <input type="email" id="email" name="email" value="<?= htmlspecialchars($email ?? '') ?>" required>
 
         <label for="perfil">Perfil:</label>
         <select id="perfil" name="perfil" required>
-            <option value="padrao" <?= $perfil == 'padrao' ? 'selected' : '' ?>>Padrão</option>
-            <option value="admin" <?= $perfil == 'admin' ? 'selected' : '' ?>>Administrador</option>
+            <option value="padrao" <?= ($perfil ?? '') == 'padrao' ? 'selected' : '' ?>>Padrão</option>
+            <option value="admin" <?= ($perfil ?? '') == 'admin' ? 'selected' : '' ?>>Administrador</option>
         </select>
 
         <div class="form-actions">
