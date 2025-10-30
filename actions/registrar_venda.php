@@ -93,7 +93,7 @@ try {
         $stmt_estoque->bind_param("iii", $item['quantidade'], $item['id'], $id_usuario);
         $stmt_estoque->execute();
     }
-    
+
     // 4️⃣ Lançamento financeiro UNIFICADO
     // Busca o ID da categoria "Venda de Caixa"
     $stmt_cat = $conn->prepare("SELECT id FROM categorias WHERE nome = 'Venda de Caixa' AND id_usuario = ? AND tipo = 'receita'");
@@ -103,43 +103,62 @@ try {
 
     $descricao = "Referente à Venda #$venda_id";
     $hoje = date('Y-m-d');
-    
+
     // Se o pagamento NÃO for a prazo, a conta já nasce "baixada"
     if ($forma_pagamento !== 'receber') {
         $status = 'baixada';
         $data_baixa = $hoje;
-        
+        $baixado_por = $id_usuario;
+
         // Também faz o lançamento no caixa diário para pagamentos à vista
-        $stmt_caixa = $conn->prepare(
-            "INSERT INTO caixa_diario (usuario_id, data, valor, tipo, descricao, id_venda) VALUES (?, ?, ?, 'entrada', ?, ?)"
-        );
-        $stmt_caixa->bind_param("isdsi", $id_usuario, $hoje, $total_venda_liquido, $descricao, $venda_id);
-        $stmt_caixa->execute();
+        $stmt_check_caixa = $conn->prepare("SELECT id, valor, descricao FROM caixa_diario WHERE usuario_id = ? AND data = ?");
+        $stmt_check_caixa->bind_param("is", $id_usuario, $hoje);
+        $stmt_check_caixa->execute();
+        $caixa_existente = $stmt_check_caixa->get_result()->fetch_assoc();
+
+        if ($caixa_existente) {
+            // Se já existe um registo para hoje, atualiza o valor
+            $novo_valor = $caixa_existente['valor'] + $total_venda_liquido;
+            $nova_descricao = $caixa_existente['descricao'] . " | " . $descricao;
+            
+            $stmt_caixa = $conn->prepare("UPDATE caixa_diario SET valor = ?, descricao = ? WHERE id = ?");
+            $stmt_caixa->bind_param("dsi", $novo_valor, $nova_descricao, $caixa_existente['id']);
+            $stmt_caixa->execute();
+        } else {
+            // Se não existir, insere um novo registo
+            $stmt_caixa = $conn->prepare(
+                "INSERT INTO caixa_diario (usuario_id, data, valor, tipo, descricao, id_venda) VALUES (?, ?, ?, 'entrada', ?, ?)"
+            );
+            $stmt_caixa->bind_param("isdsi", $id_usuario, $hoje, $total_venda_liquido, $descricao, $venda_id);
+            $stmt_caixa->execute();
+        }
 
     } else { // Se for a prazo, fica pendente
         $status = 'pendente';
         $data_baixa = null;
+        $baixado_por = null;
     }
 
     // Insere em contas_receber para TODOS os tipos de pagamento
     $stmt_fin = $conn->prepare(
-        "INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, id_categoria, descricao, valor, data_vencimento, id_venda, status, data_baixa, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, id_categoria, descricao, valor, data_vencimento, id_venda, status, data_baixa, forma_pagamento, baixado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     // Para pagamentos à vista, data de vencimento é hoje. Para "a receber", pode ser no futuro.
     $data_venc = ($forma_pagamento !== 'receber') ? $hoje : date('Y-m-d', strtotime('+30 days'));
-    
+
     $stmt_fin->bind_param(
-        "iiisdsisss", 
-        $id_usuario, 
-        $cliente_id, 
-        $categoria_venda_id, 
-        $descricao, 
-        $total_venda_liquido, 
-        $data_venc, 
+        "iiisdsisssi",
+        $id_usuario,
+        $cliente_id,
+        $categoria_venda_id, // CORRIGIDO: Usar o ID da categoria correta
+        $descricao,
+        $total_venda_liquido,
+        $data_venc,
         $venda_id,
         $status,
         $data_baixa,
-        $forma_pagamento
+        $forma_pagamento,
+        $baixado_por
     );
     $stmt_fin->execute();
 

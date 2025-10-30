@@ -40,11 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
     $dataBaixaFormatada = $dataBaixa ? $dataBaixa->format('Y-m-d') : date('Y-m-d');
 
-    // 3. ATUALIZA A CONTA COM SEGURANÇA
-    // A cláusula `AND usuario_id = ?` é crucial
-    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por_usuario_id=?, comprovante=? WHERE id=? AND usuario_id=?";
+    // 3. ATUALIZA A CONTA COM SEGURANÇA (SQL CORRIGIDO)
+    // A coluna `baixado_por_usuario_id` foi trocada por `baixado_por`
+    $sql = "UPDATE contas_receber SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=?, comprovante=? WHERE id=? AND usuario_id=?";
     $stmt = $conn->prepare($sql);
     
+    // O bind_param foi ajustado para a nova consulta
     $stmt->bind_param("sdsisii", $forma, $juros, $dataBaixaFormatada, $id_usuario, $comprovantePath, $id_conta, $id_usuario);
     
     if ($stmt->execute()) {

@@ -288,18 +288,24 @@ if ($result && $result->num_rows > 0) {
         $responsavelDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['responsavel'] ?? '');
         echo "<td data-label='Responsável'>".htmlspecialchars($responsavelDisplay)."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
-        // ✅ CORREÇÃO APLICADA AQUI
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'] ?? '')."</td>";
-        echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
+        
+        // --- AJUSTE PARA EXIBIR O NÚMERO DA VENDA ---
+        if (!empty($row['id_venda'])) {
+            echo "<td data-label='Categoria'>#" . htmlspecialchars($row['id_venda']) . "</td>";
+        } else {
+            echo "<td data-label='Categoria'>" . htmlspecialchars($row['nome_categoria'] ?? 'N/A') . "</td>";
+        }
+        
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
         echo "<td data-label='Status de Vencimento'>". $statusData ."</td>";
         echo "<td data-label='Ações'>
-                    <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
-                    <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
-                    <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."')\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
-                    <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\"><i class='fa-solid fa-envelope-open-text'></i> Gerar Cobrança</button>
-                    <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
-                </td>";
+                      <a href='../actions/baixar_conta_receber.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
+                      <a href='editar_conta_receber.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
+                      <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."')\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+                      <button type='button' class='btn-action btn-gerar-cobranca' onclick=\"openCobrancaModal({$row['id']}, '".number_format((float)$row['valor'],2,',','.')."')\"><i class='fa-solid fa-envelope-open-text'></i> Gerar Cobrança</button>
+                      <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($responsavelDisplay))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
+                  </td>";
         echo "</tr>";
     }
     echo "</tbody></table>";
@@ -405,11 +411,11 @@ if ($result && $result->num_rows > 0) {
                 data: { action: 'search_responsavel', term: term },
                 dataType: 'json',
                 success: function(data) {
-                  var items = "";
-                  $.each(data, function(index, item) {
-                      items += `<div data-id="${item.id}">${item.nome}</div>`;
-                  });
-                  $("#responsavel_autocomplete_list").html(items);
+                    var items = "";
+                    $.each(data, function(index, item) {
+                        items += `<div data-id="${item.id}">${item.nome}</div>`;
+                    });
+                    $("#responsavel_autocomplete_list").html(items);
                 }
             });
         });
@@ -436,11 +442,11 @@ if ($result && $result->num_rows > 0) {
                 data: { action: 'search_cliente', term: term },
                 dataType: 'json',
                 success: function(data) {
-                  var items = "";
-                  $.each(data, function(index, item) {
-                      items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
-                  });
-                  $("#cliente_cobranca_autocomplete_list").html(items);
+                    var items = "";
+                    $.each(data, function(index, item) {
+                        items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
+                    });
+                    $("#cliente_cobranca_autocomplete_list").html(items);
                 }
             });
         });
@@ -457,7 +463,7 @@ if ($result && $result->num_rows > 0) {
 
         $(document).on("click", function(e) {
          if (!$(e.target).closest('.autocomplete-container').length) {
-           $(".autocomplete-items").empty();
+          $(".autocomplete-items").empty();
          }
         });
     });
@@ -506,7 +512,3 @@ if ($result && $result->num_rows > 0) {
       });
     });
 </script>
-
-<?php include('../includes/footer.php'); ?>
-</body>
-</html>
