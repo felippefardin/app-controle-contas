@@ -94,23 +94,25 @@ $stmt_item->bind_param("iiidds", $venda_id, $item['id'], $item['quantidade'], $i
         $stmt_estoque->execute();
     }
 
-    // 4️⃣ Lançamento financeiro
+    // 4️⃣ Lançamento financeiro (CORRIGIDO)
     $descricao = "Referente à Venda #$venda_id";
-if ($forma_pagamento === 'receber') {
-    $stmt_fin = $conn->prepare(
-        "INSERT INTO contas_receber (id_pessoa_fornecedor, descricao, valor, data_vencimento, id_venda) VALUES (?, ?, ?, ?, ?)"
-    );
+    if ($forma_pagamento === 'receber') {
+        // CORREÇÃO: Adicionado usuario_id na inserção
+        $stmt_fin = $conn->prepare(
+            "INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, descricao, valor, data_vencimento, id_venda) VALUES (?, ?, ?, ?, ?, ?)"
+        );
         $data_venc = date('Y-m-d', strtotime('+30 days'));
-        $stmt_fin->bind_param("isdsi", $cliente_id, $descricao, $total_venda_liquido, $data_venc, $venda_id);
+        // CORREÇÃO: Adicionado $id_usuario ao bind_param
+        $stmt_fin->bind_param("iisdsi", $id_usuario, $cliente_id, $descricao, $total_venda_liquido, $data_venc, $venda_id);
     } else {
-    $stmt_fin = $conn->prepare(
-        // Adicionamos a coluna usuario_id na inserção
-        "INSERT INTO caixa_diario (usuario_id, data, valor, tipo, descricao) VALUES (?, ?, ?, 'entrada', ?)"
-    );
-    $hoje = date('Y-m-d');
-    // Adicionamos o id_usuario ao bind_param e ajustamos os tipos para "isds"
-    $stmt_fin->bind_param("isds", $id_usuario, $hoje, $total_venda_liquido, $descricao);
-}
+        // MELHORIA: Adicionada a coluna id_venda na inserção
+        $stmt_fin = $conn->prepare(
+            "INSERT INTO caixa_diario (usuario_id, data, valor, tipo, descricao, id_venda) VALUES (?, ?, ?, 'entrada', ?, ?)"
+        );
+        $hoje = date('Y-m-d');
+        // MELHORIA: Adicionado o id_venda ao bind_param
+        $stmt_fin->bind_param("isdsi", $id_usuario, $hoje, $total_venda_liquido, $descricao, $venda_id);
+    }
     $stmt_fin->execute();
 
     $conn->commit();

@@ -106,11 +106,17 @@ CREATE TABLE `contas_receber` (
   `data_pagamento` datetime DEFAULT NULL,
   `id_pessoa_fornecedor` int DEFAULT NULL,
   `descricao` varchar(255) DEFAULT NULL,
+  `id_venda` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_contas_receber_usuario` (`usuario_id`),
+  KEY `fk_contas_receber_baixado_por` (`baixado_por`),
   KEY `id_categoria` (`id_categoria`),
-  KEY `id_pessoa_fornecedor` (`id_pessoa_fornecedor`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `id_pessoa_fornecedor` (`id_pessoa_fornecedor`),
+  CONSTRAINT `contas_receber_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `contas_receber_ibfk_2` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores` (`id`),
+  CONSTRAINT `fk_contas_receber_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=88 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 -- Tabela de Produtos
 CREATE TABLE `produtos` (
@@ -167,10 +173,12 @@ CREATE TABLE `caixa_diario` (
   `valor` decimal(10,2) NOT NULL,
   `tipo` varchar(50) NOT NULL DEFAULT 'entrada',
   `descricao` varchar(255) DEFAULT NULL,
+  `id_venda` int DEFAULT NULL,
   `usuario_id` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `data` (`data`,`usuario_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 CREATE TABLE `movimento_estoque` (
   `id` int NOT NULL AUTO_INCREMENT,

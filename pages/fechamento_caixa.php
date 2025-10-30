@@ -111,6 +111,8 @@ $vendas = $stmt_vendas->get_result();
         <a href="vendas.php" class="btn btn-secondary">Voltar</a>
     </div>
 
+    <div id="alert-container-fechamento"></div>
+
     <form method="GET" class="form-inline mb-4 no-print">
         <label for="data" class="mr-2">Selecione a Data:</label>
         <input type="date" name="data" id="data" class="form-control mr-2" value="<?= htmlspecialchars($data_selecionada) ?>">
@@ -163,7 +165,6 @@ $vendas = $stmt_vendas->get_result();
     </button>
 </div>
 
-<!-- Modal do romaneio -->
 <div class="modal fade" id="modalRomaneio" tabindex="-1" role="dialog" aria-labelledby="romaneioLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content bg-dark text-light">
@@ -183,15 +184,67 @@ $vendas = $stmt_vendas->get_result();
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 <script>
 $(function() {
-    let vendaId = null;
+    // Função para mostrar alertas
+    function showAlert(message, type) {
+        $('#alert-container-fechamento').html(`
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        `);
+    }
 
+    // Abrir modal do romaneio
     $(".venda").click(function() {
-        vendaId = $(this).data("id");
+        const vendaId = $(this).data("id");
         $("#conteudoRomaneio").html("Carregando...");
         $("#modalRomaneio").modal("show");
 
         $.get("buscar_venda.php", { id: vendaId }, function(data) {
             $("#conteudoRomaneio").html(data);
+        });
+    });
+
+    // ✅ NOVA FUNÇÃO: Lidar com o clique no botão de cancelar venda
+    // Usa delegação de evento, pois o botão é carregado dinamicamente
+    $('#modalRomaneio').on('click', '#btn-cancelar-venda', function() {
+        const vendaId = $(this).data('id');
+
+        if (!confirm('Tem certeza que deseja cancelar esta venda? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        // Mostra um feedback visual
+        $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Cancelando...');
+
+        fetch('cancelar_venda.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'venda_id': vendaId
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                $('#modalRomaneio').modal('hide');
+                showAlert(data.message, 'success');
+                // Remove a linha da tabela e recarrega a página para atualizar os totais
+                // A recarga é a forma mais simples de garantir que os totais do caixa sejam atualizados.
+                setTimeout(() => {
+                    location.reload();
+                }, 1500); // Aguarda um pouco para o usuário ver a mensagem
+            } else {
+                alert('Erro: ' + data.message);
+                $(this).prop('disabled', false).html('<i class="fas fa-times"></i> Cancelar Venda');
+            }
+        })
+        .catch(err => {
+            console.error('Erro:', err);
+            alert('Ocorreu um erro de comunicação ao tentar cancelar a venda.');
+            $(this).prop('disabled', false).html('<i class="fas fa-times"></i> Cancelar Venda');
         });
     });
 });
