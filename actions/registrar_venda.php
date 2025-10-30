@@ -83,36 +83,64 @@ try {
     foreach ($itens_venda as $item) {
         $subtotal_item = $item['quantidade'] * $item['preco'];
 
-       $stmt_item = $conn->prepare(
-    "INSERT INTO venda_items (id_venda, id_produto, quantidade, preco_unitario, subtotal, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?)"
-);
-$stmt_item->bind_param("iiidds", $venda_id, $item['id'], $item['quantidade'], $item['preco'], $subtotal_item, $forma_pagamento);
+        $stmt_item = $conn->prepare(
+            "INSERT INTO venda_items (id_venda, id_produto, quantidade, preco_unitario, subtotal, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        $stmt_item->bind_param("iiidds", $venda_id, $item['id'], $item['quantidade'], $item['preco'], $subtotal_item, $forma_pagamento);
         $stmt_item->execute();
 
         $stmt_estoque = $conn->prepare("UPDATE produtos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ? AND id_usuario = ?");
         $stmt_estoque->bind_param("iii", $item['quantidade'], $item['id'], $id_usuario);
         $stmt_estoque->execute();
     }
+    
+    // 4️⃣ Lançamento financeiro UNIFICADO
+    // Busca o ID da categoria "Venda de Caixa"
+    $stmt_cat = $conn->prepare("SELECT id FROM categorias WHERE nome = 'Venda de Caixa' AND id_usuario = ? AND tipo = 'receita'");
+    $stmt_cat->bind_param("i", $id_usuario);
+    $stmt_cat->execute();
+    $categoria_venda_id = $stmt_cat->get_result()->fetch_assoc()['id'] ?? null;
 
-    // 4️⃣ Lançamento financeiro (CORRIGIDO)
     $descricao = "Referente à Venda #$venda_id";
-    if ($forma_pagamento === 'receber') {
-        // CORREÇÃO: Adicionado usuario_id na inserção
-        $stmt_fin = $conn->prepare(
-            "INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, descricao, valor, data_vencimento, id_venda) VALUES (?, ?, ?, ?, ?, ?)"
-        );
-        $data_venc = date('Y-m-d', strtotime('+30 days'));
-        // CORREÇÃO: Adicionado $id_usuario ao bind_param
-        $stmt_fin->bind_param("iisdsi", $id_usuario, $cliente_id, $descricao, $total_venda_liquido, $data_venc, $venda_id);
-    } else {
-        // MELHORIA: Adicionada a coluna id_venda na inserção
-        $stmt_fin = $conn->prepare(
+    $hoje = date('Y-m-d');
+    
+    // Se o pagamento NÃO for a prazo, a conta já nasce "baixada"
+    if ($forma_pagamento !== 'receber') {
+        $status = 'baixada';
+        $data_baixa = $hoje;
+        
+        // Também faz o lançamento no caixa diário para pagamentos à vista
+        $stmt_caixa = $conn->prepare(
             "INSERT INTO caixa_diario (usuario_id, data, valor, tipo, descricao, id_venda) VALUES (?, ?, ?, 'entrada', ?, ?)"
         );
-        $hoje = date('Y-m-d');
-        // MELHORIA: Adicionado o id_venda ao bind_param
-        $stmt_fin->bind_param("isdsi", $id_usuario, $hoje, $total_venda_liquido, $descricao, $venda_id);
+        $stmt_caixa->bind_param("isdsi", $id_usuario, $hoje, $total_venda_liquido, $descricao, $venda_id);
+        $stmt_caixa->execute();
+
+    } else { // Se for a prazo, fica pendente
+        $status = 'pendente';
+        $data_baixa = null;
     }
+
+    // Insere em contas_receber para TODOS os tipos de pagamento
+    $stmt_fin = $conn->prepare(
+        "INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, id_categoria, descricao, valor, data_vencimento, id_venda, status, data_baixa, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    // Para pagamentos à vista, data de vencimento é hoje. Para "a receber", pode ser no futuro.
+    $data_venc = ($forma_pagamento !== 'receber') ? $hoje : date('Y-m-d', strtotime('+30 days'));
+    
+    $stmt_fin->bind_param(
+        "iiisdsisss", 
+        $id_usuario, 
+        $cliente_id, 
+        $categoria_venda_id, 
+        $descricao, 
+        $total_venda_liquido, 
+        $data_venc, 
+        $venda_id,
+        $status,
+        $data_baixa,
+        $forma_pagamento
+    );
     $stmt_fin->execute();
 
     $conn->commit();

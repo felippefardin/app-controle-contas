@@ -38,8 +38,12 @@ if (!$conta) {
     exit;
 }
 
-// Busca as categorias de 'receita' do usuário para o dropdown
-$categorias_result = $conn->query("SELECT id, nome FROM categorias WHERE id_usuario = {$id_usuario} AND tipo = 'receita'");
+// ✅ CORREÇÃO: Busca TODAS as categorias (receita e despesa) do usuário
+$stmt_categorias = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? ORDER BY nome ASC");
+$stmt_categorias->bind_param("i", $id_usuario);
+$stmt_categorias->execute();
+$categorias_result = $stmt_categorias->get_result();
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -99,4 +103,7 @@ $categorias_result = $conn->query("SELECT id, nome FROM categorias WHERE id_usua
     </div>
 </body>
 </html>
-<?php include('../includes/footer.php'); ?>
+<?php 
+$stmt_categorias->close();
+include('../includes/footer.php'); 
+?>
