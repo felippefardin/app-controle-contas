@@ -3,10 +3,13 @@ require_once '../includes/session_init.php';
 include('../includes/header.php');
 include('../database.php');
 
-if (!isset($_SESSION['usuario_principal'])) {
+// --- Início da Alteração ---
+// Corrigido para verificar a sessão 'usuario', que é a sessão ativa após a seleção de perfil.
+if (!isset($_SESSION['usuario'])) {
     header('Location: login.php');
     exit;
 }
+// --- Fim da Alteração ---
 
 $mensagem_erro = '';
 if (isset($_GET['erro'])) {
@@ -46,7 +49,6 @@ include('../includes/header.php');
         }
         .container {
             max-width: 800px;
-            /* Ajustado para 30px para padronizar com as outras telas */
             margin: 30px auto;
         }
         form {

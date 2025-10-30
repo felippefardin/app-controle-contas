@@ -1,60 +1,66 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php'); // Agora inclui as novas funções de conexão
+include('../database.php');
 
-// Apenas o usuário principal logado pode adicionar novos usuários
-if (!isset($_SESSION['usuario_principal'])) {
+// 1. Verifica se o usuário está logado
+if (!isset($_SESSION['usuario'])) {
     header('Location: ../pages/login.php');
     exit;
 }
 
+// 2. Verifica se os dados foram enviados via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Dados do novo cliente (tenant)
-    $nome_empresa = trim($_POST['nome_empresa'] ?? '');
-    $email_admin = trim(strtolower($_POST['email'] ?? ''));
-    $senha_admin = $_POST['senha'] ?? '';
-    // ... outros campos que você possa ter no formulário de cadastro de cliente
+    $nome = trim($_POST['nome'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $cpf = trim($_POST['cpf'] ?? '');
+    $telefone = trim($_POST['telefone'] ?? '');
+    $senha = $_POST['senha'] ?? '';
+    $senha_confirmar = $_POST['senha_confirmar'] ?? '';
 
-    // --- 1. Criar um novo banco de dados e um usuário para o cliente ---
-    $novo_db_nome = 'tenant_' . uniqid();
-    $novo_db_user = 'user_' . uniqid();
-    $novo_db_pass = password_hash(uniqid(), PASSWORD_DEFAULT); // Gere uma senha segura
-
-    // Conexão com privilégios para criar bancos e usuários
-    $admin_conn = new mysqli($env['DB_HOST'], $env['DB_ADMIN_USER'], $env['DB_ADMIN_PASS']);
-    if ($admin_conn->connect_error) {
-        die("Erro ao conectar como admin do banco de dados.");
+    // 3. Validações básicas
+    if (empty($nome) || empty($email) || empty($senha)) {
+        header('Location: ../pages/add_usuario.php?erro=campos_vazios');
+        exit;
     }
 
-    $admin_conn->query("CREATE DATABASE `{$novo_db_nome}`");
-    $admin_conn->query("CREATE USER '{$novo_db_user}'@'localhost' IDENTIFIED BY '{$novo_db_pass}'");
-    $admin_conn->query("GRANT ALL PRIVILEGES ON `{$novo_db_nome}`.* TO '{$novo_db_user}'@'localhost'");
-    $admin_conn->close();
+    if ($senha !== $senha_confirmar) {
+        header('Location: ../pages/add_usuario.php?erro=senha');
+        exit;
+    }
 
-    // --- 2. Executar o script SQL para criar as tabelas no novo banco de dados ---
-    $tenant_conn = new mysqli($env['DB_HOST'], $novo_db_user, $novo_db_pass, $novo_db_nome);
-    $schema_sql = file_get_contents('../caminho/para/seu/schema.sql'); // Tenha um arquivo .sql com a estrutura das suas tabelas
-    $tenant_conn->multi_query($schema_sql);
-    $tenant_conn->close();
+    // 4. Verifica se e-mail ou CPF já existem
+    $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE email = ? OR cpf = ?");
+    $stmt_check->bind_param("ss", $email, $cpf);
+    $stmt_check->execute();
+    $stmt_check->store_result();
 
-    // --- 3. Inserir o primeiro usuário (admin) no banco de dados do novo cliente ---
-    $tenant_conn = new mysqli($env['DB_HOST'], $novo_db_user, $novo_db_pass, $novo_db_nome);
-    $senha_hash = password_hash($senha_admin, PASSWORD_DEFAULT);
-    $stmt = $tenant_conn->prepare("INSERT INTO usuarios (nome, email, senha, nivel_acesso) VALUES (?, ?, ?, 'proprietario')");
-    $stmt->bind_param("sss", $nome_empresa, $email_admin, $senha_hash);
-    $stmt->execute();
+    if ($stmt_check->num_rows > 0) {
+        // Para simplificar, podemos usar um erro genérico de duplicidade
+        header('Location: ../pages/add_usuario.php?erro=duplicado_email_cpf');
+        exit;
+    }
+    $stmt_check->close();
+
+    // 5. Insere o novo usuário no banco de dados
+    $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
+    // Assumindo um perfil 'padrão' por default. Ajuste se necessário.
+    $perfil = 'padrao';
+
+    $stmt = $conn->prepare("INSERT INTO usuarios (nome, email, cpf, telefone, senha, perfil) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssss", $nome, $email, $cpf, $telefone, $senha_hash, $perfil);
+
+    if ($stmt->execute()) {
+        header('Location: ../pages/usuarios.php?sucesso=1');
+    } else {
+        header('Location: ../pages/add_usuario.php?erro=inesperado');
+    }
+
     $stmt->close();
-    $tenant_conn->close();
-
-    // --- 4. Salvar as informações do novo tenant no banco de dados principal (master) ---
-    $master_conn = getMasterConnection();
-    $stmt = $master_conn->prepare("INSERT INTO tenants (nome_empresa, db_host, db_database, db_user, db_password) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssss", $nome_empresa, $env['DB_HOST'], $novo_db_nome, $novo_db_user, $novo_db_pass);
-    $stmt->execute();
-    $stmt->close();
-    $master_conn->close();
-
-    header("Location: ../pages/clientes.php?sucesso=1");
+    $conn->close();
+    exit;
+} else {
+    // Redireciona se não for POST
+    header('Location: ../pages/add_usuario.php');
     exit;
 }
 ?>
