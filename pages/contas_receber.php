@@ -257,7 +257,7 @@ if (isset($_SESSION['success_message'])) {
             <option value="">-- Selecione uma Categoria --</option>
             <?php foreach ($categorias_receita as $categoria): ?>
                 <option value="<?= $categoria['id'] ?>">
-                    <?= htmlspecialchars($categoria['nome']) ?>
+                    <?= htmlspecialchars($categoria['nome'] ?? '') ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -288,7 +288,8 @@ if ($result && $result->num_rows > 0) {
         $responsavelDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['responsavel'] ?? '');
         echo "<td data-label='Responsável'>".htmlspecialchars($responsavelDisplay)."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
-        echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
+        // ✅ CORREÇÃO APLICADA AQUI
+        echo "<td data-label='Número'>".htmlspecialchars($row['numero'] ?? '')."</td>";
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
         echo "<td data-label='Status de Vencimento'>". $statusData ."</td>";
@@ -354,7 +355,7 @@ if ($result && $result->num_rows > 0) {
                 <option value="">-- Selecione uma Conta Bancária para Pagamento --</option>
                 <?php foreach ($bancos as $banco): ?>
                     <option value="<?= $banco['id'] ?>">
-                        <?= htmlspecialchars($banco['nome_banco']) ?> (PIX: <?= htmlspecialchars($banco['chave_pix']) ?>)
+                        <?= htmlspecialchars($banco['nome_banco'] ?? '') ?> (PIX: <?= htmlspecialchars($banco['chave_pix'] ?? '') ?>)
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -406,7 +407,7 @@ if ($result && $result->num_rows > 0) {
                 success: function(data) {
                   var items = "";
                   $.each(data, function(index, item) {
-                    items += `<div data-id="${item.id}">${item.nome}</div>`;
+                      items += `<div data-id="${item.id}">${item.nome}</div>`;
                   });
                   $("#responsavel_autocomplete_list").html(items);
                 }
@@ -437,7 +438,7 @@ if ($result && $result->num_rows > 0) {
                 success: function(data) {
                   var items = "";
                   $.each(data, function(index, item) {
-                    items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
+                      items += `<div data-id="${item.id}" data-email="${item.email}">${item.nome}</div>`;
                   });
                   $("#cliente_cobranca_autocomplete_list").html(items);
                 }
@@ -455,9 +456,9 @@ if ($result && $result->num_rows > 0) {
         });
 
         $(document).on("click", function(e) {
-          if (!$(e.target).closest('.autocomplete-container').length) {
-            $(".autocomplete-items").empty();
-          }
+         if (!$(e.target).closest('.autocomplete-container').length) {
+           $(".autocomplete-items").empty();
+         }
         });
     });
 

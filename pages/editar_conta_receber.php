@@ -65,12 +65,12 @@ $categorias_result = $conn->query("SELECT id, nome FROM categorias WHERE id_usua
             
             <div class="form-group">
                 <label for="responsavel">Cliente / Responsável</label>
-                <input type="text" class="form-control" id="responsavel" name="responsavel" value="<?= htmlspecialchars($conta['responsavel']) ?>" required>
+                <input type="text" class="form-control" id="responsavel" name="responsavel" value="<?= htmlspecialchars($conta['responsavel'] ?? '') ?>" required>
             </div>
             <div class="form-row">
                 <div class="form-group col-md-4">
                     <label for="numero">Número/Documento</label>
-                    <input type="text" class="form-control" id="numero" name="numero" value="<?= htmlspecialchars($conta['numero']) ?>" required>
+                    <input type="text" class="form-control" id="numero" name="numero" value="<?= htmlspecialchars($conta['numero'] ?? '') ?>" required>
                 </div>
                 <div class="form-group col-md-4">
                     <label for="valor">Valor (R$)</label>
