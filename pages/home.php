@@ -2,6 +2,11 @@
 // Inicia a sessão
 include_once '../includes/session_init.php';
 
+// Verifica se o usuário é proprietário, se não, redireciona para a página de vendas
+if ($_SESSION['usuario_logado']['nivel_acesso'] !== 'proprietario') {
+    header('Location: vendas.php');
+    exit;
+}
 // Proteção para verificar se o usuário (cliente) está logado
 if (!isset($_SESSION['usuario_logado'])) {
     header("Location: ../pages/login.php");

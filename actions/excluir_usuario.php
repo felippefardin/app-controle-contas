@@ -1,52 +1,55 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php'); // Sua conexão com o banco
+require_once '../database.php';
 
-// 1. Verifica se o usuário principal está logado
-if (!isset($_SESSION['usuario_principal'])) {
-    // Se não estiver logado, nega o acesso
-    header('Location: ../pages/login.php?erro=nao_logado');
+// Garante que apenas o proprietário da conta pode acessar esta ação
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado']['nivel_acesso'] !== 'proprietario') {
+    $_SESSION['erro_usuarios'] = "Você não tem permissão para excluir usuários.";
+    header('Location: ../pages/usuarios.php');
     exit;
 }
 
-// 2. Pega os IDs importantes
-$id_para_excluir = $_GET['id'] ?? 0;
-$usuario_principal_id = $_SESSION['usuario_principal']['id'];
+if (isset($_GET['id'])) {
+    $id_usuario_para_excluir = (int)$_GET['id'];
+    $id_usuario_logado = $_SESSION['usuario_logado']['id'];
 
-// Validação básica do ID
-if (empty($id_para_excluir)) {
-    header("Location: ../pages/usuarios.php?erro=id_invalido");
-    exit;
-}
+    // Impede que o proprietário exclua a própria conta
+    if ($id_usuario_para_excluir === $id_usuario_logado) {
+        $_SESSION['erro_usuarios'] = "Você não pode excluir sua própria conta de administrador.";
+        header('Location: ../pages/usuarios.php');
+        exit;
+    }
 
-// 3. REGRA DE SEGURANÇA: Impede que o usuário principal exclua a si mesmo
-if ($id_para_excluir == $usuario_principal_id) {
-    header("Location: ../pages/usuarios.php?erro=auto_exclusao");
-    // Adicione uma mensagem de erro correspondente em usuarios.php se desejar
-    exit;
-}
+    $conn = getTenantConnection();
+    if ($conn) {
+        // Verifica se o usuário a ser excluído realmente existe no banco do tenant
+        $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE id = ?");
+        $stmt_check->bind_param('i', $id_usuario_para_excluir);
+        $stmt_check->execute();
+        $result_check = $stmt_check->get_result();
 
-// 4. Prepara e executa a exclusão com segurança
-// Garante que o usuário só pode excluir um sub-usuário que ele mesmo criou
-$stmt = $conn->prepare("DELETE FROM usuarios WHERE id = ? AND id_criador = ?");
-$stmt->bind_param("ii", $id_para_excluir, $usuario_principal_id);
-
-if ($stmt->execute()) {
-    // Verifica se alguma linha foi de fato afetada.
-    // Se affected_rows for 0, significa que o ID não pertencia àquele criador.
-    if ($stmt->affected_rows > 0) {
-        header("Location: ../pages/usuarios.php?sucesso=excluido");
+        if ($result_check->num_rows > 0) {
+            // Procede com a exclusão
+            $stmt_delete = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
+            $stmt_delete->bind_param('i', $id_usuario_para_excluir);
+            if ($stmt_delete->execute()) {
+                $_SESSION['sucesso_usuarios'] = "Usuário excluído com sucesso!";
+            } else {
+                $_SESSION['erro_usuarios'] = "Erro ao excluir o usuário.";
+            }
+            $stmt_delete->close();
+        } else {
+            $_SESSION['erro_usuarios'] = "Usuário não encontrado para exclusão.";
+        }
+        $stmt_check->close();
+        $conn->close();
     } else {
-        // Tentativa de excluir um usuário que não pertence a ele
-        header("Location: ../pages/usuarios.php?erro=permissao");
+        $_SESSION['erro_usuarios'] = "Falha na conexão com o banco de dados.";
     }
 } else {
-    // Erro genérico de banco de dados
-    header("Location: ../pages/usuarios.php?erro=db_error");
+    $_SESSION['erro_usuarios'] = "ID de usuário não fornecido.";
 }
 
-$stmt->close();
-$conn->close();
+header('Location: ../pages/usuarios.php');
 exit;
-
 ?>

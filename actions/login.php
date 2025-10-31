@@ -66,8 +66,11 @@ if ($tenant_info = $result_tenant->fetch_assoc()) {
 
                 // Armazena os dados do usuário do tenant na sessão
                 $_SESSION['usuario_logado'] = $user_data;
-                // Redireciona para a página principal da aplicação
-                header('Location: ../pages/home.php'); 
+                // Define o usuário principal na sessão
+                $_SESSION['usuario_principal'] = $user_data; 
+                
+                // Redireciona para a página de seleção de usuário
+                header('Location: ../pages/selecionar_usuario.php'); 
                 exit;
             }
         }
