@@ -16,6 +16,19 @@ if ($conn === null) {
 $usuario_logado = $_SESSION['usuario_logado'];
 $usuario_logado_id = $usuario_logado['id'];
 
+// Pega o perfil do usuário logado
+$stmt_perfil = $conn->prepare("SELECT perfil FROM usuarios WHERE id = ?");
+$stmt_perfil->bind_param("i", $usuario_logado_id);
+$stmt_perfil->execute();
+$result_perfil = $stmt_perfil->get_result();
+$usuario_logado_perfil = 'padrao'; // Perfil padrão
+if ($result_perfil->num_rows > 0) {
+    $row = $result_perfil->fetch_assoc();
+    $usuario_logado_perfil = $row['perfil'];
+}
+$stmt_perfil->close();
+
+
 // Inclui o header após a lógica inicial
 include('../includes/header.php');
 
@@ -137,9 +150,11 @@ if (!$result) {
                             <td><?php echo htmlspecialchars($usuario['telefone']); ?></td>
                             <td>
                                 <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-info"><i class="fa-solid fa-pen"></i> Editar</a>
-                                <a href="#" class="btn btn-danger" onclick="openDeleteModal(<?php echo $usuario['id']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['nome'])); ?>'); return false;">
-                                    <i class="fa-solid fa-trash"></i> Excluir
-                                </a>
+                                <?php if ($usuario_logado_perfil === 'admin' && $usuario['id'] != $usuario_logado_id): ?>
+                                    <a href="#" class="btn btn-danger" onclick="openDeleteModal(<?php echo $usuario['id']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['nome'])); ?>'); return false;">
+                                        <i class="fa-solid fa-trash"></i> Excluir
+                                    </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>

@@ -170,6 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form-actions">
             <button type="submit">Salvar Alterações</button>
             <a href="usuarios.php" class="btn">Cancelar</a>
+            <a href="esqueci_senha_login.php?id=<?= htmlspecialchars($id ?? '') ?>" class="btn">Esqueci/Redefinir Senha</a>
         </div>
     </form>
 </div>

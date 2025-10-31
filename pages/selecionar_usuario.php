@@ -135,6 +135,9 @@ $result_usuarios = $stmt->get_result();
             </div>
             <button type="submit">Acessar Sistema</button>
         </form>
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="esqueci_senha_login.php" style="color: #00bfff; text-decoration: none;">Esqueci minha senha</a>
+        </div>
     </div>
 
     <script>
