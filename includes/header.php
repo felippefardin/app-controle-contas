@@ -2,6 +2,12 @@
     <div class="admin-view-banner">
         Você está visualizando como <strong><?= htmlspecialchars($_SESSION['usuario_principal']['nome']); ?></strong>.
         <a href="../actions/retornar_admin.php">Voltar para o Acesso Proprietário</a>
+    </div>    
+<?php endif; ?>
+<?php if (isset($_SESSION['super_admin_original'])): ?>
+    <div style="background-color: #ffc; border: 1px solid #e6db55; padding: 10px; text-align: center; font-weight: bold;">
+        Você está visualizando como um cliente. 
+        <a href="../actions/retornar_super_admin.php">Retornar ao Dashboard de Administrador</a>
     </div>
 <?php endif; ?>
 
