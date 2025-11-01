@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 6. Insere o novo usuário no banco de dados
     $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
-    $perfil = 'padrao'; // Perfil padrão
+    $perfil = 'padrao'; // Perfil padrão (CORRETO)
 
     $stmt = $conn->prepare("INSERT INTO usuarios (nome, email, cpf, telefone, senha, perfil) VALUES (?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("ssssss", $nome, $email, $cpf, $telefone, $senha_hash, $perfil);

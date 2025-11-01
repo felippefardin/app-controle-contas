@@ -2,11 +2,6 @@
 // Inicia a sessão
 include_once '../includes/session_init.php';
 
-// Verifica se o usuário é proprietário, se não, redireciona para a página de vendas
-if ($_SESSION['usuario_logado']['nivel_acesso'] !== 'proprietario') {
-    header('Location: vendas.php');
-    exit;
-}
 // Proteção para verificar se o usuário (cliente) está logado
 if (!isset($_SESSION['usuario_logado'])) {
     header("Location: ../pages/login.php");
@@ -208,6 +203,7 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
+    <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem este bloco ?>
     <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
     <div class="dashboard">
         <a class="card-link" href="contas_pagar.php"><i class="fas fa-arrow-down"></i>Contas a Pagar</a>
@@ -216,30 +212,48 @@ include('../includes/header.php');
         <a class="card-link" href="contas_receber_baixadas.php"><i class="fas fa-hand-holding-usd"></i>Recebidas</a>
         <a class="card-link" href="lancamento_caixa.php"><i class="fas fa-cash-register"></i>Fluxo de Caixa</a>
     </div>
+    <?php endif; ?>
+
 
     <div class="section-title"><i class="fas fa-boxes"></i> Estoque & Vendas</div>
     <div class="dashboard">
-        <a class="card-link" href="controle_estoque.php"><i class="fas fa-box"></i>Estoque</a>
+        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem este botão ?>
+            <a class="card-link" href="controle_estoque.php"><i class="fas fa-box"></i>Estoque</a>
+        <?php endif; ?>
+        
         <a class="card-link" href="vendas.php"><i class="fas fa-shopping-cart"></i>Caixa de Vendas</a>
-        <a class="card-link" href="compras.php"><i class="fas fa-dolly"></i>Registro de Compras</a>
+        
+        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem este botão ?>
+            <a class="card-link" href="compras.php"><i class="fas fa-dolly"></i>Registro de Compras</a>
+        <?php endif; ?>
     </div>
+
 
     <div class="section-title"><i class="fas fa-users"></i> Cadastros</div>
     <div class="dashboard">
         <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-user"></i>Clientes/Fornecedores</a>
-        <a class="card-link" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i>Contas Bancárias</a>
-        <a class="card-link" href="../pages/categorias.php"><i class="fas fa-list"></i>Categorias</a>
+        
+        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
+            <a class="card-link" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i>Contas Bancárias</a>
+            <a class="card-link" href="../pages/categorias.php"><i class="fas fa-list"></i>Categorias</a>
+        <?php endif; ?>
     </div>
 
     <div class="section-title"><i class="fas fa-cogs"></i> Sistema</div>
     <div class="dashboard">
-        <a class="card-link" href="relatorios.php"><i class="fas fa-file-alt"></i>Relatórios</a>
-        <a class="card-link" href="perfil.php"><i class="fas fa-user-circle"></i>Perfil</a>
+        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
+            <a class="card-link" href="relatorios.php"><i class="fas fa-file-alt"></i>Relatórios</a>
+            <a class="card-link" href="perfil.php"><i class="fas fa-user-circle"></i>Perfil</a>
+        <?php endif; ?>
+
         <a class="card-link" href="selecionar_usuario.php"><i class="fas fa-user-switch"></i>Trocar Usuário</a>
-        <a class="card-link" href="usuarios.php"><i class="fas fa-user-gear"></i>Usuários</a>
-        <a class="card-link" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i>Config. Fiscal</a>
+        
+        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
+            <a class="card-link" href="usuarios.php"><i class="fas fa-user-gear"></i>Usuários</a>
+            <a class="card-link" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i>Config. Fiscal</a>
+        <?php endif; ?>
     </div>
-</div>
+    </div>
 
 <script>
     // Saudação dinâmica

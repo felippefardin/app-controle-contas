@@ -43,8 +43,8 @@ $tenants_result = $master_conn->query("SELECT id, nome_empresa, status_assinatur
                         <td><?php echo htmlspecialchars($tenant['status_assinatura']); ?></td>
                         <td><?php echo date('d/m/Y H:i', strtotime($tenant['data_criacao'])); ?></td>
                         <td>
-                            <a href="#">Gerenciar</a>
-                        </td>
+                            <a href="../actions/incorporar_usuario.php?tenant_id=<?php echo $tenant['id']; ?>">Gerenciar</a>
+                            </td>
                     </tr>
                 <?php endwhile; ?>
             </tbody>

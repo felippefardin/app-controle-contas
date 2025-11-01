@@ -57,10 +57,23 @@ if (isset($_GET['erro'])) {
     }
 }
 
-// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
-// A consulta agora busca todos os usuários do banco de dados do tenant atual.
-$sql = "SELECT id, nome, email, cpf, telefone FROM usuarios ORDER BY nome ASC";
-$result = $conn->query($sql);
+// --- Início da Alteração (Filtrar visualização por perfil) ---
+
+// ✅ 3. FILTRA A QUERY BASEADO NO PERFIL
+if ($usuario_logado_perfil === 'admin') {
+    // Admin (ou proprietario) vê todos os usuários
+    $sql = "SELECT id, nome, email, cpf, telefone FROM usuarios ORDER BY nome ASC";
+    $result = $conn->query($sql);
+} else {
+    // Usuário 'padrao' vê apenas a si mesmo
+    $sql = "SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? ORDER BY nome ASC";
+    $stmt_sql = $conn->prepare($sql);
+    $stmt_sql->bind_param("i", $usuario_logado_id);
+    $stmt_sql->execute();
+    $result = $stmt_sql->get_result();
+}
+// --- Fim da Alteração ---
+
 
 if (!$result) {
     die("Erro na consulta: " . $conn->error);
@@ -125,10 +138,12 @@ if (!$result) {
         <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem_erro); ?></div>
     <?php endif; ?>
 
-    <a href="add_usuario.php" class="btn btn-primary" style="margin-bottom: 20px;"><i class="fa-solid fa-plus"></i> Adicionar Novo Usuário</a>
-
-    <input type="text" id="searchInput" placeholder="Pesquisar por Nome, Email ou CPF...">
-
+    <?php if ($usuario_logado_perfil === 'admin'): // Apenas admin pode adicionar usuários ?>
+        <a href="add_usuario.php" class="btn btn-primary" style="margin-bottom: 20px;"><i class="fa-solid fa-plus"></i> Adicionar Novo Usuário</a>
+    <?php endif; ?>
+    <?php if ($usuario_logado_perfil === 'admin'): // Apenas admin vê a pesquisa ?>
+        <input type="text" id="searchInput" placeholder="Pesquisar por Nome, Email ou CPF...">
+    <?php endif; ?>
     <div class="table-responsive">
         <table class="table" id="usuariosTable">
             <thead>
@@ -149,8 +164,10 @@ if (!$result) {
                             <td><?php echo htmlspecialchars($usuario['cpf']); ?></td>
                             <td><?php echo htmlspecialchars($usuario['telefone']); ?></td>
                             <td>
-                                <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-info"><i class="fa-solid fa-pen"></i> Editar</a>
-                                <?php if ($usuario_logado_perfil === 'admin' && $usuario['id'] != $usuario_logado_id): ?>
+                                <?php if ($usuario_logado_perfil === 'admin' || $usuario['id'] == $usuario_logado_id): // Admin edita todos, 'padrao' edita apenas a si mesmo ?>
+                                    <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-info"><i class="fa-solid fa-pen"></i> Editar</a>
+                                <?php endif; ?>
+                                <?php if ($usuario_logado_perfil === 'admin' && $usuario['id'] != $usuario_logado_id): // Lógica original (correta) ?>
                                     <a href="#" class="btn btn-danger" onclick="openDeleteModal(<?php echo $usuario['id']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['nome'])); ?>'); return false;">
                                         <i class="fa-solid fa-trash"></i> Excluir
                                     </a>
@@ -204,21 +221,25 @@ if (!$result) {
         });
     });
 
+    // --- Início da Alteração (Verificar se searchInput existe) ---
     const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('keyup', function() {
-        const filter = this.value.toLowerCase();
-        const rows = document.querySelectorAll('#usuariosTable tbody tr');
-        rows.forEach(row => {
-            const nome = row.cells[0].textContent.toLowerCase();
-            const email = row.cells[1].textContent.toLowerCase();
-            const cpf = row.cells[2].textContent.toLowerCase();
-            if (nome.includes(filter) || email.includes(filter) || cpf.includes(filter)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+    if (searchInput) { // Apenas executa se o campo de pesquisa existir
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#usuariosTable tbody tr');
+            rows.forEach(row => {
+                const nome = row.cells[0].textContent.toLowerCase();
+                const email = row.cells[1].textContent.toLowerCase();
+                const cpf = row.cells[2].textContent.toLowerCase();
+                if (nome.includes(filter) || email.includes(filter) || cpf.includes(filter)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         });
-    });
+    }
+    // --- Fim da Alteração ---
 </script>
 </body>
 </html>

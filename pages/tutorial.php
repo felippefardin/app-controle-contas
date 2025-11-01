@@ -1,11 +1,12 @@
 <?php
-session_start();
-include('../includes/header.php');
+include_once '../includes/session_init.php';
 
-if (!isset($_SESSION['usuario'])) {
+if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
+
+include('../includes/header.php');
 ?>
 
 <!DOCTYPE html>
@@ -106,6 +107,26 @@ if (!isset($_SESSION['usuario'])) {
         margin-top: 3px;
         flex-shrink: 0;
     }
+    
+    /* --- Estilo para Sub-itens do Tutorial --- */
+    .secao-tutorial li.sub-item {
+        background-color: #222;
+        border-left-color: #777;
+        margin-left: 20px;
+        width: calc(100% - 20px);
+    }
+     .secao-tutorial li.sub-item i {
+        color: #777;
+     }
+     
+    .secao-tutorial li.perfil-padrao {
+        border-left-color: #ffa500;
+    }
+    .secao-tutorial li.perfil-padrao i {
+        color: #ffa500;
+    }
+    /* --- Fim do Estilo --- */
+
 
     /* ======= Ícones ======= */
     h1 i,
@@ -147,6 +168,11 @@ if (!isset($_SESSION['usuario'])) {
             font-size: 0.9em;
             padding: 10px 12px;
         }
+        
+        .secao-tutorial li.sub-item {
+            margin-left: 10px;
+            width: calc(100% - 10px);
+        }
     }
 
     /* ======= Footer ======= */
@@ -172,10 +198,42 @@ if (!isset($_SESSION['usuario'])) {
         <ul>
             <li><i class="fas fa-user-tie"></i> <strong>Conta Principal:</strong> É a conta que gerencia um conjunto de operações. O usuário de uma conta principal pode cadastrar outros usuários (sub-usuários) que estarão vinculados a ela. Todas as informações de vendas, compras e finanças são restritas à sua conta principal e aos seus usuários.</li>
             <li><i class="fas fa-user"></i> <strong>Conta de Usuário:</strong> São os usuários cadastrados por uma conta principal. Eles podem realizar operações no sistema, como vendas e registros financeiros, mas todo o histórico fica atrelado à conta principal que os criou.</li>
-            <li><i class="fas fa-user-shield"></i> <strong>Acesso Proprietário:</strong> Um nível de acesso especial que permite a um administrador (proprietário) visualizar e gerenciar as contas de outros usuários principais do sistema. Ao acessar como proprietário, você pode "incorporar" uma conta principal para ver todos os seus dados e de seus sub-usuários.</li>
+            <li><i class="fas fa-user-shield"></i> <strong>Acesso Master (Super Admin):</strong> Um nível de acesso especial que permite ao administrador geral do sistema visualizar e gerenciar as contas de outros usuários principais. Ao acessar como Master, você pode "incorporar" uma conta principal para ver todos os seus dados e de seus sub-usuários.</li>
         </ul>
     </div>
 
+    <div class="secao-tutorial">
+        <h3 style="color: #ffa500;"><i class="fas fa-tasks"></i> Novos Níveis de Permissão (Dentro da Empresa)</h3>
+        <p>Dentro da sua Conta Principal, existem agora dois níveis de permissão para melhor controle de acesso:</p>
+        <ul>
+            <li>
+                <i class="fas fa-user-shield"></i>
+                <strong>Administrador / Proprietário:</strong>
+                Tem acesso <strong>total</strong> a todas as funcionalidades do sistema. Pode ver finanças, gerenciar estoque, cadastrar novos usuários e alterar configurações.
+            </li>
+            <li class="perfil-padrao">
+                <i class="fas fa-user"></i>
+                <strong>Usuário Padrão:</strong>
+                Este é um perfil com acesso <strong>limitado</strong>, focado em operações diárias. Este usuário vê um menu simplificado na tela inicial.
+            </li>
+            <li class="sub-item">
+                <i class="fas fa-shopping-cart"></i>
+                Acesso permitido ao <strong>Caixa de Vendas</strong> para registrar novas vendas.
+            </li>
+            <li class="sub-item">
+                <i class="fas fa-user-plus"></i>
+                Acesso permitido ao cadastro de <strong>Clientes/Fornecedores</strong>.
+            </li>
+            <li class="sub-item">
+                <i class="fas fa-user-switch"></i>
+                Acesso permitido para <strong>Trocar Usuário</strong> (alternar entre usuários logados).
+            </li>
+            <li class="sub-item">
+                <i class="fas fa-key"></i>
+                Pode <strong>editar os próprios dados</strong> (como sua senha) na tela de "Gestão de Usuários", mas não pode ver, criar ou excluir outros usuários.
+            </li>
+        </ul>
+    </div>
     <div class="secao-tutorial">
         <h3><i class="fas fa-tachometer-alt"></i> Dashboard (Página Inicial)</h3>
         <p>A página inicial oferece uma visão geral e rápida da sua situação financeira, com acesso rápido a todas as funcionalidades e alertas importantes.</p>
@@ -198,7 +256,7 @@ if (!isset($_SESSION['usuario'])) {
         </ul>
     </div>
     
-     <div class="secao-tutorial">
+    <div class="secao-tutorial">
         <h3><i class="fas fa-dolly"></i> Registro de Compras</h3>
         <p>Gerencie a entrada de novos produtos no seu estoque de forma integrada com o financeiro.</p>
         <ul>
@@ -220,7 +278,7 @@ if (!isset($_SESSION['usuario'])) {
         </ul>
     </div>
     
-   <div class="secao-tutorial">
+    <div class="secao-tutorial">
         <h3><i class="fas fa-hand-holding-usd"></i> Contas a Receber</h3>
         <p>Aqui você administra tudo o que precisa receber de seus clientes ou outras fontes.</p>
         <ul>
@@ -249,7 +307,7 @@ if (!isset($_SESSION['usuario'])) {
         </ul>
     </div>
     
-     <div class="secao-tutorial">
+    <div class="secao-tutorial">
         <h3><i class="fas fa-tags"></i> Categorias</h3>
         <p>Organize suas finanças criando categorias para suas despesas e receitas.</p>
         <ul>
@@ -274,7 +332,7 @@ if (!isset($_SESSION['usuario'])) {
         <ul>
             <li><i class="fas fa-balance-scale"></i> Visualize balanços de valores previstos (contas em aberto) e realizados (contas baixadas).</li>
             <li><i class="fas fa-chart-bar"></i> Analise um gráfico de fluxo de caixa dos últimos 12 meses.</li>
-             <li><i class="fas fa-file-pdf"></i> Exporte um resumo completo do dashboard em formato PDF.</li>
+            <li><i class="fas fa-file-pdf"></i> Exporte um resumo completo do dashboard em formato PDF.</li>
         </ul>
     </div>
 
