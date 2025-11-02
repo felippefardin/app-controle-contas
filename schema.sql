@@ -229,6 +229,17 @@ CREATE TABLE `compra_items` (
   KEY `id_produto` (`id_produto`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `solicitacoes_exclusao` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `expira_em` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_solicitacoes_exclusao_usuario` (`id_usuario`),
+  CONSTRAINT `fk_solicitacoes_exclusao_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
 CREATE TABLE `empresa_config` (
   `id` int NOT NULL AUTO_INCREMENT,
   `razao_social` varchar(255) DEFAULT NULL,
