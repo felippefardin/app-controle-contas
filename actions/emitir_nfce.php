@@ -1,11 +1,8 @@
 <?php
-/**
- * actions/emitir_nfce_debug.php
- * Versão com LOGS detalhados e tratamento seguro.
- */
+
 
 require_once '../vendor/autoload.php';
-require_once '../database.php';
+require_once '../database.php'; // Espera-se que $conn (mysqli) venha daqui
 require_once '../includes/config/nfe_config.php';
 
 use NFePHP\NFe\Make;
@@ -42,17 +39,46 @@ if ($conn === null) {
     exit;
 }
 
+// ✅ CORRIGIDO (Problema 1 e 5): Validar sessão do usuário
+if (!isset($_SESSION['usuario_logado']['id'])) {
+    log_nfce("❌ Sessão do usuário não encontrada.");
+    echo json_encode(['success' => false, 'message' => 'Sessão do usuário não encontrada ou expirada.']);
+    exit;
+}
+$usuario_id = (int)$_SESSION['usuario_logado']['id'];
+$tpAmb = 2; // Default
+$novo_numero_nf = 0;
+
 // ---------------------------------------------------------
 // 3️⃣ Início do processo
 // ---------------------------------------------------------
 try {
     log_nfce("🔹 Iniciando emissão da NFC-e para venda #{$id_venda}");
 
+    // ✅ CORRIGIDO (Problema 5): Inicia a transação
+    $conn->begin_transaction();
+
     // ⚙️ Carrega configurações da empresa
-    $resultConfig = $conn->query("SELECT * FROM empresa_config WHERE id = 1");
+    // ✅ CORRIGIDO (Problema 1 e 5): Busca pelo ID da sessão e trava a linha para update
+    $stmtConfig = $conn->prepare("SELECT * FROM empresa_config WHERE id = ? FOR UPDATE");
+    $stmtConfig->bind_param("i", $usuario_id);
+    $stmtConfig->execute();
+    $resultConfig = $stmtConfig->get_result();
     $empresaConfig = $resultConfig->fetch_assoc();
 
-    if (!$empresaConfig) throw new Exception("Configuração fiscal não encontrada.");
+    if (!$empresaConfig) {
+        throw new Exception("Configuração fiscal não encontrada para o usuário #{$usuario_id}.");
+    }
+
+    // ✅ CORRIGIDO (Problema 5): Calcula o novo número da NF
+    $novo_numero_nf = (int)($empresaConfig['ultimo_numero_nfce'] ?? 0) + 1;
+
+    // ✅ CORRIGIDO (Problema 5): Atualiza o número no banco IMEDIATAMENTE
+    $stmtUpdateNum = $conn->prepare("UPDATE empresa_config SET ultimo_numero_nfce = ? WHERE id = ?");
+    $stmtUpdateNum->bind_param("ii", $novo_numero_nf, $usuario_id);
+    $stmtUpdateNum->execute();
+    log_nfce("NF #{$novo_numero_nf} reservada para a venda #{$id_venda}.");
+
 
     // Caminho do certificado
     $certPath = __DIR__ . '/../' . $empresaConfig['certificado_a1_path'];
@@ -61,7 +87,8 @@ try {
     }
 
     // JSON de configuração e ambiente
-    $configJson = getConfigJson();
+    // ✅ CORRIGIDO (Problema 2): Passa o array de config para a função
+    $configJson = getConfigJson($empresaConfig);
     $configArr = json_decode($configJson, true);
     $tpAmb = $configArr['tpAmb']; // 1=produção, 2=homologação
     log_nfce("🌍 Ambiente detectado: " . ($tpAmb == 1 ? "Produção" : "Homologação"));
@@ -115,11 +142,13 @@ try {
     $ide->natOp = 'VENDA';
     $ide->mod = 65;
     $ide->serie = 1;
-    $ide->nNF = rand(1, 99999);
+    // ✅ CORRIGIDO (Problema 5): Usa número sequencial
+    $ide->nNF = $novo_numero_nf;
     $ide->dhEmi = date('Y-m-d\TH:i:sP');
     $ide->tpNF = 1;
     $ide->idDest = 1;
-    $ide->cMunFG = $empresaConfig['codigo_municipio'] ?? '3550308';
+    // ✅ CORRIGIDO (Problema 3): Nome do campo
+    $ide->cMunFG = $empresaConfig['cod_municipio'] ?? '3550308';
     $ide->tpImp = 4;
     $ide->tpEmis = 1;
     $ide->cDV = 0;
@@ -144,7 +173,8 @@ try {
     $end->xLgr = $empresaConfig['logradouro'];
     $end->nro = $empresaConfig['numero'];
     $end->xBairro = $empresaConfig['bairro'];
-    $end->cMun = $empresaConfig['codigo_municipio'] ?? '3550308';
+    // ✅ CORRIGIDO (Problema 3): Nome do campo
+    $end->cMun = $empresaConfig['cod_municipio'] ?? '3550308';
     $end->xMun = $empresaConfig['municipio'];
     $end->UF = $empresaConfig['uf'];
     $end->CEP = preg_replace('/\D/', '', $empresaConfig['cep']);
@@ -212,10 +242,13 @@ try {
         $xmlPath = 'notas_fiscais/' . $chave . '.xml';
         file_put_contents(__DIR__ . '/../' . $xmlPath, $signed);
 
-        $stmt = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, chave_acesso, protocolo, xml_path, data_emissao)
-                                VALUES (?, ?, 'autorizada', ?, ?, ?, NOW())");
-        $stmt->bind_param("issss", $id_venda, $tpAmb, $chave, $protocolo, $xmlPath);
+        $stmt = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, chave_acesso, protocolo, xml_path, data_emissao, numero_nf)
+                                VALUES (?, ?, 'autorizada', ?, ?, ?, NOW(), ?)");
+        $stmt->bind_param("isssssi", $id_venda, $tpAmb, $chave, $protocolo, $xmlPath, $novo_numero_nf);
         $stmt->execute();
+        
+        // ✅ CORRIGIDO (Problema 5): Confirma a transação (incluindo o incremento do número)
+        $conn->commit();
 
         log_nfce("✅ NFC-e #{$chave} autorizada. Protocolo: {$protocolo}");
         echo json_encode(['success' => true, 'message' => 'NFC-e emitida com sucesso!', 'chave' => $chave]);
@@ -225,14 +258,18 @@ try {
     }
 
 } catch (Exception $e) {
+    // ✅ CORRIGIDO (Problema 5): Desfaz o incremento do número da NF se algo falhar
+    $conn->rollback();
+    
     $msg = $e->getMessage();
-    $ambiente = $tpAmb ?? 2;
+    $ambiente = $tpAmb ?? 2; // Pega o ambiente que foi carregado, ou usa Homologação
 
     log_nfce("❌ ERRO: {$msg}");
 
-    $stmt = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, mensagem_erro, data_emissao)
-                            VALUES (?, ?, 'erro', ?, NOW())");
-    $stmt->bind_param("iis", $id_venda, $ambiente, $msg);
+    // Loga o erro no banco. Isso será uma nova transação (autocommit)
+    $stmt = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, mensagem_erro, data_emissao, numero_nf)
+                            VALUES (?, ?, 'erro', ?, NOW(), ?)");
+    $stmt->bind_param("iisi", $id_venda, $ambiente, $msg, $novo_numero_nf);
     $stmt->execute();
 
     echo json_encode(['success' => false, 'message' => $msg]);

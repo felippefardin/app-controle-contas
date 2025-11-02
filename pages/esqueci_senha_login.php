@@ -1,24 +1,20 @@
 <?php
 require_once '../includes/session_init.php';
-// O 'database.php' não é mais necessário no topo, pois a conexão é feita dentro do POST.
 
-// --- INÍCIO DA ALTERAÇÃO ---
 // Carrega o autoload do Composer para PHPMailer e Dotenv
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require __DIR__ . '/../vendor/autoload.php';
 } else {
-    // Se o autoload não existe, o Dotenv não funcionará. Encerra com um erro claro.
-    die("ERRO CRÍTICO: O arquivo vendor/autoload.php não foi encontrado. Por favor, execute 'composer install' para instalar as dependências.");
+    die("ERRO CRÍTICO: O arquivo vendor/autoload.php não foi encontrado.");
 }
 
-// Carrega as variáveis de ambiente do arquivo .env que está na raiz do projeto
+// Carrega as variáveis de ambiente
 try {
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
     $dotenv->load();
 } catch (\Dotenv\Exception\InvalidPathException $e) {
-    die("ERRO CRÍTICO: O arquivo .env não foi encontrado na pasta raiz do projeto. Verifique o local e o nome do arquivo.");
+    die("ERRO CRÍTICO: O arquivo .env não foi encontrado.");
 }
-// --- FIM DA ALTERAÇÃO ---
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -32,64 +28,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$email) {
         $erro = "Preencha o campo de e-mail.";
     } else {
-        // Conexão com o banco de dados
-        $servername = "localhost";
-        $username   = "root";
-        $password   = "";
-        $database   = "app_controle_contas";
+        
+        // Conexão com o banco de dados usando variáveis de ambiente
+        $servername = $_ENV['DB_HOST'] ?? 'localhost';
+        $username   = $_ENV['DB_USER'] ?? 'root';
+        $password   = $_ENV['DB_PASSWORD'] ?? ''; 
+        $database   = "app_controle_contas"; // Banco de dados principal
 
         $conn = new mysqli($servername, $username, $password, $database);
         if ($conn->connect_error) {
             die("Falha na conexão: " . $conn->connect_error);
         }
 
-        $stmt = $conn->prepare("SELECT id, nome, email FROM usuarios WHERE email = ?");
+        // --- CORREÇÃO DE LÓGICA ---
+        // A consulta agora usa as colunas corretas da tabela 'tenants'
+        $stmt = $conn->prepare("SELECT id, nome_empresa, admin_email FROM tenants WHERE admin_email = ?");
+        // --- FIM DA CORREÇÃO ---
+
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->store_result();
 
         if ($stmt->num_rows === 1) {
-            $stmt->bind_result($id, $nome, $email_db);
+            // $id será o ID do tenant, $nome será o nome_empresa
+            $stmt->bind_result($id, $nome, $email_db); 
             $stmt->fetch();
 
-            // Gerar token único e salvar na tabela de recuperação de senha
+            // Gerar token
             $token = bin2hex(random_bytes(16));
             $expiracao = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
+            // --- CORREÇÃO DE LÓGICA ---
+            // Insere o 'id' do tenant na coluna 'usuario_id'.
+            // (Se você quiser renomear 'usuario_id' para 'tenant_id' na tabela 'recuperacao_senha',
+            // você precisará alterar esta consulta SQL também)
             $stmtToken = $conn->prepare("INSERT INTO recuperacao_senha (usuario_id, token, expira_em) VALUES (?, ?, ?)");
             $stmtToken->bind_param("iss", $id, $token, $expiracao);
             $stmtToken->execute();
             $stmtToken->close();
 
-            // Enviar e-mail com link de recuperação
+            // Enviar e-mail
             $mail = new PHPMailer(true);
 
             try {
-                // --- INÍCIO DA ALTERAÇÃO ---
-                // Configurações do servidor a partir do .env
+                // Descomente a linha abaixo para ver o log do Gmail se ainda falhar
+                // $mail->SMTPDebug = \PHPMailer\PHPMailer\SMTP::DEBUG_SERVER;
+
                 $mail->isSMTP();
                 $mail->Host       = $_ENV['MAIL_HOST'];
                 $mail->SMTPAuth   = true;
                 $mail->Username   = $_ENV['MAIL_USERNAME'];
                 $mail->Password   = $_ENV['MAIL_PASSWORD'];
-                $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION']; // Usa 'tls' ou 'ssl' do .env
-                $mail->Port       = (int)$_ENV['MAIL_PORT']; // Converte para inteiro
+                $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION']; 
+                $mail->Port       = (int)$_ENV['MAIL_PORT']; 
 
-                // Remetente e Destinatário
                 $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
-                // --- FIM DA ALTERAÇÃO ---
-
                 $mail->addAddress($email_db, $nome);
                 $mail->CharSet = 'UTF-8';
 
                 $mail->isHTML(true);
                 $mail->Subject = 'Recuperação de senha';
                 
-                // --- INÍCIO DA ALTERAÇÃO ---
-                // Cria o link de recuperação dinamicamente a partir do .env
-                $appUrl = rtrim($_ENV['APP_URL'], '/'); // Remove a barra final, se houver
+                $appUrl = rtrim($_ENV['APP_URL'], '/'); 
                 $link = $appUrl . "/pages/resetar_senha.php?token=" . $token;
-                // --- FIM DA ALTERAÇÃO ---
                 
                 $mail->Body = "Olá $nome,<br><br>Você solicitou a redefinição de sua senha. Clique no link abaixo para continuar:<br>
                                <a href='$link'>Redefinir Minha Senha</a><br><br>
@@ -102,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $erro = "Erro ao enviar e-mail: " . $mail->ErrorInfo;
             }
         } else {
-            // Mensagem genérica para não informar se um e-mail existe ou não no sistema
+            // Mensagem genérica
             $sucesso = "Se o e-mail informado estiver em nosso sistema, um link de recuperação será enviado.";
         }
 
