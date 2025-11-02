@@ -1,3 +1,11 @@
+<?php
+// --- CORREÇÃO ADICIONADA ---
+// Garante que a sessão seja iniciada ANTES de tentar ler as variáveis $_SESSION.
+// Usar __DIR__ garante que o caminho para 'session_init.php' esteja sempre correto.
+require_once __DIR__ . '/session_init.php';
+// --- FIM DA CORREÇÃO ---
+?>
+
 <?php if (isset($_SESSION['proprietario_id_original'])): ?>
     <div class="admin-view-banner">
         Você está visualizando como <strong><?= htmlspecialchars($_SESSION['usuario_principal']['nome']); ?></strong>.
@@ -5,10 +13,16 @@
     </div>    
 <?php endif; ?>
 <?php if (isset($_SESSION['super_admin_original'])): ?>
-    <div style="background-color: #ffc; border: 1px solid #e6db55; padding: 10px; text-align: center; font-weight: bold;">
+    
+    <div style="background-color: #ffc; border: 1px solid #e6db55; padding: 10px; text-align: center; font-weight: bold; position: fixed; top: 0; width: 100%; z-index: 1002; color: #000000;">
         Você está visualizando como um cliente. 
-        <a href="../actions/retornar_super_admin.php">Retornar ao Dashboard de Administrador</a>
+        
+        <a href="../actions/retornar_super_admin.php" style="color: #0056b3; text-decoration: underline;">Retornar ao Dashboard de Administrador</a>
     </div>
+    <?php
+    // Adiciona um espaçamento no topo para o banner não cobrir o header principal
+    echo '<style>body { padding-top: 40px !important; } .header-controls { top: 40px !important; }</style>';
+    ?>
 <?php endif; ?>
 
 <!DOCTYPE html>

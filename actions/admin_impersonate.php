@@ -4,6 +4,7 @@ include('../database.php'); // Inclui a conexão master
 
 // 1. Apenas o SUPER ADMIN pode acessar
 if (!isset($_SESSION['super_admin'])) {
+    session_write_close();
     header('Location: ../pages/login.php');
     exit;
 }
@@ -45,6 +46,7 @@ if (isset($_GET['tenant_id'])) {
             // Se não conseguir conectar, restaura a sessão e volta
             $_SESSION['super_admin'] = $_SESSION['super_admin_original']; 
             unset($_SESSION['super_admin_original']);
+            session_write_close();
             header('Location: ../pages/admin/dashboard.php?erro=db_tenant_invalido');
             exit;
         }
@@ -70,12 +72,19 @@ if (isset($_GET['tenant_id'])) {
                 'db_database' => $tenant_db_info['db_database']
             ];
             
+            // --- INÍCIO DA CORREÇÃO ---
+            // Esta é a chave que faltava. As páginas internas (home.php, etc.) 
+            // verificam 'usuario_logado' para autenticação.
+            $_SESSION['usuario_logado'] = $proprietario; 
+            // --- FIM DA CORREÇÃO ---
+
             $_SESSION['proprietario'] = $proprietario;
             $_SESSION['usuario_principal'] = $proprietario;
             $_SESSION['usuario_id'] = $proprietario['id']; 
 
             // 8. Redireciona para a home do tenant
             $tenant_conn->close();
+            session_write_close(); 
             header('Location: ../pages/home.php');
             exit;
         } else {
@@ -83,6 +92,7 @@ if (isset($_GET['tenant_id'])) {
              $tenant_conn->close();
              $_SESSION['super_admin'] = $_SESSION['super_admin_original']; 
              unset($_SESSION['super_admin_original']);
+             session_write_close();
              header('Location: ../pages/admin/dashboard.php?erro=proprietario_nao_encontrado');
              exit;
         }
@@ -94,6 +104,7 @@ if(isset($_SESSION['super_admin_original'])) {
     $_SESSION['super_admin'] = $_SESSION['super_admin_original']; 
     unset($_SESSION['super_admin_original']);
 }
+session_write_close();
 header('Location: ../pages/admin/dashboard.php');
 exit;
 ?>
