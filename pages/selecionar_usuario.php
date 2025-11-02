@@ -16,9 +16,9 @@ if ($conn === null) {
 $usuario_logado = $_SESSION['usuario_logado'];
 $id_usuario_atual = $usuario_logado['id'];
 
-// ✅ 3. BUSCA TODOS OS USUÁRIOS DO CLIENTE (TENANT) ATUAL
-// A consulta é simplificada, pois todos os usuários no banco de dados do tenant pertencem a ele.
-$sql = "SELECT id, nome, nivel_acesso FROM usuarios ORDER BY nome ASC";
+// ✅ 3. BUSCA TODOS OS USUÁRIOS (INCLUINDO A FOTO) DO CLIENTE (TENANT) ATUAL
+// A consulta agora inclui o campo 'foto'
+$sql = "SELECT id, nome, nivel_acesso, foto FROM usuarios ORDER BY nome ASC";
 $stmt = $conn->prepare($sql);
 $stmt->execute();
 $result_usuarios = $stmt->get_result();
@@ -105,6 +105,50 @@ $result_usuarios = $stmt->get_result();
             margin-bottom: 20px;
             color: white;
         }
+
+        /* --- NOVOS ESTILOS PARA A LISTA DE USUÁRIOS --- */
+        .user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            max-height: 200px; /* Altura máxima para a lista rolável */
+            overflow-y: auto; /* Adiciona barra de rolagem */
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #333;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+        }
+        .user-item:last-child {
+            border-bottom: none;
+        }
+        .user-item input[type="radio"] {
+            margin-right: 15px;
+            width: auto; /* Reseta o width 100% */
+        }
+        .user-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%; /* Foto redonda */
+            margin-right: 10px;
+            object-fit: cover; /* Garante que a imagem cubra o espaço */
+            border: 1px solid #555;
+        }
+        /* O label agora é o container do clique */
+        .user-item label {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin: 0;
+            font-weight: normal;
+            color: #eee;
+        }
+        /* --- FIM DOS NOVOS ESTILOS --- */
     </style>
 </head>
 <body>
@@ -117,17 +161,30 @@ $result_usuarios = $stmt->get_result();
         <?php endif; ?>
 
         <form action="../actions/trocar_usuario.php" method="POST">
+            
             <div class="form-group">
-                <label for="usuario_id">Acessar como:</label>
-                <select name="usuario_id" id="usuario_id" required>
+                <label>Acessar como:</label>
+                <div class="user-list">
                     <?php while ($usuario = $result_usuarios->fetch_assoc()): ?>
-                        <option value="<?= $usuario['id'] ?>" <?= ($usuario['id'] === $id_usuario_atual) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($usuario['nome']) ?>
-                            <?= ($usuario['nivel_acesso'] === 'proprietario') ? '(Principal)' : '' ?>
-                        </option>
+                        <?php
+                           // Define a foto padrão caso o usuário não tenha uma
+                           $foto_usuario = $usuario['foto'] ? $usuario['foto'] : 'default-profile.png';
+                        ?>
+                        <div class="user-item">
+                            <input type="radio" name="usuario_id" id="user_<?= $usuario['id'] ?>" value="<?= $usuario['id'] ?>" <?= ($usuario['id'] === $id_usuario_atual) ? 'checked' : '' ?> required>
+                            
+                            <label for="user_<?= $usuario['id'] ?>">
+                                <img src="../img/usuarios/<?= htmlspecialchars($foto_usuario) ?>" alt="Foto de <?= htmlspecialchars($usuario['nome']) ?>">
+                                <span>
+                                    <?= htmlspecialchars($usuario['nome']) ?>
+                                    <?= ($usuario['nivel_acesso'] === 'proprietario') ? ' (Principal)' : '' ?>
+                                </span>
+                            </label>
+                        </div>
                     <?php endwhile; ?>
-                </select>
+                </div>
             </div>
+            
             <div class="form-group">
                 <label for="senha">Senha do usuário selecionado:</label>
                 <input type="password" name="senha" id="senha" required>

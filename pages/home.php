@@ -232,6 +232,7 @@ include('../includes/header.php');
     <div class="section-title"><i class="fas fa-users"></i> Cadastros</div>
     <div class="dashboard">
         <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-user"></i>Clientes/Fornecedores</a>
+        <a class="card-link" href="perfil.php"><i class="fas fa-user-circle"></i>Perfil</a>
         
         <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
             <a class="card-link" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i>Contas Bancárias</a>
@@ -243,7 +244,7 @@ include('../includes/header.php');
     <div class="dashboard">
         <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
             <a class="card-link" href="relatorios.php"><i class="fas fa-file-alt"></i>Relatórios</a>
-            <a class="card-link" href="perfil.php"><i class="fas fa-user-circle"></i>Perfil</a>
+            
         <?php endif; ?>
 
         <a class="card-link" href="selecionar_usuario.php"><i class="fas fa-user-switch"></i>Trocar Usuário</a>
