@@ -67,13 +67,129 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
-      body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-      form { background-color: #1f1f1f; padding: 25px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 20px; }
-      h2 { color: #27ae60; margin-bottom: 20px; text-align: center; }
-      label { font-weight: bold; margin-bottom: 5px; }
-      select, input { padding: 12px 14px; font-size: 16px; border-radius: 6px; border: 1px solid #444; background-color: #333; color: #eee; width: 100%; }
-      button { background-color: #27ae60; color: white; border: none; font-weight: bold; padding: 12px; font-size: 16px; border-radius: 6px; cursor: pointer; transition: background-color 0.3s ease; }
-      button:hover { background-color: #1e874b; }
+  body {
+  background-color: #121212;
+  color: #eee;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 15px;
+}
+
+/* ✅ FORMULÁRIO CENTRALIZADO */
+form {
+  background-color: #1f1f1f;
+  padding: 25px 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+h2 {
+  color: #27ae60;
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+/* ✅ BLOCO DE CAMPOS COM MESMA BASE */
+form > div {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* ✅ LABELS */
+label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 6px;
+  color: #ccc;
+  font-size: 0.95rem;
+}
+
+/* ✅ CAMPOS UNIFORMES */
+input[type="text"],
+input[type="file"],
+select {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #eee;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  appearance: none;
+  outline: none;
+  line-height: 1.4;
+}
+
+/* ✅ Ajuste especial do input file para igualar a altura */
+input[type="file"] {
+  padding: 8px 10px;
+  background-color: #333;
+  border: 1px solid #444;
+  color: #eee;
+}
+input[type="file"]::-webkit-file-upload-button {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  margin-right: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-weight: bold;
+}
+input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #1e874b;
+}
+
+/* ✅ BOTÃO */
+button {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  font-weight: bold;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+}
+button:hover { background-color: #1e874b; }
+
+/* ✅ FOCO SUAVE */
+input:focus, select:focus, button:focus {
+  outline: 2px solid #27ae60;
+  outline-offset: 2px;
+}
+
+/* ✅ RESPONSIVIDADE */
+@media (max-width: 480px) {
+  form {
+    padding: 20px;
+    border-radius: 8px;
+  }
+  h2 {
+    font-size: 1.3rem;
+  }
+  input, select, button {
+    font-size: 15px;
+  }
+}
+
   </style>
 </head>
 <body>

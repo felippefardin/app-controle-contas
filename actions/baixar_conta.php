@@ -84,50 +84,142 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
-    * { box-sizing: border-box; }
-    body {
-      background-color: #121212;
-      color: #eee;
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    form {
-      background-color: #1f1f1f;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0,191,255,0.3);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 100%;
-      max-width: 400px;
-    }
-    h2 { text-align: center; color: #00bfff; margin-top: 0; }
-    label, input, select, button { width: 100%; }
-    input, select {
-      padding: 12px 15px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #444;
-      background-color: #2a2a2a;
-      color: #eee;
-    }
-    button {
-      background-color: #00bfff;
-      border: none;
-      color: white;
-      font-weight: 600;
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    button:hover { background-color: #0099cc; }
+  * { box-sizing: border-box; }
+
+body {
+  background-color: #121212;
+  color: #eee;
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* Formulário centralizado */
+form {
+  background-color: #1f1f1f;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,191,255,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 420px; /* ligeiro aumento para combinar com tabela */
+}
+
+h2 {
+  text-align: center;
+  color: #00bfff;
+  margin-top: 0;
+}
+
+/* Agrupamento uniforme */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Inputs e selects do mesmo tamanho */
+input[type="text"],
+select,
+input[type="file"],
+textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 15px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background-color: #2a2a2a;
+  color: #eee;
+  appearance: none;
+  outline: none;
+}
+
+/* Ajuste visual do input file */
+input[type="file"] {
+  padding: 10px;
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+}
+input[type="file"]::-webkit-file-upload-button {
+  background-color: #00bfff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  margin-right: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-weight: 600;
+}
+input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #0099cc;
+}
+
+/* Botão */
+button {
+  background-color: #00bfff;
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+}
+button:hover { background-color: #0099cc; }
+
+/* ============================= */
+/* TABELA PADRONIZADA (opcional) */
+/* ============================= */
+.table-wrapper {
+  width: 100%;
+  max-width: 420px; /* mesma largura do formulário */
+  margin: 20px auto 0;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #1f1f1f;
+  color: #eee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #333;
+  text-align: left;
+  font-size: 15px;
+}
+
+th {
+  background-color: #222;
+  color: #00bfff;
+}
+
+tr:nth-child(even) { background-color: #2a2a2a; }
+tr:hover { background-color: #333; }
+
+/* Responsivo */
+@media (max-width: 480px) {
+  form, .table-wrapper {
+    max-width: 100%;
+  }
+  input, select, button {
+    font-size: 15px;
+  }
+}
+
   </style>
 </head>
 <body>
