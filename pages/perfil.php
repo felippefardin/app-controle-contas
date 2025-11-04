@@ -188,31 +188,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <label for="senha_confirmar">Confirmar Nova Senha:</label>
     <div class="password-wrapper">
       <input type="password" id="senha_confirmar" name="senha_confirmar">
-      <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
-    </div>
+      <i class="fas fa-eye toggle-password"></i> </div>
 
-    <button type="submit">Salvar Alterações</button>
+    <div>
+        <button type="submit">Salvar Alterações</button>
+        
+        <a href="../actions/enviar_link_email_perfil.php" 
+           class="btn-padrao-link" 
+           style="background-color: #17a2b8; color: white; margin-left: 10px;" 
+           onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email) ?>)?');">
+           Redefinir por E-mail
+        </a>
+    </div>
 
      <div style="margin-top: 20px; text-align: center;">
     <a href="../actions/enviar_link_exclusao.php" class="btn-padrao-link" style="background-color: #dc3545;" onclick="return confirm('Você tem certeza que deseja iniciar o processo de exclusão da sua conta? Um e-mail de confirmação será enviado.');">Excluir Minha Conta</a>
   </div>
   </form>
 
-  
-
-  <!-- <p><a href="home.php">Voltar para Home</a></p> -->
 </div>
 
 <script>
-  const toggleSenha = document.getElementById('toggleSenha');
-    const inputSenha = document.getElementById('senha');
-
-    toggleSenha.addEventListener('click', () => {
-      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
-      inputSenha.setAttribute('type', tipo);
-      toggleSenha.classList.toggle('fa-eye');
-      toggleSenha.classList.toggle('fa-eye-slash');
-    });
+  // Script corrigido para funcionar em ambos os campos de senha
+  document.querySelectorAll('.toggle-password').forEach(toggle => {
+      toggle.addEventListener('click', function() {
+          // Encontra o input de senha imediatamente antes do ícone (dentro do .password-wrapper)
+          const input = this.previousElementSibling;
+          if (input && (input.type === 'password' || input.type === 'text')) {
+              const tipo = input.getAttribute('type') === 'password' ? 'text' : 'password';
+              input.setAttribute('type', tipo);
+              this.classList.toggle('fa-eye');
+              this.classList.toggle('fa-eye-slash');
+          }
+      });
+  });
 </script>
 
 <?php include('../includes/footer.php'); ?>

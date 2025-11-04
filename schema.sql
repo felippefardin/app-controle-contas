@@ -24,11 +24,14 @@ CREATE TABLE `usuarios` (
   `tenant_id` int DEFAULT NULL,
   `documento_clean` varchar(14) GENERATED ALWAYS AS (regexp_replace(`documento`,_utf8mb4'[^0-9]',_utf8mb4'')) STORED,
   `cpf` varchar(14) DEFAULT NULL,
+  `token_reset` varchar(255) DEFAULT NULL,
+  `token_expira_em` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `ux_usuarios_email` (`email`),
   UNIQUE KEY `email_2` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 
 -- Tabela de Clientes e Fornecedores
