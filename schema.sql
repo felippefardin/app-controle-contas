@@ -277,3 +277,43 @@ CREATE TABLE `notas_fiscais` (
   `data_emissao` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Tabela para os Planos de Assinatura
+CREATE TABLE `planos` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(100) NOT NULL,
+  `valor` decimal(10,2) NOT NULL,
+  `ciclo` enum('mensal','trimestral','anual') NOT NULL,
+  `descricao` text,
+  `mercadopago_plan_id` varchar(255) DEFAULT NULL, -- ID do plano no gateway
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Tabela para as Assinaturas dos Usuários
+CREATE TABLE `assinaturas` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `id_plano` int NOT NULL,
+  `mercadopago_subscription_id` varchar(255) NOT NULL, -- ID da assinatura no gateway
+  `status` enum('pendente','ativo','cancelado','inadimplente') NOT NULL DEFAULT 'pendente',
+  `data_inicio` datetime DEFAULT CURRENT_TIMESTAMP,
+  `data_proxima_cobranca` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_usuario` (`id_usuario`),
+  KEY `id_plano` (`id_plano`),
+  CONSTRAINT `fk_assinaturas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_assinaturas_plano` FOREIGN KEY (`id_plano`) REFERENCES `planos` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `pagamentos_historico` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `id_assinatura` int NOT NULL,
+  `mercadopago_payment_id` varchar(255) DEFAULT NULL,
+  `data_pagamento` datetime NOT NULL,
+  `valor_pago` decimal(10,2) NOT NULL,
+  `status` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_usuario` (`id_usuario`),
+  KEY `id_assinatura` (`id_assinatura`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

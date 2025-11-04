@@ -168,4 +168,5 @@ function getTenantConnectionByName($tenant_db_name) {
 
 // Inicializa a conexão master (se você usa $conn como global em outros lugares)
 $conn = getMasterConnection();
+
 ?>
