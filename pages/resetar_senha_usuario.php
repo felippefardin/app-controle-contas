@@ -1,118 +1,158 @@
 <?php
-// 1. Carrega o database.php PRIMEIRO
-// Ele já carrega o vendor/autoload.php e o .env
-require_once '../database.php'; 
+require_once '../includes/session_init.php';
+require_once '../database.php';
 
-// 2. Não precisamos de session_init.php aqui, o usuário não está logado
+// Define o fuso horário para comparar datas
+date_default_timezone_set('America/Sao_Paulo');
 
-$erro = '';
-$sucesso = '';
+$mensagem_erro = '';
+$token = '';
+$tenant_db_name = '';
+$usuario = null;
+$conn = null;
 
-$token = $_GET['token'] ?? '';
-$tenant_id = $_GET['tenant_id'] ?? 0;
+// ✅ **INÍCIO DA LÓGICA DE VALIDAÇÃO (NOVA)**
+if (empty($_GET['payload'])) {
+    $mensagem_erro = 'Link inválido ou incompleto (cód 1).';
+} else {
+    // Decodifica o payload
+    $payload = json_decode(base64_decode(urldecode($_GET['payload'])), true);
 
-if (!$token || !$tenant_id) {
-    die("Link inválido ou incompleto.");
-}
-
-// --- LÓGICA DE CONEXÃO ESPECIALIZADA ---
-// Agora esta função existe no seu database.php
-$conn = getTenantConnectionById($tenant_id); 
-
-if ($conn === null) {
-    die("Não foi possível encontrar a conta associada. Verifique se o link está correto.");
-}
-// --- FIM DA LÓGICA DE CONEXÃO ---
-
-
-// Verifica se o token existe na tabela USUARIOS
-// (Isto depende do Passo 1 - ALTER TABLE)
-$stmt = $conn->prepare("SELECT id FROM usuarios WHERE token_reset = ? AND token_expira_em >= NOW()");
-$stmt->bind_param("s", $token);
-$stmt->execute();
-$stmt->store_result();
-
-if ($stmt->num_rows !== 1) {
-    $stmt->close();
-    $conn->close();
-    die("Token inválido ou expirado.");
-}
-
-$stmt->bind_result($usuario_id);
-$stmt->fetch();
-$stmt->close();
-
-// Processa o envio da nova senha
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $senha = $_POST['senha'] ?? '';
-    $confirma = $_POST['confirma_senha'] ?? '';
-
-    if (!$senha || !$confirma) {
-        $erro = "Preencha todos os campos.";
-    } elseif ($senha !== $confirma) {
-        $erro = "As senhas não coincidem.";
+    if (empty($payload['token']) || empty($payload['tenant'])) {
+        $mensagem_erro = 'Link inválido ou incompleto (cód 2).';
     } else {
-        $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
+        $token = $payload['token'];
+        $tenant_db_name = $payload['tenant'];
 
-        // Atualiza a senha na tabela 'usuarios' e limpa o token
-        $stmtUpdate = $conn->prepare("UPDATE usuarios SET senha = ?, token_reset = NULL, token_expira_em = NULL WHERE id = ?");
-        $stmtUpdate->bind_param("si", $senha_hash, $usuario_id);
-        
-        if ($stmtUpdate->execute()) {
-            $sucesso = "Senha redefinida com sucesso! Você já pode <a href='login.php'>fazer login</a>.";
+        // Tenta conectar ao banco do tenant usando a nova função
+        $conn = getTenantConnectionByName($tenant_db_name);
+
+        if ($conn === null) {
+            $mensagem_erro = 'Não foi possível conectar ao banco de dados. Contate o suporte.';
         } else {
-            $erro = "Erro ao atualizar a senha.";
+            // Verifica o token no banco do tenant
+            $stmt = $conn->prepare("SELECT * FROM usuarios WHERE token_reset = ?");
+            $stmt->bind_param("s", $token);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $usuario = $result->fetch_assoc();
+            $stmt->close();
+
+            if (!$usuario) {
+                $mensagem_erro = 'Token de redefinição inválido.';
+            } else {
+                // Verifica a expiração
+                $agora = new DateTime();
+                $expiracao = new DateTime($usuario['token_expira_em']);
+
+                if ($agora > $expiracao) {
+                    $mensagem_erro = 'Este link de redefinição expirou. Solicite um novo.';
+                    // Limpa o token expirado
+                    $conn->query("UPDATE usuarios SET token_reset = NULL, token_expira_em = NULL WHERE id = " . $usuario['id']);
+                    $usuario = null; // Impede a exibição do formulário
+                }
+            }
         }
-        $stmtUpdate->close();
     }
 }
 
-$conn->close();
-?>
+// Processar o formulário de redefinição (POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $usuario && $conn) {
+    $senha = $_POST['senha'];
+    $senha_confirmar = $_POST['senha_confirmar'];
 
+    if ($senha !== $senha_confirmar) {
+        $mensagem_erro = 'As senhas não conferem.';
+    } elseif (strlen($senha) < 6) {
+        $mensagem_erro = 'A senha deve ter pelo menos 6 caracteres.';
+    } else {
+        // Tudo certo, atualiza a senha
+        $nova_senha_hash = password_hash($senha, PASSWORD_DEFAULT);
+        
+        $stmt = $conn->prepare("UPDATE usuarios SET senha = ?, token_reset = NULL, token_expira_em = NULL WHERE id = ?");
+        $stmt->bind_param("si", $nova_senha_hash, $usuario['id']);
+        
+        if ($stmt->execute()) {
+            $conn->close();
+            // Redireciona para o login com mensagem de sucesso
+            $_SESSION['sucesso_login'] = 'Senha redefinida com sucesso! Você já pode fazer login.';
+            header('Location: login.php');
+            exit;
+        } else {
+            $mensagem_erro = 'Erro ao atualizar a senha. Tente novamente.';
+        }
+        $stmt->close();
+    }
+    if ($conn) $conn->close();
+}
+// ✅ **FIM DA LÓGICA DE VALIDAÇÃO (NOVA)**
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Redefinir senha de Usuário</title>
-<style>
-    /* ... (Seus estilos CSS) ... */
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    form { background: #1e1e1e; padding: 2.5rem 2rem; border-radius: 12px; width: 90%; max-width: 400px; }
-    h2 { text-align: center; color: #00bfff; margin-bottom: 2rem; }
-    label { display: block; margin-bottom: 0.5rem; color: #ccc; }
-    .input-wrapper { position: relative; width: 100%; margin-bottom: 1.25rem; }
-    input[type="password"] { width: 100%; padding: 12px; border: 1px solid #444; border-radius: 6px; font-size: 1rem; background-color: #2a2a2a; color: #eee; }
-    button { margin-top: 1rem; padding: 12px; border: none; border-radius: 6px; background: #007bff; color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; }
-    .mensagem { text-align: center; padding: 12px; border-radius: 6px; margin-bottom: 1.5rem; }
-    .erro { background: #5a1a1a; color: #ffc4c4; border: 1px solid #a03030; }
-    .sucesso { background: #1a5a3a; color: #c4ffc4; border: 1px solid #30a050; }
-    .sucesso a { color: #fff; font-weight: bold; }
-</style>
+    <meta charset="UTF-8">
+    <title>Redefinir Senha</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #121212; color: #eee; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        .reset-container { padding: 40px; background-color: #1e1e1e; border-radius: 10px; box-shadow: 0 0 20px rgba(0, 191, 255, 0.2); text-align: center; width: 100%; max-width: 400px; }
+        h2 { color: #00bfff; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; text-align: left; position: relative; }
+        label { display: block; margin-bottom: 8px; color: #bbb; }
+        input[type="password"] { width: 100%; padding: 12px; padding-right: 40px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; box-sizing: border-box; }
+        .toggle-password { position: absolute; top: 37px; right: 12px; color: #aaa; cursor: pointer; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; background-color: #00bfff; color: #121212; font-weight: bold; cursor: pointer; transition: background-color 0.3s ease; }
+        button:hover { background-color: #0095cc; }
+        .mensagem-erro { background-color: #dc3545; padding: 10px; border-radius: 5px; margin-bottom: 20px; color: white; }
+        .link-login { color: #00bfff; display: block; margin-top: 20px; text-decoration: none; }
+    </style>
 </head>
 <body>
-<form method="POST">
-    <h2>Redefinir senha de Usuário</h2>
+    <div class="reset-container">
+        <h2>Redefinir Senha</h2>
 
-    <?php if ($erro): ?>
-        <div class="mensagem erro"><?= htmlspecialchars($erro) ?></div>
-    <?php endif; ?>
+        <?php if ($mensagem_erro): ?>
+            <div class="mensagem-erro"><?= htmlspecialchars($mensagem_erro); ?></div>
+        <?php endif; ?>
 
-    <?php if ($sucesso): ?>
-        <div class="mensagem sucesso"><?= $sucesso ?></div>
-    <?php else: ?>
-        <label for="senha">Nova senha</label>
-        <div class="input-wrapper">
-            <input type="password" id="senha" name="senha" required autofocus>
-        </div>
+        <?php // Só exibe o formulário se o token for válido e o usuário encontrado ?>
+        <?php if ($usuario): ?>
+            <p style="color: #bbb;">Olá, <?= htmlspecialchars($usuario['nome']) ?>. Defina sua nova senha.</p>
+            
+            <form method="POST" action="">
+                <div class="form-group">
+                    <label for="senha">Nova Senha:</label>
+                    <input type="password" name="senha" id="senha" required>
+                    <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
+                </div>
+                <div class="form-group">
+                    <label for="senha_confirmar">Confirmar Nova Senha:</label>
+                    <input type="password" name="senha_confirmar" id="senha_confirmar" required>
+                    <i class="fas fa-eye toggle-password" id="toggleSenhaConfirmar"></i>
+                </div>
+                <button type="submit">Salvar Nova Senha</button>
+            </form>
+        <?php else: ?>
+            <a href="login.php" class="link-login">Voltar para o Login</a>
+        <?php endif; ?>
+    </div>
 
-        <label for="confirma_senha">Confirme a nova senha</label>
-        <div class="input-wrapper">
-            <input type="password" id="confirma_senha" name="confirma_senha" required>
-        </div>
-
-        <button type="submit">Redefinir senha</button>
-    <?php endif; ?>
-</form>
+    <script>
+        // Script para alternar visibilidade da senha (opcional, mas bom)
+        function setupToggle(toggleId, inputId) {
+            const toggle = document.getElementById(toggleId);
+            const input = document.getElementById(inputId);
+            if (toggle && input) {
+                toggle.addEventListener('click', () => {
+                    const tipo = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                    input.setAttribute('type', tipo);
+                    toggle.classList.toggle('fa-eye');
+                    toggle.classList.toggle('fa-eye-slash');
+                });
+            }
+        }
+        setupToggle('toggleSenha', 'senha');
+        setupToggle('toggleSenhaConfirmar', 'senha_confirmar');
+    </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ if ($conn === null) {
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
 $usuario_logado = $_SESSION['usuario_logado'];
 $id_usuario_atual = $usuario_logado['id'];
+$email = $usuario_logado['email']; // Correção da aula anterior
 
 // ✅ 3. BUSCA TODOS OS USUÁRIOS (INCLUINDO A FOTO) DO CLIENTE (TENANT) ATUAL
 // A consulta agora inclui o campo 'foto'
@@ -29,7 +30,7 @@ $result_usuarios = $stmt->get_result();
     <meta charset="UTF-8">
     <title>Selecionar Usuário - App Controle de Contas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>       
+    <style> 
         body {
             display: flex;
             justify-content: center;
@@ -99,7 +100,16 @@ $result_usuarios = $stmt->get_result();
             background-color: #0095cc;
         }
         .mensagem-erro {
-            background-color: #dc3545;
+            background-color: #dc3545; /* Vermelho */
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        /* ✅ **NOVO ESTILO PARA MENSAGEM DE SUCESSO** */
+        .mensagem-sucesso {
+            background-color: #28a745; /* Verde */
             padding: 10px;
             border-radius: 5px;
             margin-bottom: 20px;
@@ -160,6 +170,11 @@ $result_usuarios = $stmt->get_result();
             <?php unset($_SESSION['erro_selecao']); ?>
         <?php endif; ?>
 
+        <?php if (isset($_SESSION['sucesso_selecao'])): ?>
+            <div class="mensagem-sucesso"><?= htmlspecialchars($_SESSION['sucesso_selecao']); ?></div>
+            <?php unset($_SESSION['sucesso_selecao']); ?>
+        <?php endif; ?>
+
         <form action="../actions/trocar_usuario.php" method="POST">
             
             <div class="form-group">
@@ -167,8 +182,8 @@ $result_usuarios = $stmt->get_result();
                 <div class="user-list">
                     <?php while ($usuario = $result_usuarios->fetch_assoc()): ?>
                         <?php
-                           // Define a foto padrão caso o usuário não tenha uma
-                           $foto_usuario = $usuario['foto'] ? $usuario['foto'] : 'default-profile.png';
+                            // Define a foto padrão caso o usuário não tenha uma
+                            $foto_usuario = $usuario['foto'] ? $usuario['foto'] : 'default-profile.png';
                         ?>
                         <div class="user-item">
                             <input type="radio" name="usuario_id" id="user_<?= $usuario['id'] ?>" value="<?= $usuario['id'] ?>" <?= ($usuario['id'] === $id_usuario_atual) ? 'checked' : '' ?> required>
@@ -192,9 +207,15 @@ $result_usuarios = $stmt->get_result();
             </div>
             <button type="submit">Acessar Sistema</button>
         </form>
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="esqueci_senha_login.php" style="color: #00bfff; text-decoration: none;">Esqueci minha senha</a>
-        </div>
+       <a href="../actions/enviar_link_email_perfil.php" 
+          class="btn-padrao-link" 
+          style="background-color: #17a2b8; color: white; margin-left: 10px; display: inline-block; padding: 10px 15px; text-decoration: none; border-radius: 5px; margin-top: 15px;" 
+          onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email) ?>)?');">
+          Redefinir por E-mail
+       </a>
+    </div>
+
+    
     </div>
 
     <script>
@@ -207,6 +228,6 @@ $result_usuarios = $stmt->get_result();
       toggleSenha.classList.toggle('fa-eye');
       toggleSenha.classList.toggle('fa-eye-slash');
     });
-  </script>
+    </script>
 </body>
 </html>
