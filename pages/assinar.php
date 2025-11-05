@@ -5,15 +5,16 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// --- CORREÇÃO AQUI ---
 use MercadoPago\Client\Subscription\SubscriptionClient; // Cliente correto
 use MercadoPago\MercadoPagoConfig;
 
 // ✅ Configuração do SDK
 MercadoPagoConfig::setAccessToken("APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376");
-// --- FIM DA CORREÇÃO ---
 
-$userId = $_SESSION['user_id'] ?? null;
+// --- CORREÇÃO DE SESSÃO ---
+// Seus outros scripts usam 'usuario_logado', então padronizei aqui.
+$userId = $_SESSION['usuario_logado']['id'] ?? null;
+// --- FIM DA CORREÇÃO ---
 
 if (!$userId) {
     header("Location: ../pages/login.php?msg=erro_sessao_expirada");
@@ -22,7 +23,7 @@ if (!$userId) {
 
 try {
     // ✅ 1. Buscar ID da assinatura no banco
-    $pdo = getDbConnection();
+    $pdo = getDbConnection(); // Usando sua função de conexão
     $stmt = $pdo->prepare("SELECT mp_subscription_id FROM usuarios WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -35,8 +36,9 @@ try {
     $mp_subscription_id = $user['mp_subscription_id'];
 
     // ✅ 2. Cancelar a assinatura via API do Mercado Pago
-    // --- CORREÇÃO AQUI ---
-    // $client = new SubscriptionClient(); 
+    // --- CORREÇÃO DA LINHA COMENTADA ---
+    $client = new SubscriptionClient(); // ESTA LINHA FOI DESCOMENTADA
+    
     // O método 'update' é usado para alterar o status da assinatura (inclusive cancelar)
     $subscription = $client->update($mp_subscription_id, [
         "status" => "cancelled"
@@ -62,3 +64,5 @@ try {
     header("Location: ../pages/minha_assinatura.php?msg=erro_mp_cancelar");
     exit;
 }
+?>
+

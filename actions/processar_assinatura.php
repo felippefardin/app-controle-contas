@@ -30,15 +30,8 @@ if (!$token || !$email || !$user_id || $user_id == 0) {
 // ** SEU ACCESS TOKEN DE TESTE (SECRETO) JÁ ESTÁ AQUI **
 $accessToken = 'APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376'; 
 
-// ** IMPORTANTE: COLOQUE O ID DO PLANO QUE VOCÊ CRIOU NO DASHBOARD **
-// (Este ID deve ter sido criado em "Planos e Assinaturas" no dashboard do MP)
-$plan_id = 'SEU_ID_DO_PLANO_DE_TESTE_VEM_AQUI'; // EX: 2c9380848f...
-
-if ($plan_id == 'SEU_ID_DO_PLANO_DE_TESTE_VEM_AQUI') {
-     // Erro para o desenvolvedor: plano não configurado
-     header('Location: ../pages/assinar.php?status=error&msg=plan_id_faltando');
-     exit;
-}
+// ** IMPORTANTE: ID DO PLANO FORNECIDO PELO USUÁRIO **
+$plan_id = '41056ed7a72c4f39ac45cb600cb855b3'; 
 
 
 try {
@@ -56,8 +49,8 @@ try {
         "status" => "authorized" // Tenta autorizar a assinatura imediatamente
     ];
 
-    // 3. Cria o cliente de Assinatura
-    // $client = new SubscriptionClient(); 
+    // 3. Cria o cliente de Assinatura (LINHA CORRIGIDA)
+    $client = new SubscriptionClient(); 
     
     // 4. Cria a assinatura enviando a requisição
     $subscription = $client->create($request);

@@ -6,107 +6,71 @@ if (!isset($_SESSION['registration_email'])) {
     header("Location: register_.php");
     exit;
 }
-// Inclua seu header (sem menu de navegação, pois não está logado)
+
+// 1. Pegar o ID do Plano da sua URL
+$plan_id = "41056ed7a72c4f39ac45cb600cb855b3";
+
+// 2. Pegar o email do usuário da sessão
+$payer_email = urlencode($_SESSION['registration_email']);
+
+// 3. Montar a URL de checkout completa com o email
+$checkout_url = "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id={$plan_id}&payer_email={$payer_email}";
+
+// 4. (IMPORTANTE) URL de retorno
+// Você DEVE configurar no seu painel do Mercado Pago para onde o usuário
+// volta após o sucesso (ex: 'https://seusite.com/actions/retorno_trial.php')
+// Esse script 'retorno_trial.php' receberá os dados e finalizará o cadastro.
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completar Cadastro - Teste Gratuito</title>
+    <!-- Seus links de CSS podem vir aqui -->
+    <style>
+        .container { max-width: 500px; margin-top: 50px; font-family: Arial, sans-serif; }
+        .mp-button {
+            display: inline-block;
+            padding: 15px 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #fff;
+            background-color: #009ee3;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .mp-button:hover { background-color: #007bb2; }
+    </style>
+</head>
+<body>
+
+<?php
+// Inclua seu header
+// Ex: include '../includes/header_home.php';
 ?>
 
-<div class="container" style="max-width: 500px; margin-top: 50px;">
+<div class="container">
     <h2>Quase lá, <?php echo htmlspecialchars($_SESSION['nome_usuario_temp'] ?? 'Usuário'); ?>!</h2>
     <p>Complete seu cadastro para iniciar seu <strong style="color: green;">teste grátis de 30 dias</strong>.</p>
     <p>Nenhuma cobrança será feita hoje. Você será cobrado R$ 30,00/mês apenas após o período de teste.</p>
+    <p>Clique no botão abaixo para concluir seu cadastro de pagamento de forma segura no site do Mercado Pago.</p>
     
     <!-- 
-      O formulário agora é enviado APENAS pelo JavaScript
-      O 'action' e 'method' ainda são úteis para o JS
+      Botão que redireciona o usuário para o link de checkout que você criou.
     -->
-    <form id="form-checkout" action="../actions/processar_trial.php" method="POST">
-        
-        <!-- O Brick será renderizado aqui. Ele contém seu próprio botão de submit -->
-        <div id="paymentBrick_container"></div>
+    <a href="<?php echo $checkout_url; ?>" class="mp-button">
+        Iniciar Teste Gratuito (Pagar com Mercado Pago)
+    </a>
 
-        <!-- 
-          ✅ CORREÇÃO: O botão de submit externo foi removido.
-          O usuário DEVE clicar no botão gerado pelo Brick acima.
-          O botão abaixo (id="form-checkout__submit") foi removido
-          para evitar o envio do formulário com o token vazio.
-        -->
-        
-        <!-- Spinner de carregamento -->
-        <div id="loading-spinner" style="display: none; margin-top: 15px; text-align: center;">Processando...</div>
-
-        <!-- Campos ocultos que o JS irá preencher -->
-        <input type="hidden" id="card_token" name="card_token" />
-        <input type="hidden" id="payer_email" name="payer_email" />
-    </form>
 </div>
 
-<script src="https://sdk.mercadopago.com/js/v2"></script>
-
-<script>
-    
-    const mp = new MercadoPago('APP_USR-b32aa1af-8eb4-4c72-9fec-8242aba7b4ca', {
-        locale: 'pt-BR'
-    });
-    const bricksBuilder = mp.bricks();
-    const formCheckout = document.getElementById('form-checkout');
-    const loadingSpinner = document.getElementById('loading-spinner');
-
-    const renderPaymentBrick = async (bricksBuilder) => {
-        const settings = {
-            initialization: {
-                amount: 30.00, // O valor aqui é apenas para exibição no Brick
-                payer: {
-                    email: "<?php echo $_SESSION['registration_email']; ?>",
-                    entityType: 'individual', // Adicionado para remover o warning
-                },
-            },
-            customization: {
-                paymentMethods: {
-                    creditCard: 'all',
-                    maxInstallments: 1
-                },
-                visual: {
-                    // Este é o botão que o usuário deve clicar
-                    buttonText: 'Confirmar Dados e Iniciar Teste' 
-                }
-            },
-            callbacks: {
-                onReady: () => {
-                    console.log('✅ Brick carregado com sucesso');
-                },
-                onSubmit: (cardFormData) => {
-                    // Este callback é disparado quando o usuário clica
-                    // no botão DENTRO do Brick
-                    
-                    // Mostra o spinner
-                    loadingSpinner.style.display = 'block';
-
-                    // Preenche os dados no formulário
-                    document.getElementById('card_token').value = cardFormData.token;
-                    document.getElementById('payer_email').value = cardFormData.payer.email;
-
-                    // Envia o formulário
-                    formCheckout.submit();
-                },
-                onError: (error) => {
-                    console.error('❌ Erro no Brick:', error);
-                    loadingSpinner.style.display = 'none'; // Esconde o spinner
-                    alert('Houve um erro com seus dados de pagamento. Verifique e tente novamente.');
-                },
-            },
-        };
-
-        window.paymentBrickController = await bricksBuilder.create(
-            'payment',
-            'paymentBrick_container',
-            settings
-        );
-    };
-
-    renderPaymentBrick(bricksBuilder);
-</script>
-
-
-
 <?php
-// Incluir seu footer
+include '../includes/footer.php';
 ?>
+</body>
+</html>

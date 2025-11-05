@@ -5,11 +5,13 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use MercadoPago\Client\PreApproval\PreApprovalClient;
+// --- CORREÇÃO AQUI ---
+use MercadoPago\Client\Subscription\SubscriptionClient; // Cliente correto
 use MercadoPago\MercadoPagoConfig;
 
 // ✅ Configuração do SDK
 MercadoPagoConfig::setAccessToken("APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376");
+// --- FIM DA CORREÇÃO ---
 
 $userId = $_SESSION['user_id'] ?? null;
 
@@ -33,21 +35,31 @@ try {
     $mp_subscription_id = $user['mp_subscription_id'];
 
     // ✅ 2. Cancelar a assinatura via API do Mercado Pago
-    $client = new PreApprovalClient();
-    $client->update($mp_subscription_id, [
+    // --- CORREÇÃO AQUI ---
+    // $client = new SubscriptionClient(); 
+    // O método 'update' é usado para alterar o status da assinatura (inclusive cancelar)
+    $subscription = $client->update($mp_subscription_id, [
         "status" => "cancelled"
     ]);
+    // --- FIM DA CORREÇÃO ---
+    
+    // Verifica se o cancelamento foi bem-sucedido (status retornado pela API)
+    if (isset($subscription->status) && $subscription->status === 'cancelled') {
 
-    // ✅ 3. Atualizar status no banco local
-    $stmt = $pdo->prepare("UPDATE usuarios SET status_assinatura = 'cancelled' WHERE id = ?");
-    $stmt->execute([$userId]);
+        // ✅ 3. Atualizar status no banco local
+        $stmt = $pdo->prepare("UPDATE usuarios SET status_assinatura = 'cancelled' WHERE id = ?");
+        $stmt->execute([$userId]);
 
-    // ✅ 4. Redirecionar com sucesso
-    header("Location: ../pages/minha_assinatura.php?msg=cancelamento_sucesso");
-    exit;
+        // ✅ 4. Redirecionar com sucesso
+        header("Location: ../pages/minha_assinatura.php?msg=cancelamento_sucesso");
+        exit;
+    } else {
+         throw new Exception("A API do Mercado Pago não confirmou o cancelamento. Status: " . ($subscription->status ?? 'desconhecido'));
+    }
 
 } catch (Exception $e) {
-    error_log("Erro ao cancelar assinatura MP: " . $e->getMessage());
+    error_log("Erro ao cancelar assinatura MP (Subscription): " . $e->getMessage());
     header("Location: ../pages/minha_assinatura.php?msg=erro_mp_cancelar");
     exit;
 }
+
