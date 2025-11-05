@@ -244,6 +244,7 @@ if (isset($_SESSION['success_message'])) {
         <input type="text" name="valor" placeholder="Valor (ex: 123,45)" required oninput="this.value=this.value.replace(/[^0-9.,]/g,'')">
         <input type="date" name="data_vencimento" required>
         
+        <input type="text" name="descricao" placeholder="Descrição (Opcional)">
         <select name="id_categoria" required>
             <option value="">-- Selecione uma Categoria --</option>
             <?php foreach ($categorias_despesa as $categoria): ?>

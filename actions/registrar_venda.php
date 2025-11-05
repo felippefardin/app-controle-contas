@@ -110,6 +110,10 @@ try {
         $data_baixa = $hoje;
         $baixado_por = $id_usuario;
 
+        // --- INÍCIO DA ALTERAÇÃO (REQ 1) ---
+        // Bloco de lançamento automático no caixa diário foi removido (comentado).
+        
+        /*
         // Também faz o lançamento no caixa diário para pagamentos à vista
         $stmt_check_caixa = $conn->prepare("SELECT id, valor, descricao FROM caixa_diario WHERE usuario_id = ? AND data = ?");
         $stmt_check_caixa->bind_param("is", $id_usuario, $hoje);
@@ -132,6 +136,9 @@ try {
             $stmt_caixa->bind_param("isdsi", $id_usuario, $hoje, $total_venda_liquido, $descricao, $venda_id);
             $stmt_caixa->execute();
         }
+        */
+        // --- FIM DA ALTERAÇÃO (REQ 1) ---
+
 
     } else { // Se for a prazo, fica pendente
         $status = 'pendente';
@@ -150,7 +157,7 @@ try {
         "iiisdsisssi",
         $id_usuario,
         $cliente_id,
-        $categoria_venda_id, // CORRIGIDO: Usar o ID da categoria correta
+        $categoria_venda_id,
         $descricao,
         $total_venda_liquido,
         $data_venc,

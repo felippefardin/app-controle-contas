@@ -19,14 +19,19 @@ $perfil = $usuario_logado['nivel_acesso'];
 
 include('../includes/header.php');
 
-// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS E FILTROS
 $where = ["cr.status = 'baixada'"];
 // Filtra apenas pelo ID do usuário logado
 $where[] = "cr.usuario_id = " . intval($usuarioId);
 
-if (!empty($_GET['responsavel'])) $where[] = "cr.responsavel LIKE '%" . $conn->real_escape_string($_GET['responsavel']) . "%'";
-if (!empty($_GET['numero'])) $where[] = "cr.numero LIKE '%" . $conn->real_escape_string($_GET['numero']) . "%'";
-if (!empty($_GET['data_vencimento'])) $where[] = "cr.data_vencimento = '" . $conn->real_escape_string($_GET['data_vencimento']) . "'";
+// Parâmetros de busca
+$responsavel_search = $_GET['responsavel'] ?? '';
+$numero_search = $_GET['numero'] ?? '';
+$data_vencimento_search = $_GET['data_vencimento'] ?? '';
+
+if (!empty($responsavel_search)) $where[] = "(cr.responsavel LIKE '%" . $conn->real_escape_string($responsavel_search) . "%' OR pf.nome LIKE '%" . $conn->real_escape_string($responsavel_search) . "%')";
+if (!empty($numero_search)) $where[] = "cr.numero LIKE '%" . $conn->real_escape_string($numero_search) . "%'";
+if (!empty($data_vencimento_search)) $where[] = "cr.data_vencimento = '" . $conn->real_escape_string($data_vencimento_search) . "'";
 
 // --- SQL CORRIGIDO ---
 $sql = "SELECT cr.*,
@@ -76,6 +81,29 @@ if (!$result) {
         }
         .close-msg-btn:hover { color: #ddd; }
 
+        /* --- Barra de Busca --- */
+        form.search-form {
+          display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+          margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
+        }
+        form.search-form input[type="text"],
+        form.search-form input[type="date"] {
+          padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444;
+          background-color: #333; color: #eee; min-width: 180px;
+        }
+        form.search-form input::placeholder { color: #aaa; }
+        form.search-form button, form.search-form a.clear-filters {
+          color: white; border: none; padding: 10px 22px; font-weight: bold;
+          border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
+          min-width: 120px; text-align: center; display: inline-flex;
+          align-items: center; justify-content: center; text-decoration: none;
+        }
+        form.search-form button { background-color: #27ae60; font-size: 16px; }
+        form.search-form button:hover { background-color: #1e874b; }
+        form.search-form a.clear-filters { background-color: #cc3333; }
+        form.search-form a.clear-filters:hover { background-color: #a02a2a; }
+        /* --- Fim Barra de Busca --- */
+
         table { width: 100%;  background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 20px; }
         th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
         th { background-color: #222; }
@@ -122,16 +150,25 @@ if (isset($_SESSION['error_message'])) {
 
 <h2>Contas a Receber Baixadas</h2>
 
+<form class="search-form" method="GET" action="">
+  <input type="text" name="responsavel" placeholder="Responsável" value="<?php echo htmlspecialchars($responsavel_search); ?>">
+  <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($numero_search); ?>">
+  <input type="date" name="data_vencimento" placeholder="Data Vencimento" value="<?php echo htmlspecialchars($data_vencimento_search); ?>">
+  <button type="submit"><i class="fa fa-search"></i> Buscar</button>
+  <a href="contas_receber_baixadas.php" class="clear-filters">Limpar</a>
+</form>
+
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Responsável</th><th>Vencimento</th><th>Data Baixa</th><th>Valor</th><th>Baixado por</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Responsável</th><th>Descrição</th><th>Vencimento</th><th>Data Baixa</th><th>Valor</th><th>Baixado por</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
         $responsavelDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['responsavel'] ?? '');
 
         echo "<tr>";
         echo "<td data-label='Responsável'>".htmlspecialchars($responsavelDisplay)."</td>";
+        echo "<td data-label='Descrição'>".htmlspecialchars($row['descricao'] ?? '-')."</td>";
         echo "<td data-label='Vencimento'>".($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-')."</td>";
         echo "<td data-label='Data Baixa'>".($row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";

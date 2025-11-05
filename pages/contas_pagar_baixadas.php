@@ -19,10 +19,27 @@ $perfil = $usuario_logado['nivel_acesso'];
 
 include('../includes/header.php');
 
-// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
+// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS E ADICIONA FILTROS
 $where = ["c.status='baixada'"];
 // No modelo SaaS, cada usuário só pode ver seus próprios dados.
 $where[] = "c.usuario_id = " . intval($usuarioId);
+
+// Filtros de pesquisa
+$fornecedor_search = $_GET['fornecedor'] ?? '';
+$numero_search = $_GET['numero'] ?? '';
+$data_inicio = $_GET['data_inicio'] ?? '';
+$data_fim = $_GET['data_fim'] ?? '';
+
+if (!empty($fornecedor_search)) {
+    $where[] = "(c.fornecedor LIKE '%" . $conn->real_escape_string($fornecedor_search) . "%' OR pf.nome LIKE '%" . $conn->real_escape_string($fornecedor_search) . "%')";
+}
+if (!empty($numero_search)) {
+    $where[] = "c.numero LIKE '%" . $conn->real_escape_string($numero_search) . "%'";
+}
+if (!empty($data_inicio) && !empty($data_fim)) {
+    $where[] = "c.data_baixa BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
+}
+
 
 $sql = "SELECT c.*, u.nome AS usuario_baixou, pf.nome AS nome_pessoa_fornecedor
         FROM contas_pagar c
@@ -69,6 +86,30 @@ $result = $conn->query($sql);
         }
         .close-msg-btn:hover { color: #ddd; }
 
+        /* --- Barra de Busca --- */
+        form.search-form {
+          display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+          margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
+        }
+        form.search-form input[type="text"],
+        form.search-form input[type="date"] {
+          padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444;
+          background-color: #333; color: #eee; min-width: 180px;
+        }
+        form.search-form input::placeholder { color: #aaa; }
+        form.search-form button, form.search-form a.clear-filters {
+          color: white; border: none; padding: 10px 22px; font-weight: bold;
+          border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
+          min-width: 120px; text-align: center; display: inline-flex;
+          align-items: center; justify-content: center; text-decoration: none;
+        }
+        form.search-form button { background-color: #27ae60; font-size: 16px; }
+        form.search-form button:hover { background-color: #1e874b; }
+        form.search-form a.clear-filters { background-color: #cc3333; }
+        form.search-form a.clear-filters:hover { background-color: #a02a2a; }
+        /* --- Fim Barra de Busca --- */
+
+
         /* Tabela */
         table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
         th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
@@ -101,10 +142,19 @@ if (isset($_SESSION['success_message'])) {
 
 <h2>Contas a Pagar - Baixadas</h2>
 
+<form class="search-form" method="GET" action="">
+  <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($fornecedor_search); ?>">
+  <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($numero_search); ?>">
+  <input type="date" name="data_inicio" placeholder="Data Baixa Início" value="<?php echo htmlspecialchars($data_inicio); ?>">
+  <input type="date" name="data_fim" placeholder="Data Baixa Fim" value="<?php echo htmlspecialchars($data_fim); ?>">
+  <button type="submit"><i class="fa fa-search"></i> Buscar</button>
+  <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar</a>
+</form>
+
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Juros</th><th>Forma de Pagamento</th><th>Data de Baixa</th><th>Usuário</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
+    echo "<thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Juros</th><th>Forma Pag.</th><th>Data Baixa</th><th>Usuário</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
         $categoria_nome = '-';
@@ -123,6 +173,7 @@ if ($result && $result->num_rows > 0) {
 
         echo "<tr>";
         echo "<td data-label='Fornecedor'>".htmlspecialchars($fornecedorDisplay)."</td>";
+        echo "<td data-label='Descrição'>".htmlspecialchars($row['descricao'] ?? '-')."</td>";
         echo "<td data-label='Vencimento'>".date('d/m/Y', strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";

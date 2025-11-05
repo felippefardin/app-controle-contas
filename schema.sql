@@ -1,4 +1,3 @@
-
 -- Schema para a criação de um novo banco de dados de cliente (tenant)
 
 
@@ -91,6 +90,7 @@ CREATE TABLE `contas_pagar` (
   `comprovante` varchar(255) DEFAULT NULL,
   `data_pagamento` datetime DEFAULT NULL,
   `id_pessoa_fornecedor` int DEFAULT NULL,
+  `descricao` TEXT DEFAULT NULL, -- <-- CAMPO ADICIONADO
   PRIMARY KEY (`id`),
   KEY `idx_contas_pagar_usuario` (`usuario_id`),
   KEY `id_categoria` (`id_categoria`),
