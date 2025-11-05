@@ -232,15 +232,18 @@ CREATE TABLE `compra_items` (
   KEY `id_produto` (`id_produto`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `solicitacoes_exclusao` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `token` varchar(64) NOT NULL,
-  `expira_em` datetime NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `fk_solicitacoes_exclusao_usuario` (`id_usuario`),
-  CONSTRAINT `fk_solicitacoes_exclusao_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS solicitacoes_exclusao (
+  id INT NOT NULL AUTO_INCREMENT,
+  id_usuario INT NOT NULL,
+  token VARCHAR(64) NOT NULL,
+  expira_em DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY fk_solicitacoes_exclusao_usuario (id_usuario),
+  CONSTRAINT fk_solicitacoes_exclusao_usuario
+    FOREIGN KEY (id_usuario) REFERENCES usuarios (id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 
 CREATE TABLE `empresa_config` (
@@ -316,4 +319,12 @@ CREATE TABLE `pagamentos_historico` (
   PRIMARY KEY (`id`),
   KEY `id_usuario` (`id_usuario`),
   KEY `id_assinatura` (`id_assinatura`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `configuracoes_tenant` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `chave` varchar(100) NOT NULL,
+  `valor` text,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_chave` (`chave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

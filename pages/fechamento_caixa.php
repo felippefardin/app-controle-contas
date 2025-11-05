@@ -37,6 +37,60 @@ while ($row = $lancamentos->fetch_assoc()) {
     $total_geral += $row['total'];
 }
 
+// --- INÍCIO DA ALTERAÇÃO ---
+// ✅ 3.5. Contagem de Clientes Novos/Retorno
+$clientes_novos = 0;
+$clientes_retorno = 0;
+$clientes_dia_ids = [];
+
+// Pega todos os clientes únicos do dia
+$stmt_clientes_dia = $conn->prepare("
+    SELECT DISTINCT id_cliente 
+    FROM vendas 
+    WHERE id_usuario = ? AND DATE(data_venda) = ?
+");
+$stmt_clientes_dia->bind_param("is", $id_usuario, $data_selecionada);
+$stmt_clientes_dia->execute();
+$result_clientes_dia = $stmt_clientes_dia->get_result();
+while ($row = $result_clientes_dia->fetch_assoc()) {
+    $clientes_dia_ids[] = $row['id_cliente'];
+}
+$stmt_clientes_dia->close();
+
+if (!empty($clientes_dia_ids)) {
+    // Para cada cliente, verifica qual foi a data da sua primeira venda
+    // Cria placeholders (?) para a cláusula IN
+    $placeholders = implode(',', array_fill(0, count($clientes_dia_ids), '?'));
+    // Define os tipos de parâmetros para o bind_param (i para id_usuario, seguido de 'i' para cada id_cliente)
+    $types = 'i' . str_repeat('i', count($clientes_dia_ids));
+    // Cria o array de parâmetros para o bind_param
+    $params = [$id_usuario, ...$clientes_dia_ids];
+    
+    $sql_primeira_venda = "
+        SELECT id_cliente, MIN(DATE(data_venda)) AS data_primeira_venda
+        FROM vendas
+        WHERE id_usuario = ? AND id_cliente IN ($placeholders)
+        GROUP BY id_cliente
+    ";
+    
+    $stmt_primeira_venda = $conn->prepare($sql_primeira_venda);
+    // Usa o spread operator (...) para passar os parâmetros para bind_param
+    $stmt_primeira_venda->bind_param($types, ...$params);
+    $stmt_primeira_venda->execute();
+    $result_primeira_venda = $stmt_primeira_venda->get_result();
+
+    while ($row_primeira = $result_primeira_venda->fetch_assoc()) {
+        if ($row_primeira['data_primeira_venda'] == $data_selecionada) {
+            $clientes_novos++;
+        } else {
+            $clientes_retorno++;
+        }
+    }
+    $stmt_primeira_venda->close();
+}
+// --- FIM DA ALTERAÇÃO ---
+
+
 // ✅ 4. Listagem das vendas individuais
 $stmt_vendas = $conn->prepare("
     SELECT id, data_venda, valor_total, forma_pagamento 
@@ -143,6 +197,21 @@ $vendas = $stmt_vendas->get_result();
         <p>Nenhuma venda encontrada nesta data.</p>
     <?php endif; ?>
 
+    <h4 class="mt-5 mb-3">Resumo de Clientes</h4>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card-resumo forma-dinheiro">
+                <strong>Clientes Novos:</strong> 
+                <span class="float-right" style="font-size: 1.2rem;"><?= $clientes_novos ?></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card-resumo forma-debito">
+                <strong>Clientes de Retorno:</strong> 
+                <span class="float-right" style="font-size: 1.2rem;"><?= $clientes_retorno ?></span>
+            </div>
+        </div>
+    </div>
     <h4 class="mt-5 mb-3">Vendas do Dia</h4>
     <table class="table table-dark table-hover">
         <thead>
@@ -224,6 +293,7 @@ $(function() {
             },
             body: new URLSearchParams({
                 'venda_id': vendaId
+                // Assumindo que cancelar_venda.php usa o CSRF da sessão
             })
         })
         .then(res => res.json())

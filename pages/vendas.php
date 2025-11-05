@@ -16,7 +16,7 @@ if ($conn === null) {
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
 $usuario_logado = $_SESSION['usuario_logado'];
 $usuarioId = $usuario_logado['id'];
-$perfil = $usuario_logado['nivel_acesso'];
+$perfil = $usuario_logado['nivel_acesso']; // Nível de acesso (ex: 'admin', 'padrao')
 
 // --- BLOCO DE PROCESSAMENTO AJAX PARA BUSCAS ---
 if (isset($_GET['action'])) {
@@ -107,6 +107,11 @@ include('../includes/header.php');
         border-radius: 6px;
         height: calc(1.5em + .75rem + 2px);
         transition: border-color 0.3s;
+    }
+    
+    /* Corrige altura do modal input */
+    .modal-body .form-control {
+        height: calc(1.5em + .75rem + 2px) !important;
     }
 
     .form-control:focus {
@@ -245,6 +250,56 @@ include('../includes/header.php');
     ::-webkit-scrollbar-thumb:hover {
         background-color: #00bfff;
     }
+
+    /* === ✅ [NOVO] WIDGET META DE VENDAS === */
+    .meta-widget {
+        background-color: #2a2a2a;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 25px;
+        border: 1px solid #333;
+    }
+    .meta-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 1.1rem;
+    }
+    .meta-header-titulo {
+        color: #00bfff;
+        font-weight: 600;
+    }
+    .meta-header-valores {
+        color: #eee;
+        font-weight: bold;
+    }
+    .meta-header-editar {
+        color: #00bfff;
+        cursor: pointer;
+        transition: color 0.2s;
+        font-size: 0.9rem;
+    }
+    .meta-header-editar:hover {
+        color: #fff;
+    }
+    .progress {
+        height: 25px;
+        background-color: #1a1a1a;
+        border-radius: 5px;
+        border: 1px solid #444;
+        padding: 2px;
+    }
+    .progress-bar {
+        background-color: #28a745;
+        color: #fff;
+        font-weight: bold;
+        line-height: 21px; /* Alinhamento vertical */
+        text-align: center;
+        overflow: visible;
+        text-shadow: 0 0 2px #000;
+        transition: width 0.6s ease;
+    }
 </style>
 
 </head>
@@ -253,6 +308,27 @@ include('../includes/header.php');
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><i class="fas fa-cash-register"></i> Caixa de Vendas (PDV)</h1>
         <a href="fechamento_caixa.php" class="btn btn-info"><i class="fas fa-print"></i> Fechamento de Caixa</a>
+    </div>
+
+    <div class="meta-widget">
+        <div class="meta-header">
+            <span class="meta-header-titulo"><i class="fas fa-bullseye"></i> Meta de Vendas (Mês)</span>
+            
+            <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
+            <span id="btn-editar-meta" class="meta-header-editar" data-toggle="modal" data-target="#modalMetaVendas" title="Definir Meta do Mês">
+                <i class="fas fa-pencil-alt"></i> Definir Meta
+            </span>
+            <?php endif; ?>
+            
+        </div>
+        <div class="progress">
+            <div id="meta-progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                0%
+            </div>
+        </div>
+            <div class="meta-header-valores text-center mt-2">
+            <span id="meta-valores-texto">Atual: R$ 0,00 / Meta: R$ 0,00</span>
+        </div>
     </div>
     
     <div id="alert-container"></div>
@@ -293,12 +369,12 @@ include('../includes/header.php');
             <div class="form-group col-md-4">
                 <label for="forma_pagamento">Forma de Pagamento</label>
                 <select id="forma_pagamento" name="forma_pagamento" class="form-control" required>
-    <option value="dinheiro" selected>Dinheiro</option>
-    <option value="pix">PIX</option>
-    <option value="cartao_debito">Cartão de Débito</option>
-    <option value="cartao_credito">Cartão de Crédito</option>
-    <option value="receber">A Receber (A Prazo)</option>
-</select>
+                    <option value="dinheiro" selected>Dinheiro</option>
+                    <option value="pix">PIX</option>
+                    <option value="cartao_debito">Cartão de Débito</option>
+                    <option value="cartao_credito">Cartão de Crédito</option>
+                    <option value="receber">A Receber (A Prazo)</option>
+                </select>
             </div>
              <div class="form-group col-md-3">
                 <label for="desconto">Desconto (R$)</label>
@@ -317,14 +393,127 @@ include('../includes/header.php');
     </form>
 </div>
 
+<?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
+<div class="modal fade" id="modalMetaVendas" tabindex="-1" role="dialog" aria-labelledby="modalMetaLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="background-color: #222; color: #eee;">
+            <div class="modal-header" style="border-bottom: 1px solid #444;">
+                <h5 class="modal-title" id="modalMetaLabel">Definir Meta de Vendas do Mês</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: #fff;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="form-meta-vendas">
+                    <div class="form-group">
+                        <label for="valor_meta_input">Valor da Meta (R$)</label>
+                        <input type="text" class="form-control" id="valor_meta_input" name="meta" placeholder="Ex: 10000,00" style="background-color: #333; color: #eee; border: 1px solid #555;">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #444;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn-salvar-meta" class="btn btn-primary">Salvar Meta</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 <?php include('../includes/footer.php'); ?>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+
 <script>
 $(document).ready(function() {
     let tipoFinalizacao = 'recibo';
+    // ✅ [NOVO] Armazena o nível de acesso do PHP para uso no JS
+    const userPerfil = '<?= htmlspecialchars($perfil, ENT_QUOTES, 'UTF-8') ?>'; 
+
+    // === ✅ [NOVO] Carregar Meta de Vendas ===
+    function carregarMetaVendas() {
+        fetch('../actions/get_meta_vendas.php')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const meta = parseFloat(data.meta);
+                const atual = parseFloat(data.atual);
+                let percentual = 0;
+
+                if (meta > 0) {
+                    // Calcula o percentual, mas não deixa passar de 100%
+                    percentual = Math.min(100, (atual / meta) * 100);
+                }
+                
+                // Atualiza o texto (Ex: Atual: R$ 5.000,00 / Meta: R$ 10.000,00)
+                $('#meta-valores-texto').text(`Atual: R$ ${data.atual_formatado} / Meta: R$ ${data.meta_formatada}`);
+                
+                // Atualiza a barra de progresso
+                $('#meta-progress-bar')
+                    .css('width', percentual + '%')
+                    .attr('aria-valuenow', percentual)
+                    .text(percentual.toFixed(1) + '%');
+                
+                // Pré-preenche o modal se o usuário for admin
+                if (userPerfil === 'admin' || userPerfil === 'proprietario') {
+                    // Usamos .replace() para remover o separador de milhar se houver
+                    $('#valor_meta_input').val(data.meta_formatada.replace(/\./g, '')); 
+                }
+            } else {
+                console.warn('Não foi possível carregar a meta de vendas: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Erro ao buscar meta:', err);
+            showAlert('Erro de comunicação ao buscar meta de vendas.', 'danger');
+        });
+    }
+    
+    // Carrega a meta ao iniciar a página
+    carregarMetaVendas();
+
+    // === ✅ [NOVO] Handlers do Modal de Meta (só existe para admins) ===
+    if (userPerfil === 'admin' || userPerfil === 'proprietario') {
+        
+        // Aplica máscara de dinheiro no input do modal
+        $('#valor_meta_input').mask('000.000.000,00', {reverse: true});
+
+        // Handler do botão Salvar do modal
+        $('#btn-salvar-meta').on('click', function() {
+            const formData = new FormData();
+            const metaValor = $('#valor_meta_input').val();
+            
+            if(metaValor === '') {
+                showAlert('Por favor, insira um valor para a meta.', 'warning');
+                return;
+            }
+            
+            formData.append('meta', metaValor);
+
+            fetch('../actions/set_meta_vendas.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    $('#modalMetaVendas').modal('hide');
+                    carregarMetaVendas(); // Atualiza a exibição
+                } else {
+                    showAlert('Erro: ' + data.message, 'danger');
+                }
+            })
+            .catch(err => {
+                console.error('Erro ao salvar meta:', err);
+                showAlert('Erro de comunicação ao salvar a meta.', 'danger');
+            });
+        });
+    }
+
 
     // === Select2: Clientes ===
     $('#cliente_id').select2({
@@ -381,11 +570,18 @@ $(document).ready(function() {
     // === Atualizar linha quando quantidade mudar ===
     $('#venda-items').on('input', '.quantidade', function() {
         const tr = $(this).closest('tr');
-        const qtd = Math.max(1, parseInt($(this).val()) || 1);
+        let qtd = parseInt($(this).val()) || 1;
         const estoque = parseInt($(this).attr('max'));
+        
+        if (qtd < 1) {
+             qtd = 1;
+             $(this).val(1);
+        }
+        
         if (qtd > estoque) {
             showAlert(`⚠️ Estoque máximo disponível: ${estoque}`, 'warning');
             $(this).val(estoque);
+            qtd = estoque; // Atualiza a qtd para o cálculo
         }
         const preco = parseFloat(tr.data('preco'));
         const subtotal = (qtd * preco).toFixed(2);
@@ -398,6 +594,9 @@ $(document).ready(function() {
         $(this).closest('tr').remove();
         atualizarTotal();
     });
+    
+    // Aplica máscara de dinheiro no desconto (opcional, mas recomendado)
+    $('#desconto').mask('000.000.000,00', {reverse: true});
 
     // === Atualizar total com desconto ===
     $('#desconto').on('input', atualizarTotal);
@@ -408,10 +607,18 @@ $(document).ready(function() {
             const valor = parseFloat($(this).find('.subtotal').text().replace('R$ ', '')) || 0;
             total += valor;
         });
-        let desconto = parseFloat($('#desconto').val().replace(',', '.')) || 0;
-        if (desconto > total) desconto = total;
+        
+        // Converte o desconto (ex: 1.000,00) para float (1000.00)
+        let desconto = parseFloat($('#desconto').val().replace(/\./g, '').replace(',', '.')) || 0;
+        
+        if (desconto > total) {
+            desconto = total;
+            // (Opcional) Atualiza o campo se o desconto for maior que o total
+            // $('#desconto').val(desconto.toFixed(2).replace('.', ','));
+            // $('#desconto').trigger('input'); // Cuidado com loop infinito se não houver máscara
+        }
         const totalLiquido = (total - desconto).toFixed(2);
-        $('#total-geral').text(totalLiquido);
+        $('#total-geral').text(totalLiquido.replace('.', ',')); // Exibe com vírgula
     }
 
     // === Finalizar Venda ===
@@ -443,6 +650,10 @@ $(document).ready(function() {
         formData.append('itens', JSON.stringify(itens));
         formData.append('tipo_finalizacao', tipoFinalizacao);
 
+        // ✅ [MODIFICADO] Converte o desconto para o formato correto antes de enviar
+        const descontoFormatado = parseFloat($('#desconto').val().replace(/\./g, '').replace(',', '.')) || 0;
+        formData.set('desconto', descontoFormatado);
+
         showAlert('Processando venda...', 'info');
 
         fetch('../actions/registrar_venda.php', {
@@ -459,6 +670,7 @@ $(document).ready(function() {
                     emitirNFe(data.venda_id);
                 }
                 limparFormulario();
+                carregarMetaVendas(); // ✅ [MODIFICADO] ATUALIZA A META APÓS A VENDA
             } else {
                 showAlert('Erro: ' + data.message, 'danger');
             }
@@ -494,6 +706,9 @@ $(document).ready(function() {
     }
 
     function showAlert(message, type) {
+        // Remove alertas anteriores para evitar acúmulo
+        $('#alert-container .alert').alert('close');
+        
         $('#alert-container').html(`
             <div class="alert alert-${type} alert-dismissible fade show" role="alert">
                 ${message}

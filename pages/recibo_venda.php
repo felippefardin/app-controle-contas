@@ -18,6 +18,10 @@ if ($conn === null) {
 // ✅ 2. VALIDA O ID DA VENDA E O ID DO USUÁRIO
 $id_venda = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 $id_usuario = $_SESSION['usuario_logado']['id'];
+// --- INÍCIO DA ALTERAÇÃO ---
+// Pega o nome do usuário logado para exibir no recibo
+$nome_usuario_logado = $_SESSION['usuario_logado']['nome'] ?? 'Usuário'; 
+// --- FIM DA ALTERAÇÃO ---
 
 if (!$id_venda) {
     // Redireciona se o ID não for um número válido
@@ -93,7 +97,8 @@ include('../includes/header.php');
         <div class="receipt-info">
             <p><strong>Cliente:</strong> <?= htmlspecialchars($venda['nome_cliente']) ?></p>
             <p><strong>Venda ID:</strong> <?= htmlspecialchars($venda['id']) ?></p>
-        </div>
+            <p><strong>Vendedor:</strong> <?= htmlspecialchars($nome_usuario_logado) ?></p>
+            </div>
         <hr style="border-style: dashed;">
         <div class="receipt-body">
             <table>
