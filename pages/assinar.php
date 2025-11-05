@@ -1,214 +1,64 @@
 <?php
-// ATENÇÃO: Você precisa iniciar a sessão e carregar seus includes
-//
-// Exemplo (descomente e ajuste os caminhos se necessário):
-// require_once('../includes/session_init.php');
-// require_once('../includes/config/config.php');
-// require_once('../database.php');
+// actions/cancelar_assinatura.php
 
-// Redireciona se o usuário não estiver logado
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php?redirect=assinar');
-//     exit;
-// }
+require_once '../includes/session_init.php';
+require_once '../database.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-// Busca o email do usuário da sessão
-// $user_email = $_SESSION['user_email'] ?? 'teste@email.com';
+// --- CORREÇÃO AQUI ---
+use MercadoPago\Client\Subscription\SubscriptionClient; // Cliente correto
+use MercadoPago\MercadoPagoConfig;
 
-// ** APENAS PARA TESTE ** - Remova isso em produção
-$user_email = 'teste@usuario.com'; 
-// ** FIM DO TESTE **
+// ✅ Configuração do SDK
+MercadoPagoConfig::setAccessToken("APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376");
+// --- FIM DA CORREÇÃO ---
 
-// Incluir seu header (que deve ter o Bootstrap 5)
-// include('../includes/header.php'); 
-?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Assinar Plano</title>
+$userId = $_SESSION['user_id'] ?? null;
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+if (!$userId) {
+    header("Location: ../pages/login.php?msg=erro_sessao_expirada");
+    exit;
+}
 
-<style>
-    /* Customização da página de assinatura */
-    body, html {
-        height: 100%;
-        background-color: #f8f9fa; /* Um cinza claro para o fundo */
+try {
+    // ✅ 1. Buscar ID da assinatura no banco
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare("SELECT mp_subscription_id FROM usuarios WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user || empty($user['mp_subscription_id'])) {
+        header("Location: ../pages/minha_assinatura.php?msg=erro_assinatura_nao_encontrada");
+        exit;
     }
 
-    .payment-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 90vh; /* Centraliza verticalmente */
-        padding-top: 60px; /* Espaço para o navbar */
-    }
+    $mp_subscription_id = $user['mp_subscription_id'];
 
-    .payment-card {
-        background: #ffffff;
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-        padding: 40px;
-        width: 100%;
-        max-width: 550px; /* Define uma largura máxima */
-    }
-
-    .payment-card h2 {
-        font-weight: 700;
-        color: #333;
-        margin-bottom: 10px;
-    }
+    // ✅ 2. Cancelar a assinatura via API do Mercado Pago
+    // --- CORREÇÃO AQUI ---
+    $client = new SubscriptionClient(); // Cliente correto
+    // O método 'update' é usado para alterar o status da assinatura (inclusive cancelar)
+    $subscription = $client->update($mp_subscription_id, [
+        "status" => "cancelled"
+    ]);
+    // --- FIM DA CORREÇÃO ---
     
-    .payment-card .lead {
-        font-size: 1.1rem;
-        color: #555;
-        margin-bottom: 25px;
+    // Verifica se o cancelamento foi bem-sucedido (status retornado pela API)
+    if (isset($subscription->status) && $subscription->status === 'cancelled') {
+
+        // ✅ 3. Atualizar status no banco local
+        $stmt = $pdo->prepare("UPDATE usuarios SET status_assinatura = 'cancelled' WHERE id = ?");
+        $stmt->execute([$userId]);
+
+        // ✅ 4. Redirecionar com sucesso
+        header("Location: ../pages/minha_assinatura.php?msg=cancelamento_sucesso");
+        exit;
+    } else {
+         throw new Exception("A API do Mercado Pago não confirmou o cancelamento. Status: " . ($subscription->status ?? 'desconhecido'));
     }
 
-    /* Estilizando o botão de submit */
-    #form-checkout__submit {
-        background-color: #0d6efd; /* Azul primário do Bootstrap */
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 20px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        width: 100%;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        margin-top: 20px;
-    }
-
-    #form-checkout__submit:hover {
-        background-color: #0b5ed7; /* Um azul mais escuro no hover */
-    }
-    
-    #form-checkout__submit:disabled {
-        background-color: #aaa;
-        cursor: not-allowed;
-    }
-
-    .terms-text {
-        font-size: 0.9rem;
-        color: #777;
-        margin-top: 15px;
-    }
-    
-    /* Spinner de carregamento (opcional, mas bom) */
-    #loading-spinner {
-        text-align: center;
-        margin-top: 15px;
-        font-weight: 500;
-        color: #0d6efd;
-    }
-</style>
-
-<div class="payment-container">
-    <div class="payment-card">
-        
-        <h2><i class="bi bi-shield-lock"></i> Pagamento Seguro</h2>
-        <p class="lead">Assine o Plano Premium (R$ 30,00/mês) com segurança via Mercado Pago.</p>
-
-        <form id="form-checkout" action="../actions/processar_assinatura.php" method="POST">
-            
-            <div id="paymentBrick_container"></div>
-            
-            <div class="terms-text">
-                <input type="checkbox" id="terms" name="terms" required>
-                <label for="terms">Eu li e concordo com os <a href="termos.php" target="_blank">Termos de Uso</a> e a <a href="protecao_de_dados.php" target="_blank">Política de Privacidade</a>.</label>
-            </div>
-
-            <button type="submit" id="form-checkout__submit">Assinar Agora</button>
-            
-            <div id="loading-spinner" style="display: none;">
-                <div class="spinner-border spinner-border-sm" role="status"></div>
-                Processando...
-            </div>
-
-            <input type="hidden" id="card_token" name="card_token" />
-            <input type="hidden" id="payer_email" name="payer_email" />
-            <input type="hidden" id="user_id" name="user_id" value="<?php echo $_SESSION['user_id'] ?? 0; ?>" />
-        
-        </form>
-    </div>
-</div>
-
-<script src="https://sdk.mercadopago.com/js/v2"></script>
-
-<script>
-    // 1. Use sua Public Key de TESTE aqui
-    const mp = new MercadoPago('APP_USR-b32aa1af-8eb4-4c72-9fec-8242aba7b4ca', {
-        locale: 'pt-BR'
-    });
-    const bricksBuilder = mp.bricks();
-
-    const renderPaymentBrick = async (bricksBuilder) => {
-        const settings = {
-            initialization: {
-                amount: 30.00,
-                payer: {
-                    email: "<?php echo htmlspecialchars($user_email, ENT_QUOTES, 'UTF-8'); ?>",
-                    
-                    // --- CORREÇÃO AQUI ---
-                    // Adicione esta linha:
-                    entityType: "individual"
-                    // --- FIM DA CORREÇÃO ---
-                },
-            },
-            customization: {
-                visual: {
-                    style: {
-                        theme: 'bootstrap',
-                    }
-                },
-                paymentMethods: {
-                    creditCard: 'all',
-                    maxInstallments: 1 
-                }
-            },
-            callbacks: {
-                onReady: () => {
-                    // Brick pronto
-                },
-                onSubmit: (cardFormData) => {
-                    // Mostra o spinner e desabilita o botão
-                    document.getElementById('loading-spinner').style.display = 'block';
-                    document.getElementById('form-checkout__submit').disabled = true;
-
-                    // Preenche os campos ocultos do formulário
-                    document.getElementById('card_token').value = cardFormData.token;
-                    document.getElementById('payer_email').value = cardFormData.payer.email;
-                    
-                    // Envia o formulário para o seu backend
-                    document.getElementById('form-checkout').submit();
-                },
-                onError: (error) => {
-                    // Callback de erro
-                    console.error(error);
-                    alert('Houve um erro com seus dados de pagamento. Verifique e tente novamente.');
-                    
-                    // Reabilita o botão
-                    document.getElementById('loading-spinner').style.display = 'none';
-                    document.getElementById('form-checkout__submit').disabled = false;
-                },
-            },
-        };
-        window.paymentBrickController = await bricksBuilder.create(
-            'payment',
-            'paymentBrick_container',
-            settings
-        );
-    };
-
-    renderPaymentBrick(bricksBuilder);
-</script>
-
-<?php
-// Incluir seu footer.php
-// include('../includes/footer.php'); 
-?>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+} catch (Exception $e) {
+    error_log("Erro ao cancelar assinatura MP (Subscription): " . $e->getMessage());
+    header("Location: ../pages/minha_assinatura.php?msg=erro_mp_cancelar");
+    exit;
+}

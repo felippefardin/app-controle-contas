@@ -33,6 +33,7 @@ if (!$token || !$email || !$user_id || $user_id == 0) {
 $accessToken = 'APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376'; 
 
 // ** IMPORTANTE: COLOQUE O ID DO PLANO QUE VOCÊ CRIOU NO DASHBOARD **
+// (Este ID deve ter sido criado em "Planos e Assinaturas" no dashboard do MP)
 $plan_id = 'SEU_ID_DO_PLANO_DE_TESTE_VEM_AQUI'; // EX: 2c9380848f...
 
 if ($plan_id == 'SEU_ID_DO_PLANO_DE_TESTE_VEM_AQUI') {
@@ -58,7 +59,9 @@ try {
     ];
 
     // 3. Cria o cliente de Assinatura
-    $client = new PreApprovalClient(); // Esta linha agora vai funcionar
+    // --- CORREÇÃO AQUI ---
+    $client = new SubscriptionClient(); // Cliente correto para v1/subscriptions
+    // --- FIM DA CORREÇÃO ---
     
     // 4. Cria a assinatura enviando a requisição
     $subscription = $client->create($request);
@@ -67,17 +70,25 @@ try {
     if (isset($subscription->id) && ($subscription->status == 'authorized' || $subscription->status == 'pending')) {
         
         // --- 6. ATUALIZA O SEU BANCO DE DADOS ---
+        
+        // Mapeia o status para ser consistente com o webhook
+        $statusApp = ($subscription->status == 'authorized') ? 'active' : 'pending';
+        
         $pdo = $db->getConnection(); 
         
-        $stmt = $pdo->prepare("UPDATE usuarios SET status = 'ativo', 
+        // --- CORREÇÃO AQUI ---
+        // Atualiza a coluna 'status_assinatura' para consistência
+        $stmt = $pdo->prepare("UPDATE usuarios SET status_assinatura = :status, 
                                                   mp_subscription_id = :sub_id, 
                                                   data_assinatura = NOW() 
                                               WHERE id = :user_id");
         
         $stmt->execute([
+            ':status' => $statusApp, // Status mapeado
             ':sub_id' => $subscription->id,
             ':user_id' => $user_id
         ]);
+        // --- FIM DA CORREÇÃO ---
 
         // Redireciona para uma página de sucesso
         header('Location: ../pages/perfil.php?status=success&msg=assinatura_criada');
@@ -85,14 +96,18 @@ try {
         
     } else {
         // O pagamento foi recusado ou falhou
-        error_log("Pagamento recusado (user_id: $user_id). Status: " . ($subscription->status ?? 'DESCONHECIDO'));
+        $statusResposta = $subscription->status ?? 'DESCONHECIDO';
+        $errorMessage = $subscription->error_message ?? 'Pagamento recusado pela operadora.';
+        
+        error_log("Pagamento recusado (user_id: $user_id). Status: $statusResposta. Msg: $errorMessage");
         header('Location: ../pages/assinar.php?status=error&msg=pagamento_recusado');
         exit;
     }
 
 } catch (\MercadoPago\Exceptions\MPApiException $e) {
     // Captura erros específicos da API do Mercado Pago
-    error_log("Erro API Mercado Pago (user_id: $user_id): " . $e->getMessage());
+    $errorMessage = $e->getApiResponse()->getContent();
+    error_log("Erro API Mercado Pago (user_id: $user_id): " . $e->getMessage() . " | Response: " . json_encode($errorMessage));
     header('Location: ../pages/assinar.php?status=error&msg=erro_mp_api');
     exit;
 } catch (Exception $e) {

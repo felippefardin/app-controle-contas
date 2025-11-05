@@ -121,7 +121,7 @@
                     </li>
                     
                     <li class="nav-item ms-lg-2">
-                        <a class="btn btn-primary" href="/app-controle-contas/pages/assinar.php">
+                        <a class="btn btn-primary" href="/app-controle-contas/pages/registro.php">
                             <i class="bi bi-person-plus-fill"></i> Assinar Agora
                         </a>
                     </li>
@@ -135,7 +135,7 @@
             <h1>Tome o Controle Total das Suas Finanças</h1>
             <p class="lead">O sistema de gestão financeira simples e poderoso que ajuda você a organizar suas contas, controlar seu estoque e impulsionar suas vendas.</p>
             
-            <a href="/app-controle-contas/pages/assinar.php" class="btn btn-primary-custom btn-lg">
+            <a href="/app-controle-contas/pages/registro.php" class="btn btn-primary-custom btn-lg">
                 Comece Agora (Teste Grátis)
             </a>
         </div>
@@ -216,7 +216,7 @@
             <h2>Pronto para transformar sua gestão financeira?</h2>
             <p class="lead mb-4">Cadastre-se agora e experimente todas as funcionalidades.</p>
             
-            <a href="/app-controle-contas/pages/assinar.php" class="btn btn-light-custom btn-lg">
+            <a href="/app-controle-contas/pages/registro.php" class="btn btn-light-custom btn-lg">
                 Quero me cadastrar!
             </a>
         </div>

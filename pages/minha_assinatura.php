@@ -7,7 +7,9 @@ require_once __DIR__ . '/../includes/session_init.php'; // garante session_start
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use MercadoPago\MercadoPagoConfig;
-use MercadoPago\Client\PreApproval\PreApprovalClient;
+// --- CORREÇÃO AQUI ---
+use MercadoPago\Client\Subscription\SubscriptionClient; // Cliente correto
+// --- FIM DA CORREÇÃO ---
 
 // Pega o access token (config.php já deve ter setado via MercadoPagoConfig::setAccessToken)
 $accessToken = $_ENV['MERCADOPAGO_ACCESS_TOKEN'] ?? '';
@@ -27,16 +29,17 @@ $subscription = null;
 $payments = [];
 $errorMessage = '';
 
-// Função auxiliar: busca pagamentos pela preapproval_id usando a API REST do Mercado Pago
-function fetchPaymentsByPreapprovalId(string $preapprovalId, string $accessToken): array
+// --- CORREÇÃO AQUI ---
+// Função auxiliar: busca pagamentos pela subscription_id usando a API REST do Mercado Pago
+function fetchPaymentsBySubscriptionId(string $subscriptionId, string $accessToken): array
 {
-    if (empty($preapprovalId) || empty($accessToken)) {
+    if (empty($subscriptionId) || empty($accessToken)) {
         return [];
     }
 
     // Endpoint de busca de pagamentos (search) do Mercado Pago
-    // Usamos o /v1/payments/search com query param preapproval_id
-    $url = "https://api.mercadopago.com/v1/payments/search?preapproval_id=" . urlencode($preapprovalId) . "&limit=50";
+    // Usamos o /v1/payments/search com query param subscription_id
+    $url = "https://api.mercadopago.com/v1/payments/search?subscription_id=" . urlencode($subscriptionId) . "&limit=50&sort=date_approved&criteria=desc";
 
     $opts = [
         "http" => [
@@ -46,12 +49,11 @@ function fetchPaymentsByPreapprovalId(string $preapprovalId, string $accessToken
             "timeout" => 10
         ]
     ];
-
+// --- FIM DA CORREÇÃO ---
     $context = stream_context_create($opts);
     $result = @file_get_contents($url, false, $context);
 
     if ($result === false) {
-        // fallback: tenta buscar sem /search (opcional)
         return [];
     }
 
@@ -62,22 +64,30 @@ function fetchPaymentsByPreapprovalId(string $preapprovalId, string $accessToken
     return $data['results'] ?? [];
 }
 
-// 3. Buscar dados da assinatura via API (PreApprovalClient)
+// 3. Buscar dados da assinatura via API (SubscriptionClient)
 if ($user && !empty($user['mp_subscription_id'])) {
     try {
-        $preApprovalClient = new PreApprovalClient();
-        $subscription = $preApprovalClient->get($user['mp_subscription_id']);
+        // --- CORREÇÃO AQUI ---
+        $subscriptionClient = new SubscriptionClient(); // Cliente correto
+        $subscription = $subscriptionClient->get($user['mp_subscription_id']);
+        // --- FIM DA CORREÇÃO ---
 
-        // 4. Buscar histórico de pagamentos (faturas) via chamada REST (mais confiável)
-        // preferimos a chamada direta à API para evitar diferenças entre versões do SDK
-        $payments = fetchPaymentsByPreapprovalId($user['mp_subscription_id'], $accessToken);
+        // 4. Buscar histórico de pagamentos (faturas) via chamada REST
+        // --- CORREÇÃO AQUI ---
+        $payments = fetchPaymentsBySubscriptionId($user['mp_subscription_id'], $accessToken);
+        // --- FIM DA CORREÇÃO ---
 
     } catch (Exception $e) {
         $errorMessage = 'Não foi possível carregar os dados da sua assinatura. Tente novamente mais tarde.';
         error_log("Erro ao carregar assinatura/minha_assinatura.php: " . $e->getMessage());
     }
 } else {
-    $errorMessage = 'Assinatura não encontrada.';
+    // Se o usuário está no banco mas sem ID, ou o status local é 'ativo' mas não achou ID.
+    if ($user && $user['status_assinatura'] === 'active' && empty($user['mp_subscription_id'])) {
+         $errorMessage = 'Não encontramos o ID da sua assinatura. Por favor, entre em contato com o suporte.';
+    } else {
+         $errorMessage = 'Assinatura não encontrada ou inativa.';
+    }
 }
 
 // Inclui o header da sua aplicação (HTML)
@@ -101,11 +111,14 @@ include '../includes/header.php';
                     Status:
                     <span class="badge 
                         <?php
-                            if (($subscription->status ?? '') === 'authorized') echo 'bg-success';
-                            elseif (($subscription->status ?? '') === 'paused') echo 'bg-warning';
-                            else echo 'bg-danger';
+                            // Mapeamento do status do MP para as classes do Bootstrap
+                            $status = $subscription->status ?? 'unknown';
+                            if ($status === 'authorized') echo 'bg-success';
+                            elseif ($status === 'paused') echo 'bg-warning';
+                            elseif ($status === 'pending') echo 'bg-info';
+                            else echo 'bg-danger'; // cancelled, expired, etc.
                         ?>">
-                        <?php echo ucfirst(htmlspecialchars($subscription->status ?? 'unknown')); ?>
+                        <?php echo ucfirst(htmlspecialchars($status)); ?>
                     </span>
                 </h5>
 
@@ -114,22 +127,24 @@ include '../includes/header.php';
                     <?php echo number_format($subscription->auto_recurring->transaction_amount ?? 0, 2, ',', '.'); ?> / mês
                 </p>
 
-                <?php if (!empty($subscription->auto_recurring->next_payment_date)): ?>
+                <?php if (!empty($subscription->next_payment_date)): // Campo correto na nova API ?>
                     <p>Próxima cobrança:
-                        <?php echo date('d/m/Y', strtotime($subscription->auto_recurring->next_payment_date)); ?>
+                        <?php echo date('d/m/Y', strtotime($subscription->next_payment_date)); ?>
                     </p>
                 <?php endif; ?>
 
                 <hr>
 
                 <?php if (in_array($subscription->status ?? '', ['authorized', 'paused'])): ?>
-                    <a href="atualizar_cartao.php" class="btn btn-info">Atualizar Cartão</a>
                     <form action="../actions/cancelar_assinatura.php" method="POST" style="display:inline-block; margin-left:10px;">
                         <button type="submit" class="btn btn-warning"
                             onclick="return confirm('Tem certeza que deseja cancelar sua assinatura? Esta ação não pode ser desfeita.')">
                             Cancelar Assinatura
                         </button>
                     </form>
+                <?php elseif ($subscription->status == 'cancelled'): ?>
+                     <p class="text-danger">Sua assinatura está cancelada.</p>
+                     <a href="assinar.php" class="btn btn-primary">Assinar Novamente</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -153,7 +168,7 @@ include '../includes/header.php';
                                     <td>
                                         <?php echo isset($payment['date_approved']) 
                                             ? date('d/m/Y H:i', strtotime($payment['date_approved'])) 
-                                            : 'N/A'; ?>
+                                            : (isset($payment['date_created']) ? date('d/m/Y H:i', strtotime($payment['date_created'])) : 'N/A'); ?>
                                     </td>
                                     <td><?php echo htmlspecialchars($payment['status'] ?? ''); ?></td>
                                     <td>R$ <?php echo number_format($payment['transaction_amount'] ?? 0, 2, ',', '.'); ?></td>

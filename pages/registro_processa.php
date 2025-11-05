@@ -39,10 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $nome_empresa = trim($_POST['nome'] ?? '');
 $email_admin  = trim(strtolower($_POST['email'] ?? ''));
 $senha_admin  = $_POST['senha'] ?? '';
-$cpf          = trim($_POST['cpf'] ?? '');
+// ===== AJUSTE 1: Corrigido de 'cpf' para 'documento' para bater com o formulário =====
+$documento    = trim($_POST['documento'] ?? ''); 
 $telefone     = trim($_POST['telefone'] ?? '');
 
-if (empty($nome_empresa) || empty($email_admin) || empty($senha_admin)) {
+if (empty($nome_empresa) || empty($email_admin) || empty($senha_admin) || empty($documento)) {
     die(estilizarMensagem("Preencha todos os campos obrigatórios.", "erro"));
 }
 
@@ -65,6 +66,7 @@ $stmt->close();
 
 // Variáveis para o try/catch
 $tenantId = 0;
+$novo_user_id = 0; // Variável para o ID do usuário
 $novo_db_nome = 'tenant_' . bin2hex(random_bytes(8));
 $novo_db_user = 'user_' . bin2hex(random_bytes(8));
 $novo_db_pass = bin2hex(random_bytes(16));
@@ -74,27 +76,28 @@ $senha_hash = password_hash($senha_admin, PASSWORD_DEFAULT);
 
 try {
     // --- ✅ ETAPA 1: Salva tenant no banco master (para obter o ID) ---
-    // (O $master_conn já foi aberto acima)
     $stmt_tenant = $master_conn->prepare(
         "INSERT INTO tenants (nome_empresa, admin_email, db_host, db_database, db_user, db_password, senha) 
          VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
-    // Usamos o $senha_hash, como definido no schema do app_controle_contas (2).sql
     $stmt_tenant->bind_param("sssssss", $nome_empresa, $email_admin, $env['DB_HOST'], $novo_db_nome, $novo_db_user, $novo_db_pass, $senha_hash);
     $stmt_tenant->execute();
     $tenantId = $stmt_tenant->insert_id; // <-- Obtemos o ID do Tenant
     $stmt_tenant->close();
 
-    // --- ✅ ETAPA 2: (A CORREÇÃO) Insere o usuário proprietário no banco master ---
+    // --- ✅ ETAPA 2: Insere o usuário proprietário no banco master ---
     $stmt_main_user = $master_conn->prepare(
         "INSERT INTO usuarios (nome, email, senha, nivel_acesso, tenant_id, tipo_pessoa, perfil, tipo, status, cpf, telefone) 
          VALUES (?, ?, ?, 'proprietario', ?, '', 'admin', 'admin', 'ativo', ?, ?)"
     );
     
-    // ✅ LINHA 93 CORRIGIDA: A string de tipos agora é "sssiss" (6 caracteres)
-    $stmt_main_user->bind_param("sssiss", $nome_empresa, $email_admin, $senha_hash, $tenantId, $cpf, $telefone);
+    // ===== AJUSTE 1 (Continuação): Usando $documento em vez de $cpf =====
+    $stmt_main_user->bind_param("sssiss", $nome_empresa, $email_admin, $senha_hash, $tenantId, $documento, $telefone);
     
     $stmt_main_user->execute();
+    // ===== AJUSTE 2: Captura o ID do usuário recém-criado =====
+    $novo_user_id = $master_conn->insert_id; 
+    
     $stmt_main_user->close();
     $master_conn->close(); // Fechamos a conexão master
 
@@ -130,18 +133,39 @@ try {
         "INSERT INTO usuarios (nome, email, cpf, telefone, senha, nivel_acesso, status) 
          VALUES (?, ?, ?, ?, ?, 'proprietario', 'ativo')"
     );
-    // Usamos o mesmo $senha_hash
-    $stmt_tenant_user->bind_param("sssss", $nome_empresa, $email_admin, $cpf, $telefone, $senha_hash);
+    // ===== AJUSTE 1 (Continuação): Usando $documento em vez de $cpf =====
+    $stmt_tenant_user->bind_param("sssss", $nome_empresa, $email_admin, $documento, $telefone, $senha_hash);
     $stmt_tenant_user->execute();
     $stmt_tenant_user->close();
     $tenant_conn->close();
 
-    echo estilizarMensagem("Cadastro da empresa realizado com sucesso! <br><a href='login.php'>Ir para o login</a>", "sucesso");
-    exit;
+    // ===== AJUSTE 3: Lógica de Login Automático e Redirecionamento =====
+    
+    // Define as variáveis de sessão para o login automático
+    $_SESSION['user_id'] = $novo_user_id;       // ID do usuário (da tabela master 'usuarios')
+    $_SESSION['user_email'] = $email_admin;
+    $_SESSION['user_name'] = $nome_empresa;
+    $_SESSION['tenant_id'] = $tenantId;         // ID do Tenant (da tabela 'tenants')
+    $_SESSION['db_database'] = $novo_db_nome;
+    $_SESSION['db_user'] = $novo_db_user;
+    $_SESSION['db_password'] = $novo_db_pass;
+    $_SESSION['nivel_acesso'] = 'proprietario';
+    $_SESSION['logged_in'] = true;
+
+    // Verifica para onde deve redirecionar
+    if (isset($_POST['redirect_to']) && $_POST['redirect_to'] === 'assinar') {
+        // Redireciona para a página de assinatura
+        header('Location: assinar.php');
+        exit;
+    } else {
+        // Comportamento padrão: exibe mensagem de sucesso
+        echo estilizarMensagem("Cadastro da empresa realizado com sucesso! <br><a href='login.php'>Ir para o login</a>", "sucesso");
+        exit;
+    }
+    // ===== FIM DO AJUSTE 3 =====
 
 } catch (Exception $e) {
     // Lógica de Rollback (reversão) em caso de falha
-    // Se algo falhou, precisamos apagar o que foi criado
     if ($tenantId > 0) {
         $master_conn_rollback = getMasterConnection();
         $master_conn_rollback->query("DELETE FROM tenants WHERE id = $tenantId");

@@ -116,7 +116,8 @@
     padding: 12px 16px; 
     border: none;
     border-radius: 8px;
-    background-color: #00bfff;
+    /* --- CORREÇÃO: Mudei a cor para verde (sugestão de "avançar") --- */
+    background-color: #28a745; 
     color: #fff;
     font-weight: bold;
     font-size: 1.1rem;
@@ -126,10 +127,27 @@
 
   .btn-submit:hover,
   .btn-submit:focus {
-    background-color: #0099cc;
+    /* --- CORREÇÃO: Cor de hover do botão verde --- */
+    background-color: #218838;
     outline: none;
     transform: translateY(-1px);
   }
+
+  /* --- ADICIONADO: Estilo para o link de login --- */
+  .login-link {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.9rem;
+  }
+  .login-link a {
+    color: #00bfff;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .login-link a:hover {
+    text-decoration: underline;
+  }
+  /* --- FIM DA ADIÇÃO --- */
 
   @media (max-width: 480px) {
     form { padding: 20px; }
@@ -143,9 +161,8 @@
 
 <div class="form-container">
   <form id="cadastroForm" action="registro_processa.php" method="post" novalidate>
-    <h2>Cadastro de Usuário</h2>
+    <h2>Crie sua Conta</h2>
 
-    <!-- Tipo de pessoa -->
     <label for="tipo_pessoa">Tipo de Pessoa:</label>
     <select id="tipo_pessoa" name="tipo_pessoa" required>
       <option value="fisica" selected>Pessoa Física</option>
@@ -155,7 +172,6 @@
     <label id="labelNome" for="nome">Nome Completo:</label>
     <input type="text" id="nome" name="nome" required>
 
-    <!-- Tipo de documento -->
     <label for="tipo_doc">Tipo de Documento:</label>
     <select id="tipo_doc" name="tipo_doc" required>
       <option value="cpf" selected>CPF</option>
@@ -190,8 +206,14 @@
     <input type="password" id="senha2" name="senha2" required>
     <div id="senhaError" class="error-message"></div>
 
-    <button class="btn-submit" type="submit">Cadastrar</button>
-  </form>
+    <input type="hidden" name="redirect_to" value="assinar">
+    
+    <button class="btn-submit" type="submit">Continuar para Assinatura</button>
+
+    <div class="login-link">
+      Já tem uma conta? <a href="login.php">Faça Login</a>
+    </div>
+    </form>
 </div>
 
 <script>
