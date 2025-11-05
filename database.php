@@ -169,4 +169,31 @@ function getTenantConnectionByName($tenant_db_name) {
 // Inicializa a conexão master (se você usa $conn como global em outros lugares)
 $conn = getMasterConnection();
 
+function getDbConnection() {
+    // Estas variáveis $_ENV[] são carregadas pelo config.php
+    // que usa a biblioteca Dotenv
+    $host = $_ENV['DB_HOST'];
+    $db   = $_ENV['DB_DATABASE'];
+    $user = $_ENV['DB_USER'];
+    $pass = $_ENV['DB_PASSWORD']; // <-- CORRIGIDO
+    $charset = 'utf8mb4';
+
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+
+    try {
+         $pdo = new PDO($dsn, $user, $pass, $options);
+         return $pdo;
+    } catch (\PDOException $e) {
+         // Em produção, você não deve exibir a mensagem de erro
+         // Apenas logar o erro e mostrar uma mensagem genérica.
+         error_log($e->getMessage()); // Loga o erro
+         throw new \PDOException("Erro ao conectar ao banco de dados.", (int)$e->getCode());
+    }
+}
+
 ?>

@@ -1,10 +1,18 @@
 <?php
+// Arquivo: includes/config/config.php
 
-// Carrega o autoloader do Composer para ter acesso às bibliotecas
+// 1. Carrega o autoloader do Composer
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-// Define o caminho para o diretório raiz do projeto
+// 2. Carrega variáveis de ambiente (.env)
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
 
-// (Pronto! Sem o colchete final)
+// 3. Configura o SDK do Mercado Pago (nova versão)
+use MercadoPago\MercadoPagoConfig;
+
+// ✅ Usa o Access Token salvo no .env
+MercadoPagoConfig::setAccessToken($_ENV['MERCADOPAGO_ACCESS_TOKEN'] ?? '');
+
+// 4. Carrega conexão com o banco de dados
+require_once __DIR__ . '/../../database.php';

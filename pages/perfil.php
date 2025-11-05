@@ -198,6 +198,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
      <div style="margin-top: 20px; text-align: center;">
     <a href="../actions/enviar_link_exclusao.php" class="btn-padrao-link" style="background-color: #dc3545;" onclick="return confirm('Você tem certeza que deseja iniciar o processo de exclusão da sua conta? Um e-mail de confirmação será enviado.');">Excluir Minha Conta</a>
   </div>
+
+  <div class="card-body">
+    <h5 class="card-title">Minha Assinatura</h5>
+    <p class="card-text">Gerencie seu plano, pagamentos e dados cadastrais.</p>
+    <a href="minha_assinatura.php" class="btn btn-primary">Gerenciar Assinatura</a>
+</div>
   </form>
 
 </div>
