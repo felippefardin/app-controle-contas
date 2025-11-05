@@ -1,84 +1,103 @@
-
 <?php
-require_once '../vendor/autoload.php';
-require_once '../includes/session_init.php';
-require_once '../database.php';
+// --- 1. INCLUDES E CONFIGURAÇÕES ---
 
+// --- CORREÇÃO AQUI ---
+// Importa as classes necessárias do SDK (ESSENCIAL!)
+use MercadoPago\Client\Subscription\SubscriptionClient;
 use MercadoPago\MercadoPagoConfig;
-use MercadoPago\Client\Customer\CustomerClient;
-use MercadoPago\Client\Preapproval\PreapprovalClient;
-use MercadoPago\Exceptions\MPApiException;
+// --- FIM DA CORREÇÃO ---
 
-// Configuração do SDK
-MercadoPagoConfig::setAccessToken('APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376'); // ⚠️ substitua pelo seu token do Mercado Pago
+// Garanta que os caminhos para seus arquivos de inicialização estejam corretos
+require_once('../includes/session_init.php');
+require_once('../includes/config/config.php');
+require_once('../database.php'); 
+require_once('../vendor/autoload.php'); // Essencial para carregar o SDK
 
-// Verifica se o usuário está logado
-if (!isset($_SESSION['usuario_logado'])) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Usuário não autenticado.']);
+// --- 2. VERIFICAÇÃO DE DADOS ---
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    die("Acesso inválido.");
+}
+
+$token = $_POST['card_token'] ?? null;
+$email = $_POST['payer_email'] ?? null;
+$user_id = $_POST['user_id'] ?? null; 
+
+if (!$token || !$email || !$user_id || $user_id == 0) {
+    header('Location: ../pages/assinar.php?status=error&msg=dados_invalidos');
     exit;
 }
 
-// Obtém o e-mail do usuário logado
-$userEmail = $_SESSION['usuario_logado']['email'] ?? null;
-if (!$userEmail) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'E-mail do usuário não encontrado.']);
-    exit;
+// --- 3. CONFIGURAÇÃO DO MERCADO PAGO (SDK V3) ---
+
+// ** SEU ACCESS TOKEN DE TESTE (SECRETO) JÁ ESTÁ AQUI **
+$accessToken = 'APP_USR-724044855614997-090410-93f6ade3025cb335eedfc97998612d89-2411601376'; 
+
+// ** IMPORTANTE: COLOQUE O ID DO PLANO QUE VOCÊ CRIOU NO DASHBOARD **
+$plan_id = 'SEU_ID_DO_PLANO_DE_TESTE_VEM_AQUI'; // EX: 2c9380848f...
+
+if ($plan_id == 'SEU_ID_DO_PLANO_DE_TESTE_VEM_AQUI') {
+     // Erro para o desenvolvedor: plano não configurado
+     header('Location: ../pages/assinar.php?status=error&msg=plan_id_faltando');
+     exit;
 }
+
 
 try {
-    $customerClient = new CustomerClient();
+    // 1. Configura o Access Token (Nova forma)
+    MercadoPagoConfig::setAccessToken($accessToken);
 
-    // ✅ Busca o cliente por e-mail
-    // $existingCustomers = $customerClient->search(["email" => $userEmail]);
+    // 2. Cria o corpo (payload) da requisição
+    $request = [
+        "preapproval_plan_id" => $plan_id,
+        "reason" => "Assinatura Plano Premium - Controle de Contas",
+        "payer" => [
+            "email" => $email
+        ],
+        "card_token_id" => $token,
+        "status" => "authorized" // Tenta autorizar a assinatura imediatamente
+    ];
 
-    // ✅ Compatibilidade entre versões antigas e novas do SDK
-    $results = $existingCustomers->results ?? ($existingCustomers["results"] ?? []);
+    // 3. Cria o cliente de Assinatura
+    $client = new PreApprovalClient(); // Esta linha agora vai funcionar
+    
+    // 4. Cria a assinatura enviando a requisição
+    $subscription = $client->create($request);
 
-    if (!empty($results)) {
-        $customer = is_array($results[0]) ? $results[0] : (array)$results[0];
-    } else {
-        // Cria o cliente se não existir
-        $customer = $customerClient->create([
-            "email" => $userEmail
+    // 5. Verifica a resposta
+    if (isset($subscription->id) && ($subscription->status == 'authorized' || $subscription->status == 'pending')) {
+        
+        // --- 6. ATUALIZA O SEU BANCO DE DADOS ---
+        $pdo = $db->getConnection(); 
+        
+        $stmt = $pdo->prepare("UPDATE usuarios SET status = 'ativo', 
+                                                  mp_subscription_id = :sub_id, 
+                                                  data_assinatura = NOW() 
+                                              WHERE id = :user_id");
+        
+        $stmt->execute([
+            ':sub_id' => $subscription->id,
+            ':user_id' => $user_id
         ]);
+
+        // Redireciona para uma página de sucesso
+        header('Location: ../pages/perfil.php?status=success&msg=assinatura_criada');
+        exit;
+        
+    } else {
+        // O pagamento foi recusado ou falhou
+        error_log("Pagamento recusado (user_id: $user_id). Status: " . ($subscription->status ?? 'DESCONHECIDO'));
+        header('Location: ../pages/assinar.php?status=error&msg=pagamento_recusado');
+        exit;
     }
 
-    // Cria uma assinatura mensal
-    $preapprovalClient = new PreapprovalClient();
-
-    $preapproval = $preapprovalClient->create([
-        "payer_email" => $userEmail,
-        "auto_recurring" => [
-            "frequency" => 1,
-            "frequency_type" => "months",
-            "transaction_amount" => 49.90,
-            "currency_id" => "BRL",
-            "start_date" => date('c'),
-            "end_date" => date('c', strtotime('+1 year'))
-        ],
-        "back_url" => "http://localhost/app-controle-contas/sucesso.php",
-        "reason" => "Assinatura mensal do App Controle de Contas"
-    ]);
-
-    // Salva o ID da assinatura no banco
-    $pdo = getMasterConnection();
-    $stmt = $pdo->prepare("UPDATE usuarios SET mp_subscription_id = ? WHERE email = ?");
-    $stmt->execute([$preapproval->id, $userEmail]);
-
-    echo json_encode([
-        'success' => true,
-        'message' => 'Assinatura criada com sucesso!',
-        'init_point' => $preapproval->init_point ?? null
-    ]);
-
-} catch (MPApiException $e) {
-    error_log("Erro API Mercado Pago: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Erro ao processar a assinatura.']);
+} catch (\MercadoPago\Exceptions\MPApiException $e) {
+    // Captura erros específicos da API do Mercado Pago
+    error_log("Erro API Mercado Pago (user_id: $user_id): " . $e->getMessage());
+    header('Location: ../pages/assinar.php?status=error&msg=erro_mp_api');
+    exit;
 } catch (Exception $e) {
-    error_log("Erro geral: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Erro interno.']);
+    // Captura outros erros gerais
+    error_log("Erro Geral (user_id: $user_id): " . $e->getMessage());
+    header('Location: ../pages/assinar.php?status=error&msg=erro_geral');
+    exit;
 }
