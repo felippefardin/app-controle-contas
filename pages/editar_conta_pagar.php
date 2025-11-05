@@ -22,10 +22,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $numero = $_POST['numero'];
     $valor = str_replace(['.', ','], ['', '.'], $_POST['valor']);
     $id_categoria = (int)$_POST['id_categoria'];
+    
+    // ✅ CAMPO DE DESCRIÇÃO ADICIONADO
+    $descricao = trim($_POST['descricao'] ?? null);
 
-    // Query com verificação de segurança
-    $stmt = $conn->prepare("UPDATE contas_pagar SET fornecedor = ?, data_vencimento = ?, numero = ?, valor = ?, id_categoria = ? WHERE id = ? AND usuario_id = ?");
-    $stmt->bind_param("sssdiis", $fornecedor, $data_vencimento, $numero, $valor, $id_categoria, $id_conta, $id_usuario);
+    // ✅ Query atualizada para incluir 'descricao'
+    $stmt = $conn->prepare("UPDATE contas_pagar SET fornecedor = ?, data_vencimento = ?, numero = ?, valor = ?, id_categoria = ?, descricao = ? WHERE id = ? AND usuario_id = ?");
+    
+    // ✅ Bind_param atualizado (adicionado "s" para descricao)
+    $stmt->bind_param("sssdisii", $fornecedor, $data_vencimento, $numero, $valor, $id_categoria, $descricao, $id_conta, $id_usuario);
 
     if ($stmt->execute()) {
         $_SESSION['success_message'] = "Conta editada com sucesso!";
@@ -84,6 +89,12 @@ $categorias_result = $conn->query("SELECT id, nome FROM categorias WHERE id_usua
                 <label for="fornecedor">Fornecedor</label>
                 <input type="text" class="form-control" id="fornecedor" name="fornecedor" value="<?= htmlspecialchars($conta['fornecedor']) ?>" required>
             </div>
+            
+            <div class="form-group">
+                <label for="descricao">Descrição</label>
+                <input type="text" class="form-control" id="descricao" name="descricao" value="<?= htmlspecialchars($conta['descricao'] ?? '') ?>">
+            </div>
+            
             <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="numero">Número/Documento</label>

@@ -245,6 +245,7 @@ if (isset($_SESSION['success_message'])) {
         <input type="date" name="data_vencimento" required>
         
         <input type="text" name="descricao" placeholder="Descrição (Opcional)">
+        
         <select name="id_categoria" required>
             <option value="">-- Selecione uma Categoria --</option>
             <?php foreach ($categorias_despesa as $categoria): ?>
@@ -266,7 +267,8 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Status de Vencimento</th><th>Ações</th></tr></thead>";
+    // ✅ CABEÇALHO DA TABELA ATUALIZADO
+    echo "<thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Status de Vencimento</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     $hoje = date('Y-m-d');
     while($row = $result->fetch_assoc()){
@@ -282,26 +284,25 @@ if ($result->num_rows > 0) {
 
         echo "<tr class='$classeVencimento'>";
         
-        // **INÍCIO DA CORREÇÃO**
-        // Garante que a variável $fornecedorDisplay sempre tenha um valor para ser usado.
         $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? '');
         
         echo "<td data-label='Fornecedor'>".htmlspecialchars($fornecedorDisplay)."</td>";
+        
+        // ✅ CÉLULA DA DESCRIÇÃO ADICIONADA
+        echo "<td data-label='Descrição'>".htmlspecialchars($row['descricao'] ?? 'N/A')."</td>";
+        
         echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format($row['valor'],2,',','.')."</td>";
         echo "<td data-label='Status de Vencimento'>". $statusData ."</td>";
         
-        // **CORREÇÃO APLICADA AQUI TAMBÉM**
-        // Usa a variável $fornecedorDisplay que já foi tratada, em vez de acessar $row['fornecedor'] diretamente.
         echo "<td data-label='Ações'>
             <a href='../actions/baixar_conta.php?id={$row['id']}' class='btn-action btn-baixar'><i class='fa-solid fa-check'></i> Baixar</a>
             <a href='editar_conta_pagar.php?id={$row['id']}' class='btn-action btn-editar'><i class='fa-solid fa-pen'></i> Editar</a>
             <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
             <a href='#' onclick=\"openRepetirModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-repetir'><i class='fa-solid fa-clone'></i> Repetir</a>
         </td>";
-        // **FIM DA CORREÇÃO**
         
         echo "</tr>";
     }

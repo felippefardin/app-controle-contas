@@ -16,17 +16,13 @@ if ($conn === null) {
 $usuario_logado = $_SESSION['usuario_logado'];
 $usuario_logado_id = $usuario_logado['id'];
 
-// Pega o perfil do usuário logado
-$stmt_perfil = $conn->prepare("SELECT perfil FROM usuarios WHERE id = ?");
-$stmt_perfil->bind_param("i", $usuario_logado_id);
-$stmt_perfil->execute();
-$result_perfil = $stmt_perfil->get_result();
-$usuario_logado_perfil = 'padrao'; // Perfil padrão
-if ($result_perfil->num_rows > 0) {
-    $row = $result_perfil->fetch_assoc();
-    $usuario_logado_perfil = $row['perfil'];
-}
-$stmt_perfil->close();
+// ✅ 3. (CORREÇÃO) PEGA O PERFIL DIRETO DA SESSÃO
+//    Removemos a consulta extra ao banco de dados.
+//    Usamos 'nivel_acesso', que é o padrão de permissão no seu sistema.
+$usuario_logado_perfil = $usuario_logado['nivel_acesso'] ?? 'padrao';
+
+// Define se o usuário é admin (proprietário ou admin)
+$is_admin = ($usuario_logado_perfil === 'admin' || $usuario_logado_perfil === 'proprietario');
 
 
 // Inclui o header após a lógica inicial
@@ -57,10 +53,9 @@ if (isset($_GET['erro'])) {
     }
 }
 
-// --- Início da Alteração (Filtrar visualização por perfil) ---
 
-// ✅ 3. FILTRA A QUERY BASEADO NO PERFIL
-if ($usuario_logado_perfil === 'admin') {
+// ✅ 4. FILTRA A QUERY BASEADO NO PERFIL
+if ($is_admin) {
     // Admin (ou proprietario) vê todos os usuários
     $sql = "SELECT id, nome, email, cpf, telefone FROM usuarios ORDER BY nome ASC";
     $result = $conn->query($sql);
@@ -138,12 +133,14 @@ if (!$result) {
         <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem_erro); ?></div>
     <?php endif; ?>
 
-    <?php if ($usuario_logado_perfil === 'admin'): // Apenas admin pode adicionar usuários ?>
+    <?php if ($is_admin): ?>
         <a href="add_usuario.php" class="btn btn-primary" style="margin-bottom: 20px;"><i class="fa-solid fa-plus"></i> Adicionar Novo Usuário</a>
     <?php endif; ?>
-    <?php if ($usuario_logado_perfil === 'admin'): // Apenas admin vê a pesquisa ?>
+    
+    <?php if ($is_admin): // Apenas admin vê a pesquisa ?>
         <input type="text" id="searchInput" placeholder="Pesquisar por Nome, Email ou CPF...">
     <?php endif; ?>
+    
     <div class="table-responsive">
         <table class="table" id="usuariosTable">
             <thead>
@@ -164,10 +161,11 @@ if (!$result) {
                             <td><?php echo htmlspecialchars($usuario['cpf']); ?></td>
                             <td><?php echo htmlspecialchars($usuario['telefone']); ?></td>
                             <td>
-                                <?php if ($usuario_logado_perfil === 'admin' || $usuario['id'] == $usuario_logado_id): // Admin edita todos, 'padrao' edita apenas a si mesmo ?>
+                                <?php if ($is_admin || $usuario['id'] == $usuario_logado_id): // Admin edita todos, 'padrao' edita apenas a si mesmo ?>
                                     <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-info"><i class="fa-solid fa-pen"></i> Editar</a>
                                 <?php endif; ?>
-                                <?php if ($usuario_logado_perfil === 'admin' && $usuario['id'] != $usuario_logado_id): // Lógica original (correta) ?>
+                                
+                                <?php if ($is_admin && $usuario['id'] != $usuario_logado_id): // Admin pode excluir outros usuários ?>
                                     <a href="#" class="btn btn-danger" onclick="openDeleteModal(<?php echo $usuario['id']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['nome'])); ?>'); return false;">
                                         <i class="fa-solid fa-trash"></i> Excluir
                                     </a>

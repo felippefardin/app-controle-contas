@@ -28,6 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data_vencimento = $_POST['data_vencimento'];
     $id_categoria = !empty($_POST['id_categoria']) ? (int)$_POST['id_categoria'] : null;
     $enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N';
+    
+    // ✅ CAMPO DE DESCRIÇÃO ADICIONADO
+    $descricao = trim($_POST['descricao'] ?? null);
 
     if (empty($fornecedor_nome) || empty($numero) || !is_numeric($valor) || empty($data_vencimento) || empty($id_categoria)) {
         $_SESSION['error_message'] = "Todos os campos obrigatórios devem ser preenchidos.";
@@ -36,11 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // 3. INSERE OS DADOS USANDO A COLUNA `usuario_id`
-    $sql = "INSERT INTO contas_pagar (fornecedor, id_pessoa_fornecedor, numero, valor, data_vencimento, usuario_id, enviar_email, id_categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    // ✅ Query atualizada para incluir 'descricao'
+    $sql = "INSERT INTO contas_pagar (fornecedor, id_pessoa_fornecedor, numero, valor, data_vencimento, usuario_id, enviar_email, id_categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     
-    // O bind_param para id_usuario foi corrigido para "i" (integer)
-    $stmt->bind_param("sisdsisi", $fornecedor_nome, $id_pessoa_fornecedor, $numero, $valor, $data_vencimento, $usuario_id, $enviar_email, $id_categoria);
+    // ✅ Bind_param atualizado (adicionado "s" para descricao)
+    $stmt->bind_param("sisdsisis", $fornecedor_nome, $id_pessoa_fornecedor, $numero, $valor, $data_vencimento, $usuario_id, $enviar_email, $id_categoria, $descricao);
 
     if ($stmt->execute()) {
         $_SESSION['success_message'] = "Conta a pagar adicionada com sucesso!";
