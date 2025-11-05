@@ -36,7 +36,7 @@ try {
 
     // ✅ 2. Cancelar a assinatura via API do Mercado Pago
     // --- CORREÇÃO AQUI ---
-    $client = new SubscriptionClient(); // Cliente correto
+    // $client = new SubscriptionClient(); 
     // O método 'update' é usado para alterar o status da assinatura (inclusive cancelar)
     $subscription = $client->update($mp_subscription_id, [
         "status" => "cancelled"

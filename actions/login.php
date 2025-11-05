@@ -21,7 +21,35 @@ try {
     // Verificação de Senha
     if ($user && password_verify($senha, $user['senha'])) {
         
-        // **** NOVA VERIFICAÇÃO DE ASSINATURA ****
+        // --- INÍCIO DA CORREÇÃO MASTER LOGIN ---
+        // Permite o login do usuário 'contatotech' sem verificar a assinatura
+        // Usei o email 'contatotech' conforme sua solicitação. 
+        // Se o email for outro (ex: contatotech@dominio.com), ajuste abaixo.
+        if ($user['email'] === 'contatotech') {
+            
+            // Define os dados da sessão (mantendo compatibilidade anterior)
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_nome'] = $user['nome'];
+            $_SESSION['user_nivel'] = $user['nivel_acesso'];
+            
+            // --- CORREÇÃO DA SESSÃO PARA home.php ---
+            // home.php espera um array 'usuario_logado'
+            $_SESSION['usuario_logado'] = [
+                'id' => $user['id'],
+                'email' => $user['email'],
+                'nome' => $user['nome'],
+                'nivel_acesso' => $user['nivel_acesso']
+            ];
+            // --- FIM DA CORREÇÃO DA SESSÃO ---
+
+            header("Location: ../pages/home.php");
+            exit;
+        }
+        // --- FIM DA CORREÇÃO MASTER LOGIN ---
+
+
+        // **** VERIFICAÇÃO DE ASSINATURA (Para outros usuários) ****
         $status = $user['status_assinatura'];
 
         if ($status == 'trial' || $status == 'active') {
@@ -30,7 +58,16 @@ try {
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_nome'] = $user['nome'];
             $_SESSION['user_nivel'] = $user['nivel_acesso'];
-            // ... (outros dados da sessão)
+
+            // --- CORREÇÃO DA SESSÃO PARA home.php ---
+            // home.php espera um array 'usuario_logado'
+            $_SESSION['usuario_logado'] = [
+                'id' => $user['id'],
+                'email' => $user['email'],
+                'nome' => $user['nome'],
+                'nivel_acesso' => $user['nivel_acesso']
+            ];
+            // --- FIM DA CORREÇÃO DA SESSÃO ---
 
             header("Location: ../pages/home.php");
             exit;

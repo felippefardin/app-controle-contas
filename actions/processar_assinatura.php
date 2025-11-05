@@ -1,11 +1,9 @@
 <?php
 // --- 1. INCLUDES E CONFIGURAÇÕES ---
 
-// --- CORREÇÃO AQUI ---
 // Importa as classes necessárias do SDK (ESSENCIAL!)
 use MercadoPago\Client\Subscription\SubscriptionClient;
 use MercadoPago\MercadoPagoConfig;
-// --- FIM DA CORREÇÃO ---
 
 // Garanta que os caminhos para seus arquivos de inicialização estejam corretos
 require_once('../includes/session_init.php');
@@ -59,9 +57,7 @@ try {
     ];
 
     // 3. Cria o cliente de Assinatura
-    // --- CORREÇÃO AQUI ---
-    $client = new SubscriptionClient(); // Cliente correto para v1/subscriptions
-    // --- FIM DA CORREÇÃO ---
+    // $client = new SubscriptionClient(); 
     
     // 4. Cria a assinatura enviando a requisição
     $subscription = $client->create($request);
@@ -76,7 +72,6 @@ try {
         
         $pdo = $db->getConnection(); 
         
-        // --- CORREÇÃO AQUI ---
         // Atualiza a coluna 'status_assinatura' para consistência
         $stmt = $pdo->prepare("UPDATE usuarios SET status_assinatura = :status, 
                                                   mp_subscription_id = :sub_id, 
@@ -88,7 +83,6 @@ try {
             ':sub_id' => $subscription->id,
             ':user_id' => $user_id
         ]);
-        // --- FIM DA CORREÇÃO ---
 
         // Redireciona para uma página de sucesso
         header('Location: ../pages/perfil.php?status=success&msg=assinatura_criada');
@@ -116,3 +110,4 @@ try {
     header('Location: ../pages/assinar.php?status=error&msg=erro_geral');
     exit;
 }
+?>

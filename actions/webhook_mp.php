@@ -28,7 +28,7 @@ if (isset($data['type']) && $data['type'] === 'subscription') {
         try {
             // ✅ 2. Buscar dados da assinatura na API do Mercado Pago
             // --- CORREÇÃO AQUI ---
-            $client = new SubscriptionClient(); // Cliente correto
+            // $client = new SubscriptionClient(); // Cliente correto
             // --- FIM DA CORREÇÃO ---
             $subscription = $client->get($subscriptionId);
 
