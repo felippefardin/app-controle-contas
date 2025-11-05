@@ -1,41 +1,49 @@
 <?php
-// --- 1. CARREGAR SEUS ARQUIVOS (ESSENCIAL!) ---
-// Garanta que os caminhos para seus arquivos de inicialização estejam corretos
-// (Saindo da pasta 'pages' para a raiz)
-
-require_once('../includes/session_init.php');
-require_once('../includes/config/config.php');
-require_once('../database.php'); 
+// ATENÇÃO: Você precisa iniciar a sessão e carregar seus includes
+//
+// Exemplo (descomente e ajuste os caminhos se necessário):
+// require_once('../includes/session_init.php');
+// require_once('../includes/config/config.php');
+// require_once('../database.php');
 
 // Redireciona se o usuário não estiver logado
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php?redirect=assinar');
-    exit;
-}
+// if (!isset($_SESSION['user_id'])) {
+//     header('Location: login.php?redirect=assinar');
+//     exit;
+// }
 
 // Busca o email do usuário da sessão
-$user_email = $_SESSION['user_email'] ?? 'teste@email.com';
-$user_id_session = $_SESSION['user_id'] ?? 0;
+// $user_email = $_SESSION['user_email'] ?? 'teste@email.com';
 
-// --- 2. INCLUIR O HEADER (CORRIGE O QUIRKS MODE) ---
-// Seu header.php DEVE começar com <!DOCTYPE html>
-include('../includes/header.php'); 
+// ** APENAS PARA TESTE ** - Remova isso em produção
+$user_email = 'teste@usuario.com'; 
+// ** FIM DO TESTE **
+
+// Incluir seu header (que deve ter o Bootstrap 5)
+// include('../includes/header.php'); 
 ?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Assinar Plano</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
     /* Customização da página de assinatura */
     body, html {
         height: 100%;
-        /* O fundo idealmente viria do seu CSS principal ou do header */
-        background-color: #f8f9fa; 
+        background-color: #f8f9fa; /* Um cinza claro para o fundo */
     }
 
     .payment-container {
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 90vh; 
-        padding-top: 60px; /* Espaço para o navbar (se houver) */
+        min-height: 90vh; /* Centraliza verticalmente */
+        padding-top: 60px; /* Espaço para o navbar */
     }
 
     .payment-card {
@@ -45,7 +53,7 @@ include('../includes/header.php');
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
         padding: 40px;
         width: 100%;
-        max-width: 550px; 
+        max-width: 550px; /* Define uma largura máxima */
     }
 
     .payment-card h2 {
@@ -62,7 +70,7 @@ include('../includes/header.php');
 
     /* Estilizando o botão de submit */
     #form-checkout__submit {
-        background-color: #0d6efd; 
+        background-color: #0d6efd; /* Azul primário do Bootstrap */
         color: white;
         border: none;
         border-radius: 8px;
@@ -76,7 +84,7 @@ include('../includes/header.php');
     }
 
     #form-checkout__submit:hover {
-        background-color: #0b5ed7; 
+        background-color: #0b5ed7; /* Um azul mais escuro no hover */
     }
     
     #form-checkout__submit:disabled {
@@ -90,6 +98,7 @@ include('../includes/header.php');
         margin-top: 15px;
     }
     
+    /* Spinner de carregamento (opcional, mas bom) */
     #loading-spinner {
         text-align: center;
         margin-top: 15px;
@@ -122,7 +131,7 @@ include('../includes/header.php');
 
             <input type="hidden" id="card_token" name="card_token" />
             <input type="hidden" id="payer_email" name="payer_email" />
-            <input type="hidden" id="user_id" name="user_id" value="<?php echo htmlspecialchars($user_id_session, ENT_QUOTES, 'UTF-8'); ?>" />
+            <input type="hidden" id="user_id" name="user_id" value="<?php echo $_SESSION['user_id'] ?? 0; ?>" />
         
         </form>
     </div>
@@ -140,17 +149,20 @@ include('../includes/header.php');
     const renderPaymentBrick = async (bricksBuilder) => {
         const settings = {
             initialization: {
-                amount: 30.00, 
+                amount: 30.00,
                 payer: {
                     email: "<?php echo htmlspecialchars($user_email, ENT_QUOTES, 'UTF-8'); ?>",
-                    // Corrige o aviso "entityType" do Brick
-                    entityType: "individual" 
+                    
+                    // --- CORREÇÃO AQUI ---
+                    // Adicione esta linha:
+                    entityType: "individual"
+                    // --- FIM DA CORREÇÃO ---
                 },
             },
             customization: {
                 visual: {
                     style: {
-                        theme: 'bootstrap', 
+                        theme: 'bootstrap',
                     }
                 },
                 paymentMethods: {
@@ -163,18 +175,23 @@ include('../includes/header.php');
                     // Brick pronto
                 },
                 onSubmit: (cardFormData) => {
+                    // Mostra o spinner e desabilita o botão
                     document.getElementById('loading-spinner').style.display = 'block';
                     document.getElementById('form-checkout__submit').disabled = true;
 
+                    // Preenche os campos ocultos do formulário
                     document.getElementById('card_token').value = cardFormData.token;
                     document.getElementById('payer_email').value = cardFormData.payer.email;
                     
+                    // Envia o formulário para o seu backend
                     document.getElementById('form-checkout').submit();
                 },
                 onError: (error) => {
+                    // Callback de erro
                     console.error(error);
                     alert('Houve um erro com seus dados de pagamento. Verifique e tente novamente.');
                     
+                    // Reabilita o botão
                     document.getElementById('loading-spinner').style.display = 'none';
                     document.getElementById('form-checkout__submit').disabled = false;
                 },
@@ -191,7 +208,7 @@ include('../includes/header.php');
 </script>
 
 <?php
-// --- 3. INCLUIR O FOOTER (ESSENCIAL!) ---
-// Seu footer.php deve ter o </body> e </html>
-include('../includes/footer.php'); 
+// Incluir seu footer.php
+// include('../includes/footer.php'); 
 ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
