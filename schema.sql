@@ -328,3 +328,22 @@ CREATE TABLE IF NOT EXISTS `configuracoes_tenant` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_chave` (`chave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `tenants` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) DEFAULT NULL,
+  `nome_empresa` varchar(255) NOT NULL,
+  `admin_email` varchar(255) NOT NULL,
+  `subdominio` varchar(191) DEFAULT NULL,
+  `db_host` varchar(255) NOT NULL,
+  `db_database` varchar(255) NOT NULL,
+  `db_user` varchar(255) NOT NULL,
+  `db_password` varchar(255) NOT NULL,
+  `stripe_customer_id` varchar(255) DEFAULT NULL,
+  `status_assinatura` varchar(50) DEFAULT 'ativo',
+  `data_criacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `senha` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `admin_email` (`admin_email`),
+  UNIQUE KEY `subdominio` (`subdominio`)
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

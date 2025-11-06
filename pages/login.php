@@ -1,8 +1,18 @@
 <?php
-require_once '../includes/session_init.php';
+// Usar __DIR__ garante que o caminho esteja correto
+require_once __DIR__ . '/../includes/session_init.php';
+
+// Verifique se a sessão foi realmente iniciada
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 $erro = $_SESSION['erro_login'] ?? '';
 unset($_SESSION['erro_login']);
+
+// ADICIONE ESTAS DUAS LINHAS
+$sucesso = $_SESSION['registro_sucesso'] ?? '';
+unset($_SESSION['registro_sucesso']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -181,9 +191,15 @@ unset($_SESSION['erro_login']);
     </div>
     <h2>Login</h2>
 
-    <?php if (!empty($erro)) : ?>
-      <div class="erro"><?= htmlspecialchars($erro) ?></div>
-    <?php endif; ?>
+    
+<?php if (!empty($sucesso)) : ?>
+  <div class="sucesso" style="background-color: #4CAF50; color: white; padding: 10px; margin-bottom: 15px; border-radius: 5px; font-weight: 600; text-align: center;">
+    <?= htmlspecialchars($sucesso) ?>
+  </div>
+<?php endif; ?>
+<?php if (!empty($erro)) : ?>
+  <div class="erro"><?= htmlspecialchars($erro) ?></div>
+<?php endif; ?>
 
     <label for="email">E-mail</label>
     <input type="email" id="email" name="email" required autofocus />

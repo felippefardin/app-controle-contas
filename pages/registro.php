@@ -1,4 +1,14 @@
-<?php include('../includes/header.php'); ?>
+<?php 
+// Remova o include do header se ele iniciar a sessão, 
+// pois o session_start() está em session_init.php
+// include('../includes/header.php'); 
+
+// Inicia a sessão para poder exibir erros de registro
+require_once __DIR__ . '/../includes/session_init.php';
+
+$erro = $_SESSION['erro_registro'] ?? '';
+unset($_SESSION['erro_registro']);
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -109,6 +119,18 @@
     font-size: 0.85rem;
     margin-top: 5px;
   }
+  
+  /* Bloco de Erro vindo do PHP */
+  .erro-php {
+    background-color: #cc4444;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    font-weight: 600;
+    text-align: center;
+    color: white;
+  }
+
 
   .btn-submit {
     width: 100%;
@@ -116,7 +138,6 @@
     padding: 12px 16px; 
     border: none;
     border-radius: 8px;
-    /* --- CORREÇÃO: Mudei a cor para verde (sugestão de "avançar") --- */
     background-color: #28a745; 
     color: #fff;
     font-weight: bold;
@@ -127,13 +148,11 @@
 
   .btn-submit:hover,
   .btn-submit:focus {
-    /* --- CORREÇÃO: Cor de hover do botão verde --- */
     background-color: #218838;
     outline: none;
     transform: translateY(-1px);
   }
 
-  /* --- ADICIONADO: Estilo para o link de login --- */
   .login-link {
     text-align: center;
     margin-top: 15px;
@@ -147,7 +166,6 @@
   .login-link a:hover {
     text-decoration: underline;
   }
-  /* --- FIM DA ADIÇÃO --- */
 
   @media (max-width: 480px) {
     form { padding: 20px; }
@@ -162,6 +180,10 @@
 <div class="form-container">
   <form id="cadastroForm" action="registro_processa.php" method="post" novalidate>
     <h2>Crie sua Conta</h2>
+
+    <?php if (!empty($erro)) : ?>
+      <div class="erro-php"><?= htmlspecialchars($erro) ?></div>
+    <?php endif; ?>
 
     <label for="tipo_pessoa">Tipo de Pessoa:</label>
     <select id="tipo_pessoa" name="tipo_pessoa" required>
@@ -206,9 +228,7 @@
     <input type="password" id="senha2" name="senha2" required>
     <div id="senhaError" class="error-message"></div>
 
-    <input type="hidden" name="redirect_to" value="assinar">
-    
-    <button class="btn-submit" type="submit">Continuar para Assinatura</button>
+    <button class="btn-submit" type="submit">Finalizar Cadastro</button>
 
     <div class="login-link">
       Já tem uma conta? <a href="login.php">Faça Login</a>

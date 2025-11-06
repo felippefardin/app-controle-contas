@@ -1,8 +1,8 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php'); // Carrega $env e getMasterConnection()
+require_once '../database.php'; // Carrega $env e getMasterConnection()
 
-// --- Função para estilizar mensagens ---
+// --- Função para exibir mensagens (mantida apenas para uso futuro) ---
 function estilizarMensagem($mensagem, $tipo = "info") {
     $cor = $tipo === "sucesso" ? "#27ae60" : ($tipo === "erro" ? "#e74c3c" : "#3498db");
     return "
@@ -25,11 +25,10 @@ function estilizarMensagem($mensagem, $tipo = "info") {
             <a href='registro.php'>Voltar</a>
         </div>
     </body>
-    </html>
-    ";
+    </html>";
 }
 
-// --- Verifica se o método é POST ---
+// --- Garante que o método é POST ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: registro.php');
     exit;
@@ -39,70 +38,77 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $nome_empresa = trim($_POST['nome'] ?? '');
 $email_admin  = trim(strtolower($_POST['email'] ?? ''));
 $senha_admin  = $_POST['senha'] ?? '';
-// ===== AJUSTE 1: Corrigido de 'cpf' para 'documento' para bater com o formulário =====
-$documento    = trim($_POST['documento'] ?? ''); 
+$documento    = trim($_POST['documento'] ?? '');
 $telefone     = trim($_POST['telefone'] ?? '');
 
+// --- Validação dos campos obrigatórios ---
 if (empty($nome_empresa) || empty($email_admin) || empty($senha_admin) || empty($documento)) {
-    die(estilizarMensagem("Preencha todos os campos obrigatórios.", "erro"));
+    $_SESSION['erro_registro'] = "Preencha todos os campos obrigatórios.";
+    header('Location: registro.php?msg=campos_vazios');
+    exit;
 }
 
-// --- Verifica duplicidade no banco master ---
+// --- Conexão com banco master ---
 $master_conn = getMasterConnection();
 if (!$master_conn) {
-    die(estilizarMensagem("Falha ao conectar ao banco de dados principal.", "erro"));
+    $_SESSION['erro_registro'] = "Falha ao conectar ao banco de dados principal.";
+    header('Location: registro.php?msg=db_master_fail');
+    exit;
 }
 
+// --- Verifica duplicidade de e-mail ---
 $stmt = $master_conn->prepare("SELECT id FROM tenants WHERE admin_email = ?");
 $stmt->bind_param("s", $email_admin);
 $stmt->execute();
 if ($stmt->get_result()->num_rows > 0) {
     $stmt->close();
     $master_conn->close();
-    die(estilizarMensagem("Este e-mail já está em uso por outra conta.", "erro"));
+    $_SESSION['erro_registro'] = "Este e-mail já está em uso por outra conta.";
+    header('Location: registro.php?msg=email_duplicado');
+    exit;
 }
 $stmt->close();
-// Deixamos a $master_conn aberta por enquanto
 
-// Variáveis para o try/catch
+// --- Criação de variáveis do novo tenant ---
 $tenantId = 0;
-$novo_user_id = 0; // Variável para o ID do usuário
+$novo_user_id = 0;
 $novo_db_nome = 'tenant_' . bin2hex(random_bytes(8));
 $novo_db_user = 'user_' . bin2hex(random_bytes(8));
 $novo_db_pass = bin2hex(random_bytes(16));
-
-// --- Hashear a senha (Fazemos isso UMA VEZ) ---
 $senha_hash = password_hash($senha_admin, PASSWORD_DEFAULT);
 
 try {
-    // --- ✅ ETAPA 1: Salva tenant no banco master (para obter o ID) ---
-    $stmt_tenant = $master_conn->prepare(
-        "INSERT INTO tenants (nome_empresa, admin_email, db_host, db_database, db_user, db_password, senha) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    // ✅ Etapa 1: Inserir tenant no banco master
+    $stmt_tenant = $master_conn->prepare("
+        INSERT INTO tenants (nome_empresa, admin_email, db_host, db_database, db_user, db_password, senha)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt_tenant->bind_param(
+        "sssssss",
+        $nome_empresa,
+        $email_admin,
+        $env['DB_HOST'],
+        $novo_db_nome,
+        $novo_db_user,
+        $novo_db_pass,
+        $senha_hash
     );
-    $stmt_tenant->bind_param("sssssss", $nome_empresa, $email_admin, $env['DB_HOST'], $novo_db_nome, $novo_db_user, $novo_db_pass, $senha_hash);
     $stmt_tenant->execute();
-    $tenantId = $stmt_tenant->insert_id; // <-- Obtemos o ID do Tenant
+    $tenantId = $stmt_tenant->insert_id;
     $stmt_tenant->close();
 
-    // --- ✅ ETAPA 2: Insere o usuário proprietário no banco master ---
-    $stmt_main_user = $master_conn->prepare(
-        "INSERT INTO usuarios (nome, email, senha, nivel_acesso, tenant_id, tipo_pessoa, perfil, tipo, status, cpf, telefone) 
-         VALUES (?, ?, ?, 'proprietario', ?, '', 'admin', 'admin', 'ativo', ?, ?)"
-    );
-    
-    // ===== AJUSTE 1 (Continuação): Usando $documento em vez de $cpf =====
+    // ✅ Etapa 2: Inserir o usuário proprietário no banco master
+    $stmt_main_user = $master_conn->prepare("
+        INSERT INTO usuarios (nome, email, senha, nivel_acesso, tenant_id, tipo_pessoa, perfil, tipo, status, cpf, telefone)
+        VALUES (?, ?, ?, 'proprietario', ?, '', 'admin', 'admin', 'ativo', ?, ?)
+    ");
     $stmt_main_user->bind_param("sssiss", $nome_empresa, $email_admin, $senha_hash, $tenantId, $documento, $telefone);
-    
     $stmt_main_user->execute();
-    // ===== AJUSTE 2: Captura o ID do usuário recém-criado =====
-    $novo_user_id = $master_conn->insert_id; 
-    
+    $novo_user_id = $master_conn->insert_id;
     $stmt_main_user->close();
-    $master_conn->close(); // Fechamos a conexão master
+    $master_conn->close();
 
-
-    // --- ✅ ETAPA 3: Cria o banco de dados do tenant ---
+    // ✅ Etapa 3: Criar banco do tenant
     $admin_conn = new mysqli($env['DB_HOST'], $env['DB_ADMIN_USER'], $env['DB_ADMIN_PASS']);
     $admin_conn->set_charset("utf8mb4");
     if ($admin_conn->connect_error) {
@@ -114,72 +120,58 @@ try {
     $admin_conn->query("GRANT ALL PRIVILEGES ON `{$novo_db_nome}`.* TO '{$novo_db_user}'@'localhost'");
     $admin_conn->close();
 
-    // --- ✅ ETAPA 4: Executa schema no banco do tenant ---
+    // ✅ Etapa 4: Executar schema
     $schema_sql = file_get_contents(__DIR__ . '/../schema.sql');
     if ($schema_sql === false) throw new Exception("Arquivo schema.sql não encontrado.");
 
     $tenant_conn = new mysqli($env['DB_HOST'], $novo_db_user, $novo_db_pass, $novo_db_nome);
     $tenant_conn->set_charset("utf8mb4");
     if ($tenant_conn->connect_error) {
-        throw new Exception("Falha ao conectar ao banco do tenant: Por favor, contate o suporte.");
+        throw new Exception("Falha ao conectar ao banco do tenant.");
     }
-    if (!$tenant_conn->multi_query($schema_sql)) {
-        throw new Exception("Erro ao criar as tabelas do tenant: " . $tenant_conn->error);
-    }
-    while ($tenant_conn->next_result()) {;} // Limpa os resultados do multi_query
 
-    // --- ✅ ETAPA 5: Insere usuário admin no banco do tenant ---
-    $stmt_tenant_user = $tenant_conn->prepare(
-        "INSERT INTO usuarios (nome, email, cpf, telefone, senha, nivel_acesso, status) 
-         VALUES (?, ?, ?, ?, ?, 'proprietario', 'ativo')"
-    );
-    // ===== AJUSTE 1 (Continuação): Usando $documento em vez de $cpf =====
+    if (!$tenant_conn->multi_query($schema_sql)) {
+        throw new Exception("Erro ao criar tabelas do tenant: " . $tenant_conn->error);
+    }
+    while ($tenant_conn->next_result()) {;} // Limpa o buffer
+
+    // ✅ Etapa 5: Inserir usuário admin no tenant
+    $stmt_tenant_user = $tenant_conn->prepare("
+        INSERT INTO usuarios (nome, email, cpf, telefone, senha, nivel_acesso, status)
+        VALUES (?, ?, ?, ?, ?, 'proprietario', 'ativo')
+    ");
     $stmt_tenant_user->bind_param("sssss", $nome_empresa, $email_admin, $documento, $telefone, $senha_hash);
     $stmt_tenant_user->execute();
     $stmt_tenant_user->close();
     $tenant_conn->close();
 
-    // ===== AJUSTE 3: Lógica de Login Automático e Redirecionamento =====
-    
-    // Define as variáveis de sessão para o login automático
-    $_SESSION['user_id'] = $novo_user_id;       // ID do usuário (da tabela master 'usuarios')
-    $_SESSION['user_email'] = $email_admin;
-    $_SESSION['user_name'] = $nome_empresa;
-    $_SESSION['tenant_id'] = $tenantId;         // ID do Tenant (da tabela 'tenants')
-    $_SESSION['db_database'] = $novo_db_nome;
-    $_SESSION['db_user'] = $novo_db_user;
-    $_SESSION['db_password'] = $novo_db_pass;
-    $_SESSION['nivel_acesso'] = 'proprietario';
-    $_SESSION['logged_in'] = true;
-
-    // Verifica para onde deve redirecionar
-    if (isset($_POST['redirect_to']) && $_POST['redirect_to'] === 'assinar') {
-        // Redireciona para a página de assinatura
-        header('Location: assinar.php');
-        exit;
-    } else {
-        // Comportamento padrão: exibe mensagem de sucesso
-        echo estilizarMensagem("Cadastro da empresa realizado com sucesso! <br><a href='login.php'>Ir para o login</a>", "sucesso");
-        exit;
-    }
-    // ===== FIM DO AJUSTE 3 =====
+    // ✅ Mensagem de sucesso
+    $_SESSION['registro_sucesso'] = "Cadastro da empresa realizado com sucesso! Você já pode fazer o login.";
+    header('Location: login.php?msg=cadastro_sucesso');
+    exit;
 
 } catch (Exception $e) {
-    // Lógica de Rollback (reversão) em caso de falha
+    // Rollback em caso de falha
     if ($tenantId > 0) {
         $master_conn_rollback = getMasterConnection();
-        $master_conn_rollback->query("DELETE FROM tenants WHERE id = $tenantId");
-        $master_conn_rollback->query("DELETE FROM usuarios WHERE tenant_id = $tenantId"); // Remove o usuário do master
-        $master_conn_rollback->close();
+        if ($master_conn_rollback) {
+            $master_conn_rollback->query("DELETE FROM tenants WHERE id = $tenantId");
+            $master_conn_rollback->query("DELETE FROM usuarios WHERE tenant_id = $tenantId");
+            $master_conn_rollback->close();
+        }
     }
-    // Tenta apagar o banco de dados e usuário MySQL se eles foram criados
-    $admin_conn_rollback = new mysqli($env['DB_HOST'], $env['DB_ADMIN_USER'], $env['DB_ADMIN_PASS']);
+
+    // Remove banco e usuário MySQL criados
+    $admin_conn_rollback = @new mysqli($env['DB_HOST'], $env['DB_ADMIN_USER'], $env['DB_ADMIN_PASS']);
     if (!$admin_conn_rollback->connect_error) {
         $admin_conn_rollback->query("DROP DATABASE IF EXISTS `{$novo_db_nome}`");
         $admin_conn_rollback->query("DROP USER IF EXISTS '{$novo_db_user}'@'localhost'");
         $admin_conn_rollback->close();
     }
 
-    die(estilizarMensagem("Erro crítico no cadastro: " . $e->getMessage(), "erro"));
+    error_log("Erro no cadastro de tenant: " . $e->getMessage());
+    $_SESSION['erro_registro'] = "Erro crítico no cadastro. Por favor, contate o suporte.";
+    header('Location: registro.php?msg=critical_error');
+    exit;
 }
 ?>
