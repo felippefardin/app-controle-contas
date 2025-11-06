@@ -1,8 +1,6 @@
 <?php
-// Usar __DIR__ garante que o caminho esteja correto
 require_once __DIR__ . '/../includes/session_init.php';
 
-// Verifique se a sessão foi realmente iniciada
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,7 +8,6 @@ if (session_status() == PHP_SESSION_NONE) {
 $erro = $_SESSION['erro_login'] ?? '';
 unset($_SESSION['erro_login']);
 
-// ADICIONE ESTAS DUAS LINHAS
 $sucesso = $_SESSION['registro_sucesso'] ?? '';
 unset($_SESSION['registro_sucesso']);
 ?>
@@ -21,9 +18,7 @@ unset($_SESSION['registro_sucesso']);
   <title>Login - App Controle de Contas</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       background-color: #121212;
       color: #eee;
@@ -50,11 +45,7 @@ unset($_SESSION['registro_sucesso']);
       text-align: center;
       color: #00bfff;
     }
-    label {
-      margin-top: 10px;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
+    label { margin-top: 10px; font-weight: 600; font-size: 0.9rem; }
     input {
       width: 100%;
       padding: 10px;
@@ -80,9 +71,7 @@ unset($_SESSION['registro_sucesso']);
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
-    button:hover {
-      background-color: #0056b3;
-    }
+    button:hover { background-color: #0056b3; }
     .erro {
       background-color: #cc4444;
       padding: 10px;
@@ -91,13 +80,8 @@ unset($_SESSION['registro_sucesso']);
       font-weight: 600;
       text-align: center;
     }
-    .password-container {
-      position: relative;
-      width: 100%;
-    }
-    .password-container input {
-      padding-right: 35px;
-    }
+    .password-container { position: relative; width: 100%; }
+    .password-container input { padding-right: 35px; }
     .password-container .toggle-password {
       position: absolute;
       top: 50%;
@@ -121,9 +105,7 @@ unset($_SESSION['registro_sucesso']);
       position: relative;
       transition: transform 0.3s ease;
     }
-    .action-icons a:hover {
-      transform: scale(1.2);
-    }
+    .action-icons a:hover { transform: scale(1.2); }
 
     /* Balão do Feedback */
     .action-icons a.feedback::after {
@@ -142,9 +124,7 @@ unset($_SESSION['registro_sucesso']);
       pointer-events: none;
       transition: opacity 0.3s ease;
     }
-    .action-icons a.feedback:hover::after {
-      opacity: 1;
-    }
+    .action-icons a.feedback:hover::after { opacity: 1; }
 
     /* Texto acima do Suporte */
     .action-icons a.suporte::after {
@@ -159,27 +139,13 @@ unset($_SESSION['registro_sucesso']);
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-    .action-icons a.suporte:hover::after {
-      opacity: 1;
-    }
+    .action-icons a.suporte:hover::after { opacity: 1; }
 
     @media (max-width: 500px) {
-      form {
-        width: 100%;
-        padding: 20px;
-      }
-      .action-icons {
-        gap: 10px;
-        top: 5px;
-        right: 5px;
-      }
-      .action-icons a {
-        font-size: 1.2rem;
-      }
-      button {
-        font-size: 1rem;
-        padding: 10px;
-      }
+      form { width: 100%; padding: 20px; }
+      .action-icons { gap: 10px; top: 5px; right: 5px; }
+      .action-icons a { font-size: 1.2rem; }
+      button { font-size: 1rem; padding: 10px; }
     }
   </style>
 </head>
@@ -191,14 +157,25 @@ unset($_SESSION['registro_sucesso']);
     </div>
     <h2>Login</h2>
 
-    
 <?php if (!empty($sucesso)) : ?>
   <div class="sucesso" style="background-color: #4CAF50; color: white; padding: 10px; margin-bottom: 15px; border-radius: 5px; font-weight: 600; text-align: center;">
     <?= htmlspecialchars($sucesso) ?>
   </div>
 <?php endif; ?>
+
 <?php if (!empty($erro)) : ?>
   <div class="erro"><?= htmlspecialchars($erro) ?></div>
+
+  <?php
+  // 🔁 Detecta a mensagem mesmo com emojis, maiúsculas/minúsculas, etc.
+  if (stripos($erro, 'assinatura') !== false && stripos($erro, 'ativa') !== false) : ?>
+    <script>
+      // Redireciona para assinar.php após 2 segundos
+      setTimeout(() => {
+        window.location.href = "assinar.php";
+      }, 2000);
+    </script>
+  <?php endif; ?>
 <?php endif; ?>
 
     <label for="email">E-mail</label>
@@ -223,7 +200,6 @@ unset($_SESSION['registro_sucesso']);
   <script>
     const toggleSenha = document.getElementById('toggleSenha');
     const inputSenha = document.getElementById('senha');
-
     toggleSenha.addEventListener('click', () => {
       const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
       inputSenha.setAttribute('type', tipo);

@@ -145,10 +145,13 @@ try {
     $stmt_tenant_user->close();
     $tenant_conn->close();
 
-    // ✅ Mensagem de sucesso
-    $_SESSION['registro_sucesso'] = "Cadastro da empresa realizado com sucesso! Você já pode fazer o login.";
-    header('Location: login.php?msg=cadastro_sucesso');
-    exit;
+    // ✅ Redireciona para página de assinatura
+$_SESSION['novo_email'] = $email_admin;
+$_SESSION['novo_tenant'] = $tenantId;
+
+header("Location: assinar.php");
+exit;
+
 
 } catch (Exception $e) {
     // Rollback em caso de falha

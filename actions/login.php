@@ -1,6 +1,7 @@
 <?php
-session_start();
+require_once '../includes/session_init.php';
 require_once '../database.php';
+
 
 // --- 1. Verifica se os campos foram preenchidos ---
 if (empty($_POST['email']) || empty($_POST['senha'])) {
@@ -16,7 +17,7 @@ $senha = trim($_POST['senha']);
 $master = getMasterConnection();
 
 $stmt = $master->prepare("
-    SELECT id, db_host, db_database, db_user, db_password
+    SELECT id, db_host, db_database, db_user, db_password, status_assinatura
     FROM tenants
     WHERE admin_email = ? OR id IN (
         SELECT tenant_id FROM usuarios WHERE email = ?
@@ -27,15 +28,29 @@ $stmt->execute();
 $result = $stmt->get_result();
 $tenant = $result->fetch_assoc();
 $stmt->close();
-$master->close();
 
+// --- 3. Verifica se o tenant existe ---
 if (!$tenant) {
     $_SESSION['erro_login'] = 'Conta não encontrada ou tenant inexistente.';
     header("Location: ../pages/login.php?msg=conta_inexistente");
     exit;
 }
 
-// --- 3. Tenta conectar ao banco do tenant ---
+// --- 4. Verifica se a assinatura está ativa ---
+// --- 4. Verifica se a assinatura está ativa ---
+if (!isset($tenant['status_assinatura']) || $tenant['status_assinatura'] !== 'authorized') {
+    $_SESSION['erro_login'] = '⚠️ Sua assinatura não está ativa. Complete o pagamento para acessar o sistema.';
+
+    // Redireciona diretamente para a página correta em /pages/
+    header("Location: ../pages/assinar.php");
+    exit;
+}
+
+
+// --- 5. Fecha conexão com banco master ---
+$master->close();
+
+// --- 6. Tenta conectar ao banco do tenant ---
 try {
     $tenantPdo = new PDO(
         "mysql:host={$tenant['db_host']};dbname={$tenant['db_database']};charset=utf8mb4",
@@ -52,7 +67,7 @@ try {
     exit;
 }
 
-// --- 4. Busca o usuário dentro do banco do tenant ---
+// --- 7. Busca o usuário dentro do banco do tenant ---
 $stmt = $tenantPdo->prepare("SELECT * FROM usuarios WHERE email = ?");
 $stmt->execute([$email]);
 $user = $stmt->fetch();
@@ -63,7 +78,7 @@ if (!$user || !password_verify($senha, $user['senha'])) {
     exit;
 }
 
-// --- 5. Cria sessão com dados do usuário e tenant ---
+// --- 8. Cria sessão com dados do usuário e tenant ---
 $_SESSION['usuario_logado'] = [
     'id' => $user['id'],
     'nome' => $user['nome'],
@@ -72,7 +87,7 @@ $_SESSION['usuario_logado'] = [
     'tenant_id' => $tenant['id']
 ];
 
-// --- 6. Armazena credenciais do banco do tenant na sessão ---
+// --- 9. Armazena credenciais do banco do tenant na sessão ---
 $_SESSION['tenant_db'] = [
     'db_host' => $tenant['db_host'],
     'db_database' => $tenant['db_database'],
@@ -80,6 +95,11 @@ $_SESSION['tenant_db'] = [
     'db_password' => $tenant['db_password']
 ];
 
-// --- 7. Redireciona para a tela de seleção de usuário ---
-header("Location: ../pages/selecionar_usuario.php");
+// --- 10. Redireciona conforme status da assinatura ---
+if ($tenant['status_assinatura'] !== 'authorized') {
+    $_SESSION['assinatura_pendente'] = true; // libera acesso ao assinar.php
+    header("Location: ../pages/assinar.php");
+} else {
+    header("Location: ../pages/selecionar_usuario.php");
+}
 exit;
