@@ -292,21 +292,16 @@ CREATE TABLE `planos` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Tabela para as Assinaturas dos Usuários
-CREATE TABLE `assinaturas` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `id_plano` int NOT NULL,
-  `mercadopago_subscription_id` varchar(255) NOT NULL, -- ID da assinatura no gateway
-  `status` enum('pendente','ativo','cancelado','inadimplente') NOT NULL DEFAULT 'pendente',
-  `data_inicio` datetime DEFAULT CURRENT_TIMESTAMP,
-  `data_proxima_cobranca` date DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `id_usuario` (`id_usuario`),
-  KEY `id_plano` (`id_plano`),
-  CONSTRAINT `fk_assinaturas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_assinaturas_plano` FOREIGN KEY (`id_plano`) REFERENCES `planos` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE assinaturas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    plano VARCHAR(50) NOT NULL,
+    valor DECIMAL(10,2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pendente', -- pendente, ativa, cancelada
+    mp_preapproval_id VARCHAR(255),        -- id retornado pelo Mercado Pago
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 
 CREATE TABLE `pagamentos_historico` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -347,3 +342,13 @@ CREATE TABLE `tenants` (
   UNIQUE KEY `admin_email` (`admin_email`),
   UNIQUE KEY `subdominio` (`subdominio`)
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE logs_webhook (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(100),
+    acao VARCHAR(100),
+    data_id VARCHAR(100),
+    payload TEXT,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+

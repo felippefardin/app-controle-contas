@@ -1,18 +1,31 @@
 <?php
-// includes/config/config.php
+use Dotenv\Dotenv;
 
-// 1. Carrega o autoloader do Composer
+// 🔹 Carrega o autoload
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-// 2. Carrega variáveis de ambiente (.env)
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
-$dotenv->load();
+// 🔹 Caminho do arquivo .env
+$dotenvPath = realpath(__DIR__ . '/../../');
+if (!$dotenvPath || !file_exists($dotenvPath . '/.env')) {
+    die("❌ Arquivo .env não encontrado em: " . $dotenvPath);
+}
 
-// 3. Configura o SDK do Mercado Pago
-use MercadoPago\MercadoPagoConfig;
+// 🔹 Carrega variáveis de ambiente
+$dotenv = Dotenv::createImmutable($dotenvPath);
+$dotenv->safeLoad();
 
-// ✅ Define o Access Token — usa o valor do .env ou, se vazio, o de teste abaixo
-MercadoPagoConfig::setAccessToken($_ENV['MERCADOPAGO_ACCESS_TOKEN'] ?? 'TEST-434665267442294-110610-a6c0df937492f2c030236826d3634d8c-456404185');
+// 🔹 Verifica variáveis importantes
+$requiredVars = [
+    'APP_URL',
+    'MERCADOPAGO_MODE',
+    'MP_ACCESS_TOKEN_SANDBOX',
+    'MP_ACCESS_TOKEN_PRODUCAO'
+];
+foreach ($requiredVars as $var) {
+    if (empty($_ENV[$var])) {
+        echo "<pre>⚠️ Variável $var não encontrada no .env</pre>";
+    }
+}
 
-// 4. Conexão com o banco de dados
+// 🔹 Inclui conexão com banco e configurações gerais
 require_once __DIR__ . '/../../database.php';

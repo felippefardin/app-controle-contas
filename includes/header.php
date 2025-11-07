@@ -4,6 +4,7 @@
 // Usar __DIR__ garante que o caminho para 'session_init.php' esteja sempre correto.
 require_once __DIR__ . '/session_init.php';
 // --- FIM DA CORREÇÃO ---
+
 ?>
 
 <?php if (isset($_SESSION['proprietario_id_original'])): ?>
