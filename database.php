@@ -1,27 +1,28 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/includes/session_init.php';
 
-
-use MercadoPago\MercadoPagoConfig;
 use Dotenv\Dotenv;
+use MercadoPago\MercadoPagoConfig;
 
-// 🔹 Carrega variáveis de ambiente
-$dotenv = Dotenv::createImmutable(__DIR__);
+// 🔹 Carrega variáveis de ambiente corretamente da raiz do projeto
+$dotenvPath = realpath(__DIR__ . '/');
+if (!file_exists($dotenvPath . '/.env')) {
+    $dotenvPath = realpath(__DIR__ . '/../'); // sobe um nível se não encontrar
+}
+$dotenv = Dotenv::createImmutable($dotenvPath);
 $dotenv->safeLoad();
 
 // 🔹 Configura Mercado Pago
 if (!empty($_ENV['MP_ACCESS_TOKEN'])) {
     MercadoPagoConfig::setAccessToken($_ENV['MP_ACCESS_TOKEN']);
-} else {
-    error_log("⚠️ MP_ACCESS_TOKEN não encontrado no .env");
 }
 
-// 🔹 Banco de dados
+// 🔹 Banco de dados master
 $host = $_ENV['DB_HOST'] ?? 'localhost';
 $user = $_ENV['DB_USER'] ?? 'root';
 $password = $_ENV['DB_PASSWORD'] ?? '';
-$database = $_ENV['DB_DATABASE'] ?? 'saas_master';
+$database = $_ENV['DB_DATABASE'] ?? 'app_controle_contas';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -32,6 +33,6 @@ function getMasterConnection() {
         $conn->set_charset("utf8mb4");
         return $conn;
     } catch (mysqli_sql_exception $e) {
-        die("Erro de conexão: " . $e->getMessage());
+        die("❌ Erro de conexão: " . $e->getMessage());
     }
 }
