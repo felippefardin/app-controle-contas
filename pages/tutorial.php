@@ -1,353 +1,229 @@
 <?php
+// pages/tutorial.php
+
+// Inicia a sessão e inclui funções essenciais de utilidade e segurança.
 include_once '../includes/session_init.php';
 
-if (!isset($_SESSION['usuario_logado'])) {
-    header('Location: login.php');
-    exit;
+// Proteção básica: redireciona para o login se não houver sessão ativa (usuario_logado ou super_admin)
+if (!isset($_SESSION['usuario_logado']) && !isset($_SESSION['super_admin'])) {
+    header("Location: ../pages/login.php");
+    exit();
 }
 
-include('../includes/header.php');
-?>
+// Determina o nome do usuário e o perfil para personalizar o guia.
+$nome_usuario = $_SESSION['usuario_logado']['nome'] ?? $_SESSION['super_admin']['nome'] ?? 'Usuário';
+$perfil = $_SESSION['usuario_logado']['nivel_acesso'] ?? 'admin_master';
+$is_proprietario_ou_admin = ($perfil === 'proprietario' || $perfil === 'admin');
 
+// Se o Admin Master estiver logado, mas não "impersonando" um tenant, ele verá o tutorial, 
+// mas o foco continua sendo nas operações do tenant.
+$is_master = ($perfil === 'admin_master');
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <title>Tutorial do Sistema</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial Completo - App Controle de Contas</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-    /* ======= Estilo Global ======= */
-    * {
-        box-sizing: border-box;
-    }
-
-    body {
-        background-color: #121212;
-        color: #eee;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 0;
-        line-height: 1.6;
-    }
-
-    main {
-        padding: 90px 20px 40px; /* espaço para não colar no header */
-        min-height: calc(100vh - 160px); /* garante espaço entre header e footer */
-    }
-
-    /* ======= Container Central ======= */
-    .container {
-        max-width: 1000px;
-        margin: 0 auto;
-        background-color: #1f1f1f;
-        padding: 40px 35px;
-        border-radius: 12px;
-        border: 1px solid rgba(0, 191, 255, 0.15);
-        box-shadow: 0 0 25px rgba(0, 191, 255, 0.07);
-    }
-
-    /* ======= Títulos ======= */
-    h1, h2, h3 {
-        color: #00bfff;
-        text-align: center;
-        margin-bottom: 25px;
-        letter-spacing: 0.5px;
-    }
-
-    h1 {
-        font-size: 1.8em;
-        border-bottom: 2px solid #00bfff;
-        padding-bottom: 10px;
-    }
-
-    h3 {
-        color: #27ae60;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 15px;
-        font-size: 1.2em;
-        border: none;
-    }
-
-    /* ======= Seções do Tutorial ======= */
-    .secao-tutorial {
-        margin-bottom: 45px;
-    }
-
-    .secao-tutorial p {
-        color: #ccc;
-        text-align: justify;
-        margin-bottom: 12px;
-        font-size: 0.95em;
-    }
-
-    .secao-tutorial ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .secao-tutorial li {
-        background-color: #2a2a2a;
-        padding: 12px 14px;
-        border-radius: 6px;
-        margin-bottom: 10px;
-        display: flex;
-        align-items: flex-start;
-        border-left: 4px solid #00bfff;
-        gap: 10px;
-    }
-
-    .secao-tutorial li i {
-        color: #00bfff;
-        font-size: 1.1em;
-        margin-top: 3px;
-        flex-shrink: 0;
-    }
-    
-    /* --- Estilo para Sub-itens do Tutorial --- */
-    .secao-tutorial li.sub-item {
-        background-color: #222;
-        border-left-color: #777;
-        margin-left: 20px;
-        width: calc(100% - 20px);
-    }
-     .secao-tutorial li.sub-item i {
-        color: #777;
-     }
-     
-    .secao-tutorial li.perfil-padrao {
-        border-left-color: #ffa500;
-    }
-    .secao-tutorial li.perfil-padrao i {
-        color: #ffa500;
-    }
-    /* --- Fim do Estilo --- */
-
-
-    /* ======= Ícones ======= */
-    h1 i,
-    h3 i {
-        color: #00bfff;
-    }
-
-    /* ======= Responsividade ======= */
-    @media (max-width: 992px) {
-        main {
-            padding: 100px 15px 60px;
-        }
-
-        .container {
-            width: 95%;
-            padding: 25px 20px;
-        }
-
-        h1 {
-            font-size: 1.5em;
-        }
-
-        h3 {
-            font-size: 1.1em;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .container {
-            padding: 20px 15px;
+        .tutorial-container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #2a2a2a;
             border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
-
         h1 {
-            font-size: 1.3em;
+            color: #00bfff;
+            text-align: center;
+            border-bottom: 2px solid #00bfff;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
         }
-
-        .secao-tutorial li {
-            font-size: 0.9em;
-            padding: 10px 12px;
+        h2 {
+            color: #fff;
+            margin-top: 25px;
+            border-left: 5px solid #28a745;
+            padding-left: 10px;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
         }
-        
-        .secao-tutorial li.sub-item {
+        h3 {
+            color: #ccc;
+            margin-top: 15px;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        p, li {
+            color: #bbb;
+            line-height: 1.6;
+        }
+        ul {
+            list-style: disc inside;
+            padding-left: 20px;
+        }
+        li strong {
+            color: #fff;
+        }
+        .section-note {
+            background-color: #444;
+            padding: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #ffc107;
+            color: #fff;
+        }
+        .action-link {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-decoration: none;
             margin-left: 10px;
-            width: calc(100% - 10px);
+            transition: background-color 0.3s;
         }
-    }
-
-    /* ======= Footer ======= */
-    footer {
-        background-color: #1a1a1a;
-        color: #aaa;
-        text-align: center;
-        padding: 15px 0;
-        font-size: 0.9em;
-        border-top: 1px solid #222;
-    }
-</style>
-
+        .action-link:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
+    <div class="tutorial-container">
+        <h1>Guia de Utilização do Sistema (Para Clientes/Tenants)</h1>
+        
+        <p>Bem-vindo(a), <?= htmlspecialchars($nome_usuario) ?>. Este guia rápido detalha as principais funcionalidades do seu sistema de controle financeiro e estoque. O seu perfil é: **<?= htmlspecialchars(ucfirst($perfil)) ?>**.</p>
+        
+        <p style="text-align: right;"><a href="home.php" class="action-link" style="margin: 0; background-color: #28a745;">&#x2B05; Voltar para a Home</a></p>
+        
+        
+        <h2>Módulo 1: Acesso e Configuração Inicial</h2>
+        
+        <h3>1.1. Acesso ao Sistema</h3>
+        <ul>
+            <li>O login é feito com e-mail e senha cadastrados.</li>
+            <li>Utilize a opção <a href="logout.php" class="action-link">Sair</a> para encerrar sua sessão de forma segura.</li>
+            <li>Se necessário, use <a href="esqueci_senha_login.php">Esqueci minha senha</a> para redefinir.</li>
+        </ul>
+        
+        <h3>1.2. Perfil e Informações Pessoais</h3>
+        <ul>
+            <li>Em <a href="perfil.php" class="action-link">Perfil</a>, você pode visualizar e atualizar suas informações (nome, telefone e foto) e trocar sua senha.</li>
+        </ul>
+        
+        <h3>1.3. Gerência de Usuários (Acesso Nível Proprietário/Admin)</h3>
+        <?php if ($is_proprietario_ou_admin): ?>
+        <ul>
+            <li>Acesse <a href="usuarios.php" class="action-link">Usuários</a> para **cadastrar e gerenciar sub-usuários** (perfis Padrão ou Admin) que usarão a conta da sua empresa.</li>
+            <li>Utilize <a href="selecionar_usuario.php" class="action-link">Trocar Usuário</a> para alternar rapidamente entre usuários logados na sua conta de cliente.</li>
+        </ul>
+        <?php else: ?>
+        <div class="section-note">
+            **Atenção:** Seu perfil é **Padrão**. A gerência de usuários e outras configurações administrativas estão restritas ao usuário Proprietário/Admin.
+        </div>
+        <?php endif; ?>
 
-<div class="container">
-    <h1><i class="fas fa-book-open"></i> Tutorial do Sistema de Controle de Contas</h1>
+        <hr>
+        
+        
+        <h2>Módulo 2: Cadastros Base e Estrutura</h2>
+        
+        <div class="section-note">
+            Estes cadastros (acessíveis apenas pelo Proprietário/Admin) são a fundação do seu sistema e devem ser definidos antes de lançar operações.
+        </div>
 
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-users-cog"></i> Tipos de Conta e Acessos</h3>
-        <p>O sistema possui diferentes níveis de acesso para organizar e gerenciar as informações de forma segura e eficiente.</p>
+        <h3>2.1. Clientes e Fornecedores</h3>
         <ul>
-            <li><i class="fas fa-user-tie"></i> <strong>Conta Principal:</strong> É a conta que gerencia um conjunto de operações. O usuário de uma conta principal pode cadastrar outros usuários (sub-usuários) que estarão vinculados a ela. Todas as informações de vendas, compras e finanças são restritas à sua conta principal e aos seus usuários.</li>
-            <li><i class="fas fa-user"></i> <strong>Conta de Usuário:</strong> São os usuários cadastrados por uma conta principal. Eles podem realizar operações no sistema, como vendas e registros financeiros, mas todo o histórico fica atrelado à conta principal que os criou.</li>
-            <li><i class="fas fa-user-shield"></i> <strong>Acesso Master (Super Admin):</strong> Um nível de acesso especial que permite ao administrador geral do sistema visualizar e gerenciar as contas de outros usuários principais. Ao acessar como Master, você pode "incorporar" uma conta principal para ver todos os seus dados e de seus sub-usuários.</li>
+            <li>Cadastre e gerencie todos os parceiros comerciais em <a href="cadastrar_pessoa_fornecedor.php" class="action-link">Clientes/Fornecedores</a>.</li>
+            <li>É possível ver o histórico de transações de cada um.</li>
         </ul>
-    </div>
 
-    <div class="secao-tutorial">
-        <h3 style="color: #ffa500;"><i class="fas fa-tasks"></i> Novos Níveis de Permissão (Dentro da Empresa)</h3>
-        <p>Dentro da sua Conta Principal, existem agora dois níveis de permissão para melhor controle de acesso:</p>
+        <h3>2.2. Categorias Financeiras</h3>
         <ul>
-            <li>
-                <i class="fas fa-user-shield"></i>
-                <strong>Administrador / Proprietário:</strong>
-                Tem acesso <strong>total</strong> a todas as funcionalidades do sistema. Pode ver finanças, gerenciar estoque, cadastrar novos usuários e alterar configurações.
-            </li>
-            <li class="perfil-padrao">
-                <i class="fas fa-user"></i>
-                <strong>Usuário Padrão:</strong>
-                Este é um perfil com acesso <strong>limitado</strong>, focado em operações diárias. Este usuário vê um menu simplificado na tela inicial.
-            </li>
-            <li class="sub-item">
-                <i class="fas fa-shopping-cart"></i>
-                Acesso permitido ao <strong>Caixa de Vendas</strong> para registrar novas vendas.
-            </li>
-            <li class="sub-item">
-                <i class="fas fa-user-plus"></i>
-                Acesso permitido ao cadastro de <strong>Clientes/Fornecedores</strong>.
-            </li>
-            <li class="sub-item">
-                <i class="fas fa-user-switch"></i>
-                Acesso permitido para <strong>Trocar Usuário</strong> (alternar entre usuários logados).
-            </li>
-            <li class="sub-item">
-                <i class="fas fa-key"></i>
-                Pode <strong>editar os próprios dados</strong> (como sua senha) na tela de "Gestão de Usuários", mas não pode ver, criar ou excluir outros usuários.
-            </li>
+            <li>Defina classificações para suas receitas e despesas em <a href="categorias.php" class="action-link">Categorias</a>. Uma boa categorização é essencial para os relatórios.</li>
         </ul>
-    </div>
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-tachometer-alt"></i> Dashboard (Página Inicial)</h3>
-        <p>A página inicial oferece uma visão geral e rápida da sua situação financeira, com acesso rápido a todas as funcionalidades e alertas importantes.</p>
-        <ul>
-            <li><i class="fas fa-exclamation-triangle"></i> Receba alertas de produtos com estoque baixo diretamente na home.</li>
-            <li><i class="fas fa-bars"></i> Navegue facilmente por todas as seções do sistema através dos menus.</li>
-        </ul>
-    </div>
 
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-cash-register"></i> Caixa de Vendas (PDV)</h3>
-        <p>Realize vendas de forma rápida e integrada. O PDV foi projetado para ser o ponto central de suas operações comerciais.</p>
+        <h3>2.3. Contas Bancárias</h3>
         <ul>
-            <li><i class="fas fa-user-check"></i> <strong>Selecione o Cliente:</strong> Busque e selecione o cliente para registrar a venda em seu nome.</li>
-            <li><i class="fas fa-plus-circle"></i> <strong>Adicione Produtos:</strong> Pesquise produtos pelo nome e adicione-os à venda com um clique. O sistema já informa o estoque disponível.</li>
-            <li><i class="fas fa-tags"></i> <strong>Aplique Descontos:</strong> Informe um valor de desconto que será abatido do total da venda.</li>
-            <li><i class="fas fa-credit-card"></i> <strong>Formas de Pagamento:</strong> Escolha entre Dinheiro, PIX, Débito, Crédito ou Fiado (A Prazo).</li>
-            <li><i class="fas fa-receipt"></i> <strong>Finalize a Venda:</strong> Ao finalizar, você pode gerar um recibo simples para impressão ou, se configurado, emitir uma Nota Fiscal Eletrônica (NF-e).</li>
-            <li><i class="fas fa-sync-alt"></i> <strong>Integração Automática:</strong> Cada venda atualiza o estoque dos produtos e, no caso de "Fiado", cria automaticamente uma conta a receber para o cliente.</li>
+            <li>Registre e edite as contas bancárias da sua empresa (para uso em Fluxo de Caixa, Contas a Pagar e Receber) em <a href="banco_cadastro.php" class="action-link">Contas Bancárias</a>.</li>
         </ul>
-    </div>
-    
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-dolly"></i> Registro de Compras</h3>
-        <p>Gerencie a entrada de novos produtos no seu estoque de forma integrada com o financeiro.</p>
+        
+        <h3>2.4. Produtos e Configuração Fiscal</h3>
+        <?php if ($is_proprietario_ou_admin): ?>
         <ul>
-            <li><i class="fas fa-truck"></i> <strong>Selecione o Fornecedor:</strong> Busque e selecione o fornecedor da compra.</li>
-            <li><i class="fas fa-plus"></i> <strong>Adicione os Produtos:</strong> Pesquise os produtos e adicione-os, informando a quantidade e o custo unitário.</li>
-            <li><i class="fas fa-check-double"></i> <strong>Integração Total:</strong> Ao finalizar a compra, o sistema automaticamente aumenta a quantidade dos produtos no estoque e gera uma conta a pagar para o fornecedor selecionado.</li>
+            <li>Gerencie seu inventário e a quantidade mínima de estoque em <a href="controle_estoque.php" class="action-link">Estoque</a>.</li>
+            <li>Configure os dados fiscais e certificados da empresa em <a href="configuracao_fiscal.php" class="action-link">Config. Fiscal</a> para emissão de NFC-e (se disponível).</li>
         </ul>
-    </div>
+        <?php else: ?>
+        <div class="section-note">
+            **Seu acesso:** Você pode apenas usar os produtos já cadastrados nas vendas. O controle de estoque e a configuração fiscal estão restritos ao perfil Proprietário/Admin.
+        </div>
+        <?php endif; ?>
 
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-file-invoice-dollar"></i> Contas a Pagar</h3>
-        <p>Nesta seção, você gerencia todas as suas despesas e contas que precisam ser pagas.</p>
-        <ul>
-            <li><i class="fas fa-plus-circle"></i> <strong>Adicionar Nova Conta:</strong> Clique no botão para abrir um formulário onde você insere os dados da conta (fornecedor, valor, vencimento, categoria).</li>
-            <li><i class="fas fa-search"></i> <strong>Buscar:</strong> Utilize os filtros para encontrar contas específicas por fornecedor, número ou data.</li>
-            <li><i class="fas fa-check-circle"></i> <strong>Baixar:</strong> Ao pagar uma conta, clique em "Baixar" para registrar o pagamento, informar a forma de pagamento, juros (se houver) e anexar um comprovante.</li>
-            <li><i class="fas fa-clone"></i> <strong>Repetir:</strong> Se for uma conta recorrente, use o botão "Repetir" para criar as próximas parcelas automaticamente.</li>
-            <li><i class="fas fa-edit"></i> <strong>Editar e Excluir:</strong> Altere ou remova contas a qualquer momento.</li>
-        </ul>
-    </div>
-    
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-hand-holding-usd"></i> Contas a Receber</h3>
-        <p>Aqui você administra tudo o que precisa receber de seus clientes ou outras fontes.</p>
-        <ul>
-            <li><i class="fas fa-plus-circle"></i> <strong>Adicionar Nova Conta:</strong> Adicione novas receitas com seus detalhes e categoria.</li>
-            <li><i class="fas fa-search"></i> <strong>Pesquisa Inteligente:</strong> Ao adicionar uma conta ou gerar uma cobrança, digite o nome do responsável para encontrar o cadastro rapidamente.</li>
-            <li><i class="fas fa-check-double"></i> <strong>Baixar:</strong> Quando receber um pagamento, marque a conta como "baixada", informando os detalhes do recebimento e anexando o comprovante.</li>
-            <li><i class="fas fa-envelope"></i> <strong>Enviar Cobrança:</strong> Gere e envie um e-mail de cobrança diretamente do sistema, com dados para pagamento e opção de anexo.</li>
-        </ul>
-    </div>
+        <hr>
 
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-users"></i> Clientes e Fornecedores</h3>
-        <p>Centralize o cadastro de todas as pessoas e empresas com as quais você se relaciona financeiramente.</p>
-        <ul>
-            <li><i class="fas fa-user-plus"></i> <strong>Cadastrar:</strong> Adicione novos clientes ou fornecedores com suas informações de contato.</li>
-            <li><i class="fas fa-history"></i> <strong>Histórico Completo:</strong> Clique no botão "Histórico" para visualizar todas as transações (contas a pagar, a receber, compras e vendas) vinculadas a um cadastro.</li>
-        </ul>
-    </div>
+        
+        <h2>Módulo 3: Fluxo de Transações (Financeiro e Operacional)</h2>
 
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-boxes"></i> Controle de Estoque</h3>
-        <p>Gerencie seus produtos, controle entradas e saídas e mantenha o inventário sempre atualizado.</p>
+        <h3>3.1. Caixa de Vendas (Acesso Básico para todos os perfis)</h3>
         <ul>
-            <li><i class="fas fa-box-open"></i> <strong>Cadastrar Produto:</strong> Adicione produtos informando nome, quantidade inicial, quantidade mínima, preços e dados fiscais (NCM/CFOP).</li>
-            <li><i class="fas fa-bell"></i> <strong>Alerta de Estoque Mínimo:</strong> O sistema exibirá um alerta na página inicial sempre que o estoque de um produto atingir a quantidade mínima definida.</li>
+            <li>Use <a href="vendas.php" class="action-link">Caixa de Vendas</a> para registrar operações de venda.</li>
+            <li>O registro de vendas a prazo gera lançamentos automáticos em Contas a Receber.</li>
+            <li>Permite emitir **Recibo de Venda** e **NFC-e** (se configurado).</li>
         </ul>
-    </div>
-    
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-tags"></i> Categorias</h3>
-        <p>Organize suas finanças criando categorias para suas despesas e receitas.</p>
+
+        <h3>3.2. Contas a Pagar e Receber (Acesso Nível Proprietário/Admin)</h3>
+        <?php if ($is_proprietario_ou_admin): ?>
         <ul>
-            <li><i class="fas fa-plus"></i> Crie categorias como "Aluguel", "Salários", "Venda de Produtos" para classificar seus lançamentos.</li>
-            <li><i class="fas fa-edit"></i> Edite ou exclua categorias existentes a qualquer momento.</li>
+            <li>**Contas a Pagar:** Gerencie suas despesas em <a href="contas_pagar.php" class="action-link">Contas a Pagar</a> e dê baixa nos pagamentos. Acesse <a href="contas_pagar_baixadas.php">Pagas</a> para consultar o histórico.</li>
+            <li>**Contas a Receber:** Monitore as entradas futuras em <a href="contas_receber.php" class="action-link">Contas a Receber</a>. Acesse <a href="contas_receber_baixadas.php">Recebidas</a> para o histórico.</li>
+            <li>É possível **enviar lembretes de cobrança** por e-mail para as Contas a Receber.</li>
         </ul>
-    </div>
-
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-file-invoice"></i> Configurações Fiscais</h3>
-        <p>Preencha os dados da sua empresa para habilitar a emissão de Notas Fiscais Eletrônicas (NF-e/NFC-e).</p>
+        <?php endif; ?>
+        
+        <h3>3.3. Compras e Caixa (Acesso Nível Proprietário/Admin)</h3>
+        <?php if ($is_proprietario_ou_admin): ?>
         <ul>
-            <li><i class="fas fa-building"></i> Informe os dados da empresa, endereço e regime tributário.</li>
-            <li><i class="fas fa-id-card"></i> Insira o CSC (Token) fornecido pela SEFAZ.</li>
-            <li><i class="fas fa-certificate"></i> Faça o upload do seu Certificado Digital A1 e informe a senha para assinar os documentos fiscais.</li>
+            <li>**Registro de Compras:** Use <a href="compras.php" class="action-link">Registro de Compras</a> para registrar aquisições e aumentar o estoque.</li>
+            <li>**Fluxo de Caixa:** Gerencie as movimentações diretas (entradas e saídas) que não passam pelo Pagar/Receber em <a href="lancamento_caixa.php" class="action-link">Fluxo de Caixa</a> e confira o fechamento diário.</li>
         </ul>
-    </div>
+        <?php endif; ?>
+        
+        <hr>
 
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-chart-pie"></i> Relatórios</h3>
-        <p>Acesse um dashboard completo com a visão geral da saúde financeira do seu negócio.</p>
+        
+        <h2>Módulo 4: Relatórios e Utilitários</h2>
+
+        <h3>4.1. Relatórios (Acesso Nível Proprietário/Admin)</h3>
+        <?php if ($is_proprietario_ou_admin): ?>
         <ul>
-            <li><i class="fas fa-balance-scale"></i> Visualize balanços de valores previstos (contas em aberto) e realizados (contas baixadas).</li>
-            <li><i class="fas fa-chart-bar"></i> Analise um gráfico de fluxo de caixa dos últimos 12 meses.</li>
-            <li><i class="fas fa-file-pdf"></i> Exporte um resumo completo do dashboard em formato PDF.</li>
+            <li>Visualize gráficos e dados consolidados (Financeiro, Estoque, Vendas) em <a href="relatorios.php" class="action-link">Relatórios</a>.</li>
+            <li>Permite **exportar dados** para Excel.</li>
         </ul>
-    </div>
-
-    <div class="secao-tutorial">
-        <h3><i class="fas fa-id-card"></i> Perfil</h3>
-        <p>Gerencie suas informações pessoais e configurações de conta.</p>
+        <?php else: ?>
+        <div class="section-note">
+            A seção de Relatórios e Análises não está disponível para o seu perfil.
+        </div>
+        <?php endif; ?>
+        
+        <h3>4.2. Outros Utilitários</h3>
         <ul>
-            <li><i class="fas fa-camera"></i> Altere sua foto de perfil para personalizar sua conta.</li>
-            <li><i class="fas fa-key"></i> Modifique sua senha de acesso para manter sua conta segura.</li>
-            <li><i class="fas fa-user-slash"></i> Solicite a exclusão da sua conta. Um e-mail será enviado para confirmar a ação.</li>
+            <li>Use a <a href="calculadora.php" class="action-link">Calculadora</a> para cálculos rápidos no sistema.</li>
+            <li>Envie sugestões de melhoria em <a href="feedback.php" class="action-link">Feedback</a> ou dúvidas em <a href="suporte.php" class="action-link">Suporte</a>.</li>
         </ul>
+
+        <p style="text-align: center; margin-top: 40px; font-style: italic;">
+            Este guia fornece uma visão geral. Explore cada módulo para dominar todas as ferramentas!
+        </p>
+        
+        <p style="text-align: center; margin-top: 20px;">
+            <a href="home.php" class="action-link" style="background-color: #28a745;">&#x2B05; Voltar para a Home</a>
+            <a href="suporte.php" class="action-link" style="background-color: #00bfff;">&#x2709; Contato e Suporte</a>
+        </p>
+
     </div>
-
-</div>
-
-<?php include('../includes/footer.php'); ?>
 </body>
 </html>

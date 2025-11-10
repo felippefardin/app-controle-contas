@@ -1,6 +1,15 @@
 <?php
 // --- Inicia sessão e configurações ---
-require_once __DIR__ . '/../includes/session_init.php';
+require_once __DIR__ . '/../includes/session_init.php'; // session_init.php já deve iniciar a sessão
+
+// --- Bloco para capturar a mensagem de erro ---
+$mensagem_erro_assinatura = '';
+if (isset($_SESSION['erro_assinatura'])) {
+    $mensagem_erro_assinatura = $_SESSION['erro_assinatura'];
+    unset($_SESSION['erro_assinatura']); // Limpa a mensagem
+}
+// --- Fim do bloco ---
+
 require_once __DIR__ . '/../includes/config/config.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -113,19 +122,149 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
 }
 ?>
 
-<h2>Escolha seu Plano (SANDBOX)</h2>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinar Plano - App Controle de Contas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <style>
+        body {
+            background-color: #121212;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 30px auto;
+            background-color: #222;
+            padding: 25px 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 191, 255, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #00bfff;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #0af;
+            padding-bottom: 10px;
+        }
+        .planos-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .plano-card {
+            background-color: #1f1f1f;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 25px;
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .plano-card h3 {
+            color: #0af;
+            text-align: left;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+            border-bottom: none;
+        }
+        .plano-card p {
+            color: #ccc;
+            text-align: left;
+            font-size: 0.95rem;
+            flex-grow: 1; /* Empurra o formulário para baixo */
+            margin-top: 0;
+        }
+        .plano-card form {
+            margin-top: 20px;
+        }
+        .plano-card label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .plano-card input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: #eee;
+            margin-bottom: 15px;
+        }
+        .plano-card button {
+            width: 100%;
+            background-color: #00bfff;
+            color: #121212;
+            border: none;
+            font-weight: bold;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .plano-card button:hover {
+            background-color: #0099cc;
+            color: white;
+        }
+        .aviso-sandbox {
+            text-align: center;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        .mensagem-erro {
+            background-color: #cc4444; /* Vermelho escuro */
+            color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            border: 1px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
 
-<?php foreach ($planos as $chave => $plano): ?>
-<div style="border:1px solid #ccc; padding:15px; margin:10px; width:300px;">
-    <h3><?= $plano['nome'] ?> — R$ <?= number_format($plano['valor'], 2, ',', '.') ?>/mês</h3>
-    <p><?= $plano['descricao'] ?></p>
-    <form method="post">
-        <input type="hidden" name="plano" value="<?= $chave ?>">
-        <label>Seu e-mail (para registro interno):</label><br>
-        <input type="email" name="email" required placeholder="ex: cliente@teste.com"><br><br>
-        <button type="submit">Assinar (SANDBOX)</button>
-    </form>
+<div class="container">
+
+    <?php if (!empty($mensagem_erro_assinatura)): ?>
+        <div class="mensagem-erro">
+            <i class="fa-solid fa-triangle-exclamation"></i> <?php echo htmlspecialchars($mensagem_erro_assinatura); ?>
+        </div>
+    <?php endif; ?>
+    <h2>Escolha seu Plano (SANDBOX)</h2>
+
+    <div class="planos-container">
+        <?php foreach ($planos as $chave => $plano): ?>
+        <div class="plano-card">
+            <h3><?= $plano['nome'] ?> — R$ <?= number_format($plano['valor'], 2, ',', '.') ?>/mês</h3>
+            <p><?= $plano['descricao'] ?></p>
+            <form method="post">
+                <input type="hidden" name="plano" value="<?= $chave ?>">
+                <label for="email_<?= $chave ?>">Seu e-mail (para registro interno):</label>
+                <input type="email" name="email" id="email_<?= $chave ?>" required placeholder="ex: cliente@teste.com">
+                <button type="submit">Assinar (SANDBOX)</button>
+            </form>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <p class="aviso-sandbox"><small>💡 Use comprador sandbox: <b>test_user_2368268688435555249@testuser.com</b></small></p>
 </div>
-<?php endforeach; ?>
 
-<p><small>💡 Use comprador sandbox: <b>test_user_2368268688435555249@testuser.com</b></small></p>
+</body>
+</html>

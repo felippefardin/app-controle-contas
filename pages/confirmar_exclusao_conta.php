@@ -1,5 +1,24 @@
 <?php
+// pages/confirmar_exclusao_conta.php
+
+// 1. GARANTE A SESSÃO E OUTRAS FUNÇÕES DE UTILIDADE
+require_once '../includes/session_init.php'; 
+
+// 2. INCLUI AS FUNÇÕES DE CONEXÃO (como getMasterConnection)
 include('../database.php');
+
+// 3. ESTABELECE A CONEXÃO CORRETA
+// A tabela 'solicitacoes_exclusao' está no banco de dados master,
+// portanto, precisamos da conexão master.
+$conn = getMasterConnection(); 
+
+// 4. VERIFICA SE A CONEXÃO FOI ESTABELECIDA
+if ($conn === null) {
+    // Exibe uma mensagem de erro fatal se não conseguir conectar ao DB Master.
+    die("Erro ao conectar com o banco de dados. Tente novamente."); 
+}
+
+
 include('../includes/header.php'); // Inclui o cabeçalho para uma aparência consistente
 
 $token = $_GET['token'] ?? '';
@@ -92,13 +111,29 @@ if (!empty($token)) {
             border-radius: 6px;
             margin-bottom: 15px;
         }
+        /* Novo estilo para a caixa de aviso de backup */
+        .aviso-backup {
+            background-color: #ffc107;
+            color: #333;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-weight: bold;
+            border: 2px solid #e0a800;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <?php if ($token_valido): ?>
             <h1><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Exclusão</h1>
+            
+            <div class="aviso-backup">
+                ⚠️ **AVISO IMPORTANTE:** Antes de prosseguir, certifique-se de ter feito o **backup de todos os seus dados** (Contas a Pagar, Receber, Estoque, etc.). Você pode exportá-los em formatos **CSV, Excel ou PDF** através da página de Relatórios.
+            </div>
+            
             <p>Você tem <strong>certeza absoluta</strong> que deseja excluir sua conta? Todos os seus dados, incluindo contas e usuários associados, serão permanentemente removidos. <strong>Esta ação não pode ser desfeita.</strong></p>
+            
             <form action="../actions/executar_exclusao.php" method="POST">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
                 <button type="submit" class="btn btn-danger">Sim, Excluir Minha Conta Permanentemente</button>

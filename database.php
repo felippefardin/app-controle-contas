@@ -36,3 +36,47 @@ function getMasterConnection() {
         die("❌ Erro de conexão: " . $e->getMessage());
     }
 }
+
+// ... (código existente para getMasterConnection e outras funções de banco)
+
+/**
+ * Cria e retorna a conexão com o banco de dados específico do Tenant (cliente).
+ *
+ * Utiliza as credenciais armazenadas na sessão.
+ * @return mysqli|null A conexão mysqli ou null em caso de falha.
+ */
+function getTenantConnection() {
+    // 1. Verifica se as informações de conexão do tenant estão na sessão
+    if (!isset($_SESSION['tenant_db'])) {
+        // Isso pode acontecer se a sessão expirar
+        return null;
+    }
+    
+    $db_info = $_SESSION['tenant_db'];
+    
+    // 2. Tenta conectar com as credenciais do tenant
+    try {
+        $tenant_conn = new mysqli(
+            $db_info['db_host'],
+            $db_info['db_user'],
+            $db_info['db_password'],
+            $db_info['db_database']
+        );
+        $tenant_conn->set_charset("utf8mb4");
+
+        // 3. Verifica erro de conexão
+        if ($tenant_conn->connect_error) {
+            // Se falhar a conexão, retorna null para que a página possa tratar.
+            error_log("Falha ao conectar ao banco do tenant: " . $tenant_conn->connect_error);
+            return null; 
+        }
+        
+        // 4. Retorna a conexão bem-sucedida
+        return $tenant_conn;
+
+    } catch (Exception $e) {
+        // Loga a exceção e retorna null
+        error_log("Exceção ao conectar ao banco do tenant: " . $e->getMessage());
+        return null;
+    }
+}

@@ -13,6 +13,17 @@ $email = trim($_POST['email']);
 $senha = trim($_POST['senha']);
 
 $master = getMasterConnection();
+// echo "<pre>";
+// echo "🔍 Banco conectado: " . $master->query("SELECT DATABASE()")->fetch_row()[0] . "\n";
+
+// $result = $master->query("SELECT id, email FROM usuarios WHERE email = 'contatotech.tecnologia@gmail.com'");
+// if ($result->num_rows > 0) {
+//     echo "✅ Usuário encontrado no banco.\n";
+// } else {
+//     echo "❌ Usuário NÃO encontrado no banco.\n";
+// }
+// exit;
+
 
 // --- LOGIN DIRETO DO ADMIN MASTER ---
 if ($email === 'contatotech.tecnologia@gmail.com') {
@@ -56,13 +67,13 @@ if (!$tenant) {
     exit;
 }
 
-// --- 3. Verifica se a assinatura está ativa ---
+// --- 3. Verifica se a assinatura está ativa (AJUSTE AQUI) ---
 if ($tenant['status_assinatura'] !== 'authorized') {
-    $_SESSION['erro_login'] = '⚠️ Sua assinatura não está ativa. Complete o pagamento para acessar o sistema.';
-
-    // ✅ Caminho absoluto para o login e redirecionamento correto
-    echo "<meta http-equiv='refresh' content='2;url=" . $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME'], 1) . "/../pages/assinar.php'>";
-    include __DIR__ . '/../pages/login.php';
+    // Definimos uma mensagem de erro específica para a página de assinatura
+    $_SESSION['erro_assinatura'] = '⚠️ Sua assinatura não está ativa. Complete o pagamento para acessar o sistema.';
+    
+    // Redireciona imediatamente para a página de assinatura
+    header("Location: ../pages/assinar.php");
     exit;
 }
 
@@ -114,3 +125,5 @@ $_SESSION['tenant_db'] = [
 // --- 8. Redireciona ---
 header("Location: ../pages/selecionar_usuario.php");
 exit;
+
+?>
