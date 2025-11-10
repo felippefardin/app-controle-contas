@@ -288,19 +288,24 @@ CREATE TABLE `planos` (
   `valor` decimal(10,2) NOT NULL,
   `ciclo` enum('mensal','trimestral','anual') NOT NULL,
   `descricao` text,
-  `mercadopago_plan_id` varchar(255) DEFAULT NULL, -- ID do plano no gateway
+  `mercadopago_plan_id` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE assinaturas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    plano VARCHAR(50) NOT NULL,
-    valor DECIMAL(10,2) NOT NULL,
-    status VARCHAR(50) DEFAULT 'pendente', -- pendente, ativa, cancelada
-    mp_preapproval_id VARCHAR(255),        -- id retornado pelo Mercado Pago
-    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `assinaturas` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `plano` varchar(50) NOT NULL,
+  `valor` decimal(10,2) NOT NULL,
+  `status` varchar(50) DEFAULT 'pendente',
+  `mp_preapproval_id` varchar(255) DEFAULT NULL,
+  `data_criacao` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_assinaturas_usuario` (`id_usuario`),
+  CONSTRAINT `fk_assinaturas_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 
 CREATE TABLE `pagamentos_historico` (

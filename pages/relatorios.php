@@ -154,13 +154,40 @@ h2 { text-align:center; color:#00bfff; font-weight:600; margin-bottom:25px; }
 .chart-container { background:#242424; border-radius:10px; padding:25px; margin-top:30px; }
 .chart-container canvas { width:100%; height:400px !important; }
 .chart-container h4 { color:#eee; margin-bottom:15px; }
-#exportOptions { display:flex; gap:10px; margin-top:15px; }
+#exportOptions { display:flex; gap:10px; margin-top:15px; justify-content: center; } /* Centralizado */
 button.export-btn { background:#00bfff; border:none; color:#fff; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:15px; }
 button.export-btn:hover { background:#0099cc; }
 @media (max-width:768px){
     body{padding:10px;}
     h2{font-size:1.5rem;}
     .summary-card p{font-size:1.3rem;}
+}
+/* Estilos do Modal Adicionados */
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+.modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
+.modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
+.modal-content .close-btn:hover { color: #00bfff; }
+.modal-content form { display: flex; flex-direction: column; gap: 15px; }
+.modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
+.modal-content form button { flex: 1 1 100%; background-color: #00bfff; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
+.modal-content form button:hover { background-color: #0099cc; }
+.modal-content label { margin-top: 10px; color: #eee; font-weight: bold; }
+.export-buttons-group { text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+.btn-export { background-color: #28a745; color: white; padding: 10px 14px; border: none; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
+.btn-export:hover { background-color: #218838; }
+
+.section-export {
+    border: 1px solid #333;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+.section-export h4 {
+    color: #00bfff;
+    margin-top: 0;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
 }
 </style>
 </head>
@@ -246,10 +273,63 @@ button.export-btn:hover { background:#0099cc; }
         <h4>Fluxo de Caixa (Últimos 12 meses)</h4>
         <canvas id="fluxoChart"></canvas>
         <div id="exportOptions">
-            <button class="export-btn" id="savePdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <button class="export-btn" id="savePdf"><i class="fa-solid fa-file-pdf"></i> PDF Dashboard</button>
+            <button class="export-btn" onclick="document.getElementById('exportarDadosModal').style.display='flex'"><i class="fa-solid fa-file-export"></i> Exportar Dados</button>
         </div>
     </div>
 </div>
+
+<div id="exportarDadosModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close-btn" onclick="document.getElementById('exportarDadosModal').style.display='none'">&times;</span>
+        <h3>Exportar Dados Financeiros e Cadastrais</h3>
+
+        <div class="section-export">
+            <h4><i class="fa-solid fa-file-invoice-dollar"></i> Contas a Pagar/Receber</h4>
+            <form id="formExportarContas" action="" method="GET" target="_blank">
+                <label for="tipo_conta">Tipo de Conta:</label>
+                <select id="tipo_conta" name="tipo_conta" required>
+                    <option value="pagar">Contas a Pagar</option>
+                    <option value="receber">Contas a Receber</option>
+                </select>
+
+                <label for="data_inicio_contas">Data de Início (Vencimento):</label>
+                <input type="date" id="data_inicio_contas" name="data_inicio">
+                <label for="data_fim_contas">Data de Fim (Vencimento):</label>
+                <input type="date" id="data_fim_contas" name="data_fim">
+
+                <label for="status_export_contas">Status:</label>
+                <select id="status_export_contas" name="status">
+                    <option value="pendente">Em Aberto</option>
+                    <option value="baixada">Baixadas</option>
+                </select>
+                
+                <p style="margin-top: 15px; margin-bottom: 5px;">Selecione o formato:</p>
+                <div class="export-buttons-group">
+                    <button type="submit" name="formato" value="csv" class="btn-export">CSV</button>
+                    <button type="submit" name="formato" value="pdf" class="btn-export">PDF</button>
+                    <button type="submit" name="formato" value="excel" class="btn-export">Excel</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="section-export">
+    <h4><i class="fa-solid fa-users"></i> Clientes / Fornecedores</h4>
+    <form id="formExportarPessoas" action="../actions/exportar_pessoas_fornecedores.php" method="GET" target="_blank">
+        <label for="tipo_pessoa">Tipo de Cadastro:</label>
+        <select id="tipo_pessoa" name="tipo" required>
+            <option value="cliente">Clientes</option>
+            <option value="fornecedor">Fornecedores</option>
+            <option value="todos">Todos</option>
+        </select>
+
+        <p style="margin-top: 15px; margin-bottom: 5px;">Selecione o formato:</p>
+        <div class="export-buttons-group">
+            <button type="submit" name="formato" value="csv" class="btn-export">CSV</button>
+            <button type="submit" name="formato" value="pdf" class="btn-export">PDF</button>
+            <button type="submit" name="formato" value="excel" class="btn-export">Excel</button>
+        </div>
+    </form>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -337,7 +417,7 @@ new Chart(document.getElementById('fluxoChart'), {
     }
 });
 
-// Exportar PDF
+// Exportar PDF do Dashboard
 document.getElementById('savePdf').addEventListener('click',()=>{
     const { jsPDF } = window.jspdf;
     html2canvas(document.getElementById('pdf-content'), { backgroundColor:'#1e1e1e', scale:2 }).then(canvas=>{
@@ -349,5 +429,26 @@ document.getElementById('savePdf').addEventListener('click',()=>{
         pdf.save('relatorio_financeiro.pdf');
     });
 });
+
+// NOVO JAVASCRIPT PARA EXPORTAÇÃO DE CONTAS
+document.getElementById('formExportarContas').addEventListener('submit', function(e) {
+    const tipoConta = document.getElementById('tipo_conta').value;
+    let formato = e.submitter.value;
+    
+    // Define a action correta baseada no tipo de conta selecionada
+    this.action = `../actions/exportar_contas_${tipoConta}.php?formato=${formato}`;
+
+    // Os demais parâmetros (data_inicio, data_fim, status) são incluídos automaticamente pelo formulário.
+});
+
+// Fechar modal ao clicar fora
+window.addEventListener('click', e => {
+    const exportModal = document.getElementById('exportarDadosModal');
+    if (e.target === exportModal) {
+      exportModal.style.display = 'none';
+    }
+});
 </script>
 <?php require_once '../includes/footer.php'; ?>
+</body>
+</html>

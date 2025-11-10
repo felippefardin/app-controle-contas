@@ -37,7 +37,7 @@ MercadoPagoConfig::setAccessToken($access_token);
 
 // 🔹 Planos disponíveis
 $planos = [
-    'basico' => ['nome' => 'Básico', 'valor' => 29.90, 'descricao' => 'Acesso mensal básico ao sistema'],
+    'Box Mensal' => ['nome' => 'Básico', 'valor' => 29.90, 'descricao' => 'Acesso mensal básico ao sistema'],
     'pro' => ['nome' => 'Pro', 'valor' => 59.90, 'descricao' => 'Recursos avançados e relatórios'],
     'premium' => ['nome' => 'Premium', 'valor' => 99.90, 'descricao' => 'Todos os recursos + suporte prioritário']
 ];
