@@ -2,6 +2,13 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
+// --- Função para calcular o fim do período de teste ---
+function calculateTrialEnd($startDate, $plano) {
+    $plano = in_array($plano, ['mensal', 'trimestral']) ? $plano : 'mensal';
+    $days = ($plano === 'trimestral') ? 30 : 15;
+    return date('Y-m-d', strtotime("{$startDate} +{$days} days"));
+}
+
 // --- 1. Verifica se os campos foram preenchidos ---
 if (empty($_POST['email']) || empty($_POST['senha'])) {
     $_SESSION['erro_login'] = 'Preencha todos os campos.';
@@ -9,21 +16,11 @@ if (empty($_POST['email']) || empty($_POST['senha'])) {
     exit;
 }
 
-$email = trim($_POST['email']);
+// --- 2. Captura e normaliza os dados ---
+$email = strtolower(trim($_POST['email'])); // força lowercase
 $senha = trim($_POST['senha']);
 
-$master = getMasterConnection();
-// echo "<pre>";
-// echo "🔍 Banco conectado: " . $master->query("SELECT DATABASE()")->fetch_row()[0] . "\n";
-
-// $result = $master->query("SELECT id, email FROM usuarios WHERE email = 'contatotech.tecnologia@gmail.com'");
-// if ($result->num_rows > 0) {
-//     echo "✅ Usuário encontrado no banco.\n";
-// } else {
-//     echo "❌ Usuário NÃO encontrado no banco.\n";
-// }
-// exit;
-
+$master = getMasterConnection(); // Banco Master
 
 // --- LOGIN DIRETO DO ADMIN MASTER ---
 if ($email === 'contatotech.tecnologia@gmail.com') {
@@ -47,12 +44,12 @@ if ($email === 'contatotech.tecnologia@gmail.com') {
     }
 }
 
-// --- 2. Busca o tenant associado ---
+// --- 3. Busca o tenant associado ---
 $stmt = $master->prepare("
-    SELECT id, db_host, db_database, db_user, db_password, status_assinatura
-    FROM tenants
-    WHERE admin_email = ? OR id IN (
-        SELECT tenant_id FROM usuarios WHERE email = ?
+    SELECT t.id, t.db_host, t.db_database, t.db_user, t.db_password, t.status_assinatura, t.data_inicio_teste, t.plano_atual
+    FROM tenants t
+    WHERE LOWER(t.admin_email) = ? OR t.id IN (
+        SELECT tenant_id FROM usuarios WHERE LOWER(email) = ?
     )
 ");
 $stmt->bind_param("ss", $email, $email);
@@ -67,17 +64,40 @@ if (!$tenant) {
     exit;
 }
 
-// --- 3. Verifica se a assinatura está ativa (AJUSTE AQUI) ---
-if ($tenant['status_assinatura'] !== 'authorized') {
-    // Definimos uma mensagem de erro específica para a página de assinatura
-    $_SESSION['erro_assinatura'] = '⚠️ Sua assinatura não está ativa. Complete o pagamento para acessar o sistema.';
-    
-    // Redireciona imediatamente para a página de assinatura
+// --- 4. Checa trial/assinatura ---
+$status_assinatura = $tenant['status_assinatura'];
+
+if ($status_assinatura === 'trial') {
+    $data_inicio_teste = $tenant['data_inicio_teste'];
+    $plano_atual = $tenant['plano_atual'];
+
+    if (!empty($data_inicio_teste)) {
+        $data_fim_teste = calculateTrialEnd($data_inicio_teste, $plano_atual);
+        $hoje = date('Y-m-d');
+
+        if ($hoje > $data_fim_teste) {
+            $stmtUpdate = $master->prepare("UPDATE tenants SET status_assinatura = 'expired' WHERE id = ?");
+            $stmtUpdate->bind_param("s", $tenant['id']);
+            $stmtUpdate->execute();
+            $stmtUpdate->close();
+            $status_assinatura = 'expired';
+        } else {
+            $dias_restantes = floor((strtotime($data_fim_teste) - strtotime($hoje)) / (60 * 60 * 24));
+            $_SESSION['aviso_trial'] = "Seu teste grátis expira em " . date('d/m/Y', strtotime($data_fim_teste)) . " ({$dias_restantes} dias restantes).";
+        }
+    }
+}
+
+if ($status_assinatura !== 'authorized' && $status_assinatura !== 'trial') {
+    $mensagem_erro = ($status_assinatura === 'expired') 
+        ? '🛑 Seu período de teste expirou. Faça uma assinatura para continuar a usar o sistema.'
+        : '⚠️ Sua assinatura não está ativa. Complete o pagamento para acessar o sistema.';
+    $_SESSION['erro_assinatura'] = $mensagem_erro;
     header("Location: ../pages/assinar.php");
     exit;
 }
 
-// --- 4. Conecta ao banco do tenant ---
+// --- 5. Conecta ao banco do tenant ---
 try {
     $tenantPdo = new PDO(
         "mysql:host={$tenant['db_host']};dbname={$tenant['db_database']};charset=utf8mb4",
@@ -94,8 +114,8 @@ try {
     exit;
 }
 
-// --- 5. Busca usuário dentro do tenant ---
-$stmt = $tenantPdo->prepare("SELECT * FROM usuarios WHERE email = ?");
+// --- 6. Busca usuário dentro do tenant ---
+$stmt = $tenantPdo->prepare("SELECT * FROM usuarios WHERE LOWER(email) = ?");
 $stmt->execute([$email]);
 $user = $stmt->fetch();
 
@@ -105,7 +125,7 @@ if (!$user || !password_verify($senha, $user['senha'])) {
     exit;
 }
 
-// --- 6. Cria sessão ---
+// --- 7. Cria sessão ---
 $_SESSION['usuario_logado'] = [
     'id' => $user['id'],
     'nome' => $user['nome'],
@@ -114,7 +134,7 @@ $_SESSION['usuario_logado'] = [
     'tenant_id' => $tenant['id']
 ];
 
-// --- 7. Armazena credenciais do banco ---
+// --- 8. Armazena credenciais do banco ---
 $_SESSION['tenant_db'] = [
     'db_host' => $tenant['db_host'],
     'db_database' => $tenant['db_database'],
@@ -122,8 +142,6 @@ $_SESSION['tenant_db'] = [
     'db_password' => $tenant['db_password']
 ];
 
-// --- 8. Redireciona ---
+// --- 9. Redireciona ---
 header("Location: ../pages/selecionar_usuario.php");
 exit;
-
-?>

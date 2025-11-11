@@ -248,7 +248,7 @@
                                 <li><i class="bi bi-check-lg text-success"></i> Relatórios em PDF</li>
                             </ul>
                         </div>
-                        <a href="/app-controle-contas/pages/registro.php" class="btn btn-primary btn-lg mt-3">Começar com 15 dias Grátis</a>
+                        <a href="/app-controle-contas/pages/registro.php?plano=mensal" class="btn btn-primary btn-lg mt-3">Começar com 15 dias Grátis</a>
                     </div>
                 </div>
                 
@@ -257,7 +257,7 @@
                         <div>
                             <div class="pricing-card-header">
                                 <h3 class="pricing-card-title">Plano Trimestral</h3>
-                                <div class="discount-tag">Economize 14.56%</div>
+                                <div class="discount-tag">Economize 14.56%</div> 
                                 <div class="plan-highlight" style="color: #fff; background-color: #0d6efd;">30 dias de teste grátis!</div>
                             </div>
                             <p style="text-decoration: line-through; color: #6c757d;">R$149,70</p>
@@ -270,14 +270,14 @@
                                 <li><i class="bi bi-check-lg text-success"></i> Exportação de Relatórios (CSV/Excel)</li>
                             </ul>
                         </div>
-                        <a href="/app-controle-contas/pages/registro.php" class="btn btn-primary btn-lg mt-3">Começar com 30 dias Grátis</a>
+                        <a href="/app-controle-contas/pages/registro.php?plano=trimestral" class="btn btn-primary btn-lg mt-3">Começar com 30 dias Grátis</a>
                     </div>
                 </div>
                 
             </div>
         </div>
     </section>
-
+    
     <section id="pfpj" class="bg-white py-5">
         <div class="container py-4">
             <h2 class="section-title">Feito sob medida para Pessoa Física e Jurídica</h2>
