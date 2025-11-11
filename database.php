@@ -80,3 +80,12 @@ function getTenantConnection() {
         return null;
     }
 }
+function ensureTenantDatabaseExists($db_host, $db_user, $db_password, $db_database) {
+    $conn = new mysqli($db_host, $db_user, $db_password);
+    $exists = $conn->query("SHOW DATABASES LIKE '{$db_database}'")->num_rows > 0;
+    if (!$exists) {
+        $conn->query("CREATE DATABASE `{$db_database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    }
+    $conn->close();
+}
+

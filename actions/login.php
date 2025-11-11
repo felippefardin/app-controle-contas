@@ -17,7 +17,7 @@ if (empty($_POST['email']) || empty($_POST['senha'])) {
 }
 
 // --- 2. Captura e normaliza os dados ---
-$email = strtolower(trim($_POST['email'])); // força lowercase
+$email = strtolower(trim($_POST['email']));
 $senha = trim($_POST['senha']);
 
 $master = getMasterConnection(); // Banco Master
@@ -97,31 +97,46 @@ if ($status_assinatura !== 'authorized' && $status_assinatura !== 'trial') {
     exit;
 }
 
-// --- 5. Conecta ao banco do tenant (USANDO MYSQLI) ---
-// Substitui o bloco PDO problemático pelo MySQLi.
-$tenant_conn = new mysqli(
-    $tenant['db_host'],
-    $tenant['db_user'],
-    $tenant['db_password'],
-    $tenant['db_database']
-);
+// --- 5. Conecta ao banco do tenant (verificando existência antes) ---
+$tenantDb = $tenant['db_database'];
 
-if ($tenant_conn->connect_error) {
-    // Se falhar a conexão, retorna para a página de login com erro.
-    error_log("Falha na conexão do tenant (MySQLi): " . $tenant_conn->connect_error);
-    $_SESSION['erro_login'] = 'Erro ao conectar ao banco do tenant.';
+try {
+    $checkConn = new mysqli($tenant['db_host'], $tenant['db_user'], $tenant['db_password']);
+    $checkConn->set_charset("utf8mb4");
+
+    $check = $checkConn->query("SHOW DATABASES LIKE '{$tenantDb}'");
+    if ($check->num_rows === 0) {
+        error_log("❌ Banco do tenant não encontrado: {$tenantDb}");
+        $_SESSION['erro_login'] = 'Banco de dados do cliente não foi encontrado. Entre em contato com o suporte.';
+        header("Location: ../pages/login.php?msg=db_inexistente");
+        exit;
+    }
+    $checkConn->close();
+
+    // Conecta ao banco do tenant
+    $tenant_conn = new mysqli(
+        $tenant['db_host'],
+        $tenant['db_user'],
+        $tenant['db_password'],
+        $tenant['db_database']
+    );
+    $tenant_conn->set_charset("utf8mb4");
+
+} catch (mysqli_sql_exception $e) {
+    error_log("Erro MySQL ao conectar tenant: " . $e->getMessage());
+    $_SESSION['erro_login'] = 'Erro interno ao conectar ao banco do cliente.';
     header("Location: ../pages/login.php?msg=db_tenant");
     exit;
 }
 
-// --- 6. Busca usuário dentro do tenant (USANDO MYSQLI) ---
+// --- 6. Busca usuário dentro do tenant ---
 $stmt = $tenant_conn->prepare("SELECT * FROM usuarios WHERE LOWER(email) = ?");
 $stmt->bind_param("s", $email);
 $stmt->execute();
 $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 $stmt->close();
-$tenant_conn->close(); // Boa prática fechar a conexão do tenant
+$tenant_conn->close();
 
 if (!$user || !password_verify($senha, $user['senha'])) {
     $_SESSION['erro_login'] = 'E-mail ou senha inválidos.';

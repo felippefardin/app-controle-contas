@@ -1,0 +1,91 @@
+<?php
+require_once '../database.php';
+
+echo "<h2>🔧 Criação Automática de Bancos de Tenants</h2>";
+
+$master = getMasterConnection();
+
+// Caminho do arquivo de schema completo
+$schemaFile = __DIR__ . '/../includes/tenant_schema.sql';
+
+if (!file_exists($schemaFile)) {
+    die("❌ Arquivo de schema não encontrado em: <b>{$schemaFile}</b>");
+}
+
+$schemaSql = file_get_contents($schemaFile);
+
+try {
+    $tenants = $master->query("
+        SELECT id, nome_empresa, db_host, db_database, db_user, db_password, admin_email
+        FROM tenants
+    ");
+
+    if ($tenants->num_rows === 0) {
+        echo "<p>Nenhum tenant encontrado na tabela.</p>";
+        exit;
+    }
+
+    while ($tenant = $tenants->fetch_assoc()) {
+        $dbName = $tenant['db_database'];
+        $dbHost = $tenant['db_host'];
+        $dbUser = $tenant['db_user'];
+        $dbPass = $tenant['db_password'];
+
+        echo "<hr><b>Tenant #{$tenant['id']} — {$tenant['nome_empresa']}</b><br>";
+
+        // 1️⃣ Conecta ao servidor MySQL
+        $conn = @new mysqli($dbHost, $dbUser, $dbPass);
+        if ($conn->connect_error) {
+            echo "❌ Erro de conexão: {$conn->connect_error}<br>";
+            continue;
+        }
+
+        // 2️⃣ Verifica se o banco já existe
+        $check = $conn->query("SHOW DATABASES LIKE '{$dbName}'");
+        if ($check && $check->num_rows > 0) {
+            echo "✅ Banco <b>{$dbName}</b> já existe.<br>";
+            $conn->close();
+            continue;
+        }
+
+        // 3️⃣ Cria o banco
+        $conn->query("CREATE DATABASE `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+        echo "🟢 Banco <b>{$dbName}</b> criado com sucesso.<br>";
+
+        // 4️⃣ Seleciona o banco e aplica o schema completo
+        $conn->select_db($dbName);
+        echo "📦 Aplicando schema base...<br>";
+
+        $queries = array_filter(array_map('trim', explode(';', $schemaSql)));
+        $count = 0;
+        foreach ($queries as $query) {
+            if (!empty($query)) {
+                try {
+                    $conn->query($query);
+                    $count++;
+                } catch (Exception $e) {
+                    error_log("Erro ao criar tabela: " . $e->getMessage());
+                }
+            }
+        }
+        echo "✅ Schema aplicado ({$count} instruções executadas).<br>";
+
+        // 5️⃣ Cria o usuário administrador padrão
+        $senhaPadrao = password_hash('123456', PASSWORD_DEFAULT);
+        $emailAdmin = $tenant['admin_email'] ?: "admin@{$dbName}.com";
+
+        $conn->query("
+            INSERT INTO usuarios (nome, tipo_pessoa, email, senha, perfil, tipo, is_master, foto)
+            VALUES ('Administrador', 'fisica', '{$emailAdmin}', '{$senhaPadrao}', 'admin', 'admin', 1, 'default-profile.png')
+        ");
+
+        echo "👤 Usuário administrador criado: <b>{$emailAdmin}</b> (senha: 123456)<br>";
+
+        $conn->close();
+    }
+
+    echo "<hr><b>✅ Processo concluído!</b>";
+
+} catch (Exception $e) {
+    echo "❌ Erro: " . $e->getMessage();
+}
