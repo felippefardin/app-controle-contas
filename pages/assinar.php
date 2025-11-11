@@ -37,13 +37,36 @@ MercadoPagoConfig::setAccessToken($access_token);
 
 // 🔹 Planos disponíveis
 $planos = [
-    'Box Mensal' => ['nome' => 'Básico', 'valor' => 29.90, 'descricao' => 'Acesso mensal básico ao sistema'],
-    'pro' => ['nome' => 'Pro', 'valor' => 59.90, 'descricao' => 'Recursos avançados e relatórios'],
-    'premium' => ['nome' => 'Premium', 'valor' => 99.90, 'descricao' => 'Todos os recursos + suporte prioritário']
+    'basico' => [
+        'nome' => 'Básico',
+        'valor' => 29.90,
+        'descricao' => 'Acesso mensal básico ao sistema'
+    ],
+    'pro' => [
+        'nome' => 'Pro',
+        'valor' => 59.90,
+        'descricao' => 'Recursos avançados e relatórios'
+    ],
+    'premium' => [
+        'nome' => 'Premium',
+        'valor' => 99.90,
+        'descricao' => 'Todos os recursos + suporte prioritário'
+    ]
 ];
 
 // 🔹 Processa o formulário de assinatura
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['email'])) {
+
+    // ⬇️ CORREÇÃO 1: Obter o ID do usuário logado e verificar se existe
+    $idUsuario = $_SESSION['id_usuario'] ?? null;
+
+    if (!$idUsuario) {
+        // Redireciona para evitar a falha da chave estrangeira, pois id_usuario é obrigatório
+        $_SESSION['erro_assinatura'] = 'Você precisa estar logado para assinar um plano. O ID do usuário não foi encontrado na sessão.';
+        header("Location: assinar.php");
+        exit;
+    }
+    // ⬆️ FIM DA CORREÇÃO 1
 
     $planoSelecionado = $_POST['plano'];
     $emailComprador = trim($_POST['email']);
@@ -96,10 +119,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
     if ($httpcode == 201 && isset($resposta['id'], $resposta['init_point'])) {
         // 🔹 Salva assinatura no banco
         $conn = getMasterConnection();
-        $stmt = $conn->prepare("INSERT INTO assinaturas (email, plano, valor, status, mp_preapproval_id) VALUES (?, ?, ?, ?, ?)");
+
+        // ⬇️ CORREÇÃO 2: Incluir a coluna id_usuario no INSERT
+        $stmt = $conn->prepare("
+            INSERT INTO assinaturas (id_usuario, email, plano, valor, status, mp_preapproval_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+
         $status = 'pendente';
+
+        // ⬇️ CORREÇÃO 3: Adicionar o idUsuario (tipo 'i' para integer) no bind_param
         $stmt->bind_param(
-            "ssdss",
+            "isdsss",
+            $idUsuario,
             $emailComprador,
             $plano['nome'],
             $plano['valor'],
@@ -181,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
             color: #ccc;
             text-align: left;
             font-size: 0.95rem;
-            flex-grow: 1; /* Empurra o formulário para baixo */
+            flex-grow: 1;
             margin-top: 0;
         }
         .plano-card form {
@@ -225,7 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
             font-size: 0.9rem;
         }
         .mensagem-erro {
-            background-color: #cc4444; /* Vermelho escuro */
+            background-color: #cc4444;
             color: white;
             padding: 15px;
             margin-bottom: 20px;
@@ -243,27 +275,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
 
     <?php if (!empty($mensagem_erro_assinatura)): ?>
         <div class="mensagem-erro">
-            <i class="fa-solid fa-triangle-exclamation"></i> <?php echo htmlspecialchars($mensagem_erro_assinatura); ?>
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <?php echo htmlspecialchars($mensagem_erro_assinatura); ?>
         </div>
     <?php endif; ?>
+
     <h2>Escolha seu Plano (SANDBOX)</h2>
 
     <div class="planos-container">
         <?php foreach ($planos as $chave => $plano): ?>
-        <div class="plano-card">
-            <h3><?= $plano['nome'] ?> — R$ <?= number_format($plano['valor'], 2, ',', '.') ?>/mês</h3>
-            <p><?= $plano['descricao'] ?></p>
-            <form method="post">
-                <input type="hidden" name="plano" value="<?= $chave ?>">
-                <label for="email_<?= $chave ?>">Seu e-mail (para registro interno):</label>
-                <input type="email" name="email" id="email_<?= $chave ?>" required placeholder="ex: cliente@teste.com">
-                <button type="submit">Assinar (SANDBOX)</button>
-            </form>
-        </div>
+            <div class="plano-card">
+                <h3><?= $plano['nome'] ?> — R$ <?= number_format($plano['valor'], 2, ',', '.') ?>/mês</h3>
+                <p><?= $plano['descricao'] ?></p>
+                <form method="post">
+                    <input type="hidden" name="plano" value="<?= $chave ?>">
+                    <label for="email_<?= $chave ?>">Seu e-mail (para registro interno):</label>
+                    <input type="email" name="email" id="email_<?= $chave ?>" required placeholder="ex: cliente@teste.com">
+                    <button type="submit">Assinar (SANDBOX)</button>
+                </form>
+            </div>
         <?php endforeach; ?>
     </div>
 
-    <p class="aviso-sandbox"><small>💡 Use comprador sandbox: <b>test_user_2368268688435555249@testuser.com</b></small></p>
+    <p class="aviso-sandbox">
+        <small>💡 Use comprador sandbox:
+            <b>test_user_2368268688435555249@testuser.com</b>
+        </small>
+    </p>
 </div>
 
 </body>

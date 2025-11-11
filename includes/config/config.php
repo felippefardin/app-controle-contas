@@ -27,5 +27,16 @@ foreach ($requiredVars as $var) {
     }
 }
 
+// ⬇️ CORREÇÃO ADICIONADA: Define a constante MP_ACCESS_TOKEN
+$mode = $_ENV['MERCADOPAGO_MODE'] ?? 'SANDBOX';
+
+if ($mode === 'PRODUCAO') {
+    define('MP_ACCESS_TOKEN', $_ENV['MP_ACCESS_TOKEN_PRODUCAO']);
+} else {
+    // Padrão para SANDBOX
+    define('MP_ACCESS_TOKEN', $_ENV['MP_ACCESS_TOKEN_SANDBOX']);
+}
+// ⬆️ Fim da correção
+
 // 🔹 Inclui conexão com banco e configurações gerais
 require_once __DIR__ . '/../../database.php';
