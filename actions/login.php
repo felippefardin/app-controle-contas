@@ -97,27 +97,31 @@ if ($status_assinatura !== 'authorized' && $status_assinatura !== 'trial') {
     exit;
 }
 
-// --- 5. Conecta ao banco do tenant ---
-try {
-    $tenantPdo = new PDO(
-        "mysql:host={$tenant['db_host']};dbname={$tenant['db_database']};charset=utf8mb4",
-        $tenant['db_user'],
-        $tenant['db_password'],
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ]
-    );
-} catch (Exception $e) {
+// --- 5. Conecta ao banco do tenant (USANDO MYSQLI) ---
+// Substitui o bloco PDO problemático pelo MySQLi.
+$tenant_conn = new mysqli(
+    $tenant['db_host'],
+    $tenant['db_user'],
+    $tenant['db_password'],
+    $tenant['db_database']
+);
+
+if ($tenant_conn->connect_error) {
+    // Se falhar a conexão, retorna para a página de login com erro.
+    error_log("Falha na conexão do tenant (MySQLi): " . $tenant_conn->connect_error);
     $_SESSION['erro_login'] = 'Erro ao conectar ao banco do tenant.';
     header("Location: ../pages/login.php?msg=db_tenant");
     exit;
 }
 
-// --- 6. Busca usuário dentro do tenant ---
-$stmt = $tenantPdo->prepare("SELECT * FROM usuarios WHERE LOWER(email) = ?");
-$stmt->execute([$email]);
-$user = $stmt->fetch();
+// --- 6. Busca usuário dentro do tenant (USANDO MYSQLI) ---
+$stmt = $tenant_conn->prepare("SELECT * FROM usuarios WHERE LOWER(email) = ?");
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+$stmt->close();
+$tenant_conn->close(); // Boa prática fechar a conexão do tenant
 
 if (!$user || !password_verify($senha, $user['senha'])) {
     $_SESSION['erro_login'] = 'E-mail ou senha inválidos.';

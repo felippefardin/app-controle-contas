@@ -10,6 +10,7 @@ CREATE TABLE `usuarios` (
   `documento` varchar(20) DEFAULT NULL,
   `telefone` varchar(20) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
+  `role` varchar(50) NOT NULL DEFAULT 'usuario',
   `senha` varchar(255) NOT NULL,
   `perfil` enum('padrao','admin') DEFAULT 'padrao',
   `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -25,11 +26,13 @@ CREATE TABLE `usuarios` (
   `cpf` varchar(14) DEFAULT NULL,
   `token_reset` varchar(255) DEFAULT NULL,
   `token_expira_em` datetime DEFAULT NULL,
+  `is_master` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `ux_usuarios_email` (`email`),
   UNIQUE KEY `email_2` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=79 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 
 
@@ -341,12 +344,16 @@ CREATE TABLE `tenants` (
   `db_password` varchar(255) NOT NULL,
   `stripe_customer_id` varchar(255) DEFAULT NULL,
   `status_assinatura` varchar(50) DEFAULT 'ativo',
+  `role` varchar(50) NOT NULL DEFAULT 'usuario',
   `data_criacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `senha` varchar(255) DEFAULT NULL,
+  `data_inicio_teste` date DEFAULT NULL,
+  `plano_atual` varchar(20) NOT NULL DEFAULT 'mensal',
   PRIMARY KEY (`id`),
   UNIQUE KEY `admin_email` (`admin_email`),
   UNIQUE KEY `subdominio` (`subdominio`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 CREATE TABLE logs_webhook (
     id INT AUTO_INCREMENT PRIMARY KEY,
