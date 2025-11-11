@@ -101,19 +101,24 @@ if ($status_assinatura !== 'authorized' && $status_assinatura !== 'trial') {
 $tenantDb = $tenant['db_database'];
 
 try {
-    $checkConn = new mysqli($tenant['db_host'], $tenant['db_user'], $tenant['db_password']);
-    $checkConn->set_charset("utf8mb4");
+    // 💡 CORREÇÃO: Usar a conexão master ($master) para verificar se o DB do tenant existe,
+    // usando a sintaxe mais simples e compatível 'SHOW DATABASES LIKE'.
+    $stmtCheckDb = $master->prepare("SHOW DATABASES LIKE ?");
+    // O nome do banco de dados deve ser passado diretamente, e LIKE aceitará o valor exato.
+    $dbPattern = $tenantDb;
+    $stmtCheckDb->bind_param("s", $dbPattern);
+    $stmtCheckDb->execute();
+    $check = $stmtCheckDb->get_result();
+    $stmtCheckDb->close();
 
-    $check = $checkConn->query("SHOW DATABASES LIKE '{$tenantDb}'");
     if ($check->num_rows === 0) {
-        error_log("❌ Banco do tenant não encontrado: {$tenantDb}");
+        error_log("❌ Banco do tenant não encontrado: {$tenantDb} no login. Checagem via master falhou.");
         $_SESSION['erro_login'] = 'Banco de dados do cliente não foi encontrado. Entre em contato com o suporte.';
         header("Location: ../pages/login.php?msg=db_inexistente");
         exit;
     }
-    $checkConn->close();
-
-    // Conecta ao banco do tenant
+    
+    // Se o DB existe, tenta conectar com as credenciais específicas do tenant
     $tenant_conn = new mysqli(
         $tenant['db_host'],
         $tenant['db_user'],
@@ -122,9 +127,17 @@ try {
     );
     $tenant_conn->set_charset("utf8mb4");
 
+    // Adiciona a verificação explícita de erro de conexão do TENANT (para falha de credencial do tenant)
+    if ($tenant_conn->connect_error) {
+        error_log("Erro ao conectar ao banco do tenant: " . $tenant_conn->connect_error);
+        // Lança uma exceção para ser capturada e tratada com a mensagem genérica
+        throw new mysqli_sql_exception("Falha de conexão com as credenciais do tenant: " . $tenant_conn->connect_error);
+    }
+
 } catch (mysqli_sql_exception $e) {
+    // Captura exceções do MySQL, como falha de credencial do tenant.
     error_log("Erro MySQL ao conectar tenant: " . $e->getMessage());
-    $_SESSION['erro_login'] = 'Erro interno ao conectar ao banco do cliente.';
+    $_SESSION['erro_login'] = 'Erro interno ao conectar ao banco do cliente. Credenciais inválidas ou configuração incorreta.';
     header("Location: ../pages/login.php?msg=db_tenant");
     exit;
 }
@@ -164,3 +177,5 @@ $_SESSION['tenant_db'] = [
 // --- 9. Redireciona ---
 header("Location: ../pages/selecionar_usuario.php");
 exit;
+
+?>

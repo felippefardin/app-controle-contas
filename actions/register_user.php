@@ -33,7 +33,7 @@ $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 $conn = getMasterConnection();
 
 // --- Verifica duplicidade ---
-$stmtCheck = $conn->prepare("SELECT COUNT(*) AS total FROM usuarios WHERE email = ?");
+$stmtCheck = $conn->prepare("SELECT COUNT(*) AS total FROM tenants WHERE admin_email = ?");
 $stmtCheck->bind_param("s", $email);
 $stmtCheck->execute();
 $row = $stmtCheck->get_result()->fetch_assoc();
@@ -46,14 +46,17 @@ if ($row['total'] > 0) {
 }
 
 try {
-    // --- Gera identificador e credenciais do tenant ---
+    // --- Gera identificador e credenciais do tenant (AGORA DINÂMICAS E SEGURAS) ---
     $tenantId = uniqid('T', true);
     $dbHost = $_ENV['DB_HOST'] ?? 'localhost';
     $dbUser = $_ENV['DB_USER'] ?? 'root';
     $dbPass = $_ENV['DB_PASSWORD'] ?? '';
     $dbName = 'tenant_db_' . md5($tenantId);
-    $tenantUser = 'dbuser';
-    $tenantPass = 'dbpassword';
+    
+    // **CORREÇÃO ANTERIOR (Segurança):** Gera credenciais únicas para o usuário MySQL do tenant
+    $uniquePart = str_replace('.', '', $tenantId);
+    $tenantUser = 'dbu_' . substr($uniquePart, 0, 12); // Usar parte do ID único para o nome de usuário
+    $tenantPass = bin2hex(random_bytes(20)); // Gerar uma senha criptograficamente segura (40 caracteres hex)
 
     // --- Registra tenant no banco master ---
     $stmtTenant = $conn->prepare("
@@ -68,12 +71,13 @@ try {
     // --- Cria o banco do tenant ---
     $conn->query("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-    // --- Cria usuário MySQL e dá acesso ---
+    // --- Cria usuário MySQL e dá acesso (usa as novas variáveis) ---
     $grantSQL = "
         CREATE USER IF NOT EXISTS '$tenantUser'@'localhost' IDENTIFIED BY '$tenantPass';
         GRANT ALL PRIVILEGES ON `$dbName`.* TO '$tenantUser'@'localhost';
         FLUSH PRIVILEGES;
     ";
+    
     $conn->multi_query($grantSQL);
     while ($conn->more_results() && $conn->next_result()) { /* limpa */ }
 
@@ -86,7 +90,11 @@ try {
     // --- Executa schema base do tenant ---
     $schemaPath = __DIR__ . '/../includes/tenant_schema.sql';
     if (!file_exists($schemaPath)) {
-        throw new Exception("Arquivo tenant_schema.sql não encontrado.");
+        // Se seu arquivo de schema for schema.sql (o que me foi fornecido), mude para:
+        $schemaPath = __DIR__ . '/../schema.sql';
+        if (!file_exists($schemaPath)) {
+            throw new Exception("Arquivo schema para o tenant não encontrado em: " . $schemaPath);
+        }
     }
 
     $schemaSQL = file_get_contents($schemaPath);
@@ -94,6 +102,9 @@ try {
         throw new Exception("Erro ao executar schema: " . $tenantConn->error);
     }
     while ($tenantConn->more_results() && $tenantConn->next_result()) { /* limpa resultados */ }
+    
+    // --- Obtém o ID do tenant recém-criado no banco master
+    $tenantMasterId = $conn->insert_id;
 
     // --- Insere usuário do registro (como admin ativo) ---
     $stmtUser = $tenantConn->prepare("
@@ -113,6 +124,22 @@ try {
 } catch (Exception $e) {
     error_log("❌ Erro no registro automático: " . $e->getMessage());
     $_SESSION['erro_registro'] = "Erro ao criar conta. Tente novamente.";
+    
+    // Lógica de reversão (rollback) para limpar registros incompletos
+    if (isset($dbName) && isset($tenantUser)) {
+        // Tenta remover o usuário MySQL e o DB (apenas se for possível)
+        $conn->query("DROP DATABASE IF EXISTS `$dbName`");
+        $conn->query("DROP USER IF EXISTS '$tenantUser'@'localhost'");
+        
+        // Remove o registro do tenant na tabela master (CORREÇÃO DE SINTAXE)
+        $stmtRollback = $conn->prepare("DELETE FROM tenants WHERE admin_email = ?");
+        if ($stmtRollback) {
+            $stmtRollback->bind_param("s", $email);
+            $stmtRollback->execute();
+            $stmtRollback->close();
+        }
+    }
+    
     header("Location: ../pages/registro.php?msg=erro_db");
     exit;
 }
