@@ -152,33 +152,37 @@ if (!$result) {
                     <th>Ações</th>
                 </tr>
             </thead>
-            <tbody>
-                <?php if ($result->num_rows > 0): ?>
-                    <?php while ($usuario = $result->fetch_assoc()): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($usuario['nome']); ?></td>
-                            <td><?php echo htmlspecialchars($usuario['email']); ?></td>
-                            <td><?php echo htmlspecialchars($usuario['cpf']); ?></td>
-                            <td><?php echo htmlspecialchars($usuario['telefone']); ?></td>
-                            <td>
-                                <?php if ($is_admin || $usuario['id'] == $usuario_logado_id): // Admin edita todos, 'padrao' edita apenas a si mesmo ?>
-                                    <a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>" class="btn btn-info"><i class="fa-solid fa-pen"></i> Editar</a>
-                                <?php endif; ?>
-                                
-                                <?php if ($is_admin && $usuario['id'] != $usuario_logado_id): // Admin pode excluir outros usuários ?>
-                                    <a href="#" class="btn btn-danger" onclick="openDeleteModal(<?php echo $usuario['id']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['nome'])); ?>'); return false;">
-                                        <i class="fa-solid fa-trash"></i> Excluir
-                                    </a>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="5" style="text-align:center;">Nenhum usuário encontrado.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
+           <tbody>
+    <?php if ($result->num_rows > 0): ?>
+        <?php while ($usuario = $result->fetch_assoc()): ?>
+            <tr>
+                <td><?= htmlspecialchars($usuario['nome'] ?? '') ?></td>
+                <td><?= htmlspecialchars($usuario['email'] ?? '') ?></td>
+                <td><?= htmlspecialchars($usuario['cpf'] ?? '') ?></td>
+                <td><?= htmlspecialchars($usuario['telefone'] ?? '') ?></td>
+                <td>
+                    <?php if ($is_admin || $usuario['id'] == $usuario_logado_id): // Admin edita todos, 'padrao' edita apenas a si mesmo ?>
+                        <a href="editar_usuario.php?id=<?= $usuario['id'] ?>" class="btn btn-info">
+                            <i class="fa-solid fa-pen"></i> Editar
+                        </a>
+                    <?php endif; ?>
+                    
+                    <?php if ($is_admin && $usuario['id'] != $usuario_logado_id): // Admin pode excluir outros usuários ?>
+                        <a href="#" class="btn btn-danger" 
+                           onclick="openDeleteModal(<?= $usuario['id'] ?>, '<?= htmlspecialchars(addslashes($usuario['nome'] ?? 'Usuário')) ?>'); return false;">
+                            <i class="fa-solid fa-trash"></i> Excluir
+                        </a>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <tr>
+            <td colspan="5" style="text-align:center;">Nenhum usuário encontrado.</td>
+        </tr>
+    <?php endif; ?>
+</tbody>
+
         </table>
     </div>
 </div>
