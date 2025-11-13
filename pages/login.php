@@ -207,5 +207,22 @@ unset($_SESSION['registro_sucesso']);
       toggleSenha.classList.toggle('fa-eye-slash');
     });
   </script>
+  <?php if (isset($_GET['msg']) && $_GET['msg'] === 'cadastro_sucesso'): ?>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    Swal.fire({
+      icon: 'success',
+      title: 'Cadastro realizado com sucesso!',
+      html: '🎉 Sua conta foi criada e você ganhou <b><?php echo $_SESSION["registro_sucesso"] ?? "15 dias de teste grátis"; ?></b>.',
+      confirmButtonText: 'Ir para Login',
+      confirmButtonColor: '#3085d6',
+      allowOutsideClick: false
+    }).then(() => {
+      window.location.href = 'login.php';
+    });
+  </script>
+  <?php unset($_SESSION['registro_sucesso']); ?>
+<?php endif; ?>
+
 </body>
 </html>

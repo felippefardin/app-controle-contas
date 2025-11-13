@@ -334,6 +334,8 @@ CREATE TABLE IF NOT EXISTS `configuracoes_tenant` (
 
 CREATE TABLE `tenants` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `tenant_id` varchar(100) NOT NULL,
+  `usuario_id` int DEFAULT NULL,
   `nome` varchar(255) DEFAULT NULL,
   `nome_empresa` varchar(255) NOT NULL,
   `admin_email` varchar(255) NOT NULL,
@@ -346,13 +348,17 @@ CREATE TABLE `tenants` (
   `status_assinatura` varchar(50) DEFAULT 'ativo',
   `role` varchar(50) NOT NULL DEFAULT 'usuario',
   `data_criacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `data_atualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `senha` varchar(255) DEFAULT NULL,
   `data_inicio_teste` date DEFAULT NULL,
   `plano_atual` varchar(20) NOT NULL DEFAULT 'mensal',
   PRIMARY KEY (`id`),
   UNIQUE KEY `admin_email` (`admin_email`),
-  UNIQUE KEY `subdominio` (`subdominio`)
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `tenant_id` (`tenant_id`),
+  UNIQUE KEY `subdominio` (`subdominio`),
+  KEY `fk_tenant_usuario` (`usuario_id`),
+  CONSTRAINT `fk_tenant_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
 CREATE TABLE logs_webhook (

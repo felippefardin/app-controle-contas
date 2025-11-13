@@ -2,6 +2,11 @@
 require_once '../includes/session_init.php';
 require_once '../database.php'; // Incluído no início
 
+// ✅ Função segura para evitar avisos e proteger saída HTML
+function safe($valor) {
+    return htmlspecialchars($valor ?? '', ENT_QUOTES, 'UTF-8');
+}
+
 // ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
 if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
@@ -16,16 +21,12 @@ if ($conn === null) {
 $usuario_logado = $_SESSION['usuario_logado'];
 $usuario_logado_id = $usuario_logado['id'];
 
-// ✅ 3. (CORREÇÃO) PEGA O PERFIL DIRETO DA SESSÃO
-//    Removemos a consulta extra ao banco de dados.
-//    Usamos 'nivel_acesso', que é o padrão de permissão no seu sistema.
+// ✅ 3. PEGA O PERFIL DIRETO DA SESSÃO
 $usuario_logado_perfil = $usuario_logado['nivel_acesso'] ?? 'padrao';
 
 // Define se o usuário é admin (proprietário ou admin)
 $is_admin = ($usuario_logado_perfil === 'admin' || $usuario_logado_perfil === 'proprietario');
 
-
-// Inclui o header após a lógica inicial
 include('../includes/header.php');
 
 // Mensagens
@@ -53,27 +54,21 @@ if (isset($_GET['erro'])) {
     }
 }
 
-
 // ✅ 4. FILTRA A QUERY BASEADO NO PERFIL
 if ($is_admin) {
-    // Admin (ou proprietario) vê todos os usuários
     $sql = "SELECT id, nome, email, cpf, telefone FROM usuarios ORDER BY nome ASC";
     $result = $conn->query($sql);
 } else {
-    // Usuário 'padrao' vê apenas a si mesmo
     $sql = "SELECT id, nome, email, cpf, telefone FROM usuarios WHERE id = ? ORDER BY nome ASC";
     $stmt_sql = $conn->prepare($sql);
     $stmt_sql->bind_param("i", $usuario_logado_id);
     $stmt_sql->execute();
     $result = $stmt_sql->get_result();
 }
-// --- Fim da Alteração ---
-
 
 if (!$result) {
     die("Erro na consulta: " . $conn->error);
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -127,20 +122,19 @@ if (!$result) {
     <h1><i class="fa-solid fa-users"></i> Gestão de Usuários</h1>
 
     <?php if ($mensagem_sucesso): ?>
-        <div class="alert alert-success"><?php echo htmlspecialchars($mensagem_sucesso); ?></div>
+        <div class="alert alert-success"><?= safe($mensagem_sucesso) ?></div>
     <?php endif; ?>
     <?php if ($mensagem_erro): ?>
-        <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem_erro); ?></div>
+        <div class="alert alert-danger"><?= safe($mensagem_erro) ?></div>
     <?php endif; ?>
 
     <?php if ($is_admin): ?>
-        <a href="add_usuario.php" class="btn btn-primary" style="margin-bottom: 20px;"><i class="fa-solid fa-plus"></i> Adicionar Novo Usuário</a>
-    <?php endif; ?>
-    
-    <?php if ($is_admin): // Apenas admin vê a pesquisa ?>
+        <a href="add_usuario.php" class="btn btn-primary" style="margin-bottom: 20px;">
+            <i class="fa-solid fa-plus"></i> Adicionar Novo Usuário
+        </a>
         <input type="text" id="searchInput" placeholder="Pesquisar por Nome, Email ou CPF...">
     <?php endif; ?>
-    
+
     <div class="table-responsive">
         <table class="table" id="usuariosTable">
             <thead>
@@ -152,96 +146,86 @@ if (!$result) {
                     <th>Ações</th>
                 </tr>
             </thead>
-           <tbody>
-    <?php if ($result->num_rows > 0): ?>
-        <?php while ($usuario = $result->fetch_assoc()): ?>
-            <tr>
-                <td><?= htmlspecialchars($usuario['nome'] ?? '') ?></td>
-                <td><?= htmlspecialchars($usuario['email'] ?? '') ?></td>
-                <td><?= htmlspecialchars($usuario['cpf'] ?? '') ?></td>
-                <td><?= htmlspecialchars($usuario['telefone'] ?? '') ?></td>
-                <td>
-                    <?php if ($is_admin || $usuario['id'] == $usuario_logado_id): // Admin edita todos, 'padrao' edita apenas a si mesmo ?>
-                        <a href="editar_usuario.php?id=<?= $usuario['id'] ?>" class="btn btn-info">
-                            <i class="fa-solid fa-pen"></i> Editar
-                        </a>
-                    <?php endif; ?>
-                    
-                    <?php if ($is_admin && $usuario['id'] != $usuario_logado_id): // Admin pode excluir outros usuários ?>
-                        <a href="#" class="btn btn-danger" 
-                           onclick="openDeleteModal(<?= $usuario['id'] ?>, '<?= htmlspecialchars(addslashes($usuario['nome'] ?? 'Usuário')) ?>'); return false;">
-                            <i class="fa-solid fa-trash"></i> Excluir
-                        </a>
-                    <?php endif; ?>
-                </td>
-            </tr>
-        <?php endwhile; ?>
-    <?php else: ?>
-        <tr>
-            <td colspan="5" style="text-align:center;">Nenhum usuário encontrado.</td>
-        </tr>
-    <?php endif; ?>
-</tbody>
 
+            <!-- ✅ TABELA CORRIGIDA -->
+            <tbody>
+                <?php if ($result->num_rows > 0): ?>
+                    <?php while ($usuario = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= safe($usuario['nome']) ?></td>
+                            <td><?= safe($usuario['email']) ?></td>
+                            <td><?= safe($usuario['cpf']) ?></td>
+                            <td><?= safe($usuario['telefone']) ?></td>
+                            <td>
+                                <?php if ($is_admin || $usuario['id'] == $usuario_logado_id): ?>
+                                    <a href="editar_usuario.php?id=<?= $usuario['id'] ?>" class="btn btn-info">
+                                        <i class="fa-solid fa-pen"></i> Editar
+                                    </a>
+                                <?php endif; ?>
+
+                                <?php if ($is_admin && $usuario['id'] != $usuario_logado_id): ?>
+                                    <a href="#" class="btn btn-danger"
+                                       onclick="openDeleteModal(<?= $usuario['id'] ?>, '<?= safe(addslashes($usuario['nome'] ?? 'Usuário')) ?>'); return false;">
+                                        <i class="fa-solid fa-trash"></i> Excluir
+                                    </a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <tr><td colspan="5" style="text-align:center;">Nenhum usuário encontrado.</td></tr>
+                <?php endif; ?>
+            </tbody>
         </table>
     </div>
 </div>
 
-<div id="deleteModal" class="modal">
-    <div class="modal-content"></div>
-</div>
+<div id="deleteModal" class="modal"><div class="modal-content"></div></div>
 
 <?php include('../includes/footer.php'); ?>
 
 <script>
-    function openDeleteModal(id, nome) {
-        const modal = document.getElementById('deleteModal');
-        const modalContent = modal.querySelector('.modal-content');
-        modalContent.innerHTML = `
-            <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
-            <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Exclusão</h3>
-            <p>Tem certeza que deseja excluir o usuário <strong>${nome}</strong>?<br>Esta ação não poderá ser desfeita.</p>
-            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
-                <a href="../actions/excluir_usuario.php?id=${id}" class="btn btn-danger">Sim, Excluir</a>
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
-            </div>
-        `;
-        modal.style.display = 'flex';
-    }
+function openDeleteModal(id, nome) {
+    const modal = document.getElementById('deleteModal');
+    const modalContent = modal.querySelector('.modal-content');
+    modalContent.innerHTML = `
+        <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Exclusão</h3>
+        <p>Tem certeza que deseja excluir o usuário <strong>${nome}</strong>?<br>Esta ação não poderá ser desfeita.</p>
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+            <a href="../actions/excluir_usuario.php?id=${id}" class="btn btn-danger">Sim, Excluir</a>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
+        </div>`;
+    modal.style.display = 'flex';
+}
 
-    window.addEventListener('click', e => {
-        const modal = document.getElementById('deleteModal');
-        if (e.target === modal) modal.style.display = 'none';
+window.addEventListener('click', e => {
+    const modal = document.getElementById('deleteModal');
+    if (e.target === modal) modal.style.display = 'none';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.alert').forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.style.display='none', 500);
+        }, 4000);
     });
+});
 
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.alert').forEach(alert => {
-            setTimeout(() => {
-                alert.style.opacity = '0';
-                setTimeout(() => alert.style.display='none', 500);
-            }, 4000);
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#usuariosTable tbody tr');
+        rows.forEach(row => {
+            const nome = row.cells[0].textContent.toLowerCase();
+            const email = row.cells[1].textContent.toLowerCase();
+            const cpf = row.cells[2].textContent.toLowerCase();
+            row.style.display = (nome.includes(filter) || email.includes(filter) || cpf.includes(filter)) ? '' : 'none';
         });
     });
-
-    // --- Início da Alteração (Verificar se searchInput existe) ---
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) { // Apenas executa se o campo de pesquisa existir
-        searchInput.addEventListener('keyup', function() {
-            const filter = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#usuariosTable tbody tr');
-            rows.forEach(row => {
-                const nome = row.cells[0].textContent.toLowerCase();
-                const email = row.cells[1].textContent.toLowerCase();
-                const cpf = row.cells[2].textContent.toLowerCase();
-                if (nome.includes(filter) || email.includes(filter) || cpf.includes(filter)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        });
-    }
-    // --- Fim da Alteração ---
+}
 </script>
 </body>
 </html>

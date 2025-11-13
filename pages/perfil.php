@@ -26,17 +26,14 @@ $stmt->close();
 
 $mensagem = $erro = '';
 
-if (isset($_GET['mensagem'])) $mensagem = htmlspecialchars($_GET['mensagem']);
-if (isset($_GET['erro'])) $erro = htmlspecialchars($_GET['erro']);
-
 $uploadDir = '../img/usuarios/';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome_novo = $_POST['nome'];
-    $cpf_novo = $_POST['cpf'];
-    $telefone_novo = $_POST['telefone'];
-    $email_novo = $_POST['email'];
-    $senha_nova = $_POST['senha'];
-    $senha_confirmar = $_POST['senha_confirmar'];
+    $nome_novo = trim($_POST['nome'] ?? '');
+    $cpf_novo = trim($_POST['cpf'] ?? '');
+    $telefone_novo = trim($_POST['telefone'] ?? '');
+    $email_novo = trim($_POST['email'] ?? '');
+    $senha_nova = trim($_POST['senha'] ?? '');
+    $senha_confirmar = trim($_POST['senha_confirmar'] ?? '');
     $novoNomeFoto = $foto_atual;
 
     if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
@@ -79,21 +76,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($stmt_update->execute()) {
-                    $mensagem = "Dados atualizados com sucesso!";
                     $_SESSION['usuario_logado']['nome'] = $nome_novo;
                     $_SESSION['usuario_logado']['email'] = $email_novo;
                     $_SESSION['usuario_logado']['foto'] = $novoNomeFoto;
 
-                    $nome = $nome_novo; 
-                    $cpf = $cpf_novo; 
-                    $telefone = $telefone_novo; 
-                    $email = $email_novo; 
+                    $nome = $nome_novo;
+                    $cpf = $cpf_novo;
+                    $telefone = $telefone_novo;
+                    $email = $email_novo;
                     $foto_atual = $novoNomeFoto;
+
+                    $_SESSION['perfil_msg'] = "Dados atualizados com sucesso!";
                 } else $erro = "Erro ao atualizar os dados.";
             }
             $stmt_check->close();
         }
     }
+
+    if ($erro) $_SESSION['perfil_erro'] = $erro;
+    header("Location: perfil.php");
+    exit;
 }
 ?>
 
@@ -103,11 +105,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8" />
 <title>Editar Perfil</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
 body {
     background-color: #121212;
     color: #eee;
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Arial, sans-serif;
     margin: 0;
     padding: 0;
 }
@@ -120,6 +123,12 @@ body {
     border-radius: 12px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     text-align: center;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 h2 {
@@ -142,6 +151,10 @@ h2 {
     margin: 0 auto 25px auto;
     display: block;
     border-radius: 50%;
+    transition: 0.3s;
+}
+.profile-photo-preview:hover {
+    transform: scale(1.05);
 }
 
 form {
@@ -160,21 +173,18 @@ label {
 input[type="text"],
 input[type="email"],
 input[type="password"],
-input[type="file"],
-select {
+input[type="file"] {
     width: 100%;
     padding: 12px;
     border-radius: 6px;
     border: none;
     margin-bottom: 18px;
-    box-sizing: border-box;
     font-size: 16px;
     background-color: #333;
     color: #eee;
     transition: 0.3s;
 }
-
-input:focus, select:focus {
+input:focus {
     outline: 2px solid #00bfff;
 }
 
@@ -183,12 +193,10 @@ input:focus, select:focus {
     display: flex;
     align-items: center;
 }
-
 .password-wrapper input {
     flex: 1;
     padding-right: 40px;
 }
-
 .toggle-password {
     position: absolute;
     right: 10px;
@@ -196,14 +204,13 @@ input:focus, select:focus {
     cursor: pointer;
 }
 
-/* --- Grupo de Botões --- */
+/* --- Botões --- */
 .button-group {
     display: flex;
     gap: 15px;
     justify-content: space-between;
     margin-top: 20px;
 }
-
 .button-group button,
 .button-group a {
     flex: 1;
@@ -218,8 +225,6 @@ input:focus, select:focus {
     text-decoration: none;
     transition: all 0.3s ease;
 }
-
-/* --- Botão Salvar --- */
 .btn-salvar {
     background: linear-gradient(135deg, #007bff, #00bfff);
     box-shadow: 0 3px 10px rgba(0, 191, 255, 0.3);
@@ -229,8 +234,6 @@ input:focus, select:focus {
     box-shadow: 0 4px 15px rgba(0, 191, 255, 0.5);
     transform: translateY(-1px);
 }
-
-/* --- Botão Excluir --- */
 .btn-excluir {
     background: linear-gradient(135deg, #ff3b3b, #b91d1d);
     box-shadow: 0 3px 10px rgba(255, 59, 59, 0.3);
@@ -241,19 +244,7 @@ input:focus, select:focus {
     transform: translateY(-1px);
 }
 
-/* Ícones dentro dos botões */
-.btn-salvar i, .btn-excluir i {
-    margin-right: 8px;
-}
-
-/* Responsivo */
-@media (max-width: 600px) {
-    .button-group {
-        flex-direction: column;
-    }
-}
-
-/* Card de assinatura */
+/* --- Card Assinatura --- */
 .card-body {
     background-color: #1f1f1f;
     padding: 20px;
@@ -262,37 +253,29 @@ input:focus, select:focus {
     border-left: 5px solid #00bfff;
     text-align: center;
 }
-
 .card-title {
     color: #00bfff;
     font-size: 1.2rem;
     margin-bottom: 10px;
 }
-
 .card-text {
     color: #ccc;
     margin-bottom: 15px;
 }
-
 .btn-primary {
     background-color: #28a745;
     color: white;
     padding: 12px 25px;
     border-radius: 6px;
     text-decoration: none;
-    display: inline-block;
     font-weight: bold;
 }
-.btn-primary:hover { background-color: #1e7e34; }
-
-.mensagem, .erro {
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    text-align: center;
+.btn-primary:hover {
+    background-color: #1e7e34;
 }
-.mensagem { background-color: #28a745; }
-.erro { background-color: #cc4444; }
+@media (max-width: 600px) {
+    .button-group { flex-direction: column; }
+}
 </style>
 </head>
 <body>
@@ -300,36 +283,33 @@ input:focus, select:focus {
 <div class="container">
     <h2><i class="fa-solid fa-user"></i> Editar Perfil</h2>
 
-    <?php if ($mensagem): ?><div class="mensagem"><?= $mensagem ?></div><?php endif; ?>
-    <?php if ($erro): ?><div class="erro"><?= $erro ?></div><?php endif; ?>
-
-    <img src="../img/usuarios/<?= htmlspecialchars($foto_atual) ?>" alt="Foto do perfil" class="profile-photo-preview" />
+    <img src="../img/usuarios/<?= htmlspecialchars($foto_atual ?? 'default-profile.png', ENT_QUOTES, 'UTF-8') ?>" alt="Foto do perfil" class="profile-photo-preview" />
 
     <form method="POST" enctype="multipart/form-data" autocomplete="off">
         <label for="foto">Alterar Foto:</label>
         <input type="file" id="foto" name="foto" accept="image/*">
 
         <label for="nome">Nome:</label>
-        <input id="nome" type="text" name="nome" value="<?= htmlspecialchars($nome) ?>" required>
+        <input id="nome" type="text" name="nome" value="<?= htmlspecialchars($nome ?? '', ENT_QUOTES, 'UTF-8') ?>" autocomplete="name" required>
 
         <label for="cpf">CPF:</label>
-        <input id="cpf" type="text" name="cpf" value="<?= htmlspecialchars($cpf) ?>" required>
+        <input id="cpf" type="text" name="cpf" value="<?= htmlspecialchars($cpf ?? '', ENT_QUOTES, 'UTF-8') ?>" autocomplete="off" required>
 
         <label for="telefone">Telefone:</label>
-        <input id="telefone" type="text" name="telefone" value="<?= htmlspecialchars($telefone) ?>" required>
+        <input id="telefone" type="text" name="telefone" value="<?= htmlspecialchars($telefone ?? '', ENT_QUOTES, 'UTF-8') ?>" autocomplete="tel">
 
         <label for="email">Email:</label>
-        <input id="email" type="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
+        <input id="email" type="email" name="email" value="<?= htmlspecialchars($email ?? '', ENT_QUOTES, 'UTF-8') ?>" autocomplete="email" required>
 
         <label for="senha">Nova Senha:</label>
         <div class="password-wrapper">
-            <input type="password" id="senha" name="senha">
+            <input type="password" id="senha" name="senha" autocomplete="new-password">
             <i class="fas fa-eye toggle-password"></i>
         </div>
 
         <label for="senha_confirmar">Confirmar Nova Senha:</label>
         <div class="password-wrapper">
-            <input type="password" id="senha_confirmar" name="senha_confirmar">
+            <input type="password" id="senha_confirmar" name="senha_confirmar" autocomplete="new-password">
             <i class="fas fa-eye toggle-password"></i>
         </div>
 
@@ -359,6 +339,24 @@ document.querySelectorAll('.toggle-password').forEach(icon => {
         icon.classList.toggle('fa-eye-slash');
     });
 });
+
+<?php if (!empty($_SESSION['perfil_msg'])): ?>
+Swal.fire({
+    icon: 'success',
+    title: 'Sucesso!',
+    text: '<?= addslashes($_SESSION['perfil_msg']) ?>',
+    confirmButtonColor: '#3085d6'
+});
+<?php unset($_SESSION['perfil_msg']); endif; ?>
+
+<?php if (!empty($_SESSION['perfil_erro'])): ?>
+Swal.fire({
+    icon: 'error',
+    title: 'Erro!',
+    text: '<?= addslashes($_SESSION['perfil_erro']) ?>',
+    confirmButtonColor: '#d33'
+});
+<?php unset($_SESSION['perfil_erro']); endif; ?>
 </script>
 
 <?php include('../includes/footer.php'); ?>

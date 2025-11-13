@@ -18,7 +18,7 @@ if (!empty($_ENV['MP_ACCESS_TOKEN'])) {
     MercadoPagoConfig::setAccessToken($_ENV['MP_ACCESS_TOKEN']);
 }
 
-// 🔹 Banco de dados master
+// 🔹 Banco de dados master (padrão)
 $host = $_ENV['DB_HOST'] ?? 'localhost';
 $user = $_ENV['DB_USER'] ?? 'root';
 $password = $_ENV['DB_PASSWORD'] ?? '';
@@ -26,66 +26,94 @@ $database = $_ENV['DB_DATABASE'] ?? 'app_controle_contas';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+/**
+ * 🔹 Conexão principal (banco master)
+ * Inclui suporte a SSL e tratamento completo de exceções
+ */
 function getMasterConnection() {
     global $host, $user, $password, $database;
+
     try {
-        $conn = new mysqli($host, $user, $password, $database);
-        $conn->set_charset("utf8mb4");
+        $conn = mysqli_init();
+
+        // SSL opcional — não falha se o servidor não suportar SSL
+        mysqli_ssl_set($conn, NULL, NULL, NULL, NULL, NULL);
+
+        if (!mysqli_real_connect($conn, $host, $user, $password, $database)) {
+            throw new mysqli_sql_exception("❌ Falha ao conectar: " . mysqli_connect_error());
+        }
+
+        if (!$conn->set_charset("utf8mb4")) {
+            throw new mysqli_sql_exception("❌ Erro ao definir charset: " . $conn->error);
+        }
+
         return $conn;
     } catch (mysqli_sql_exception $e) {
-        die("❌ Erro de conexão: " . $e->getMessage());
+        error_log("❌ Erro de conexão MASTER: " . $e->getMessage());
+        die("❌ Erro ao conectar ao banco de dados master: " . htmlspecialchars($e->getMessage()));
     }
 }
 
-// ... (código existente para getMasterConnection e outras funções de banco)
-
 /**
- * Cria e retorna a conexão com o banco de dados específico do Tenant (cliente).
- *
- * Utiliza as credenciais armazenadas na sessão.
- * @return mysqli|null A conexão mysqli ou null em caso de falha.
+ * 🔹 Conexão do banco de dados do Tenant (cliente)
+ * Lê credenciais da sessão ou usa o master se preferido
  */
 function getTenantConnection() {
-    // 1. Verifica se as informações de conexão do tenant estão na sessão
+    // Se as informações do tenant não estiverem na sessão, usa o banco master
     if (!isset($_SESSION['tenant_db'])) {
-        // Isso pode acontecer se a sessão expirar
-        return null;
+        error_log("⚠️ Sessão do tenant ausente — conectando ao banco principal.");
+        return getMasterConnection();
     }
-    
+
     $db_info = $_SESSION['tenant_db'];
-    
-    // 2. Tenta conectar com as credenciais do tenant
+
     try {
-        $tenant_conn = new mysqli(
+        $conn = mysqli_init();
+
+        // SSL opcional
+        mysqli_ssl_set($conn, NULL, NULL, NULL, NULL, NULL);
+
+        if (!mysqli_real_connect(
+            $conn,
             $db_info['db_host'],
             $db_info['db_user'],
             $db_info['db_password'],
             $db_info['db_database']
-        );
-        $tenant_conn->set_charset("utf8mb4");
-
-        // 3. Verifica erro de conexão
-        if ($tenant_conn->connect_error) {
-            // Se falhar a conexão, retorna null para que a página possa tratar.
-            error_log("Falha ao conectar ao banco do tenant: " . $tenant_conn->connect_error);
-            return null; 
+        )) {
+            throw new mysqli_sql_exception("❌ Falha ao conectar: " . mysqli_connect_error());
         }
-        
-        // 4. Retorna a conexão bem-sucedida
-        return $tenant_conn;
 
-    } catch (Exception $e) {
-        // Loga a exceção e retorna null
-        error_log("Exceção ao conectar ao banco do tenant: " . $e->getMessage());
+        if (!$conn->set_charset("utf8mb4")) {
+            throw new mysqli_sql_exception("❌ Erro ao definir charset: " . $conn->error);
+        }
+
+        return $conn;
+
+    } catch (mysqli_sql_exception $e) {
+        error_log("❌ Erro de conexão TENANT: " . $e->getMessage());
+        // Retorna null para que o sistema possa tratar a falha sem quebrar
         return null;
     }
 }
+
+/**
+ * 🔹 Garante que o banco de um tenant exista — cria se necessário
+ */
 function ensureTenantDatabaseExists($db_host, $db_user, $db_password, $db_database) {
-    $conn = new mysqli($db_host, $db_user, $db_password);
-    $exists = $conn->query("SHOW DATABASES LIKE '{$db_database}'")->num_rows > 0;
-    if (!$exists) {
-        $conn->query("CREATE DATABASE `{$db_database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    try {
+        $conn = mysqli_init();
+        mysqli_real_connect($conn, $db_host, $db_user, $db_password);
+
+        $exists = $conn->query("SHOW DATABASES LIKE '{$db_database}'")->num_rows > 0;
+        if (!$exists) {
+            $conn->query("CREATE DATABASE `{$db_database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            error_log("✅ Banco de tenant criado: {$db_database}");
+        }
+
+        $conn->close();
+    } catch (mysqli_sql_exception $e) {
+        error_log("❌ Erro ao verificar/criar banco do tenant: " . $e->getMessage());
     }
-    $conn->close();
+    
 }
 
