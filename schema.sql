@@ -2,200 +2,35 @@
 
 
 -- Tabela de Usuários do Cliente
-CREATE TABLE `usuarios` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_criador` int DEFAULT NULL,
-  `nome` varchar(100) NOT NULL,
-  `tipo_pessoa` varchar(10) NOT NULL,
-  `documento` varchar(20) DEFAULT NULL,
-  `telefone` varchar(20) DEFAULT NULL,
-  `email` varchar(100) NOT NULL,
-  `role` varchar(50) NOT NULL DEFAULT 'usuario',
-  `senha` varchar(255) NOT NULL,
-  `perfil` enum('padrao','admin') DEFAULT 'padrao',
-  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `tipo` enum('admin','padrao') DEFAULT 'padrao',
-  `owner_id` int DEFAULT NULL,
-  `foto` varchar(255) DEFAULT 'default-profile.png',
-  `banco_usuario` varchar(100) NOT NULL DEFAULT 'app_controle_contas',
-  `criado_por_usuario_id` int DEFAULT NULL,
-  `status` varchar(20) NOT NULL DEFAULT 'ativo',
-  `nivel_acesso` varchar(20) DEFAULT 'padrao',
-  `tenant_id` int DEFAULT NULL,
-  `documento_clean` varchar(14) GENERATED ALWAYS AS (regexp_replace(`documento`,_utf8mb4'[^0-9]',_utf8mb4'')) STORED,
-  `cpf` varchar(14) DEFAULT NULL,
-  `token_reset` varchar(255) DEFAULT NULL,
-  `token_expira_em` datetime DEFAULT NULL,
-  `is_master` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`),
-  UNIQUE KEY `ux_usuarios_email` (`email`),
-  UNIQUE KEY `email_2` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=79 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-
-
-
--- Tabela de Clientes e Fornecedores
-CREATE TABLE `pessoas_fornecedores` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `nome` varchar(255) NOT NULL,
-  `cpf_cnpj` varchar(20) DEFAULT NULL,
-  `endereco` varchar(255) DEFAULT NULL,
-  `contato` varchar(20) DEFAULT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `tipo` enum('pessoa','fornecedor') NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `id_usuario` (`id_usuario`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabela de Categorias
-CREATE TABLE `categorias` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `id_pai` int DEFAULT NULL,
-  `nome` varchar(100) NOT NULL,
-  `tipo` enum('receita','despesa') NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `id_usuario` (`id_usuario`),
-  KEY `id_pai` (`id_pai`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabela de Contas Bancárias
-CREATE TABLE `contas_bancarias` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `nome_banco` varchar(100) NOT NULL,
-  `agencia` varchar(20) DEFAULT NULL,
-  `conta` varchar(20) NOT NULL,
-  `tipo_conta` varchar(50) DEFAULT NULL,
-  `chave_pix` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `id_usuario` (`id_usuario`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabela de Contas a Pagar
-CREATE TABLE `contas_pagar` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `usuario_id` int DEFAULT NULL,
-  `enviar_email` char(1) NOT NULL DEFAULT 'N',
-  `fornecedor` varchar(100) DEFAULT NULL,
-  `data_vencimento` date DEFAULT NULL,
-  `numero` varchar(20) DEFAULT NULL,
-  `valor` decimal(10,2) DEFAULT NULL,
-  `id_categoria` int DEFAULT NULL,
-  `status` enum('pendente','baixada') DEFAULT 'pendente',
-  `forma_pagamento` varchar(50) DEFAULT NULL,
-  `data_baixa` date DEFAULT NULL,
-  `baixado_por` int DEFAULT NULL,
-  `juros` decimal(10,2) DEFAULT '0.00',
-  `comprovante` varchar(255) DEFAULT NULL,
-  `data_pagamento` datetime DEFAULT NULL,
-  `id_pessoa_fornecedor` int DEFAULT NULL,
-  `descricao` TEXT DEFAULT NULL, -- <-- CAMPO ADICIONADO
-  PRIMARY KEY (`id`),
-  KEY `idx_contas_pagar_usuario` (`usuario_id`),
-  KEY `id_categoria` (`id_categoria`),
-  KEY `id_pessoa_fornecedor` (`id_pessoa_fornecedor`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabela de Contas a Receber
-CREATE TABLE `contas_receber` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `usuario_id` int DEFAULT NULL,
-  `responsavel` varchar(100) DEFAULT NULL,
-  `data_vencimento` date DEFAULT NULL,
-  `numero` varchar(20) DEFAULT NULL,
-  `valor` decimal(10,2) DEFAULT NULL,
-  `id_categoria` int DEFAULT NULL,
-  `status` enum('pendente','baixada') DEFAULT 'pendente',
-  `baixado_por_usuario_id` int DEFAULT NULL,
-  `pagamento_token` varchar(255) DEFAULT NULL,
-  `forma_pagamento` varchar(50) DEFAULT NULL,
-  `data_baixa` date DEFAULT NULL,
-  `baixado_por` int DEFAULT NULL,
-  `fornecedor` varchar(255) DEFAULT NULL,
-  `pix_payload` text,
-  `boleto_link` varchar(255) DEFAULT NULL,
-  `juros` decimal(10,2) DEFAULT '0.00',
-  `comprovante` varchar(255) DEFAULT NULL,
-  `data_pagamento` datetime DEFAULT NULL,
-  `id_pessoa_fornecedor` int DEFAULT NULL,
-  `descricao` varchar(255) DEFAULT NULL,
-  `id_venda` int DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_contas_receber_usuario` (`usuario_id`),
-  KEY `fk_contas_receber_baixado_por` (`baixado_por`),
-  KEY `id_categoria` (`id_categoria`),
-  KEY `id_pessoa_fornecedor` (`id_pessoa_fornecedor`),
-  CONSTRAINT `contas_receber_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `contas_receber_ibfk_2` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores` (`id`),
-  CONSTRAINT `fk_contas_receber_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=88 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-
--- Tabela de Produtos
-CREATE TABLE `produtos` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `nome` varchar(255) NOT NULL,
-  `descricao` text,
-  `preco_compra` decimal(10,2) DEFAULT NULL,
-  `preco_venda` decimal(10,2) DEFAULT NULL,
-  `quantidade_estoque` int NOT NULL,
-  `unidade_medida` varchar(50) DEFAULT NULL,
-  `data_cadastro` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `quantidade_minima` int DEFAULT '0',
-  `ncm` varchar(8) DEFAULT NULL COMMENT 'Nomenclatura Comum do Mercosul',
-  `cfop` varchar(4) DEFAULT NULL COMMENT 'Código Fiscal de Operações e Prestações',
-  PRIMARY KEY (`id`),
-  KEY `id_usuario` (`id_usuario`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabela de Vendas
-CREATE TABLE `vendas` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `id_cliente` int NOT NULL,
-  `data_venda` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `valor_total` decimal(10,2) NOT NULL,
-  `desconto` decimal(10,2) DEFAULT '0.00',
-  `observacao` text,
-  `forma_pagamento` varchar(50) NOT NULL,
-  `numero_parcelas` int DEFAULT '1',
-  PRIMARY KEY (`id`),
-  KEY `id_usuario` (`id_usuario`),
-  KEY `id_cliente` (`id_cliente`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabela de Itens da Venda
-CREATE TABLE `venda_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `id_venda` int NOT NULL,
-  `id_produto` int NOT NULL,
-  `quantidade` int NOT NULL,
-  `preco_unitario` decimal(10,2) NOT NULL,
-  `subtotal` decimal(10,2) NOT NULL,
-  `forma_pagamento` varchar(50) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `id_venda` (`id_venda`),
-  KEY `id_produto` (`id_produto`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Outras tabelas essenciais
-CREATE TABLE `caixa_diario` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `data` date NOT NULL,
-  `valor` decimal(10,2) NOT NULL,
-  `tipo` varchar(50) NOT NULL DEFAULT 'entrada',
-  `descricao` varchar(255) DEFAULT NULL,
-  `id_venda` int DEFAULT NULL,
-  `usuario_id` int NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `data` (`data`,`usuario_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT NOT NULL AUTO_INCREMENT,
+  id_criador INT DEFAULT NULL,
+  nome VARCHAR(100) NOT NULL,
+  tipo_pessoa VARCHAR(10) NOT NULL,
+  documento VARCHAR(20) DEFAULT NULL,
+  telefone VARCHAR(20) DEFAULT NULL,
+  email VARCHAR(100) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'usuario',
+  senha VARCHAR(255) NOT NULL,
+  perfil ENUM('padrao','admin') DEFAULT 'padrao',
+  criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  tipo ENUM('admin','padrao') DEFAULT 'padrao',
+  owner_id INT DEFAULT NULL,
+  foto VARCHAR(255) DEFAULT 'default-profile.png',
+  banco_usuario VARCHAR(100) NOT NULL DEFAULT 'app_controle_contas',
+  criado_por_usuario_id INT DEFAULT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ativo',
+  nivel_acesso VARCHAR(20) DEFAULT 'padrao',
+  tenant_id VARCHAR(32) DEFAULT NULL,
+  documento_clean VARCHAR(14) GENERATED ALWAYS AS (REGEXP_REPLACE(documento,'[^0-9]','')) STORED,
+  cpf VARCHAR(14) DEFAULT NULL,
+  token_reset VARCHAR(255) DEFAULT NULL,
+  token_expira_em DATETIME DEFAULT NULL,
+  is_master TINYINT(1) DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY ux_usuarios_email_tenant (email, tenant_id),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `movimento_estoque` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -332,33 +167,25 @@ CREATE TABLE IF NOT EXISTS `configuracoes_tenant` (
   UNIQUE KEY `uk_chave` (`chave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `tenants` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` varchar(100) NOT NULL,
-  `usuario_id` int DEFAULT NULL,
-  `nome` varchar(255) DEFAULT NULL,
-  `nome_empresa` varchar(255) NOT NULL,
-  `admin_email` varchar(255) NOT NULL,
-  `subdominio` varchar(191) DEFAULT NULL,
-  `db_host` varchar(255) NOT NULL,
-  `db_database` varchar(255) NOT NULL,
-  `db_user` varchar(255) NOT NULL,
-  `db_password` varchar(255) NOT NULL,
-  `stripe_customer_id` varchar(255) DEFAULT NULL,
-  `status_assinatura` varchar(50) DEFAULT 'ativo',
-  `role` varchar(50) NOT NULL DEFAULT 'usuario',
-  `data_criacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `data_atualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `senha` varchar(255) DEFAULT NULL,
-  `data_inicio_teste` date DEFAULT NULL,
-  `plano_atual` varchar(20) NOT NULL DEFAULT 'mensal',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `admin_email` (`admin_email`),
-  UNIQUE KEY `tenant_id` (`tenant_id`),
-  UNIQUE KEY `subdominio` (`subdominio`),
-  KEY `fk_tenant_usuario` (`usuario_id`),
-  CONSTRAINT `fk_tenant_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS tenants (
+  tenant_id VARCHAR(32) NOT NULL PRIMARY KEY,        -- ID do tenant (md5 ou uniqid)
+  usuario_id INT NOT NULL,                            -- ID do usuário admin no master
+  nome VARCHAR(255) NOT NULL,                         -- Nome do usuário ou empresa
+  nome_empresa VARCHAR(255) DEFAULT NULL,             -- Nome da empresa (opcional)
+  admin_email VARCHAR(255) NOT NULL,                  -- Email do admin
+  db_host VARCHAR(100) NOT NULL DEFAULT 'localhost',  -- Host do banco do tenant
+  db_database VARCHAR(255) NOT NULL,                 -- Nome do banco do tenant
+  db_user VARCHAR(100) NOT NULL,                     -- Usuário MySQL do tenant
+  db_password VARCHAR(255) NOT NULL,                 -- Senha do usuário MySQL do tenant
+  status_assinatura ENUM('trial', 'ativo', 'cancelado') DEFAULT 'trial',
+  role ENUM('usuario','admin') DEFAULT 'usuario',    -- Papel do usuário no tenant
+  data_inicio_teste TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  plano_atual ENUM('mensal', 'trimestral') DEFAULT 'mensal',
+  senha VARCHAR(255) NOT NULL,                        -- Hash do admin
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_usuario_master FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 CREATE TABLE logs_webhook (

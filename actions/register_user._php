@@ -15,10 +15,6 @@ $senha       = trim($dados['senha'] ?? '');
 $tipo_pessoa = trim($dados['tipo_pessoa'] ?? '');
 $documento   = trim($dados['documento'] ?? '');
 $telefone    = trim($dados['telefone'] ?? '');
-$plano_escolhido = trim($dados['plano_escolhido'] ?? ($_GET['plano'] ?? 'mensal'));
-
-$plano_escolhido = in_array($plano_escolhido, ['mensal', 'trimestral']) ? $plano_escolhido : 'mensal';
-$dias_teste = ($plano_escolhido === 'trimestral') ? 30 : 15;
 
 // --- Validação ---
 if (!$nome || !$email || !$senha) {
@@ -32,6 +28,12 @@ $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
 // --- Conecta no banco master ---
 $conn = getMasterConnection();
+if ($conn->connect_error) {
+    error_log("⛔ ERRO REGISTER_USER: Falha ao conectar ao banco master: " . $conn->connect_error);
+    $_SESSION['erro_registro'] = "Erro de conexão interna. Tente novamente.";
+    header("Location: ../pages/registro.php?msg=dberror");
+    exit;
+}
 
 // --- Verifica duplicidade ---
 $stmtCheck = $conn->prepare("SELECT COUNT(*) AS total FROM tenants WHERE admin_email = ?");
@@ -46,8 +48,17 @@ if ($row['total'] > 0) {
     exit;
 }
 
+// Variáveis para o try/catch
+$usuarioMasterId = null;
+$tenantId = null;
+$dbName = null;
+$tenantUser = null;
+
 try {
     // --- 1) Cria usuário no master (tabela usuarios) ---
+    // NOTA: Operações DDL (CREATE DATABASE) mais à frente causam "commit" implícito.
+    // Por isso, a lógica de rollback manual no 'catch' é essencial.
+    
     $stmtUserMaster = $conn->prepare("
         INSERT INTO usuarios (nome, email, senha, nivel_acesso, status)
         VALUES (?, ?, ?, 'admin', 'ativo')
@@ -57,30 +68,32 @@ try {
     $usuarioMasterId = $conn->insert_id;
     $stmtUserMaster->close();
 
+    if (!$usuarioMasterId) {
+        throw new Exception("Falha grave ao criar o usuário mestre (ID não retornado).");
+    }
+
     // --- 2) Gera tenant_id + banco + usuário MySQL ---
     $tenantId = md5(uniqid('', true));
     $dbHost = $_ENV['DB_HOST'] ?? 'localhost';
     $dbName = 'tenant_db_' . $tenantId;
-
-    // usuário mysql do tenant
     $tenantUser = 'dbu_' . substr($tenantId, 0, 12);
     $tenantPass = bin2hex(random_bytes(16)); // 32 chars
 
-
     // --- 3) Registra tenant no master (TABELA ATUAL) ---
+    // Removemos plano_atual e definimos status_assinatura como 'ativo'
     $stmtTenant = $conn->prepare("
         INSERT INTO tenants (
             tenant_id, usuario_id, nome, nome_empresa, admin_email,
             subdominio, db_host, db_database, db_user, db_password,
-            status_assinatura, role, data_inicio_teste, plano_atual, senha
-        ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 'trial', 'usuario', CURDATE(), ?, ?)
+            status_assinatura, role, data_inicio_teste, senha
+        ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 'ativo', 'usuario', CURDATE(), ?)
     ");
 
     $nome_empresa = $nome;
     $stmtTenant->bind_param(
-        "sisssssssss",
+        "sisssssssss", // 11 's' -> 10 's' (removido plano_atual)
         $tenantId,
-        $usuarioMasterId,
+        $usuarioMasterId, // ID do passo 1
         $nome,
         $nome_empresa,
         $email,
@@ -88,39 +101,48 @@ try {
         $dbName,
         $tenantUser,
         $tenantPass,
-        $plano_escolhido,
         $senha_hash
     );
 
     $stmtTenant->execute();
+    if ($stmtTenant->affected_rows === 0) {
+        throw new Exception("Falha ao registrar o tenant no banco de dados mestre.");
+    }
     $stmtTenant->close();
 
     // --- 4) Cria banco do tenant ---
-    $conn->query("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    if (!$conn->query("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")) {
+        throw new Exception("Erro ao criar o banco de dados do tenant: " . $conn->error);
+    }
 
     // --- 5) Cria usuário MySQL do tenant ---
     $conn->query("DROP USER IF EXISTS '$tenantUser'@'localhost'");
-    $conn->query("CREATE USER '$tenantUser'@'localhost' IDENTIFIED BY '$tenantPass'");
-    $conn->query("GRANT ALL PRIVILEGES ON `$dbName`.* TO '$tenantUser'@'localhost'");
+    if (!$conn->query("CREATE USER '$tenantUser'@'localhost' IDENTIFIED BY '$tenantPass'")) {
+         throw new Exception("Erro ao criar o usuário MySQL para o tenant: " . $conn->error);
+    }
+    if (!$conn->query("GRANT ALL PRIVILEGES ON `$dbName`.* TO '$tenantUser'@'localhost'")) {
+         throw new Exception("Erro ao conceder privilégios ao usuário do tenant: " . $conn->error);
+    }
     $conn->query("FLUSH PRIVILEGES");
 
     // --- 6) Conecta no banco do tenant ---
     $tenantConn = new mysqli($dbHost, $tenantUser, $tenantPass, $dbName);
     if ($tenantConn->connect_error) {
-        throw new Exception("Erro ao conectar ao banco do tenant: " . $tenantConn->connect_error);
+        throw new Exception("Erro ao conectar ao banco do tenant recém-criado: " . $tenantConn->connect_error);
     }
     $tenantConn->set_charset("utf8mb4");
 
     // --- 7) Executa schema base ---
     $schemaPath = __DIR__ . '/../includes/tenant_schema.sql';
     if (!file_exists($schemaPath)) {
-        throw new Exception("Arquivo tenant_schema.sql não encontrado.");
+        throw new Exception("Arquivo tenant_schema.sql não encontrado. O registo falhou.");
     }
 
     $schemaSQL = file_get_contents($schemaPath);
     if (!$tenantConn->multi_query($schemaSQL)) {
-        throw new Exception("Erro ao aplicar schema: " . $tenantConn->error);
+        throw new Exception("Erro ao aplicar o schema no banco do tenant: " . $tenantConn->error);
     }
+    // Limpa resultados pendentes do multi_query
     while ($tenantConn->more_results() && $tenantConn->next_result()) {}
 
     // --- 8) Cria admin dentro do tenant ---
@@ -139,27 +161,54 @@ try {
     );
     $stmtUserTenant->execute();
     $stmtUserTenant->close();
-
     $tenantConn->close();
 
     // --- Sucesso ---
-    $_SESSION['registro_sucesso'] = "Cadastro concluído! Seu período de teste: $dias_teste dias.";
-
+    $_SESSION['registro_sucesso'] = "Cadastro concluído com sucesso!";
     header("Location: ../pages/login.php?msg=cadastro_sucesso");
     exit();
 
 } catch (Exception $e) {
 
-    error_log("⛔ ERRO REGISTER_USER: " . $e->getMessage());
-    $_SESSION['erro_registro'] = "Erro ao criar conta. Tente novamente.";
+    // --- ESTA É A PARTE MAIS IMPORTANTE DA CORREÇÃO ---
+    
+    error_log("⛔ ERRO NO REGISTO: " . $e->getMessage());
+    $_SESSION['erro_registro'] = "Erro ao criar sua conta. Por favor, tente novamente.";
 
-    // rollback
+    // 1. Limpa a infraestrutura (DROP DATABASE e DROP USER) se eles chegaram a ser criados
     if (isset($dbName)) $conn->query("DROP DATABASE IF EXISTS `$dbName`");
     if (isset($tenantUser)) $conn->query("DROP USER IF EXISTS '$tenantUser'@'localhost'");
-    if (isset($email)) $conn->query("DELETE FROM tenants WHERE admin_email = '$email'");
-    if (isset($usuarioMasterId)) $conn->query("DELETE FROM usuarios WHERE id = $usuarioMasterId");
+    
+    // 2. Limpa os registros órfãos no banco de dados mestre (usuarios e tenants)
+    // Usamos uma transação aqui para garantir que ambos sejam removidos
+    if ($usuarioMasterId !== null) {
+        $conn->begin_transaction();
+        try {
+            // Deleta o tenant (usando o usuario_id, que é a FK)
+            $stmtDeleteTenant = $conn->prepare("DELETE FROM tenants WHERE usuario_id = ?");
+            $stmtDeleteTenant->bind_param("i", $usuarioMasterId);
+            $stmtDeleteTenant->execute();
+            $stmtDeleteTenant->close();
 
-    header("Location: ../pages/registro.php?msg=erro");
+            // Deleta o usuário mestre
+            $stmtDeleteUser = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
+            $stmtDeleteUser->bind_param("i", $usuarioMasterId);
+            $stmtDeleteUser->execute();
+            $stmtDeleteUser->close();
+            
+            // Confirma a limpeza
+            $conn->commit();
+            error_log("INFO REGISTO: Rollback manual do usuario_id $usuarioMasterId foi bem-sucedido.");
+
+        } catch (Exception $rollbackEx) {
+            // Se a limpeza falhar, reverte e loga um erro crítico
+            $conn->rollback();
+            error_log("⛔ FALHA CRÍTICA NO ROLLBACK: Não foi possível limpar o usuário órfão $usuarioMasterId. Mensagem: " . $rollbackEx->getMessage());
+        }
+    }
+    // --- FIM DA CORREÇÃO ---
+
+    header("Location: ../pages/registro.php?msg=erro_generico");
     exit();
 }
 ?>

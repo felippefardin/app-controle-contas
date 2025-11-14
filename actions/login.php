@@ -5,7 +5,6 @@ require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../includes/session_init.php';
 require_once __DIR__ . '/../includes/tenant_utils.php';
 
-function log_debug($msg) { error_log("[LOGIN] " . $msg); }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') die('Método inválido.');
 
