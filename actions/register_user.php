@@ -4,7 +4,7 @@ session_start();
 
 require_once '../includes/config/config.php';
 require_once '../database.php'; // getMasterConnection()
-require_once '../includes/tenant_utils.php';
+
 
 // --- Captura segura dos dados enviados ---
 $dados = $_POST ?? [];

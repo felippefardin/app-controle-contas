@@ -4,12 +4,17 @@
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
-require_once '../includes/tenant_utils.php';
 
 // 🔒 Usuário precisa estar logado
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header("Location: ../pages/login.php?erro=nao_logado");
     exit();
+}
+
+// 🔒 Se for o Master Admin, redireciona para dashboard dele
+if (isset($_SESSION['is_master_admin']) && $_SESSION['is_master_admin'] === true) {
+     header("Location: ../pages/admin/dashboard.php");
+     exit();
 }
 
 // 🔒 Verificar tenant ativo
@@ -27,12 +32,22 @@ $perfil       = $_SESSION['nivel_acesso']; // admin | padrao
 
 // 📌 Conexão do tenant
 $conn = getTenantConnection();
-
 if (!$conn) {
     session_destroy();
     header("Location: ../pages/login.php?erro=db_tenant");
     exit();
 }
+
+// 🔒 Revalidação do tenant
+$tenant = getTenantById($tenant_id, $conn); // função do database.php
+if (!$tenant) {
+    session_destroy();
+    header("Location: ../pages/login.php?erro=tenant_invalido");
+    exit();
+}
+
+// 🔒 Atualiza status da assinatura (função do database.php)
+$_SESSION['subscription_status'] = validarStatusAssinatura($tenant);
 
 // ⚡ Mensagem de sucesso (se houver)
 $mensagem = $_SESSION['sucesso_mensagem'] ?? null;
@@ -45,7 +60,6 @@ unset($_SESSION['produtos_estoque_baixo']);
 // Cabeçalho
 include('../includes/header.php');
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -64,79 +78,22 @@ include('../includes/header.php');
         margin: auto;
         padding: 20px;
     }
-    h1 {
-        text-align: center;
-        color: #00bfff;
-        margin-bottom: 5px;
-    }
-    h3 {
-        text-align: center;
-        color: #ccc;
-        font-weight: 400;
-        margin-bottom: 20px;
-    }
-    .saudacao {
-        text-align: center;
-        margin-bottom: 25px;
-        color: #ddd;
-        font-size: 1.1rem;
-    }
-    .section-title {
-        width: 100%;
-        color: #00bfff;
-        font-weight: bold;
-        margin-top: 30px;
-        margin-bottom: 10px;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-    }
-    .dashboard {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 18px;
-        margin-bottom: 30px;
-    }
-    .card-link {
-        background: #1e1e1e;
-        padding: 25px 15px;
-        text-align: center;
-        border-radius: 10px;
-        text-decoration: none;
-        color: #fff;
-        transition: 0.3s;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-    }
-    .card-link:hover {
-        background: #00bfff;
-        color: #121212;
-        transform: translateY(-5px);
-        box-shadow: 0 6px 15px rgba(0,191,255,0.4);
-    }
-    .mensagem-sucesso {
-        background: #28a745;
-        padding: 12px 20px;
-        text-align: center;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-weight: bold;
-    }
-    .alert-estoque {
-        background: #dc3545;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 25px;
-        color: #fff;
-    }
+    h1 { text-align: center; color: #00bfff; margin-bottom: 5px; }
+    h3 { text-align: center; color: #ccc; font-weight: 400; margin-bottom: 20px; }
+    .saudacao { text-align: center; margin-bottom: 25px; color: #ddd; font-size: 1.1rem; }
+    .section-title { width: 100%; color: #00bfff; font-weight: bold; margin-top: 30px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+    .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 30px; }
+    .card-link { background: #1e1e1e; padding: 25px 15px; text-align: center; border-radius: 10px; text-decoration: none; color: #fff; transition: 0.3s; box-shadow: 0 3px 6px rgba(0,0,0,0.4); }
+    .card-link:hover { background: #00bfff; color: #121212; transform: translateY(-5px); box-shadow: 0 6px 15px rgba(0,191,255,0.4); }
+    .mensagem-sucesso { background: #28a745; padding: 12px 20px; text-align: center; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
+    .alert-estoque { background: #dc3545; padding: 15px; border-radius: 10px; margin-bottom: 25px; color: #fff; }
 </style>
 </head>
 
 <body>
-
 <div class="home-container">
-    
     <h1>App Controle de Contas</h1>
     <h3>Olá, <?= htmlspecialchars($nome_usuario) ?> — Perfil: <?= htmlspecialchars($perfil) ?></h3>
-
     <p class="saudacao" id="saudacao"></p>
 
     <?php if ($mensagem): ?>
@@ -156,14 +113,14 @@ include('../includes/header.php');
 
     <!-- FINANCEIRO (somente admin) -->
     <?php if ($perfil === 'admin'): ?>
-    <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
-    <div class="dashboard">
-        <a class="card-link" href="contas_pagar.php">Contas a Pagar</a>
-        <a class="card-link" href="contas_pagar_baixadas.php">Pagas</a>
-        <a class="card-link" href="contas_receber.php">Contas a Receber</a>
-        <a class="card-link" href="contas_receber_baixadas.php">Recebidas</a>
-        <a class="card-link" href="lancamento_caixa.php">Fluxo de Caixa</a>
-    </div>
+        <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
+        <div class="dashboard">
+            <a class="card-link" href="contas_pagar.php">Contas a Pagar</a>
+            <a class="card-link" href="contas_pagar_baixadas.php">Pagas</a>
+            <a class="card-link" href="contas_receber.php">Contas a Receber</a>
+            <a class="card-link" href="contas_receber_baixadas.php">Recebidas</a>
+            <a class="card-link" href="lancamento_caixa.php">Fluxo de Caixa</a>
+        </div>
     <?php endif; ?>
 
     <!-- ESTOQUE & VENDAS -->
@@ -172,9 +129,7 @@ include('../includes/header.php');
         <?php if ($perfil === 'admin'): ?>
             <a class="card-link" href="controle_estoque.php">Estoque</a>
         <?php endif; ?>
-
         <a class="card-link" href="vendas.php">Caixa de Vendas</a>
-
         <?php if ($perfil === 'admin'): ?>
             <a class="card-link" href="compras.php">Compras</a>
         <?php endif; ?>
@@ -185,7 +140,6 @@ include('../includes/header.php');
     <div class="dashboard">
         <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
         <a class="card-link" href="perfil.php">Perfil</a>
-
         <?php if ($perfil === 'admin'): ?>
             <a class="card-link" href="../pages/banco_cadastro.php">Contas Bancárias</a>
             <a class="card-link" href="../pages/categorias.php">Categorias</a>
@@ -195,19 +149,15 @@ include('../includes/header.php');
     <!-- SISTEMA -->
     <div class="section-title"><i class="fas fa-cogs"></i> Sistema</div>
     <div class="dashboard">
-
         <?php if ($perfil === 'admin'): ?>
             <a class="card-link" href="relatorios.php">Relatórios</a>
         <?php endif; ?>
-
         <a class="card-link" href="selecionar_usuario.php">Trocar Usuário</a>
-
         <?php if ($perfil === 'admin'): ?>
             <a class="card-link" href="usuarios.php">Usuários</a>
             <a class="card-link" href="configuracao_fiscal.php">Configurações Fiscais</a>
         <?php endif; ?>
     </div>
-
 </div>
 
 <script>

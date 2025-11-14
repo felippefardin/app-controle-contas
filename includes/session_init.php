@@ -22,12 +22,12 @@ if (session_status() === PHP_SESSION_NONE) {
 // AVISO: Não use mais $_SESSION['usuario_logado'] como array!
 // Agora usamos:
 //   $_SESSION['usuario_logado'] = true/false
-//   $_SESSION['nivel_acesso']   = 'admin' | 'padrao'
+//   $_SESSION['nivel_acesso']   = 'admin' | 'padrao' | 'master' (para contatotech)
 //   $_SESSION['usuario_id']     = id do usuário dentro do tenant
 // ------------------------------
 
 /**
- * Verifica se o usuário é ADMIN dentro do tenant
+ * Verifica se o usuário é ADMIN (do tenant) ou MASTER (super admin)
  */
 function verificar_acesso_admin() {
     if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -35,10 +35,16 @@ function verificar_acesso_admin() {
         exit;
     }
 
-    if (!isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] !== 'admin') {
+    // --- MODIFICAÇÃO AQUI ---
+    // Permite acesso se o nível for 'admin' (do tenant) OU 'master' (super admin)
+    $nivel_acesso = $_SESSION['nivel_acesso'] ?? 'padrao';
+
+    if ($nivel_acesso !== 'admin' && $nivel_acesso !== 'master') {
+        // Se não for nenhum dos dois, nega o acesso
         header("Location: ../pages/home.php?erro=sem_permissao");
         exit;
     }
+    // --- FIM DA MODIFICAÇÃO ---
 }
 
 // ------------------------------
