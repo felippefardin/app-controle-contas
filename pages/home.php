@@ -39,7 +39,19 @@ if (!$conn) {
 }
 
 // 🔒 Revalidação do tenant
-$tenant = getTenantById($tenant_id, $conn); // função do database.php
+// ❗❗ INÍCIO DA CORREÇÃO ❗❗
+// A função getTenantById (do database.php) precisa da conexão MASTER,
+// mas $conn (definido acima) é a conexão TENANT.
+$connMaster = getMasterConnection();
+if (!$connMaster) {
+     session_destroy();
+     header("Location: ../pages/login.php?erro=db_master");
+     exit();
+}
+$tenant = getTenantById($tenant_id, $connMaster); // Usar a conexão MASTER
+$connMaster->close(); // Fechar a conexão MASTER
+// ❗❗ FIM DA CORREÇÃO ❗❗
+
 if (!$tenant) {
     session_destroy();
     header("Location: ../pages/login.php?erro=tenant_invalido");
@@ -111,7 +123,6 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <!-- FINANCEIRO (somente admin) -->
     <?php if ($perfil === 'admin'): ?>
         <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
         <div class="dashboard">
@@ -123,7 +134,6 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <!-- ESTOQUE & VENDAS -->
     <div class="section-title"><i class="fas fa-boxes"></i> Estoque & Vendas</div>
     <div class="dashboard">
         <?php if ($perfil === 'admin'): ?>
@@ -135,7 +145,6 @@ include('../includes/header.php');
         <?php endif; ?>
     </div>
 
-    <!-- CADASTROS -->
     <div class="section-title"><i class="fas fa-users"></i> Cadastros</div>
     <div class="dashboard">
         <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
@@ -146,7 +155,6 @@ include('../includes/header.php');
         <?php endif; ?>
     </div>
 
-    <!-- SISTEMA -->
     <div class="section-title"><i class="fas fa-cogs"></i> Sistema</div>
     <div class="dashboard">
         <?php if ($perfil === 'admin'): ?>

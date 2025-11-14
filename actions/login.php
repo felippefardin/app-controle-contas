@@ -38,6 +38,8 @@ try {
     // 🔹 3. Buscar tenant associado (se houver)
     $tenantId = $userMaster['tenant_id'] ?? null;
     $tenant = null;
+    
+    // SE HÁ UM ID DE TENANT, O TENANT PRECISA EXISTIR
     if ($tenantId) {
         $connMaster = getMasterConnection();
         $stmt = $connMaster->prepare("SELECT * FROM tenants WHERE tenant_id = ? LIMIT 1");
@@ -46,7 +48,19 @@ try {
         $tenant = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         $connMaster->close();
+
+        // ❗❗ INÍCIO DA CORREÇÃO ❗❗
+        // Se o usuário tem um tenant_id, mas esse tenant não foi encontrado no banco master,
+        // é um erro de integridade de dados. Não podemos prosseguir.
+        if (!$tenant) {
+            error_log("[LOGIN ERROR] Usuário {$email} (ID: {$userMaster['id']}) tem tenant_id '{$tenantId}' órfão (não encontrado na tabela tenants).");
+            $_SESSION['login_erro'] = "Sua conta está com um problema de configuração (Tenant ID '{$tenantId}' não encontrado). Contate o suporte.";
+            header("Location: ../pages/login.php");
+            exit;
+        }
+        // ❗❗ FIM DA CORREÇÃO ❗❗
     }
+
 
     // 🔹 4. Carregar tenant na sessão se existir
     if ($tenant) {
