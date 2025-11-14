@@ -1,119 +1,108 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/includes/session_init.php';
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+
+
+
 
 use Dotenv\Dotenv;
 use MercadoPago\MercadoPagoConfig;
 
-// 🔹 Carrega variáveis de ambiente corretamente da raiz do projeto
+// -------------------------
+// Carregar .env
+// -------------------------
 $dotenvPath = realpath(__DIR__ . '/');
 if (!file_exists($dotenvPath . '/.env')) {
-    $dotenvPath = realpath(__DIR__ . '/../'); // sobe um nível se não encontrar
+    $dotenvPath = realpath(__DIR__ . '/../');
 }
 $dotenv = Dotenv::createImmutable($dotenvPath);
 $dotenv->safeLoad();
 
-// 🔹 Configura Mercado Pago
-if (!empty($_ENV['MP_ACCESS_TOKEN'])) {
-    MercadoPagoConfig::setAccessToken($_ENV['MP_ACCESS_TOKEN']);
-}
+// -------------------------
+// Variáveis FIXAS (não dependem de $user)
+// -------------------------
+$db_host_master = $_ENV['DB_HOST'] ?? 'localhost';
+$db_user_master = $_ENV['DB_USER'] ?? 'root';
+$db_pass_master = $_ENV['DB_PASSWORD'] ?? '';
+$db_name_master = $_ENV['DB_DATABASE'] ?? 'app_controle_contas';
 
-// 🔹 Banco de dados master (padrão)
-$host = $_ENV['DB_HOST'] ?? 'localhost';
-$user = $_ENV['DB_USER'] ?? 'root';
-$password = $_ENV['DB_PASSWORD'] ?? '';
-$database = $_ENV['DB_DATABASE'] ?? 'app_controle_contas';
-
+// Nunca mais deixe $user global entrar aqui
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 /**
- * 🔹 Conexão principal (banco master)
- * Inclui suporte a SSL e tratamento completo de exceções
+ * CONEXÃO MASTER
  */
-function getMasterConnection() {
-    global $host, $user, $password, $database;
+function getMasterConnection()
+{
+    global $db_host_master, $db_user_master, $db_pass_master, $db_name_master;
 
     try {
         $conn = mysqli_init();
-
-        // SSL opcional — não falha se o servidor não suportar SSL
-        mysqli_ssl_set($conn, NULL, NULL, NULL, NULL, NULL);
-
-        if (!mysqli_real_connect($conn, $host, $user, $password, $database)) {
-            throw new mysqli_sql_exception("❌ Falha ao conectar: " . mysqli_connect_error());
-        }
-
-        if (!$conn->set_charset("utf8mb4")) {
-            throw new mysqli_sql_exception("❌ Erro ao definir charset: " . $conn->error);
-        }
-
+        mysqli_real_connect(
+            $conn,
+            $db_host_master,
+            $db_user_master,
+            $db_pass_master,
+            $db_name_master
+        );
+        $conn->set_charset("utf8mb4");
         return $conn;
+
     } catch (mysqli_sql_exception $e) {
-        error_log("❌ Erro de conexão MASTER: " . $e->getMessage());
-        die("❌ Erro ao conectar ao banco de dados master: " . htmlspecialchars($e->getMessage()));
+        error_log("Erro MASTER: " . $e->getMessage());
+        die("Erro ao conectar ao banco master.");
     }
 }
 
 /**
- * 🔹 Conexão do banco de dados do Tenant (cliente)
- * Lê credenciais da sessão ou usa o master se preferido
+ * CONEXÃO TENANT (via SESSION)
  */
-function getTenantConnection() {
-    // Se as informações do tenant não estiverem na sessão, usa o banco master
+function getTenantConnection()
+{
     if (!isset($_SESSION['tenant_db'])) {
-        error_log("⚠️ Sessão do tenant ausente — conectando ao banco principal.");
-        return getMasterConnection();
+        return null;
     }
 
-    $db_info = $_SESSION['tenant_db'];
+    $db = $_SESSION['tenant_db'];
 
     try {
         $conn = mysqli_init();
-
-        // SSL opcional
-        mysqli_ssl_set($conn, NULL, NULL, NULL, NULL, NULL);
-
-        if (!mysqli_real_connect(
+        mysqli_real_connect(
             $conn,
-            $db_info['db_host'],
-            $db_info['db_user'],
-            $db_info['db_password'],
-            $db_info['db_database']
-        )) {
-            throw new mysqli_sql_exception("❌ Falha ao conectar: " . mysqli_connect_error());
-        }
-
-        if (!$conn->set_charset("utf8mb4")) {
-            throw new mysqli_sql_exception("❌ Erro ao definir charset: " . $conn->error);
-        }
-
+            $db['db_host'],
+            $db['db_user'],
+            $db['db_password'],
+            $db['db_database']
+        );
+        $conn->set_charset("utf8mb4");
         return $conn;
 
     } catch (mysqli_sql_exception $e) {
-        error_log("❌ Erro de conexão TENANT: " . $e->getMessage());
-        // Retorna null para que o sistema possa tratar a falha sem quebrar
+        error_log("Erro TENANT: " . $e->getMessage());
         return null;
     }
 }
 
 /**
- * 🔹 Garante que o banco de um tenant exista — cria se necessário
+ * GARANTE QUE O BANCO DO TENANT EXISTE
  */
-function ensureTenantDatabaseExists($db_host, $db_user, $db_password, $db_database) {
+function ensureTenantDatabaseExists($db_host, $db_user, $db_password, $db_database)
+{
     try {
         $conn = mysqli_init();
         mysqli_real_connect($conn, $db_host, $db_user, $db_password);
 
-        $exists = $conn->query("SHOW DATABASES LIKE '{$db_database}'")->num_rows > 0;
-        if (!$exists) {
-            $conn->query("CREATE DATABASE `{$db_database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            error_log("✅ Banco de tenant criado: {$db_database}");
+        $result = $conn->query("SHOW DATABASES LIKE '{$db_database}'");
+
+        if (!$result || $result->num_rows == 0) {
+            error_log("🔧 Criando banco do tenant: {$db_database}");
+            $conn->query("CREATE DATABASE `$db_database` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         }
 
         $conn->close();
     } catch (mysqli_sql_exception $e) {
-        error_log("❌ Erro ao verificar/criar banco do tenant: " . $e->getMessage());
+        error_log("❌ ensureTenantDatabaseExists ERROR: " . $e->getMessage());
     }
-    
 }
-

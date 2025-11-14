@@ -1,40 +1,52 @@
 <?php
-// // Ficheiro: includes/session_init.php
-// IMPORTANTE: NÃO PODE HAVER NENHUM ESPAÇO OU LINHA EM BRANCO ANTES DE "<?php"
+// includes/session_init.php
+// NÃO PODE HAVER NENHUMA LINHA OU ESPAÇO ANTES DE <?php
 
-// --- INÍCIO DA SESSÃO ---
-// Garante que uma sessão seja iniciada se ainda não houver uma ativa.
-
+// --- Inicia sessão global para todo o domínio ---
 if (session_status() === PHP_SESSION_NONE) {
-    // --- INÍCIO DA CORREÇÃO ---
-    // Define o cookie da sessão para ser válido em todo o site ('/')
-    // Isso garante que a sessão seja compartilhada entre /pages/ e /actions/
+
     session_set_cookie_params([
-        'lifetime' => 0, // 0 = até o navegador fechar
-        'path' => '/',   // Caminho raiz
-        'domain' => '',  // Domínio atual (deixe em branco)
-        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on', // Recomendado
-        'httponly' => true // Recomendado
+        'lifetime' => 0,     // Sessão dura até fechar o navegador
+        'path' => '/',       // Importante: sessão visível em todas as pastas (/actions, /pages, /includes)
+        'domain' => '',      // Domínio atual
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true
     ]);
-    // --- FIM DA CORREÇÃO ---
 
     session_start();
 }
 
-// Função para verificar se o usuário é proprietário
-function verificar_acesso_proprietario() {
-    if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado']['nivel_acesso'] !== 'proprietario') {
-        session_write_close(); 
-        header('Location: ../pages/vendas.php');
+// ------------------------------
+// 🔐 VERIFICAÇÃO DE ACESSO
+// ------------------------------
+// AVISO: Não use mais $_SESSION['usuario_logado'] como array!
+// Agora usamos:
+//   $_SESSION['usuario_logado'] = true/false
+//   $_SESSION['nivel_acesso']   = 'admin' | 'padrao'
+//   $_SESSION['usuario_id']     = id do usuário dentro do tenant
+// ------------------------------
+
+/**
+ * Verifica se o usuário é ADMIN dentro do tenant
+ */
+function verificar_acesso_admin() {
+    if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
+        header("Location: ../pages/login.php?erro=nao_logado");
+        exit;
+    }
+
+    if (!isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] !== 'admin') {
+        header("Location: ../pages/home.php?erro=sem_permissao");
         exit;
     }
 }
 
-
-// --- GERAÇÃO DO TOKEN CSRF ---
-// Gera um token para proteção contra ataques CSRF, se não existir.
+// ------------------------------
+// 🔰 CSRF PROTECTION
+// ------------------------------
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
+
 $csrf_token = $_SESSION['csrf_token'];
 ?>

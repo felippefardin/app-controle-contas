@@ -1,41 +1,48 @@
 <?php
-// Inicia a sessão
-include_once '../includes/session_init.php';
+// ----------------------------------------------
+// home.php (versão final padronizada para SaaS)
+// ----------------------------------------------
+require_once '../includes/session_init.php';
+require_once '../database.php';
+require_once '../includes/tenant_utils.php';
 
-// Proteção para verificar se o usuário (cliente) está logado
-if (!isset($_SESSION['usuario_logado'])) {
-    header("Location: ../pages/login.php");
+// 🔒 Usuário precisa estar logado
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
+    header("Location: ../pages/login.php?erro=nao_logado");
     exit();
 }
 
-// Inclui o arquivo de banco de dados
-require_once '../database.php';
+// 🔒 Verificar tenant ativo
+if (!isset($_SESSION['tenant_id'])) {
+    session_destroy();
+    header("Location: ../pages/login.php?erro=tenant_inexistente");
+    exit();
+}
 
-// Pega a conexão correta para o banco de dados deste cliente
-$conn = getTenantConnection(); 
+// 📌 Pega dados do usuário
+$usuario_id   = $_SESSION['usuario_id'];
+$tenant_id    = $_SESSION['tenant_id'];
+$nome_usuario = $_SESSION['nome'];
+$perfil       = $_SESSION['nivel_acesso']; // admin | padrao
 
-// Se a conexão com o banco do tenant falhar (por exemplo, se a sessão expirar), redireciona para o login
-if ($conn === null) {
-    session_destroy(); // Limpa a sessão para evitar loops
+// 📌 Conexão do tenant
+$conn = getTenantConnection();
+
+if (!$conn) {
+    session_destroy();
     header("Location: ../pages/login.php?erro=db_tenant");
     exit();
 }
 
-// Pega os dados do usuário da sessão correta
-$usuario_logado = $_SESSION['usuario_logado'];
-$user_id = $usuario_logado['id'];
-$nome = $usuario_logado['nome'];
-$perfil = $usuario_logado['nivel_acesso']; // 'nivel_acesso' é a coluna correta
-
-// Lógica para buscar as mensagens (se houver)
+// ⚡ Mensagem de sucesso (se houver)
 $mensagem = $_SESSION['sucesso_mensagem'] ?? null;
 unset($_SESSION['sucesso_mensagem']);
 
-// Lógica para alerta de estoque baixo (se houver)
+// ⚠ Estoque baixo (se houver)
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
-// Inclui o cabeçalho principal da página
+// Cabeçalho
 include('../includes/header.php');
 ?>
 
@@ -44,147 +51,92 @@ include('../includes/header.php');
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Home - App Controle Contas</title>
+<title>Home - App Controle de Contas</title>
+
 <style>
-    /* Estilos gerais da página */
     body {
         background: radial-gradient(circle at top, #1a1a1a 0%, #0f0f0f 100%);
         animation: fadeIn 0.8s ease;
+        color: #fff;
     }
-
     .home-container {
-        width: 100%;
         max-width: 1000px;
-        margin: 0 auto;
+        margin: auto;
         padding: 20px;
     }
-
     h1 {
+        text-align: center;
         color: #00bfff;
-        text-align: center;
-        font-size: 2rem;
         margin-bottom: 5px;
     }
-
-    h3, h4 {
+    h3 {
         text-align: center;
-        color: #bbb;
-        font-weight: 400;
-        margin-bottom: 5px;
-    }
-
-    h4 { margin-bottom: 20px; color: #999; }
-
-    .saudacao {
-        font-size: 1.1rem;
-        margin-bottom: 25px;
         color: #ccc;
+        font-weight: 400;
+        margin-bottom: 20px;
+    }
+    .saudacao {
         text-align: center;
+        margin-bottom: 25px;
+        color: #ddd;
+        font-size: 1.1rem;
     }
-
-    /* ==== Dashboard de atalhos ==== */
-    .dashboard {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 18px;
-        width: 100%;
-        margin-bottom: 30px;
-    }
-
-    .card-link {
-        background-color: #1e1e1e;
-        color: #fff;
-        text-decoration: none;
-        padding: 25px 15px;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-    }
-
-    .card-link:hover {
-        background-color: #00bfff;
-        color: #121212;
-        transform: translateY(-5px);
-        box-shadow: 0 6px 15px rgba(0,191,255,0.5);
-    }
-
-    .card-link i {
-        font-size: 1.8rem;
-        margin-bottom: 10px;
-    }
-
     .section-title {
         width: 100%;
         color: #00bfff;
         font-weight: bold;
-        margin: 10px 0;
+        margin-top: 30px;
+        margin-bottom: 10px;
         border-bottom: 1px solid #333;
         padding-bottom: 5px;
-        font-size: 1.1rem;
     }
-
-    .mensagem-sucesso {
-        background-color: #28a745;
-        color: white;
-        padding: 12px 20px;
-        margin: 15px 0;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
-        font-weight: 600;
+    .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 18px;
+        margin-bottom: 30px;
+    }
+    .card-link {
+        background: #1e1e1e;
+        padding: 25px 15px;
         text-align: center;
-        animation: fadeIn 0.6s ease;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #fff;
+        transition: 0.3s;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
     }
-
-    .alert-estoque {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #dc3545;
-        color: white;
-        padding: 15px;
+    .card-link:hover {
+        background: #00bfff;
+        color: #121212;
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(0,191,255,0.4);
+    }
+    .mensagem-sucesso {
+        background: #28a745;
+        padding: 12px 20px;
+        text-align: center;
         border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.5);
-        z-index: 1000;
-        text-align: left;
-        width: 90%;
-        max-width: 500px;
-        animation: fadeInUp 0.8s ease;
+        margin-bottom: 20px;
+        font-weight: bold;
     }
-
-    .alert-estoque ul {
-        margin-top: 10px;
-        padding-left: 20px;
-    }
-    
-    .btn-logout { background-color: #ff4b4b !important; color: #fff; }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translate(-50%, 30px); }
-        to { opacity: 1; transform: translate(-50%, 0); }
-    }
-
-    @media (max-width: 600px) {
-        h1 { font-size: 1.6rem; }
-        .card-link { padding: 18px 10px; }
-        .card-link i { font-size: 1.5rem; }
+    .alert-estoque {
+        background: #dc3545;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        color: #fff;
     }
 </style>
 </head>
+
 <body>
 
 <div class="home-container">
+    
     <h1>App Controle de Contas</h1>
-    <h3>Usuário Ativo: <?= htmlspecialchars($nome) ?> (<?= htmlspecialchars($perfil) ?>)</h3>
+    <h3>Olá, <?= htmlspecialchars($nome_usuario) ?> — Perfil: <?= htmlspecialchars($perfil) ?></h3>
+
     <p class="saudacao" id="saudacao"></p>
 
     <?php if ($mensagem): ?>
@@ -192,91 +144,82 @@ include('../includes/header.php');
     <?php endif; ?>
 
     <?php if (!empty($produtos_estoque_baixo)): ?>
-        <div id="alert-estoque" class="alert-estoque">
-            <strong><i class="fas fa-exclamation-triangle"></i> Atenção:</strong>
-            Estoque baixo ou zerado para:
+        <div class="alert-estoque">
+            <strong>⚠ Produtos com estoque baixo:</strong>
             <ul>
-                <?php foreach ($produtos_estoque_baixo as $produto): ?>
-                    <li><?= htmlspecialchars($produto['nome']) ?> (Estoque: <?= $produto['quantidade_estoque'] ?>)</li>
+                <?php foreach ($produtos_estoque_baixo as $p): ?>
+                    <li><?= htmlspecialchars($p['nome']) ?> — Estoque: <?= intval($p['quantidade_estoque']) ?></li>
                 <?php endforeach; ?>
             </ul>
         </div>
     <?php endif; ?>
 
-    <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem este bloco ?>
+    <!-- FINANCEIRO (somente admin) -->
+    <?php if ($perfil === 'admin'): ?>
     <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
     <div class="dashboard">
-        <a class="card-link" href="contas_pagar.php"><i class="fas fa-arrow-down"></i>Contas a Pagar</a>
-        <a class="card-link" href="contas_pagar_baixadas.php"><i class="fas fa-check-circle"></i>Pagas</a>
-        <a class="card-link" href="contas_receber.php"><i class="fas fa-arrow-up"></i>Contas a Receber</a>
-        <a class="card-link" href="contas_receber_baixadas.php"><i class="fas fa-hand-holding-usd"></i>Recebidas</a>
-        <a class="card-link" href="lancamento_caixa.php"><i class="fas fa-cash-register"></i>Fluxo de Caixa</a>
+        <a class="card-link" href="contas_pagar.php">Contas a Pagar</a>
+        <a class="card-link" href="contas_pagar_baixadas.php">Pagas</a>
+        <a class="card-link" href="contas_receber.php">Contas a Receber</a>
+        <a class="card-link" href="contas_receber_baixadas.php">Recebidas</a>
+        <a class="card-link" href="lancamento_caixa.php">Fluxo de Caixa</a>
     </div>
     <?php endif; ?>
 
-
+    <!-- ESTOQUE & VENDAS -->
     <div class="section-title"><i class="fas fa-boxes"></i> Estoque & Vendas</div>
     <div class="dashboard">
-        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem este botão ?>
-            <a class="card-link" href="controle_estoque.php"><i class="fas fa-box"></i>Estoque</a>
+        <?php if ($perfil === 'admin'): ?>
+            <a class="card-link" href="controle_estoque.php">Estoque</a>
         <?php endif; ?>
-        
-        <a class="card-link" href="vendas.php"><i class="fas fa-shopping-cart"></i>Caixa de Vendas</a>
-        
-        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem este botão ?>
-            <a class="card-link" href="compras.php"><i class="fas fa-dolly"></i>Registro de Compras</a>
+
+        <a class="card-link" href="vendas.php">Caixa de Vendas</a>
+
+        <?php if ($perfil === 'admin'): ?>
+            <a class="card-link" href="compras.php">Compras</a>
         <?php endif; ?>
     </div>
 
-
+    <!-- CADASTROS -->
     <div class="section-title"><i class="fas fa-users"></i> Cadastros</div>
     <div class="dashboard">
-        <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-user"></i>Clientes/Fornecedores</a>
-        <a class="card-link" href="perfil.php"><i class="fas fa-user-circle"></i>Perfil</a>
-        
-        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
-            <a class="card-link" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i>Contas Bancárias</a>
-            <a class="card-link" href="../pages/categorias.php"><i class="fas fa-list"></i>Categorias</a>
+        <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
+        <a class="card-link" href="perfil.php">Perfil</a>
+
+        <?php if ($perfil === 'admin'): ?>
+            <a class="card-link" href="../pages/banco_cadastro.php">Contas Bancárias</a>
+            <a class="card-link" href="../pages/categorias.php">Categorias</a>
         <?php endif; ?>
     </div>
 
+    <!-- SISTEMA -->
     <div class="section-title"><i class="fas fa-cogs"></i> Sistema</div>
     <div class="dashboard">
-        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
-            <a class="card-link" href="relatorios.php"><i class="fas fa-file-alt"></i>Relatórios</a>
-            
+
+        <?php if ($perfil === 'admin'): ?>
+            <a class="card-link" href="relatorios.php">Relatórios</a>
         <?php endif; ?>
 
-        <a class="card-link" href="selecionar_usuario.php"><i class="fas fa-user-switch"></i>Trocar Usuário</a>
-        
-        <?php if ($perfil !== 'padrao'): // Usuários 'padrao' NÃO veem estes botões ?>
-            <a class="card-link" href="usuarios.php"><i class="fas fa-user-gear"></i>Usuários</a>
-            <a class="card-link" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i>Config. Fiscal</a>
+        <a class="card-link" href="selecionar_usuario.php">Trocar Usuário</a>
+
+        <?php if ($perfil === 'admin'): ?>
+            <a class="card-link" href="usuarios.php">Usuários</a>
+            <a class="card-link" href="configuracao_fiscal.php">Configurações Fiscais</a>
         <?php endif; ?>
     </div>
-    </div>
+
+</div>
 
 <script>
-    // Saudação dinâmica
-    const saudacao = document.getElementById('saudacao');
-    const hora = new Date().getHours();
-    let texto = "Bem-vindo(a) de volta!";
-    if (hora < 12) texto = "☀️ Bom dia!";
-    else if (hora < 18) texto = "🌤️ Boa tarde!";
-    else texto = "🌙 Boa noite!";
-    saudacao.textContent = texto;
-
-    // Oculta alerta de estoque após 8s
-    document.addEventListener("DOMContentLoaded", function() {
-        const alertEstoque = document.getElementById('alert-estoque');
-        if (alertEstoque) {
-            setTimeout(() => {
-                alertEstoque.style.transition = 'opacity 0.5s';
-                alertEstoque.style.opacity = '0';
-                setTimeout(() => alertEstoque.remove(), 500);
-            }, 8000); // 8 segundos
-        }
-    });
+// Saudação dinâmica
+const hora = new Date().getHours();
+let texto = "Bem-vindo(a)!";
+if (hora < 12) texto = "☀️ Bom dia!";
+else if (hora < 18) texto = "🌤️ Boa tarde!";
+else texto = "🌙 Boa noite!";
+document.getElementById("saudacao").textContent = texto;
 </script>
 
 <?php include('../includes/footer.php'); ?>
+</body>
+</html>
