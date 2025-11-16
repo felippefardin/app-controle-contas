@@ -1,6 +1,6 @@
 <?php
 require_once '../includes/session_init.php';
-require_once __DIR__ . '/../database.php'; // Contém getMasterConnection() e getTenantConnection()
+require_once __DIR__ . '/../database.php'; // Contém getMasterConnection(), getTenantConnection() e validarStatusAssinatura()
 
 // 🔹 Captura dados do formulário
 $email = trim($_POST['email'] ?? '');
@@ -20,20 +20,26 @@ try {
     $stmt->execute();
     $userMaster = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    $connMaster->close();
+    // Não feche a $connMaster ainda, precisaremos dela para o tenant
 
+    // ❗️❗️ INÍCIO DA CORREÇÃO DE MENSAGEM ❗️❗️
     if (!$userMaster) {
-        $_SESSION['login_erro'] = "E-mail ou senha inválidos.";
+        // Mensagem específica se o e-mail não foi encontrado
+        $_SESSION['login_erro'] = "E-mail não encontrado. Verifique o e-mail digitado.";
+        $connMaster->close();
         header("Location: ../pages/login.php");
         exit;
     }
 
     // 🔹 2. Validar senha
     if (!password_verify($senha, $userMaster['senha'])) {
-        $_SESSION['login_erro'] = "E-mail ou senha inválidos.";
+        // Mensagem específica se a senha estiver errada
+        $_SESSION['login_erro'] = "Senha incorreta. Tente novamente.";
+        $connMaster->close();
         header("Location: ../pages/login.php");
         exit;
     }
+    // ❗️❗️ FIM DA CORREÇÃO DE MENSAGEM ❗️❗️
 
     // 🔹 3. Buscar tenant associado (se houver)
     $tenantId = $userMaster['tenant_id'] ?? null;
@@ -41,28 +47,64 @@ try {
     
     // SE HÁ UM ID DE TENANT, O TENANT PRECISA EXISTIR
     if ($tenantId) {
-        $connMaster = getMasterConnection();
         $stmt = $connMaster->prepare("SELECT * FROM tenants WHERE tenant_id = ? LIMIT 1");
         $stmt->bind_param("s", $tenantId);
         $stmt->execute();
         $tenant = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        $connMaster->close();
-
-        // ❗❗ INÍCIO DA CORREÇÃO ❗❗
-        // Se o usuário tem um tenant_id, mas esse tenant não foi encontrado no banco master,
-        // é um erro de integridade de dados. Não podemos prosseguir.
+        
         if (!$tenant) {
             error_log("[LOGIN ERROR] Usuário {$email} (ID: {$userMaster['id']}) tem tenant_id '{$tenantId}' órfão (não encontrado na tabela tenants).");
             $_SESSION['login_erro'] = "Sua conta está com um problema de configuração (Tenant ID '{$tenantId}' não encontrado). Contate o suporte.";
+            $connMaster->close(); // Fecha a conexão master antes de sair
             header("Location: ../pages/login.php");
             exit;
         }
-        // ❗❗ FIM DA CORREÇÃO ❗❗
     }
+    
+    // 🔹 4. Validar Assinatura
+    if ($tenant) {
+        if (!function_exists('validarStatusAssinatura')) {
+            error_log("[LOGIN ERROR] Função validarStatusAssinatura() não encontrada em database.php.");
+            $_SESSION['login_erro'] = "Erro crítico na verificação de assinatura. Contate o suporte.";
+            $connMaster->close();
+            header("Location: ../pages/login.php");
+            exit;
+        }
+
+        $statusAssinatura = validarStatusAssinatura($tenant);
+        $_SESSION['subscription_status'] = $statusAssinatura; 
+
+        $statusBloqueados = ['vencido', 'cancelado', 'trial_expired', 'pendente'];
+
+        if (in_array($statusAssinatura, $statusBloqueados)) {
+            // Salva dados mínimos necessários para a página 'assinar.php'
+            $_SESSION['usuario_id']     = $userMaster['id']; // ID do usuário (da tabela master)
+            $_SESSION['email']          = $userMaster['email']; 
+            $_SESSION['tenant_id']      = $tenantId;
+            $_SESSION['usuario_logado'] = true; 
+
+            // Mensagem de erro para a página de assinatura
+            if ($statusAssinatura === 'trial_expired') {
+                $_SESSION['erro_assinatura'] = "Seu período de teste gratuito de 15 dias terminou. Por favor, escolha um plano para continuar.";
+            } else {
+                $_SESSION['erro_assinatura'] = "Sua assinatura está com status '{$statusAssinatura}'. Por favor, regularize para continuar.";
+            }
+
+            $connMaster->close();
+            header("Location: ../pages/assinar.php");
+            exit;
+        }
+    }
+    
+    // Fecha a conexão master após usá-la
+    $connMaster->close();
 
 
-    // 🔹 4. Carregar tenant na sessão se existir
+    // 🔹 5. Carregar tenant na sessão e GARANTIR USUÁRIO
+    $idUsuarioTenant = null; 
+    $nivelAcessoTenant = 'padrao'; // Default inicial
+
     if ($tenant) {
         $_SESSION['tenant_db'] = [
             "db_host"     => $tenant['db_host'],
@@ -71,7 +113,6 @@ try {
             "db_database" => $tenant['db_database']
         ];
 
-        // 🔹 Garantir que o schema está criado
         ensureTenantDatabaseExists(
             $tenant['db_host'],
             $tenant['db_user'],
@@ -79,15 +120,21 @@ try {
             $tenant['db_database']
         );
 
-        // 🔹 Executar schema.sql no tenant se a tabela usuarios não existir
         $tenantConn = getTenantConnection();
+        if (!$tenantConn) {
+             session_destroy();
+             header("Location: ../pages/login.php?erro=db_tenant_login");
+             exit();
+        }
+
+        // Executar schema.sql no tenant se a tabela usuarios não existir
         $check = $tenantConn->query("SHOW TABLES LIKE 'usuarios'");
         if ($check->num_rows == 0) {
             $schemaPath = __DIR__ . '/../schema.sql';
             if (!file_exists($schemaPath)) {
                 throw new Exception("Schema do tenant não encontrado.");
             }
-
+            
             $schemaSql = file($schemaPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             $query = '';
             foreach ($schemaSql as $line) {
@@ -102,23 +149,65 @@ try {
                 }
             }
         }
+
+        // 1. Verificar se o usuário existe no tenant
+        $stmtTenant = $tenantConn->prepare("SELECT * FROM usuarios WHERE email = ? LIMIT 1");
+        $stmtTenant->bind_param("s", $email);
+        $stmtTenant->execute();
+        $userTenant = $stmtTenant->get_result()->fetch_assoc();
+        $stmtTenant->close();
+        
+        if (!$userTenant) {
+            // 2. Se não existe, criar o usuário no tenant
+            $nomeTenant = $userMaster['nome'];
+            $senhaTenant = $userMaster['senha']; // A senha JÁ ESTÁ HASHED
+            $nivelAcessoTenant = 'proprietario'; // Definido como proprietario
+            $tipoPessoaTenant = $userMaster['tipo_pessoa'] ?? 'fisica'; // Default 'fisica'
+
+            $stmtInsert = $tenantConn->prepare("
+                INSERT INTO usuarios (nome, email, senha, nivel_acesso, tipo_pessoa) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmtInsert->bind_param("sssss", $nomeTenant, $email, $senhaTenant, $nivelAcessoTenant, $tipoPessoaTenant);
+            
+            if (!$stmtInsert->execute()) {
+                error_log("[LOGIN ERROR] Falha ao auto-provisionar usuário {$email} no tenant {$tenantId}. Erro: " . $stmtInsert->error);
+                $_SESSION['login_erro'] = "Falha ao configurar sua conta de usuário no sistema. Contate o suporte.";
+                $tenantConn->close();
+                header("Location: ../pages/login.php");
+                exit;
+            }
+            $idUsuarioTenant = $stmtInsert->insert_id; // Pegamos o ID recém-criado
+            $stmtInsert->close();
+            
+        } else {
+            // 3. Se já existe, apenas usar os dados
+            $idUsuarioTenant = $userTenant['id'];
+            $nivelAcessoTenant = $userTenant['nivel_acesso'];
+        }
+        
+        $tenantConn->close(); // Fechamos a conexão do tenant
     }
 
-    // 🔹 5. Sucesso: salvar sessão do usuário
-    $_SESSION['usuario_id']       = $userMaster['id'];
+    // 🔹 6. Sucesso: salvar sessão do usuário
+    $_SESSION['usuario_id']       = $idUsuarioTenant; // ID do usuário DENTRO do tenant
+    $_SESSION['usuario_id_master']= $userMaster['id'];  // ID do usuário na tabela MASTER
     $_SESSION['nome']             = $userMaster['nome'];
     $_SESSION['email']            = $userMaster['email'];
     $_SESSION['tenant_id']        = $tenantId;
-    $_SESSION['nivel_acesso']     = $userMaster['nivel'] ?? 'padrao'; // admin | padrao
+    $_SESSION['nivel_acesso']     = $nivelAcessoTenant; // Usa a variável correta
     $_SESSION['is_master_admin']  = $userMaster['is_master'] ? true : false;
     $_SESSION['usuario_logado']   = true;
 
-    header("Location: ../pages/home.php");
+    // Redireciona para a seleção de usuário
+    header("Location: ../pages/selecionar_usuario.php");
     exit;
 
 } catch (Exception $e) {
     error_log("[LOGIN ERROR] " . $e->getMessage());
     $_SESSION['login_erro'] = "Erro ao processar login. Tente novamente.";
+    if (isset($connMaster) && $connMaster) $connMaster->close();
+    if (isset($tenantConn) && $tenantConn) $tenantConn->close();
     header("Location: ../pages/login.php");
     exit;
 }

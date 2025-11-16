@@ -3,7 +3,8 @@ require_once '../includes/session_init.php';
 require_once '../database.php'; // Incluído no início
 
 // ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado'])) {
+// ❗️❗️ CORREÇÃO 1: Verificar se é 'true' e não apenas se 'isset' ❗️❗️
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
 }
@@ -13,9 +14,10 @@ if ($conn === null) {
 }
 
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-$usuario_logado = $_SESSION['usuario_logado'];
-$id_usuario_atual = $usuario_logado['id'];
-$email = $usuario_logado['email']; // Correção da aula anterior
+// ❗️❗️ CORREÇÃO 2: Ler 'usuario_id' e 'email' direto da SESSÃO ❗️❗️
+// A variável $usuario_logado não é mais um array
+$id_usuario_atual = $_SESSION['usuario_id'] ?? null; // ID do usuário do tenant
+$email = $_SESSION['email'] ?? null; // Email do usuário (do master)
 
 // ✅ 3. BUSCA TODOS OS USUÁRIOS (INCLUINDO A FOTO) DO CLIENTE (TENANT) ATUAL
 // A consulta agora inclui o campo 'foto'
@@ -197,6 +199,12 @@ $result_usuarios = $stmt->get_result();
                             </label>
                         </div>
                     <?php endwhile; ?>
+                    
+                    <?php if ($result_usuarios->num_rows === 0): ?>
+                        <div style="padding: 15px; text-align: center; color: #aaa;">
+                            Nenhum usuário encontrado neste tenant.
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
             
@@ -210,7 +218,8 @@ $result_usuarios = $stmt->get_result();
        <a href="../actions/enviar_link_email_perfil.php" 
           class="btn-padrao-link" 
           style="background-color: #17a2b8; color: white; margin-left: 10px; display: inline-block; padding: 10px 15px; text-decoration: none; border-radius: 5px; margin-top: 15px;" 
-          onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email) ?>)?');">
+          
+          onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email ?? 'email.nao.encontrado@error.com') ?>)?');">
           Redefinir por E-mail
        </a>
     </div>

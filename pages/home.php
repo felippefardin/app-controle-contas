@@ -28,7 +28,7 @@ if (!isset($_SESSION['tenant_id'])) {
 $usuario_id   = $_SESSION['usuario_id'];
 $tenant_id    = $_SESSION['tenant_id'];
 $nome_usuario = $_SESSION['nome'];
-$perfil       = $_SESSION['nivel_acesso']; // admin | padrao
+$perfil       = $_SESSION['nivel_acesso']; // admin | padrao | proprietario
 
 // 📌 Conexão do tenant
 $conn = getTenantConnection();
@@ -39,9 +39,6 @@ if (!$conn) {
 }
 
 // 🔒 Revalidação do tenant
-// ❗❗ INÍCIO DA CORREÇÃO ❗❗
-// A função getTenantById (do database.php) precisa da conexão MASTER,
-// mas $conn (definido acima) é a conexão TENANT.
 $connMaster = getMasterConnection();
 if (!$connMaster) {
      session_destroy();
@@ -50,7 +47,6 @@ if (!$connMaster) {
 }
 $tenant = getTenantById($tenant_id, $connMaster); // Usar a conexão MASTER
 $connMaster->close(); // Fechar a conexão MASTER
-// ❗❗ FIM DA CORREÇÃO ❗❗
 
 if (!$tenant) {
     session_destroy();
@@ -123,7 +119,7 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <?php if ($perfil === 'admin'): ?>
+    <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
         <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
         <div class="dashboard">
             <a class="card-link" href="contas_pagar.php">Contas a Pagar</a>
@@ -136,11 +132,11 @@ include('../includes/header.php');
 
     <div class="section-title"><i class="fas fa-boxes"></i> Estoque & Vendas</div>
     <div class="dashboard">
-        <?php if ($perfil === 'admin'): ?>
+        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="controle_estoque.php">Estoque</a>
         <?php endif; ?>
         <a class="card-link" href="vendas.php">Caixa de Vendas</a>
-        <?php if ($perfil === 'admin'): ?>
+        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="compras.php">Compras</a>
         <?php endif; ?>
     </div>
@@ -149,7 +145,7 @@ include('../includes/header.php');
     <div class="dashboard">
         <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
         <a class="card-link" href="perfil.php">Perfil</a>
-        <?php if ($perfil === 'admin'): ?>
+        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="../pages/banco_cadastro.php">Contas Bancárias</a>
             <a class="card-link" href="../pages/categorias.php">Categorias</a>
         <?php endif; ?>
@@ -157,11 +153,11 @@ include('../includes/header.php');
 
     <div class="section-title"><i class="fas fa-cogs"></i> Sistema</div>
     <div class="dashboard">
-        <?php if ($perfil === 'admin'): ?>
+        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="relatorios.php">Relatórios</a>
         <?php endif; ?>
         <a class="card-link" href="selecionar_usuario.php">Trocar Usuário</a>
-        <?php if ($perfil === 'admin'): ?>
+        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="usuarios.php">Usuários</a>
             <a class="card-link" href="configuracao_fiscal.php">Configurações Fiscais</a>
         <?php endif; ?>

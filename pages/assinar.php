@@ -58,7 +58,8 @@ $planos = [
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['email'])) {
 
     // ⬇️ CORREÇÃO 1: Obter o ID do usuário logado e verificar se existe
-    $idUsuario = $_SESSION['id_usuario'] ?? null;
+    // ❗️❗️ CORREÇÃO DA VARIÁVEL DE SESSÃO ❗️❗️
+    $idUsuario = $_SESSION['usuario_id'] ?? null; // Corrigido de 'id_usuario' para 'usuario_id'
 
     if (!$idUsuario) {
         // Redireciona para evitar a falha da chave estrangeira, pois id_usuario é obrigatório
@@ -290,7 +291,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
                 <form method="post">
                     <input type="hidden" name="plano" value="<?= $chave ?>">
                     <label for="email_<?= $chave ?>">Seu e-mail (para registro interno):</label>
-                    <input type="email" name="email" id="email_<?= $chave ?>" required placeholder="ex: cliente@teste.com">
+                    
+                    <input type="email" name="email" id="email_<?= $chave ?>" 
+                           value="<?= htmlspecialchars($_SESSION['email'] ?? '') ?>" 
+                           required placeholder="ex: cliente@teste.com">
+                    
                     <button type="submit">Assinar (SANDBOX)</button>
                 </form>
             </div>
