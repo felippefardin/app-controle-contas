@@ -3,17 +3,21 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 
 // 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado'])) {
+// ❗️ CORREÇÃO: Verifica se o login é 'true', e não apenas se 'isset'
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
+
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
+// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
 // Pega o ID do usuário logado e o ID do cliente/fornecedor da URL
-$id_usuario = $_SESSION['usuario_logado']['id'];
+$id_usuario = $_SESSION['usuario_id']; // Linha 18 corrigida
+// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
 $id_pessoa_fornecedor = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($id_pessoa_fornecedor === 0) {
@@ -24,6 +28,7 @@ if ($id_pessoa_fornecedor === 0) {
 include('../includes/header.php');
 
 // 2. BUSCA OS DADOS COM SEGURANÇA, FILTRANDO PELO USUÁRIO
+// (Agora $id_usuario está correto)
 
 // Buscar nome do cliente/fornecedor
 $stmt = $conn->prepare("SELECT nome FROM pessoas_fornecedores WHERE id = ? AND id_usuario = ?");
@@ -111,16 +116,22 @@ $result_estoque = $stmt_estoque->get_result();
             <tbody>
                 <?php if ($result_pagar->num_rows > 0): ?>
                     <?php while ($row = $result_pagar->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($row['numero'] ?? 'N/D') ?></td>
-                        <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
-                        <td><?= date("d/m/Y", strtotime($row['data_vencimento'])) ?></td>
-                        <td><?= htmlspecialchars($row['nome_categoria'] ?? 'N/A') ?></td>
-                        <td><span class="badge <?= $row['status'] == 'baixada' ? 'badge-baixada' : 'badge-pendente' ?>"><?= ucfirst($row['status']) ?></span></td>
-                    </tr>
+                        <tr>
+                            <td><?= htmlspecialchars($row['numero'] ?? 'N/D') ?></td>
+                            <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
+                            <td><?= date("d/m/Y", strtotime($row['data_vencimento'])) ?></td>
+                            <td><?= htmlspecialchars($row['nome_categoria'] ?? 'N/A') ?></td>
+                            <td>
+                                <span class="badge <?= $row['status'] == 'baixada' ? 'badge-baixada' : 'badge-pendente' ?>">
+                                    <?= ucfirst($row['status']) ?>
+                                </span>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="5" class="text-center">Nenhuma conta a pagar encontrada.</td></tr>
+                    <tr>
+                        <td colspan="5" class="text-center">Nenhuma conta a pagar encontrada.</td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -141,16 +152,22 @@ $result_estoque = $stmt_estoque->get_result();
             <tbody>
                 <?php if ($result_receber->num_rows > 0): ?>
                     <?php while ($row = $result_receber->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($row['numero'] ?? 'N/D') ?></td>
-                        <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
-                        <td><?= date("d/m/Y", strtotime($row['data_vencimento'])) ?></td>
-                        <td><?= htmlspecialchars($row['nome_categoria'] ?? 'N/A') ?></td>
-                        <td><span class="badge <?= $row['status'] == 'baixada' ? 'badge-baixada' : 'badge-pendente' ?>"><?= ucfirst($row['status']) ?></span></td>
-                    </tr>
+                        <tr>
+                            <td><?= htmlspecialchars($row['numero'] ?? 'N/D') ?></td>
+                            <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
+                            <td><?= date("d/m/Y", strtotime($row['data_vencimento'])) ?></td>
+                            <td><?= htmlspecialchars($row['nome_categoria'] ?? 'N/A') ?></td>
+                            <td>
+                                <span class="badge <?= $row['status'] == 'baixada' ? 'badge-baixada' : 'badge-pendente' ?>">
+                                    <?= ucfirst($row['status']) ?>
+                                </span>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="5" class="text-center">Nenhuma conta a receber encontrada.</td></tr>
+                    <tr>
+                        <td colspan="5" class="text-center">Nenhuma conta a receber encontrada.</td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -170,15 +187,21 @@ $result_estoque = $stmt_estoque->get_result();
             <tbody>
                 <?php if ($result_estoque->num_rows > 0): ?>
                     <?php while ($row = $result_estoque->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= date("d/m/Y H:i", strtotime($row['data_movimento'])) ?></td>
-                        <td><?= htmlspecialchars($row['nome_produto']) ?></td>
-                        <td><span class="badge <?= $row['tipo'] == 'entrada' ? 'badge-entrada' : 'badge-saida' ?>"><?= ucfirst($row['tipo']) ?></span></td>
-                        <td><?= htmlspecialchars($row['quantidade']) ?></td>
-                    </tr>
+                        <tr>
+                            <td><?= date("d/m/Y H:i", strtotime($row['data_movimento'])) ?></td>
+                            <td><?= htmlspecialchars($row['nome_produto']) ?></td>
+                            <td>
+                                <span class="badge <?= $row['tipo'] == 'entrada' ? 'badge-entrada' : 'badge-saida' ?>">
+                                    <?= ucfirst($row['tipo']) ?>
+                                </span>
+                            </td>
+                            <td><?= htmlspecialchars($row['quantidade']) ?></td>
+                        </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="4" class="text-center">Nenhum movimento de estoque encontrado.</td></tr>
+                    <tr>
+                        <td colspan="4" class="text-center">Nenhum movimento de estoque encontrado.</td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>

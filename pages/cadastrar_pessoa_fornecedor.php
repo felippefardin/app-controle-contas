@@ -2,28 +2,28 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+// Verifica login
 if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
-$conn = getTenantConnection();
-if ($conn === null) {
-    die("Falha ao obter a conexão com o banco de dados do cliente.");
-}
 
-// 2. PEGA O ID DO USUÁRIO DA SESSÃO CORRETA
-$usuarioId = $_SESSION['usuario_logado']['id'];
+$conn = getTenantConnection();
+if ($conn === null) die("Falha ao obter a conexão com o banco de dados.");
+
+$usuarioId = $_SESSION['usuario_id'];
+$perfil = $_SESSION['nivel_acesso'];
 
 include('../includes/header.php');
 
-// 3. CONSULTA SQL PARA LISTAR APENAS OS REGISTROS DO USUÁRIO LOGADO
+// Consulta os registros do usuário logado
 $sql = "SELECT * FROM pessoas_fornecedores WHERE id_usuario = ? ORDER BY nome ASC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $usuarioId);
 $stmt->execute();
 $result = $stmt->get_result();
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -33,52 +33,35 @@ $result = $stmt->get_result();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        /* Seus estilos CSS (sem alterações) */
-        body {
-            background-color: #121212;
-            color: #eee;
-        }
-        .container {
-            background-color: #222;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
-        }
-        h1, h2 {
-            color: #eee;
-            border-bottom: 2px solid #0af;
-            padding-bottom: 10px;
-            text-align: center;
-        }
-        .form-control, .custom-select {
-            background-color: #333;
-            color: #eee;
-            border: 1px solid #444;
-        }
-        .form-control:focus, .custom-select:focus {
-            background-color: #333;
-            color: #eee;
-            border-color: #0af;
-        }
-        .btn-primary {
-            background-color: #0af;
-            border: none;
-        }
-        .table thead th {
-            background-color: #0af;
-            color: #fff;
-        }
-        .table tbody tr {
-            background-color: #2c2c2c;
-        }
-        .table tbody tr:hover {
-            background-color: #3c3c3c;
-        }
+        body { background-color: #121212; color: #eee; }
+        .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
+        h1,h2 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; text-align: center; }
+        .form-control, .custom-select { background-color: #333; color: #eee; border: 1px solid #444; }
+        .form-control:focus, .custom-select:focus { background-color: #333; color: #eee; border-color: #0af; }
+        .btn-primary { background-color: #0af; border: none; }
+        .table thead th { background-color: #0af; color: #fff; }
+        .table tbody tr { background-color: #2c2c2c; }
+        .table tbody tr:hover { background-color: #3c3c3c; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1><i class="fa-solid fa-users"></i> Clientes e Fornecedores</h1>
+
+    <!-- Mensagens de Sucesso/Erro -->
+    <?php if (!empty($_SESSION['mensagem_sucesso'])): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <?= $_SESSION['mensagem_sucesso']; unset($_SESSION['mensagem_sucesso']); ?>
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($_SESSION['mensagem_erro'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <?= $_SESSION['mensagem_erro']; unset($_SESSION['mensagem_erro']); ?>
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    <?php endif; ?>
 
     <div class="card bg-dark text-white mb-4">
         <div class="card-header">
@@ -145,7 +128,7 @@ $result = $stmt->get_result();
                 <td>
                     <a href="historico_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-success"><i class="fa-solid fa-history"></i></a>
                     <a href="editar_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-info"><i class="fa-solid fa-pen-to-square"></i></a>
-                    <a href="../actions/excluir_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza?');"><i class="fa-solid fa-trash"></i></a>
+                    <button class="btn btn-sm btn-danger" onclick="confirmDelete(<?= $row['id'] ?>)"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
             <?php endwhile; ?>
@@ -154,8 +137,30 @@ $result = $stmt->get_result();
     </div>
 </div>
 
+<!-- Modal de Exclusão -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmação</h5>
+        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir este cadastro?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Excluir</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-// Script de busca (sem alterações)
+// Busca
 document.getElementById('searchInput').addEventListener('keyup', function() {
     var filter = this.value.toLowerCase();
     var rows = document.getElementById('tableBody').getElementsByTagName('tr');
@@ -171,6 +176,12 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
         rows[i].style.display = found ? '' : 'none';
     }
 });
+
+// Modal de exclusão
+function confirmDelete(id) {
+    document.getElementById('confirmDeleteBtn').href = '../actions/excluir_pessoa_fornecedor.php?id=' + id;
+    $('#deleteModal').modal('show');
+}
 </script>
 
 <?php include('../includes/footer.php'); ?>

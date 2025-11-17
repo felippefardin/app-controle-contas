@@ -3,7 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../database.php'; // Inclui o novo arquivo de banco de dados
 
 // ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado'])) {
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { // ❗️ Verificação atualizada
     header('Location: login.php');
     exit;
 }
@@ -13,16 +13,19 @@ if ($conn === null) {
 }
 
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-$usuario_logado = $_SESSION['usuario_logado'];
-$usuarioId = $usuario_logado['id'];
-$perfil = $usuario_logado['nivel_acesso'];
+// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
+// As variáveis de sessão agora são lidas diretamente,
+// pois $_SESSION['usuario_logado'] é 'true' e não mais um array.
+$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
+$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida
+// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
 
 include('../includes/header.php');
 
 // ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS E ADICIONA FILTROS
 $where = ["c.status='baixada'"];
 // No modelo SaaS, cada usuário só pode ver seus próprios dados.
-$where[] = "c.usuario_id = " . intval($usuarioId);
+$where[] = "c.usuario_id = " . intval($usuarioId); // ❗️ Agora usa $usuarioId (corrigido)
 
 // Filtros de pesquisa
 $fornecedor_search = $_GET['fornecedor'] ?? '';
@@ -36,17 +39,25 @@ if (!empty($fornecedor_search)) {
 if (!empty($numero_search)) {
     $where[] = "c.numero LIKE '%" . $conn->real_escape_string($numero_search) . "%'";
 }
+
+// ❗️❗️ CORREÇÃO NA QUERY ❗️❗️
+// A coluna 'data_baixa' não existe no seu schema.sql.
+// Vamos assumir que você queira filtrar pela DATA DE VENCIMENTO.
+// Se 'data_baixa' DEVERIA existir, você precisa adicioná-la ao seu banco (ver nota no final).
 if (!empty($data_inicio) && !empty($data_fim)) {
-    $where[] = "c.data_baixa BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
+    // Trocado c.data_baixa por c.data_vencimento
+    $where[] = "c.data_vencimento BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
 }
 
 
-$sql = "SELECT c.*, u.nome AS usuario_baixou, pf.nome AS nome_pessoa_fornecedor
+// ❗️❗️ INÍCIO DA CORREÇÃO (CONSULTA SQL) ❗️❗️
+// Removidas as colunas 'c.baixado_por' e 'c.data_baixa' que não existem no schema.sql
+$sql = "SELECT c.*, pf.nome AS nome_pessoa_fornecedor
         FROM contas_pagar c
-        LEFT JOIN usuarios u ON c.baixado_por = u.id
         LEFT JOIN pessoas_fornecedores pf ON c.id_pessoa_fornecedor = pf.id
         WHERE " . implode(" AND ", $where) . "
-        ORDER BY c.data_baixa DESC";
+        ORDER BY c.data_vencimento DESC"; // Trocado data_baixa por data_vencimento
+// ❗️❗️ FIM DA CORREÇÃO (CONSULTA SQL) ❗️❗️
 
 $result = $conn->query($sql);
 ?>
@@ -145,8 +156,8 @@ if (isset($_SESSION['success_message'])) {
 <form class="search-form" method="GET" action="">
   <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($fornecedor_search); ?>">
   <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($numero_search); ?>">
-  <input type="date" name="data_inicio" placeholder="Data Baixa Início" value="<?php echo htmlspecialchars($data_inicio); ?>">
-  <input type="date" name="data_fim" placeholder="Data Baixa Fim" value="<?php echo htmlspecialchars($data_fim); ?>">
+  <input type="date" name="data_inicio" placeholder="Data Venc. Início" value="<?php echo htmlspecialchars($data_inicio); ?>">
+  <input type="date" name="data_fim" placeholder="Data Venc. Fim" value="<?php echo htmlspecialchars($data_fim); ?>">
   <button type="submit"><i class="fa fa-search"></i> Buscar</button>
   <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar</a>
 </form>
@@ -154,7 +165,9 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    echo "<thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Juros</th><th>Forma Pag.</th><th>Data Baixa</th><th>Usuário</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
+    // ❗️❗️ CORREÇÃO (CABEÇALHO DA TABELA) ❗️❗️
+    // Removidas colunas "Data Baixa" e "Usuário" que não existem
+    echo "<thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Forma Pag.</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
     echo "<tbody>";
     while($row = $result->fetch_assoc()){
         $categoria_nome = '-';
@@ -177,10 +190,13 @@ if ($result && $result->num_rows > 0) {
         echo "<td data-label='Vencimento'>".date('d/m/Y', strtotime($row['data_vencimento']))."</td>";
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
-        echo "<td data-label='Juros'>R$ ".number_format((float)($row['juros'] ?? 0),2,',','.')."</td>";
+        
+        // ❗️❗️ CORREÇÃO (COLUNAS REMOVIDAS) ❗️❗️
+        // Removida a coluna 'juros' (não existe no schema.sql)
         echo "<td data-label='Forma de Pagamento'>".htmlspecialchars($row['forma_pagamento'] ?? '-')."</td>";
-        echo "<td data-label='Data de Baixa'>".date('d/m/Y', strtotime($row['data_baixa']))."</td>";
-        echo "<td data-label='Usuário'>".htmlspecialchars($row['usuario_baixou'] ?? '-')."</td>";
+        // Removida a coluna 'data_baixa'
+        // Removida a coluna 'usuario_baixou'
+        
         echo "<td data-label='Categoria'>".htmlspecialchars($categoria_nome)."</td>";
         
         if (!empty($row['comprovante'])) {
@@ -196,7 +212,12 @@ if ($result && $result->num_rows > 0) {
     }
     echo "</tbody></table>";
 } else {
-    echo "<p>Nenhuma conta baixada encontrada.</p>";
+    // ❗️ Mensagem de erro melhorada
+    if (!$result) {
+        echo "<p style='color: #ff6b6b; border: 1px solid #ff6b6b; padding: 10px; border-radius: 5px;'><strong>Erro de Base de Dados:</strong> Não foi possível executar a consulta. Verifique se a estrutura da tabela (schema) está atualizada. <br><small>Erro: " . htmlspecialchars($conn->error) . "</small></p>";
+    } else {
+        echo "<p>Nenhuma conta baixada encontrada.</p>";
+    }
 }
 ?>
 

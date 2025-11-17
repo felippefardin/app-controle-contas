@@ -18,8 +18,8 @@ if ($conn === null) {
 }
 
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-$usuario_logado = $_SESSION['usuario_logado'];
-$usuario_logado_id = $usuario_logado['id'];
+$usuarioId = $_SESSION['usuario_id'];
+$perfil = $_SESSION['nivel_acesso'];
 
 // ✅ 3. PEGA O PERFIL DIRETO DA SESSÃO
 $usuario_logado_perfil = $usuario_logado['nivel_acesso'] ?? 'padrao';

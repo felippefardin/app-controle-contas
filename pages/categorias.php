@@ -13,9 +13,8 @@ if ($conn === null) {
 }
 
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-$usuario_logado = $_SESSION['usuario_logado'];
-$usuarioId = $usuario_logado['id'];
-$perfil = $usuario_logado['nivel_acesso'];
+$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
+$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida
 
 include('../includes/header.php');
 

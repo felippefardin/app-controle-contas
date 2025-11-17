@@ -3,7 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../database.php'; // Inclui o novo arquivo de banco de dados
 
 // ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado'])) {
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { // ❗️ Verificação atualizada
     header("Location: ../pages/login.php");
     exit();
 }
@@ -13,9 +13,12 @@ if ($conn === null) {
 }
 
 // ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-$usuario_logado = $_SESSION['usuario_logado'];
-$usuarioId = $usuario_logado['id'];
-$perfil = $usuario_logado['nivel_acesso']; // Usa a coluna correta
+// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
+// As variáveis de sessão agora são lidas diretamente,
+// pois $_SESSION['usuario_logado'] é 'true' e não mais um array.
+$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
+$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida (era $usuario_logado['id'])
+// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
 
 // Bloco para lidar com a pesquisa de fornecedores via AJAX (já usando a conexão correta)
 if (isset($_GET['action']) && $_GET['action'] === 'search_fornecedor') {
@@ -265,7 +268,7 @@ if (isset($_SESSION['success_message'])) {
 </div>
 
 <?php
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) { // ❗️ Adicionada verificação se $result é válido
     echo "<table>";
     // ✅ CABEÇALHO DA TABELA ATUALIZADO
     echo "<thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th>Número</th><th>Categoria</th><th>Valor</th><th>Status de Vencimento</th><th>Ações</th></tr></thead>";
@@ -273,14 +276,23 @@ if ($result->num_rows > 0) {
     $hoje = date('Y-m-d');
     while($row = $result->fetch_assoc()){
         $classeVencimento = '';
-        if ($row['data_vencimento'] < $hoje) {
-            $classeVencimento = "vencido";
-            $statusData = "Vencido";
-        } elseif ($row['data_vencimento'] === $hoje) {
-            $statusData = "Hoje";
+        $data_vencimento = $row['data_vencimento'] ?? null; // ❗️ Evita erro se a coluna for nula
+        $statusData = 'N/D';
+
+        if ($data_vencimento) {
+            if ($data_vencimento < $hoje) {
+                $classeVencimento = "vencido";
+                $statusData = "Vencido";
+            } elseif ($data_vencimento === $hoje) {
+                $statusData = "Hoje";
+            } else {
+                $statusData = "Futuro";
+            }
+            $data_vencimento_formatada = date('d/m/Y',strtotime($data_vencimento));
         } else {
-            $statusData = "Futuro";
+            $data_vencimento_formatada = 'N/D';
         }
+
 
         echo "<tr class='$classeVencimento'>";
         
@@ -291,7 +303,7 @@ if ($result->num_rows > 0) {
         // ✅ CÉLULA DA DESCRIÇÃO ADICIONADA
         echo "<td data-label='Descrição'>".htmlspecialchars($row['descricao'] ?? 'N/A')."</td>";
         
-        echo "<td data-label='Vencimento'>".date('d/m/Y',strtotime($row['data_vencimento']))."</td>";
+        echo "<td data-label='Vencimento'>".$data_vencimento_formatada."</td>"; // ❗️ Usa a data formatada
         echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
         echo "<td data-label='Categoria'>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         echo "<td data-label='Valor'>R$ ".number_format($row['valor'],2,',','.')."</td>";
@@ -308,7 +320,12 @@ if ($result->num_rows > 0) {
     }
     echo "</tbody></table>";
 } else {
-    echo "<p>Nenhuma conta pendente encontrada.</p>";
+    // ❗️ Mensagem de erro melhorada se a consulta falhar
+    if (!$result) {
+        echo "<p style='color: #ff6b6b; border: 1px solid #ff6b6b; padding: 10px; border-radius: 5px;'><strong>Erro de Base de Dados:</strong> Não foi possível executar a consulta. Verifique se a estrutura da tabela (schema) está atualizada. <br><small>Erro: " . htmlspecialchars($conn->error) . "</small></p>";
+    } else {
+        echo "<p>Nenhuma conta pendente encontrada.</p>";
+    }
 }
 ?>
 

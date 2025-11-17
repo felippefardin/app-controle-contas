@@ -190,6 +190,7 @@ try {
     }
 
     // 🔹 6. Sucesso: salvar sessão do usuário
+    unset($_SESSION['login_erro']);
     $_SESSION['usuario_id']       = $idUsuarioTenant; // ID do usuário DENTRO do tenant
     $_SESSION['usuario_id_master']= $userMaster['id'];  // ID do usuário na tabela MASTER
     $_SESSION['nome']             = $userMaster['nome'];

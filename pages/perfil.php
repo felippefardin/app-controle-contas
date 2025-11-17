@@ -12,8 +12,8 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-$usuario_logado = $_SESSION['usuario_logado'];
-$id_usuario = $usuario_logado['id'];
+$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
+$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida
 
 include('../includes/header.php');
 

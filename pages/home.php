@@ -12,10 +12,18 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
 }
 
 // 🔒 Se for o Master Admin, redireciona para dashboard dele
-if (isset($_SESSION['is_master_admin']) && $_SESSION['is_master_admin'] === true) {
-     header("Location: ../pages/admin/dashboard.php");
-     exit();
+// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
+// Só redireciona se for master admin E NÃO estiver a personificar um utilizador
+if (
+    isset($_SESSION['is_master_admin']) &&
+    $_SESSION['is_master_admin'] === true &&
+    !isset($_SESSION['proprietario_id_original']) && // <- Verifica se NÃO está a personificar (definido em trocar_usuario.php)
+    !isset($_SESSION['super_admin_original']) // <- Verifica se NÃO está a personificar (definido em admin_impersonate.php)
+) {
+    header("Location: ../pages/admin/dashboard.php");
+    exit();
 }
+// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
 
 // 🔒 Verificar tenant ativo
 if (!isset($_SESSION['tenant_id'])) {
@@ -25,10 +33,10 @@ if (!isset($_SESSION['tenant_id'])) {
 }
 
 // 📌 Pega dados do usuário
-$usuario_id   = $_SESSION['usuario_id'];
-$tenant_id    = $_SESSION['tenant_id'];
-$nome_usuario = $_SESSION['nome'];
-$perfil       = $_SESSION['nivel_acesso']; // admin | padrao | proprietario
+$usuario_id    = $_SESSION['usuario_id'];
+$tenant_id     = $_SESSION['tenant_id'];
+$nome_usuario  = $_SESSION['nome'];
+$perfil        = $_SESSION['nivel_acesso']; // admin | padrao | proprietario
 
 // 📌 Conexão do tenant
 $conn = getTenantConnection();
@@ -41,10 +49,11 @@ if (!$conn) {
 // 🔒 Revalidação do tenant
 $connMaster = getMasterConnection();
 if (!$connMaster) {
-     session_destroy();
-     header("Location: ../pages/login.php?erro=db_master");
-     exit();
+    session_destroy();
+    header("Location: ../pages/login.php?erro=db_master");
+    exit();
 }
+
 $tenant = getTenantById($tenant_id, $connMaster); // Usar a conexão MASTER
 $connMaster->close(); // Fechar a conexão MASTER
 
@@ -86,15 +95,69 @@ include('../includes/header.php');
         margin: auto;
         padding: 20px;
     }
-    h1 { text-align: center; color: #00bfff; margin-bottom: 5px; }
-    h3 { text-align: center; color: #ccc; font-weight: 400; margin-bottom: 20px; }
-    .saudacao { text-align: center; margin-bottom: 25px; color: #ddd; font-size: 1.1rem; }
-    .section-title { width: 100%; color: #00bfff; font-weight: bold; margin-top: 30px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-    .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 30px; }
-    .card-link { background: #1e1e1e; padding: 25px 15px; text-align: center; border-radius: 10px; text-decoration: none; color: #fff; transition: 0.3s; box-shadow: 0 3px 6px rgba(0,0,0,0.4); }
-    .card-link:hover { background: #00bfff; color: #121212; transform: translateY(-5px); box-shadow: 0 6px 15px rgba(0,191,255,0.4); }
-    .mensagem-sucesso { background: #28a745; padding: 12px 20px; text-align: center; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
-    .alert-estoque { background: #dc3545; padding: 15px; border-radius: 10px; margin-bottom: 25px; color: #fff; }
+    h1 {
+        text-align: center;
+        color: #00bfff;
+        margin-bottom: 5px;
+    }
+    h3 {
+        text-align: center;
+        color: #ccc;
+        font-weight: 400;
+        margin-bottom: 20px;
+    }
+    .saudacao {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #ddd;
+        font-size: 1.1rem;
+    }
+    .section-title {
+        width: 100%;
+        color: #00bfff;
+        font-weight: bold;
+        margin-top: 30px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5px;
+    }
+    .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 18px;
+        margin-bottom: 30px;
+    }
+    .card-link {
+        background: #1e1e1e;
+        padding: 25px 15px;
+        text-align: center;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #fff;
+        transition: 0.3s;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    }
+    .card-link:hover {
+        background: #00bfff;
+        color: #121212;
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(0,191,255,0.4);
+    }
+    .mensagem-sucesso {
+        background: #28a745;
+        padding: 12px 20px;
+        text-align: center;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+    .alert-estoque {
+        background: #dc3545;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        color: #fff;
+    }
 </style>
 </head>
 
@@ -105,7 +168,9 @@ include('../includes/header.php');
     <p class="saudacao" id="saudacao"></p>
 
     <?php if ($mensagem): ?>
-        <div class="mensagem-sucesso"><?= htmlspecialchars($mensagem) ?></div>
+        <div class="mensagem-sucesso">
+            <?= htmlspecialchars($mensagem) ?>
+        </div>
     <?php endif; ?>
 
     <?php if (!empty($produtos_estoque_baixo)): ?>
@@ -113,14 +178,19 @@ include('../includes/header.php');
             <strong>⚠ Produtos com estoque baixo:</strong>
             <ul>
                 <?php foreach ($produtos_estoque_baixo as $p): ?>
-                    <li><?= htmlspecialchars($p['nome']) ?> — Estoque: <?= intval($p['quantidade_estoque']) ?></li>
+                    <li>
+                        <?= htmlspecialchars($p['nome']) ?> — Estoque: <?= intval($p['quantidade_estoque']) ?>
+                    </li>
                 <?php endforeach; ?>
             </ul>
         </div>
     <?php endif; ?>
 
     <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-        <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
+        <div class="section-title">
+            <i class="fas fa-wallet"></i> Financeiro
+        </div>
+
         <div class="dashboard">
             <a class="card-link" href="contas_pagar.php">Contas a Pagar</a>
             <a class="card-link" href="contas_pagar_baixadas.php">Pagas</a>
@@ -130,33 +200,50 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <div class="section-title"><i class="fas fa-boxes"></i> Estoque & Vendas</div>
+    <div class="section-title">
+        <i class="fas fa-boxes"></i> Estoque & Vendas
+    </div>
+
     <div class="dashboard">
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="controle_estoque.php">Estoque</a>
         <?php endif; ?>
+
         <a class="card-link" href="vendas.php">Caixa de Vendas</a>
+
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="compras.php">Compras</a>
         <?php endif; ?>
     </div>
 
-    <div class="section-title"><i class="fas fa-users"></i> Cadastros</div>
+    <div class="section-title">
+        <i class="fas fa-users"></i> Cadastros
+    </div>
+
     <div class="dashboard">
-        <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">Clientes/Fornecedores</a>
+        <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">
+            Clientes/Fornecedores
+        </a>
+
         <a class="card-link" href="perfil.php">Perfil</a>
+
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="../pages/banco_cadastro.php">Contas Bancárias</a>
             <a class="card-link" href="../pages/categorias.php">Categorias</a>
         <?php endif; ?>
     </div>
 
-    <div class="section-title"><i class="fas fa-cogs"></i> Sistema</div>
+    <div class="section-title">
+        <i class="fas fa-cogs"></i> Sistema
+    </div>
+
     <div class="dashboard">
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="relatorios.php">Relatórios</a>
         <?php endif; ?>
+
         <a class="card-link" href="selecionar_usuario.php">Trocar Usuário</a>
+
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="usuarios.php">Usuários</a>
             <a class="card-link" href="configuracao_fiscal.php">Configurações Fiscais</a>

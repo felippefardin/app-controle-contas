@@ -3,17 +3,18 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 
 // 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado'])) {
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: ../pages/login.php?error=not_logged_in');
     exit;
 }
+
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao conectar ao banco de dados do cliente.");
 }
 
-// Pega o ID do usuário logado
-$id_usuario = $_SESSION['usuario_logado']['id'];
+// ID do usuário logado
+$id_usuario = $_SESSION['usuario_id'];
 
 // 2. AJUSTA A CONSULTA SQL PARA FILTRAR PELO USUÁRIO
 $lancamentos = [];
@@ -34,7 +35,6 @@ include('../includes/header.php');
 ?>
 
 <style>
-    /* Seu CSS (sem alterações) */
     body {
         background-color: #121212;
         color: #eee;
@@ -74,17 +74,43 @@ include('../includes/header.php');
         background-color: #2c2c2c;
         color: #eee;
     }
-    .btn-primary { background-color: #00bfff; border: none; padding: 10px 18px; cursor: pointer; }
-    .btn-pdf { background-color: #2ecc71; border: none; padding: 10px 18px; cursor: pointer; color: white; }
-    .btn-edit { background-color: #17a2b8; color: white; padding: 6px 12px; text-decoration: none; border-radius: 5px; }
-    .btn-delete { background-color: #dc3545; color: white; padding: 6px 12px; text-decoration: none; border-radius: 5px; }
+    .btn-primary { background-color: #00bfff; padding: 10px 18px; border: none; cursor: pointer; }
+    .btn-pdf { background-color: #2ecc71; padding: 10px 18px; border: none; color: white; cursor: pointer; }
+    .btn-edit { background-color: #17a2b8; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; }
+    .btn-delete { background-color: #dc3545; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table thead { background-color: #00bfff; color: #fff; }
-    table th, table td { padding: 12px; border: 1px solid #444; text-align: left; }
+    table th, table td { padding: 12px; border: 1px solid #444; }
     table tbody tr:hover { background-color: #3c3c3c; }
     .text-center { text-align: center; }
+
+    /* Mobile toggle */
+    #tableWrapper.expanded td:nth-child(n+3),
+    #tableWrapper.expanded th:nth-child(n+3) {
+        display: table-cell !important;
+    }
+
+    @media (max-width: 768px) {
+        #tableWrapper td:nth-child(n+3),
+        #tableWrapper th:nth-child(n+3) {
+            display: none;
+        }
+        .toggle-btn {
+            display: block;
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #444;
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+        }
+    }
 </style>
+
 <div class="container">
+
     <h2>Lançamento de Caixa Diário</h2>
 
     <?php if (isset($_GET['success'])): ?>
@@ -102,31 +128,36 @@ include('../includes/header.php');
             <label for="data">Data:</label>
             <input type="date" class="form-control" id="data" name="data" value="<?php echo date('Y-m-d'); ?>" required>
         </div>
+
         <div class="form-group">
             <label for="valor">Valor:</label>
             <input type="number" step="0.01" class="form-control" id="valor" name="valor" placeholder="0.00" required>
         </div>
+
         <button type="submit" class="btn btn-primary">Salvar Lançamento</button>
     </form>
 
     <div class="search-container">
         <h3>Filtrar por Período</h3>
+
         <div class="form-group">
             <label for="startDate">Data Inicial:</label>
             <input type="date" id="startDate" class="form-control-date">
         </div>
+
         <div class="form-group">
             <label for="endDate">Data Final:</label>
             <input type="date" id="endDate" class="form-control-date">
         </div>
+
         <button class="btn btn-pdf" onclick="gerarPDFPeriodo()">Salvar PDF do Período</button>
     </div>
 
     <hr>
 
-<h3>Histórico de Lançamentos</h3>
+    <h3>Histórico de Lançamentos</h3>
 
-    <div class="table-wrapper">
+    <div id="tableWrapper" class="table-wrapper">
         <table id="lancamentosTable">
             <thead>
                 <tr>
@@ -153,15 +184,15 @@ include('../includes/header.php');
             </tbody>
         </table>
     </div>
-</div>
+
     <button class="toggle-btn" id="toggleTableBtn">Ver mais colunas</button>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <script>
-// Esconde alertas automaticamente
 document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(function(alert) {
@@ -172,23 +203,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Filtro por período
-const startDateInput = document.getElementById('startDate');
-const endDateInput = document.getElementById('endDate');
-const table = document.getElementById('lancamentosTable').getElementsByTagName('tbody')[0];
-
 function filterTable() {
     const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
 
-    if (startDate) { startDate.setUTCHours(0,0,0,0); }
-    if (endDate) { endDate.setUTCHours(23,59,59,999); }
+    if (startDate) startDate.setUTCHours(0,0,0,0);
+    if (endDate) endDate.setUTCHours(23,59,59,999);
 
     Array.from(table.rows).forEach(row => {
         const dateStr = row.cells[0].innerText.split('/');
         const rowDate = new Date(`${dateStr[2]}-${dateStr[1]}-${dateStr[0]}`);
         rowDate.setUTCHours(0,0,0,0);
-        
+
         let show = true;
 
         if (startDate && rowDate < startDate) show = false;
@@ -197,22 +223,29 @@ function filterTable() {
         row.style.display = show ? '' : 'none';
     });
 }
+
+const startDateInput = document.getElementById('startDate');
+const endDateInput = document.getElementById('endDate');
+const table = document.getElementById('lancamentosTable').getElementsByTagName('tbody')[0];
+
 startDateInput.addEventListener('input', filterTable);
 endDateInput.addEventListener('input', filterTable);
 
-
-// Geração de PDF
 function gerarPDFPeriodo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+
     doc.setFontSize(18);
     doc.text("Histórico de Lançamentos de Caixa (Período)", 14, 22);
-    doc.setFontSize(12);
 
     const rows = [];
+
     Array.from(table.rows).forEach(row => {
         if (row.style.display !== 'none') {
-            rows.push([row.cells[0].innerText, row.cells[1].innerText]);
+            rows.push([
+                row.cells[0].innerText,
+                row.cells[1].innerText
+            ]);
         }
     });
 
@@ -224,23 +257,23 @@ function gerarPDFPeriodo() {
     doc.autoTable({
         head: [['Data', 'Valor']],
         body: rows,
-        startY: 30,
-        theme: 'grid',
-        headStyles: { fillColor: [0, 191, 255], textColor: [255, 255, 255] },
-        bodyStyles: { fillColor: [47, 47, 47], textColor: [255, 255, 255] },
-        alternateRowStyles: { fillColor: [60, 60, 60] },
-        margin: { left: 14, right: 14 }
+        startY: 30
     });
 
-    const total = rows.reduce((sum, r) => sum + parseFloat(r[1].replace('R$ ', '').replace('.', '').replace(',', '.')), 0);
+    const total = rows.reduce((sum, r) =>
+        sum + parseFloat(
+            r[1].replace('R$ ', '').replace('.', '').replace(',', '.')
+        ), 0
+    );
+
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(14);
     doc.text(`Total de Lançamentos: ${rows.length}`, 14, finalY);
     doc.text(`Valor Total: R$ ${total.toFixed(2).replace('.', ',')}`, 14, finalY + 8);
+
     doc.save('historico_caixa_periodo.pdf');
 }
 
-// Toggle modo compacto mobile
 const toggleBtn = document.getElementById('toggleTableBtn');
 const tableWrapper = document.getElementById('tableWrapper');
 
@@ -251,7 +284,6 @@ toggleBtn.addEventListener('click', () => {
         : 'Ver mais colunas';
 });
 
-// Oculta botão toggle no desktop
 function checkScreenSize() {
     toggleBtn.style.display = window.innerWidth > 768 ? 'none' : 'block';
 }
