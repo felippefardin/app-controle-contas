@@ -3,7 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../database.php'; // Incluído no início
 
 // ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { // ❗️ Verificação atualizada
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { 
     header('Location: login.php');
     exit;
 }
@@ -64,6 +64,28 @@ $result = $conn->query($sql);
     <h1><i class="fa-solid fa-box-open"></i> Controle de Estoque</h1>
 
     <?php
+    if (isset($_SESSION['erro'])) {
+        echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                ' . htmlspecialchars($_SESSION['erro']) . '
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+              </div>';
+        unset($_SESSION['erro']);
+    }
+
+    if (isset($_SESSION['sucesso'])) {
+        echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                ' . htmlspecialchars($_SESSION['sucesso']) . '
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+              </div>';
+        unset($_SESSION['sucesso']);
+    }
+    ?>
+
+    <?php
     if (isset($_SESSION['produtos_estoque_baixo']) && !empty($_SESSION['produtos_estoque_baixo'])) {
         echo '<div id="notificacao-estoque-baixo" class="alert alert-danger">';
         echo '<strong>Atenção!</strong> Os seguintes produtos estão com estoque baixo:';
@@ -112,12 +134,12 @@ $result = $conn->query($sql);
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="preco_compra">Preço de Compra</label>
-                        <input type="text" class="form-control" name="preco_compra" placeholder="0.00">
+                        <input type="text" class="form-control money-mask" name="preco_compra" placeholder="0,00">
                     </div>
 
                     <div class="form-group col-md-6">
                         <label for="preco_venda">Preço de Venda</label>
-                        <input type="text" class="form-control" name="preco_venda" placeholder="0.00" required>
+                        <input type="text" class="form-control money-mask" name="preco_venda" placeholder="0,00" required>
                     </div>
                 </div>
 
@@ -163,7 +185,7 @@ $result = $conn->query($sql);
             <?php while ($produto = $result->fetch_assoc()): ?>
                 <tr class="<?= ($produto['quantidade_estoque'] <= $produto['quantidade_minima'] && $produto['quantidade_minima'] > 0) ? 'table-danger' : '' ?>">
                     <td><?= htmlspecialchars($produto['nome']) ?></td>
-                    <td><?= htmlspecialchars($produto['quantidade_estoque'] ?? $produto['quantidade']) ?></td>
+                    <td><?= htmlspecialchars($produto['quantidade_estoque']) ?></td>
                     <td>R$ <?= number_format($produto['preco_venda'], 2, ',', '.') ?></td>
                     <td><?= htmlspecialchars($produto['ncm'] ?? '-') ?></td>
                     <td><?= htmlspecialchars($produto['cfop'] ?? '-') ?></td>
@@ -189,7 +211,6 @@ $result = $conn->query($sql);
     </div>
 </div>
 
-<!-- Modal de exclusão -->
 <div class="modal fade" id="excluirProdutoModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -230,6 +251,12 @@ $result = $conn->query($sql);
             $(this).find('#confirmarExclusao').attr('href', url);
         });
 
+        // Opcional: Máscara simples via JS puro para substituir vírgula se quiser
+        /*
+        $('.money-mask').on('keyup', function() {
+            // Lógica de máscara frontend se desejar
+        });
+        */
     });
 </script>
 
