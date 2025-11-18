@@ -18,8 +18,7 @@ $perfil = $_SESSION['nivel_acesso'];
 
 include('../includes/header.php');
 
-// ✅ 3. QUERY SIMPLIFICADA (BAIXADAS)
-// Filtra apenas status 'baixada' e remove referências à coluna 'numero'
+// ✅ 3. QUERY ATUALIZADA (BAIXADAS)
 $where = ["cp.status='baixada'"];
 $where[] = "cp.usuario_id = " . intval($usuarioId);
 
@@ -31,12 +30,13 @@ if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
     $where[] = "cp.data_vencimento BETWEEN '" . $conn->real_escape_string($_GET['data_inicio']) . "' AND '" . $conn->real_escape_string($_GET['data_fim']) . "'";
 }
 
-$sql = "SELECT cp.*, c.nome as nome_categoria, pf.nome as nome_pessoa_fornecedor
+$sql = "SELECT cp.*, c.nome as nome_categoria, pf.nome as nome_pessoa_fornecedor, u.nome as nome_quem_baixou
         FROM contas_pagar AS cp
         LEFT JOIN categorias AS c ON cp.id_categoria = c.id
         LEFT JOIN pessoas_fornecedores AS pf ON cp.id_pessoa_fornecedor = pf.id
+        LEFT JOIN usuarios AS u ON cp.baixado_por = u.id 
         WHERE " . implode(" AND ", $where) . "
-        ORDER BY cp.data_vencimento DESC"; // Ordenar baixadas pela data mais recente costuma ser melhor
+        ORDER BY cp.data_baixa DESC";
 
 $result = $conn->query($sql);
 ?>
@@ -50,7 +50,6 @@ $result = $conn->query($sql);
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <style>
-    /* Estilos básicos idênticos ao contas_pagar.php para consistência */
     * { box-sizing: border-box; }
     body {
       background-color: #121212;
@@ -60,7 +59,6 @@ $result = $conn->query($sql);
     }
     h2 { text-align: center; color: #00bfff; }
     
-    /* Mensagens */
     .success-message {
       background-color: #27ae60;
       color: white; padding: 15px; margin-bottom: 20px;
@@ -73,7 +71,6 @@ $result = $conn->query($sql);
       cursor: pointer;
     }
 
-    /* Formulário de Busca */
     form.search-form {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
       margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
@@ -89,14 +86,12 @@ $result = $conn->query($sql);
     form.search-form button { background-color: #27ae60; }
     form.search-form a.clear-filters { background-color: #cc3333; }
 
-    /* Tabela */
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222; color: #00bfff; }
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr:hover { background-color: #333; }
 
-    /* Botões de Ação */
     .btn-action { 
         display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; 
         border-radius: 4px; font-size: 13px; font-weight: bold; 
@@ -104,6 +99,7 @@ $result = $conn->query($sql);
     }
     .btn-excluir { background-color: #cc3333; }
     .btn-comprovante { background-color: #f39c12; }
+    .btn-estornar { background-color: #3498db; }
     
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
     .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; text-align: center; position: relative; }
@@ -136,13 +132,12 @@ if (isset($_SESSION['error_message'])) {
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    // ✅ CABEÇALHO CORRIGIDO: Removido 'Número', mantido 'Forma Pag.' e 'Comprovante'
     echo "<thead><tr>
             <th>Fornecedor</th>
-            <th>Descrição</th>
-            <th>Vencimento</th>
+            <th>Número</th> <th>Descrição</th>
             <th>Valor</th>
-            <th>Forma Pag.</th>
+            <th>Baixado Por</th>
+            <th>Data Baixa</th>
             <th>Categoria</th>
             <th>Comprovante</th>
             <th>Ações</th>
@@ -151,40 +146,36 @@ if ($result && $result->num_rows > 0) {
     
     while($row = $result->fetch_assoc()){
         $data_vencimento = $row['data_vencimento'] ?? null;
-        $data_vencimento_formatada = $data_vencimento ? date('d/m/Y', strtotime($data_vencimento)) : 'N/D';
+        $data_baixa = $row['data_baixa'] ?? null;
         
-        // Verifica se nome_pessoa_fornecedor existe, senão usa o campo fornecedor antigo
+        $data_baixa_formatada = $data_baixa ? date('d/m/Y', strtotime($data_baixa)) : '-';
         $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? 'N/D');
+        $quemBaixou = !empty($row['nome_quem_baixou']) ? $row['nome_quem_baixou'] : 'Sistema/N/D';
 
         echo "<tr>";
         echo "<td>".htmlspecialchars($fornecedorDisplay)."</td>";
         
-        // Descrição (substituindo o antigo Número)
+        // ✅ Exibição do Número
+        echo "<td>".htmlspecialchars($row['numero'] ?? '-')."</td>";
+        
         echo "<td>".htmlspecialchars($row['descricao'] ?? '')."</td>";
-        
-        echo "<td>".$data_vencimento_formatada."</td>";
-        
-        // Coluna Valor
         echo "<td>R$ ".number_format($row['valor'], 2, ',', '.')."</td>";
-        
-        // Forma Pagamento (verificando existência)
-        $formaPag = $row['forma_pagamento'] ?? 'N/D';
-        echo "<td>".ucfirst(htmlspecialchars($formaPag))."</td>";
-        
+        echo "<td>".htmlspecialchars($quemBaixou)."</td>";
+        echo "<td>".$data_baixa_formatada."</td>";
         echo "<td>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         
-        // Lógica do Comprovante (Verifica se a coluna existe no array $row)
         $linkComprovante = '--';
         if (!empty($row['comprovante'])) {
             $linkComprovante = "<a href='../{$row['comprovante']}' target='_blank' class='btn-action btn-comprovante'><i class='fa fa-file'></i> Ver</a>";
         }
         echo "<td>{$linkComprovante}</td>";
         
-        // Ações (apenas excluir para baixadas, geralmente)
         echo "<td>
-            <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+            <div style='display:flex; gap:5px;'>
+                <a href='../actions/estornar_conta_pagar.php?id={$row['id']}' class='btn-action btn-estornar' onclick=\"return confirm('Tem certeza que deseja estornar esta conta?');\"><i class='fa-solid fa-undo'></i> Estornar</a>
+                <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+            </div>
         </td>";
-        
         echo "</tr>";
     }
     echo "</tbody></table>";
@@ -220,7 +211,6 @@ function openDeleteModal(id, fornecedor) {
     modal.style.display = 'flex';
 }
 
-// Fechar modal ao clicar fora
 window.onclick = function(event) {
     const deleteModal = document.getElementById('deleteModal');
     if (event.target == deleteModal) { deleteModal.style.display = 'none'; }

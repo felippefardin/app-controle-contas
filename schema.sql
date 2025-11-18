@@ -66,21 +66,34 @@ CREATE TABLE IF NOT EXISTS pessoas_fornecedores (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Contas a Receber
-CREATE TABLE IF NOT EXISTS `contas_receber` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `usuario_id` INT DEFAULT NULL,
-  `id_categoria` INT DEFAULT NULL,
-  `id_pessoa_fornecedor` INT DEFAULT NULL,
-  `valor` DECIMAL(10,2) DEFAULT NULL,
-  `status` ENUM('pendente','baixada') DEFAULT 'pendente',
-  `forma_pagamento` VARCHAR(50) DEFAULT NULL,
-  `data_vencimento` DATE DEFAULT NULL,
-  `descricao` VARCHAR(255) DEFAULT NULL,
+CREATE TABLE `contas_receber` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int NOT NULL,
+  `id_pessoa_fornecedor` int DEFAULT NULL,
+  `id_categoria` int DEFAULT NULL,
+  `descricao` varchar(255) NOT NULL,
+  `numero` varchar(50) DEFAULT NULL,
+  `valor` decimal(10,2) NOT NULL,
+  `data_vencimento` date NOT NULL,
+  `status` enum('pendente','baixada') DEFAULT 'pendente',
+  `forma_pagamento` varchar(50) DEFAULT NULL,
+  `data_baixa` date DEFAULT NULL,
+  `baixado_por` int DEFAULT NULL,
+  `juros` decimal(10,2) DEFAULT '0.00',
+  `comprovante` varchar(255) DEFAULT NULL,
+  `observacao` text,
+  `data_criacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `data_atualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  CONSTRAINT `fk_contas_receber_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_contas_receber_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias`(`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_contas_receber_fornecedor` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_cr_usuario` (`usuario_id`),
+  KEY `idx_cr_pessoa` (`id_pessoa_fornecedor`),
+  KEY `idx_cr_categoria` (`id_categoria`),
+  KEY `idx_cr_status` (`status`),
+  CONSTRAINT `fk_cr_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_cr_pessoa` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_cr_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 -- Contas a Pagar 
 CREATE TABLE IF NOT EXISTS `contas_pagar` (

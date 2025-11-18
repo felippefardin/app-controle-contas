@@ -1,496 +1,175 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php';
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { // ❗️ Verificação atualizada
-    header('Location: login.php');
-    exit;
+if (!isset($_SESSION['usuario_logado'])) {
+    header("Location: ../pages/login.php");
+    exit();
 }
 $conn = getTenantConnection();
-if ($conn === null) {
-    die("Falha ao obter a conexão com o banco de dados do cliente.");
-}
+$usuarioId = $_SESSION['usuario_id'];
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
-// As variáveis de sessão agora são lidas diretamente
-$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
-$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida
-// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
 include('../includes/header.php');
 
-// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS E FILTROS
-$where = ["cr.status = 'baixada'"];
-// Filtra apenas pelo ID do usuário logado
-$where[] = "cr.usuario_id = " . intval($usuarioId);
+$where = ["cr.status='baixada'", "cr.usuario_id = " . intval($usuarioId)];
 
-// Parâmetros de busca
-$responsavel_search = $_GET['responsavel'] ?? '';
-$numero_search = $_GET['numero'] ?? '';
-$data_vencimento_search = $_GET['data_vencimento'] ?? '';
-
-if (!empty($responsavel_search)) {
-    $where[] = "(cr.responsavel LIKE '%" . $conn->real_escape_string($responsavel_search) . "%' 
-                 OR pf.nome LIKE '%" . $conn->real_escape_string($responsavel_search) . "%')";
+if (!empty($_GET['cliente'])) {
+    $where[] = "pf.nome LIKE '%" . $conn->real_escape_string($_GET['cliente']) . "%'";
+}
+if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
+    $where[] = "cr.data_vencimento BETWEEN '" . $conn->real_escape_string($_GET['data_inicio']) . "' AND '" . $conn->real_escape_string($_GET['data_fim']) . "'";
 }
 
-if (!empty($numero_search)) {
-    $where[] = "cr.numero LIKE '%" . $conn->real_escape_string($numero_search) . "%'";
-}
-
-if (!empty($data_vencimento_search)) {
-    $where[] = "cr.data_vencimento = '" . $conn->real_escape_string($data_vencimento_search) . "'";
-}
-
-// --- SQL CORRIGIDO (SOLUÇÃO C) ---
-// ❗️ Removido o LEFT JOIN em 'usuarios' (u) e as colunas 'baixado_por_nome' e 'data_baixa'
-$sql = "
-    SELECT cr.*,
-           pf.nome AS nome_pessoa_fornecedor,
-           cat.nome AS categoria_nome
-    FROM contas_receber cr
-    LEFT JOIN pessoas_fornecedores pf ON cr.id_pessoa_fornecedor = pf.id
-    LEFT JOIN categorias cat ON cr.id_categoria = cat.id
-    WHERE " . implode(" AND ", $where) . "
-    ORDER BY cr.data_vencimento DESC
-";
+$sql = "SELECT cr.*, c.nome as nome_categoria, pf.nome as nome_pessoa, u.nome as nome_quem_baixou
+        FROM contas_receber AS cr
+        LEFT JOIN categorias AS c ON cr.id_categoria = c.id
+        LEFT JOIN pessoas_fornecedores AS pf ON cr.id_pessoa_fornecedor = pf.id
+        LEFT JOIN usuarios AS u ON cr.baixado_por = u.id 
+        WHERE " . implode(" AND ", $where) . "
+        ORDER BY cr.data_baixa DESC";
 
 $result = $conn->query($sql);
-
-if (!$result) {
-    die("Erro na consulta: " . $conn->error . "<br><br>SQL: " . $sql);
-}
 ?>
 
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <title>Contas a Receber Baixadas</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        /* Seus estilos CSS (sem alterações) */
-        * { box-sizing: border-box; }
-        
-        body {
-            background-color: #121212;
-            color: #eee;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        
-        h2, h3 {
-            text-align: center;
-            color: #00bfff;
-        }
-        
-        p {
-            text-align: center;
-            margin-top: 20px;
-        }
+  <meta charset="UTF-8">
+  <title>Contas Recebidas</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* Mesmos estilos de contas_receber.php */
+    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    h2 { text-align: center; color: #00bfff; }
+    .success-message { background-color: #27ae60; color: white; padding: 15px; margin-bottom: 20px; border-radius: 5px; text-align: center; }
+    
+    form.search-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 25px; }
+    input { padding: 10px; background: #333; border: 1px solid #444; color: #eee; border-radius: 5px; }
+    button { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; background-color: #27ae60; color: white; }
+    
+    table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
+    th { background-color: #222; color: #00bfff; }
+    tr:nth-child(even) { background-color: #2a2a2a; }
 
-        .success-message {
-            background-color: #27ae60;
-            color: white;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            text-align: center;
-            position: relative;
-            font-weight: bold;
-        }
-
-        .close-msg-btn {
-            position: absolute;
-            top: 50%;
-            right: 15px;
-            transform: translateY(-50%);
-            font-size: 22px;
-            line-height: 1;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .close-msg-btn:hover {
-            color: #ddd;
-        }
-
-        /* --- Barra de Busca --- */
-        form.search-form {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 25px;
-            max-width: 900px;
-            margin-left:auto;
-            margin-right:auto;
-        }
-
-        form.search-form input[type="text"],
-        form.search-form input[type="date"] {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background-color: #333;
-            color: #eee;
-            min-width: 180px;
-        }
-
-        form.search-form input::placeholder { color: #aaa; }
-
-        form.search-form button,
-        form.search-form a.clear-filters {
-            color: white;
-            border: none;
-            padding: 10px 22px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            min-width: 120px;
-            text-align: center;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-        }
-
-        form.search-form button {
-            background-color: #27ae60;
-            font-size: 16px;
-        }
-
-        form.search-form button:hover {
-            background-color: #1e874b;
-        }
-
-        form.search-form a.clear-filters {
-            background-color: #cc3333;
-        }
-
-        form.search-form a.clear-filters:hover {
-            background-color: #a02a2a;
-        }
-
-        table {
-            width: 100%;
-            background-color: #1f1f1f;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 20px;
-        }
-
-        th, td {
-            padding: 12px 10px;
-            text-align: left;
-            border-bottom: 1px solid #333;
-        }
-
-        th { background-color: #222; }
-
-        tr:nth-child(even) {
-            background-color: #2a2a2a;
-        }
-
-        tr:hover {
-            background-color: #333;
-        }
-
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            text-decoration: none;
-            color: white;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin: 2px;
-        }
-
-        .btn-excluir {
-            background-color: #cc3333;
-        }
-
-        .btn-excluir:hover {
-            background-color: #a02a2a;
-        }
-
-        .btn-estornar {
-            background-color: #f0ad4e;
-        }
-
-        .btn-estornar:hover {
-            background-color: #df8a13;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #1f1f1f;
-            padding: 25px 35px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(255, 77, 77, 0.4);
-            width: 90%;
-            max-width: 500px;
-            position: relative;
-            border: 1px solid #333;
-            text-align: center;
-        }
-
-        .btn {
-            border: none;
-            padding: 10px 22px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-confirm {
-            background-color: #f0ad4e;
-            color: white;
-        }
-
-        .btn-confirm:hover {
-            background-color: #df8a13;
-        }
-
-        .btn-excluir-confirm {
-            background-color: #cc3333;
-            color: white;
-        }
-
-        .btn-excluir-confirm:hover {
-            background-color: #a02a2a;
-        }
-
-        .btn-cancelar {
-            background-color: #555;
-            color: white;
-        }
-
-        .btn-cancelar:hover {
-            background-color: #777;
-        }
-
-        @media (max-width: 768px) {
-            table, thead, tbody, th, td, tr {
-                display: block;
-            }
-
-            th { display: none; }
-
-            tr {
-                margin-bottom: 15px;
-                border: 1px solid #333;
-                border-radius: 8px;
-                padding: 10px;
-            }
-
-            td {
-                position: relative;
-                padding-left: 50%;
-                text-align: right;
-            }
-
-            td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 10px;
-                font-weight: bold;
-                color: #999;
-                text-align: left;
-            }
-        }
-    </style>
+    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; margin: 2px; }
+    .btn-excluir { background-color: #cc3333; }
+    .btn-comprovante { background-color: #f39c12; }
+    .btn-estornar { background-color: #3498db; }
+    
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; text-align: center; position: relative; }
+    .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #aaa; }
+  </style>
 </head>
 <body>
 
 <?php
-if (isset($_SESSION['success_message'])) {
-    echo '<div class="success-message">' . 
-         htmlspecialchars($_SESSION['success_message']) . 
-         '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
-    unset($_SESSION['success_message']);
-}
-
-if (isset($_SESSION['error_message'])) {
-    echo '<div class="success-message" style="background-color: #cc3333;">' . 
-         htmlspecialchars($_SESSION['error_message']) . 
-         '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
-    unset($_SESSION['error_message']);
-}
+if (isset($_SESSION['success_message'])) echo "<div class='success-message'>{$_SESSION['success_message']}</div>";
+if (isset($_SESSION['error_message'])) echo "<div class='success-message' style='background-color:#cc3333;'>{$_SESSION['error_message']}</div>";
+unset($_SESSION['success_message'], $_SESSION['error_message']);
 ?>
 
-<h2>Contas a Receber Baixadas</h2>
+<h2>Contas Recebidas (Baixadas)</h2>
 
-<form class="search-form" method="GET" action="">
-    <input type="text" name="responsavel" placeholder="Responsável"
-           value="<?php echo htmlspecialchars($responsavel_search); ?>">
-
-    <input type="text" name="numero" placeholder="Número"
-           value="<?php echo htmlspecialchars($numero_search); ?>">
-
-    <input type="date" name="data_vencimento" placeholder="Data Vencimento"
-           value="<?php echo htmlspecialchars($data_vencimento_search); ?>">
-
-    <button type="submit"><i class="fa fa-search"></i> Buscar</button>
-
-    <a href="contas_receber_baixadas.php" class="clear-filters">Limpar</a>
+<form class="search-form" method="GET">
+  <input type="text" name="cliente" placeholder="Cliente" value="<?= htmlspecialchars($_GET['cliente'] ?? '') ?>">
+  <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>">
+  <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>">
+  <button type="submit">Buscar</button>
 </form>
 
-<?php
-if ($result && $result->num_rows > 0) {
-
-    echo "<table>";
-    echo "<thead><tr>
-            <th>Responsável</th>
-            <th>Descrição</th>
-            <th>Vencimento</th>
-            <th>Valor</th>
-            <th>Categoria</th>
-            <th>Ações</th>
-          </tr></thead>";
-    echo "<tbody>";
-
-    while ($row = $result->fetch_assoc()) {
-
-        $responsavelDisplay = !empty($row['nome_pessoa_fornecedor'])
-            ? $row['nome_pessoa_fornecedor']
-            : ($row['responsavel'] ?? '');
-
-        echo "<tr>";
-
-        echo "<td data-label='Responsável'>" . htmlspecialchars($responsavelDisplay) . "</td>";
-        echo "<td data-label='Descrição'>" . htmlspecialchars($row['descricao'] ?? '-') . "</td>";
-        echo "<td data-label='Vencimento'>" . 
-             ($row['data_vencimento'] ? date('d/m/Y', strtotime($row['data_vencimento'])) : '-') . 
-             "</td>";
-
-        echo "<td data-label='Valor'>R$ " . 
-             number_format((float)$row['valor'], 2, ',', '.') . "</td>";
-
-        if (!empty($row['id_venda'])) {
-            echo "<td data-label='Categoria'>#" . htmlspecialchars($row['id_venda']) . "</td>";
-        } else {
-            echo "<td data-label='Categoria'>" . htmlspecialchars($row['categoria_nome'] ?? 'N/A') . "</td>";
-        }
-
-        echo "<td data-label='Ações'>
-                <a href='#' 
-                   onclick=\"openEstornarModal({$row['id']}, '" . htmlspecialchars(addslashes($responsavelDisplay)) . "')\" 
-                   class='btn-action btn-estornar'>Estornar</a>
-
-                <a href='#' 
-                   onclick=\"openDeleteModal({$row['id']}, '" . htmlspecialchars(addslashes($responsavelDisplay)) . "')\" 
-                   class='btn-action btn-excluir'>Excluir</a>
-              </td>";
-
-        echo "</tr>";
-    }
-
-    echo "</tbody></table>";
-
-} else {
-
-    if (!$result) {
-        echo "<p style='color: #ff6b6b; 
-                       border: 1px solid #ff6b6b; 
-                       padding: 10px; 
-                       border-radius: 5px;'>
-                <strong>Erro de Base de Dados:</strong> Não foi possível executar a consulta.
-                <br><small>Erro: " . htmlspecialchars($conn->error) . "</small>
-              </p>";
-    } else {
-        echo "<p>Nenhuma conta a receber baixada encontrada.</p>";
-    }
-}
-?>
+<table>
+    <thead><tr>
+        <th>Cliente</th>
+        <th>Número</th>
+        <th>Descrição</th>
+        <th>Valor</th>
+        <th>Recebido Por</th>
+        <th>Data Receb.</th>
+        <th>Categoria</th>
+        <th>Comprovante</th>
+        <th>Ações</th>
+    </tr></thead>
+    <tbody>
+    <?php if ($result && $result->num_rows > 0):
+        while($row = $result->fetch_assoc()):
+            $data_baixa = $row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-';
+            $quemBaixou = !empty($row['nome_quem_baixou']) ? $row['nome_quem_baixou'] : 'Sistema/N/D';
+    ?>
+        <tr>
+            <td><?= htmlspecialchars($row['nome_pessoa'] ?? 'N/D') ?></td>
+            <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
+            <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
+            <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
+            <td><?= htmlspecialchars($quemBaixou) ?></td>
+            <td><?= $data_baixa ?></td>
+            <td><?= htmlspecialchars($row['nome_categoria'] ?? '-') ?></td>
+            <td>
+                <?= !empty($row['comprovante']) ? "<a href='../{$row['comprovante']}' target='_blank' class='btn-action btn-comprovante'>Ver</a>" : '--' ?>
+            </td>
+            <td>
+                <div style='display:flex; gap:5px;'>
+                    <a href='#' onclick="openEstornarModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['nome_pessoa'])) ?>'); return false;" class='btn-action btn-estornar'><i class='fa-solid fa-undo'></i> Estornar</a>
+                    
+                    <a href='#' onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['nome_pessoa'])) ?>'); return false;" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+                </div>
+            </td>
+        </tr>
+    <?php endwhile; else: ?>
+        <tr><td colspan="9" style="text-align:center;">Nenhuma conta recebida.</td></tr>
+    <?php endif; ?>
+    </tbody>
+</table>
 
 <div id="deleteModal" class="modal">
-    <div class="modal-content"></div>
+    <div class="modal-content">
+      <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
+      <h3>Confirmar Exclusão</h3>
+      <p>Deseja excluir este registro de recebimento?</p>
+      <p><strong>Cliente:</strong> <span id="delete-nome"></span></p>
+      <div style="margin-top: 20px;">
+        <a id="btn-confirm-delete" href="#" class='btn-action btn-excluir' style='padding: 10px 20px; font-size:16px;'>Sim, Excluir</a>
+        <button onclick="document.getElementById('deleteModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
+      </div>
+    </div>
+</div>
+
+<div id="estornarModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="document.getElementById('estornarModal').style.display='none'">&times;</span>
+      <h3>Confirmar Estorno</h3>
+      <p>Tem certeza que deseja estornar o recebimento de <b id="estornar-nome"></b>?</p>
+      <p style="color: #aaa; font-size: 0.9em;">A conta voltará para a lista de <strong>Contas a Receber (Pendentes)</strong>.</p>
+      
+      <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
+        <a id="btn-confirm-estorno" href="#" class='btn-action btn-estornar' style='padding: 10px 20px; font-size:16px; text-decoration:none;'>Sim, Estornar</a>
+        <button onclick="document.getElementById('estornarModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
+      </div>
+    </div>
 </div>
 
 <script>
-function openDeleteModal(id, responsavel) {
-    const modal = document.getElementById('deleteModal');
-    const modalContent = modal.querySelector('.modal-content');
-
-    modalContent.innerHTML = `
-        <h3>Confirmar Exclusão</h3>
-        <p>Tem certeza de que deseja excluir permanentemente este registro?</p>
-        <p><strong>Responsável:</strong> ${responsavel}</p>
-
-        <div style="display:flex;justify-content:center;gap:15px;margin-top:20px;">
-            <a href="../actions/excluir_conta_receber.php?id=${id}&origem=baixadas"
-               class="btn btn-excluir-confirm">Sim, Excluir</a>
-
-            <button type="button" class="btn btn-cancelar" onclick="closeModal()">
-                Cancelar
-            </button>
-        </div>
-    `;
-
-    modal.style.display = 'flex';
+function openDeleteModal(id, nome) {
+    document.getElementById('delete-nome').innerText = nome;
+    document.getElementById('btn-confirm-delete').href = "../actions/excluir_conta_receber.php?id=" + id + "&redirect=baixadas";
+    document.getElementById('deleteModal').style.display = 'flex';
 }
 
-function openEstornarModal(id, responsavel) {
-    const modal = document.getElementById('deleteModal');
-    const modalContent = modal.querySelector('.modal-content');
-
-    modalContent.innerHTML = `
-        <h3>Confirmar Estorno</h3>
-        <p>Deseja realmente estornar esta conta? Ela voltará para a lista de contas a receber pendentes.</p>
-        <p><strong>Responsável:</strong> ${responsavel}</p>
-
-        <div style="display:flex;justify-content:center;gap:15px;margin-top:20px;">
-            <a href="../actions/estornar_conta_receber.php?id=${id}"
-               class="btn btn-confirm">Sim, Estornar</a>
-
-            <button type="button" class="btn btn-cancelar" onclick="closeModal()">
-                Cancelar
-            </button>
-        </div>
-    `;
-
-    modal.style.display = 'flex';
+// ✅ Função para abrir o modal de estorno
+function openEstornarModal(id, nome) {
+    document.getElementById('estornar-nome').innerText = nome;
+    document.getElementById('btn-confirm-estorno').href = "../actions/estornar_conta_receber.php?id=" + id;
+    document.getElementById('estornarModal').style.display = 'flex';
 }
 
-function closeModal() {
-    document.getElementById('deleteModal').style.display = 'none';
-}
-
-window.addEventListener('click', e => {
-    const deleteModal = document.getElementById('deleteModal');
-    if (e.target === deleteModal) {
-        closeModal();
+// Fecha qualquer modal ao clicar fora
+window.onclick = function(e) { 
+    if (e.target.classList.contains('modal')) {
+        e.target.style.display = 'none';
     }
-});
+};
 </script>
-
+<?php include('../includes/footer.php'); ?>
 </body>
 </html>
-
-<?php include('../includes/footer.php'); ?>
