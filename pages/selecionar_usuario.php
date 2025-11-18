@@ -12,7 +12,7 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
 $nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
 $ja_impersonando = isset($_SESSION['usuario_original_id']);
 
-// Permite acesso se for admin/master/proprietario OU se já estiver impersonando (para trocar entre usuários)
+// Permite acesso se for admin/master/proprietario OU se já estiver impersonando
 if (($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') && !$ja_impersonando) {
     header('Location: home.php?erro=sem_permissao');
     exit;
@@ -37,6 +37,8 @@ $erro_msg = '';
 if (isset($_GET['erro'])) {
     switch($_GET['erro']) {
         case 'id_invalido': $erro_msg = 'Selecione um usuário válido para acessar.'; break;
+        case 'senha_vazia': $erro_msg = 'A senha é obrigatória para acessar a conta.'; break;
+        case 'senha_incorreta': $erro_msg = 'A senha informada está incorreta.'; break;
         case 'db_error': $erro_msg = 'Erro de conexão com o banco de dados.'; break;
         case 'usuario_nao_encontrado': $erro_msg = 'Usuário não encontrado ou inativo.'; break;
         case 'sem_permissao_troca': $erro_msg = 'Você não tem permissão para trocar de usuário.'; break;
@@ -44,203 +46,202 @@ if (isset($_GET['erro'])) {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Selecionar Usuário</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <meta charset="UTF-8">
+    <title>\Selecionar Usuário</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <body>        
+   
 <style>
-    /* ===== ESTILO GERAL ===== */
-body {
-    background: linear-gradient(135deg, #0f0f0f, #1b1b1b);
-    color: #e8e8e8;
-    font-family: 'Segoe UI', Roboto, sans-serif;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center; /* centraliza toda a página */
-}
+    /* Ajustes locais para o Grid de Usuários mantendo o padrão do style.css */
+    .user-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
 
-.container {
-    max-width: 950px;
-    width: 100%;
-    margin-top: 40px;
-}
-
-/* ===== TÍTULO ===== */
-h2 {
-    color: #00bfff;
-    font-weight: 700;
-    border-bottom: 2px solid #00bfff;
-    padding-bottom: 12px;
-    text-shadow: 0 0 10px rgba(0, 191, 255, 0.6);
-}
-
-/* ===== CARTÕES DE USUÁRIOS ===== */
-.user-card {
-    background: rgba(31, 31, 31, 0.8);
-    border: 1px solid #2c2c2c;
-    border-radius: 12px;
-    padding: 20px;
-    transition: 0.2s ease-in-out;
-    cursor: pointer;
-    height: 100%;
-    width: 100%;
-    max-width: 230px; /* 🔥 CARTÃO MENOR */
-    margin: 0 auto;   /* 🔥 CENTRALIZA CADA CARTÃO */
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Glow ao passar o mouse */
-.user-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 10px 25px rgba(0, 191, 255, 0.25);
-    border-color: #00bfff;
-}
-
-/* Avatar menor */
-.user-avatar {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    border: 2px solid #00bfff;
-    object-fit: cover;
-    margin-bottom: 10px;
-}
-
-/* Nome */
-.user-name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fff;
-}
-
-/* Email */
-.user-email {
-    font-size: 0.8rem;
-    color: #bdbdbd;
-    margin-bottom: 10px;
-}
-
-/* Badge */
-.user-role {
-    background: rgba(0, 191, 255, 0.1);
-    border: 1px solid #00bfff;
-    padding: 4px 10px;
-    border-radius: 15px;
-    color: #00bfff;
-    font-size: 0.75rem;
-    display: inline-block;
-    font-weight: 600;
-}
-
-/* Botão */
-.btn-acessar-fake {
-    margin-top: 15px;
-    width: 100%;
-    background-color: #00bfff;
-    color: #fff;
-    border: none;
-    padding: 8px;
-    border-radius: 6px;
-    font-weight: 700;
-    transition: 0.3s ease;
-    font-size: 0.85rem;
-}
-
-.user-card:hover .btn-acessar-fake {
-    background-color: #0099cc;
-}
-
-/* ===== CENTRALIZAÇÃO DO GRID ===== */
-.row {
-    display: flex;
-    justify-content: center; /* 🔥 centraliza todos os cartões */
-    gap: 20px;               /* espaçamento melhor */
-    flex-wrap: wrap;
-}
-
-/* ===== ALERTAS ===== */
-.alert-danger {
-    background-color: rgba(255, 0, 0, 0.15);
-    border: 1px solid rgba(255, 80, 80, 0.5);
-    color: #ff8080;
-    font-weight: 600;
-    border-radius: 8px;
-    backdrop-filter: blur(4px);
-}
-
-/* ===== RESPONSIVIDADE ===== */
-@media (max-width: 768px) {
     .user-card {
-        padding: 18px;
+        background-color: #333; /* Cor de fundo padrão dos inputs do style.css */
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.2s, border-color 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .user-card:hover {
+        transform: translateY(-5px);
+        border-color: #0af;
+        background-color: #3a3a3a;
     }
 
     .user-avatar {
-        width: 70px;
-        height: 70px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #222;
+        margin-bottom: 15px;
     }
 
-    h2 {
-        font-size: 1.4rem;
+    .user-info h4 {
+        margin: 0 0 5px 0;
+        color: #eee;
+        font-size: 1.1rem;
     }
 
-    .container {
-        padding: 15px;
+    .user-info p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #bbb;
     }
-}
 
+    .badge-role {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 4px 8px;
+        background-color: rgba(0, 170, 255, 0.2);
+        color: #0af;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+
+    /* Modal Style Overlay */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(3px);
+    }
+
+    /* Reutiliza estilos do form do style.css mas centralizado */
+    .modal-content {
+        background-color: #222;
+        padding: 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 0 20px rgba(0, 175, 255, 0.3);
+        position: relative;
+    }
+
+    .close-modal {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #888;
+    }
+    .close-modal:hover { color: #fff; }
 </style>
-</head>
-<body>
 
 <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-users-cog"></i> Acessar como outro Usuário</h2>
-        <a href="home.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #fff; margin: 0;"><i class="fas fa-users-cog"></i> Selecionar Usuário</h2>
+        <a href="home.php" class="btn" style="background-color: #444; color: #fff; border: 1px solid #666; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
     </div>
 
     <?php if (!empty($erro_msg)): ?>
-        <div class="alert alert-danger text-center mb-4">
-            <?= htmlspecialchars($erro_msg) ?>
-        </div>
+        <div class="erro"><?= htmlspecialchars($erro_msg) ?></div>
     <?php endif; ?>
 
-    <div class="row">
+    <p style="color: #ccc;">Selecione o usuário que deseja acessar. Será necessário informar a senha do usuário selecionado.</p>
+
+    <div class="user-grid">
         <?php if ($result->num_rows > 0): ?>
             <?php while ($row = $result->fetch_assoc()): ?>
-                <div class="col-md-4 mb-4">
-                    <form action="../actions/trocar_usuario.php" method="POST" style="height: 100%;">
-                        <input type="hidden" name="id_usuario" value="<?= $row['id'] ?>">
-                        
-                        <div class="user-card" onclick="this.parentNode.submit()">
-                            <img src="../img/usuarios/<?= htmlspecialchars($row['foto'] ?? 'default-profile.png') ?>" class="user-avatar" alt="Foto">
-                            <div class="user-name"><?= htmlspecialchars($row['nome']) ?></div>
-                            <div class="user-email"><?= htmlspecialchars($row['email']) ?></div>
-                            <div class="user-role">
-                                <?= ($row['nivel_acesso'] === 'admin' || $row['nivel_acesso'] === 'master') ? 'Administrador' : 'Padrão' ?>
-                            </div>
-                            <div class="mt-3 w-100">
-                                <div class="btn-acessar-fake">
-                                    <i class="fas fa-sign-in-alt"></i> Acessar Conta
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+                <div class="user-card" onclick="abrirModalConfirmacao('<?= $row['id'] ?>', '<?= htmlspecialchars($row['nome'], ENT_QUOTES) ?>')">
+                    <img src="../img/usuarios/<?= htmlspecialchars($row['foto'] ?? 'default-profile.png') ?>" class="user-avatar" alt="Foto">
+                    
+                    <div class="user-info">
+                        <h4><?= htmlspecialchars($row['nome']) ?></h4>
+                        <p><?= htmlspecialchars($row['email']) ?></p>
+                    </div>
+
+                    <div class="badge-role">
+                        <?= ucfirst($row['nivel_acesso']) ?>
+                    </div>
                 </div>
             <?php endwhile; ?>
         <?php else: ?>
-            <div class="col-12 text-center text-muted">
-                <h4>Nenhum outro usuário ativo encontrado.</h4>
+            <div style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px;">
+                <i class="fas fa-user-slash fa-3x"></i>
+                <p style="margin-top: 10px;">Nenhum outro usuário ativo encontrado.</p>
             </div>
         <?php endif; ?>
     </div>
 </div>
 
+<div id="modalSenha" class="modal-overlay">
+    <div class="modal-content">
+        <span class="close-modal" onclick="fecharModal()">&times;</span>
+        <h3 style="color: #0af; margin-top: 0; margin-bottom: 20px;">Confirmar Acesso</h3>
+        
+        <form action="../actions/trocar_usuario.php" method="POST" style="box-shadow: none; padding: 0; margin: 0;">
+            <input type="hidden" name="id_usuario" id="modalIdUsuario">
+            
+            <p>Acessar como: <strong id="modalNomeUsuario" style="color: #fff;"></strong></p>
+            
+            <label for="senha_usuario">Senha do Usuário:</label>
+            <div style="position: relative;">
+                <input type="password" name="senha_usuario" id="senha_usuario" required placeholder="Digite a senha deste usuário" style="padding-right: 40px;">
+                <i class="fas fa-eye" id="toggleSenhaModal" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888;"></i>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" class="btn" style="background-color: #555; flex: 1;" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn" style="flex: 1;">Acessar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalConfirmacao(id, nome) {
+        document.getElementById('modalIdUsuario').value = id;
+        document.getElementById('modalNomeUsuario').innerText = nome;
+        document.getElementById('senha_usuario').value = ''; // Limpa o campo
+        document.getElementById('modalSenha').style.display = 'flex';
+        setTimeout(() => document.getElementById('senha_usuario').focus(), 100);
+    }
+
+    function fecharModal() {
+        document.getElementById('modalSenha').style.display = 'none';
+    }
+
+    // Fechar ao clicar fora
+    document.getElementById('modalSenha').addEventListener('click', function(e) {
+        if (e.target === this) fecharModal();
+    });
+
+    // Toggle senha no modal
+    const toggleSenhaModal = document.getElementById('toggleSenhaModal');
+    const inputSenhaModal = document.getElementById('senha_usuario');
+    toggleSenhaModal.addEventListener('click', () => {
+        const tipo = inputSenhaModal.getAttribute('type') === 'password' ? 'text' : 'password';
+        inputSenhaModal.setAttribute('type', tipo);
+        toggleSenhaModal.classList.toggle('fa-eye');
+        toggleSenhaModal.classList.toggle('fa-eye-slash');
+    });
+</script>
+
+ </body>
+ </html>
+
 <?php include('../includes/footer.php'); ?>
-</body>
-</html>
