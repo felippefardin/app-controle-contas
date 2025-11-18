@@ -1,22 +1,21 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Fornece getTenantConnection()
+require_once '../database.php';
 
-header('Content-Type: application/json');
-
-// ✅ Verifica sessão correta
-if (!isset($_SESSION['usuario_logado']['id'])) {
-    echo json_encode(['success' => false, 'message' => 'Sessão inválida. Faça login novamente.']);
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO
+if (!isset($_SESSION['usuario_logado'])) {
+    header('Location: login.php');
     exit;
 }
 
 $conn = getTenantConnection();
 if ($conn === null) {
-    echo json_encode(['success' => false, 'message' => 'Falha ao obter a conexão com o banco de dados.']);
-    exit;
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-$id_usuario = $_SESSION['usuario_logado']['id'];
+
+// ✅ CORREÇÃO: Define a variável $id_usuario vinda da sessão
+$id_usuario = $_SESSION['usuario_id'];
 
 // Coleta e validação dos dados
 $cliente_id = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);

@@ -8,10 +8,14 @@ if (!isset($_SESSION['usuario_logado'])) {
     header('Location: login.php');
     exit;
 }
+
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
+
+// ✅ CORREÇÃO: Define a variável $id_usuario vinda da sessão
+$id_usuario = $_SESSION['usuario_id'];
 
 // 3. PROCESSA O POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -85,11 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 6. GERA CONTA A PAGAR
+        // ✅ CORREÇÃO: Alterado de 'numero' para 'descricao' para bater com o schema.sql
         $data_vencimento = date('Y-m-d');
 
         $stmt_pagar = $conn->prepare("
             INSERT INTO contas_pagar (
-                usuario_id, id_pessoa_fornecedor, numero, valor, data_vencimento, status
+                usuario_id, id_pessoa_fornecedor, descricao, valor, data_vencimento, status
             ) VALUES (?, ?, ?, ?, ?, 'pendente')
         ");
         $stmt_pagar->bind_param("iisds", $id_usuario, $id_fornecedor, $descricao_conta, $valor_total, $data_vencimento);
@@ -109,3 +114,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 }
+?>

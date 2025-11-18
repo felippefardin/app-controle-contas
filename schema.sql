@@ -82,23 +82,30 @@ CREATE TABLE IF NOT EXISTS `contas_receber` (
   CONSTRAINT `fk_contas_receber_fornecedor` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Contas a Pagar
+-- Contas a Pagar 
 CREATE TABLE IF NOT EXISTS `contas_pagar` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `usuario_id` INT DEFAULT NULL,
   `id_categoria` INT DEFAULT NULL,
   `id_pessoa_fornecedor` INT DEFAULT NULL,
+  `fornecedor` VARCHAR(255) DEFAULT NULL, 
+  `numero` VARCHAR(50) DEFAULT NULL,    
   `valor` DECIMAL(10,2) DEFAULT NULL,
+  `juros` DECIMAL(10,2) DEFAULT 0.00,   
   `status` ENUM('pendente','baixada') DEFAULT 'pendente',
   `forma_pagamento` VARCHAR(50) DEFAULT NULL,
   `data_vencimento` DATE DEFAULT NULL,
+  `data_baixa` DATE DEFAULT NULL,         
   `descricao` TEXT DEFAULT NULL,
+  `comprovante` VARCHAR(255) DEFAULT NULL, 
+  `enviar_email` CHAR(1) DEFAULT 'N',      
+  `baixado_por` INT DEFAULT NULL,          
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_contas_pagar_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_contas_pagar_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias`(`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_contas_pagar_fornecedor` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores`(`id`)
+  CONSTRAINT `fk_contas_pagar_fornecedor` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores`(`id`),
+  CONSTRAINT `fk_cp_baixado_por` FOREIGN KEY (`baixado_por`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Contas Bancárias
 CREATE TABLE IF NOT EXISTS `contas_bancarias` (
   `id` INT NOT NULL AUTO_INCREMENT,

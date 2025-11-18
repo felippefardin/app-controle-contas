@@ -8,10 +8,9 @@ if (!isset($_SESSION['usuario_logado'])) {
     exit;
 }
 
-// Pega o ID da conta da URL. O ID do usuário virá da sessão.
+// Pega o ID da conta da URL
 $id_conta = intval($_GET['id'] ?? 0);
-$formas_pagamento = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro', 'pix', 'outros']; // Lista de formas de pagamento
-$comprovantePath = null;
+$formas_pagamento = ['boleto', 'deposito', 'credito', 'debito', 'dinheiro', 'pix', 'outros']; 
 
 // 2. VERIFICA SE O MÉTODO É POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,35 +21,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Pega os dados da sessão e do formulário
-    $id_usuario = $_SESSION['usuario_logado']['id'];
+    // ✅ CORREÇÃO 1: Pega o ID corretamente da sessão
+    $id_usuario = $_SESSION['usuario_id'];
+    
     $forma_pagamento = $_POST['forma'];
+    // Os campos abaixo existem no formulário, mas não no banco atual.
+    // Mantemos a captura caso você atualize o banco depois.
     $juros = floatval(str_replace(',', '.', $_POST['juros'] ?? 0));
     $dataBaixaInput = $_POST['data_baixa'];
 
-    // Lógica de Upload do Comprovante
+    // Lógica de Upload do Comprovante (Mantida, mas não salva no banco por enquanto)
+    $comprovantePath = null;
     if (isset($_FILES['comprovante']) && $_FILES['comprovante']['error'] == 0) {
         $target_dir = "../comprovantes/";
-        // Garante que o diretório exista
         if (!is_dir($target_dir)) {
             mkdir($target_dir, 0755, true);
         }
         $fileName = uniqid() . '_' . basename($_FILES["comprovante"]["name"]);
         $target_file = $target_dir . $fileName;
-        
         if (move_uploaded_file($_FILES["comprovante"]["tmp_name"], $target_file)) {
             $comprovantePath = 'comprovantes/' . $fileName;
         }
     }
 
-    // Formata a data de baixa
-    $dataBaixa = DateTime::createFromFormat('d/m/Y', $dataBaixaInput);
-    $dataBaixaFormatada = $dataBaixa ? $dataBaixa->format('Y-m-d') : date('Y-m-d');
-
-    // 3. ATUALIZA A CONTA COM SEGURANÇA
-    // A cláusula `AND usuario_id = ?` é crucial para a segurança
+    // ✅ CORREÇÃO 2: Query simplificada para bater com o schema.sql existente
+    // Removemos 'juros', 'data_baixa', 'baixado_por' e 'comprovante' da query pois dão erro.
     $sql = "UPDATE contas_pagar 
-            SET status='baixada', forma_pagamento=?, juros=?, data_baixa=?, baixado_por=?, comprovante=? 
+            SET status='baixada', forma_pagamento=?
             WHERE id=? AND usuario_id = ?";
     
     $stmt = $conn->prepare($sql);
@@ -60,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    // O bind inclui o `id_usuario` para a verificação de segurança
-    $stmt->bind_param("sdsisii", $forma_pagamento, $juros, $dataBaixaFormatada, $id_usuario, $comprovantePath, $id_conta, $id_usuario);
+    // Bind atualizado para: forma_pagamento (s), id (i), usuario_id (i)
+    $stmt->bind_param("sii", $forma_pagamento, $id_conta, $id_usuario);
     
     if ($stmt->execute()) {
         $_SESSION['success_message'] = "Conta baixada com sucesso!";
@@ -70,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt->close();
-    header('Location: ../pages/contas_pagar_baixadas.php');
+    header('Location: ../pages/contas_pagar_baixadas.php'); // Redireciona para a lista de baixadas
     exit;
 }
 
@@ -98,7 +95,6 @@ body {
   min-height: 100vh;
 }
 
-/* Formulário centralizado */
 form {
   background-color: #1f1f1f;
   padding: 30px;
@@ -108,7 +104,7 @@ form {
   flex-direction: column;
   gap: 20px;
   width: 100%;
-  max-width: 420px; /* ligeiro aumento para combinar com tabela */
+  max-width: 420px;
 }
 
 h2 {
@@ -117,14 +113,12 @@ h2 {
   margin-top: 0;
 }
 
-/* Agrupamento uniforme */
 .form-group {
   display: flex;
   flex-direction: column;
   width: 100%;
 }
 
-/* Inputs e selects do mesmo tamanho */
 input[type="text"],
 select,
 input[type="file"],
@@ -141,7 +135,6 @@ textarea {
   outline: none;
 }
 
-/* Ajuste visual do input file */
 input[type="file"] {
   padding: 10px;
   background-color: #2a2a2a;
@@ -162,7 +155,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
   background-color: #0099cc;
 }
 
-/* Botão */
 button {
   background-color: #00bfff;
   border: none;
@@ -175,51 +167,6 @@ button {
   width: 100%;
 }
 button:hover { background-color: #0099cc; }
-
-/* ============================= */
-/* TABELA PADRONIZADA (opcional) */
-/* ============================= */
-.table-wrapper {
-  width: 100%;
-  max-width: 420px; /* mesma largura do formulário */
-  margin: 20px auto 0;
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #1f1f1f;
-  color: #eee;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-th, td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #333;
-  text-align: left;
-  font-size: 15px;
-}
-
-th {
-  background-color: #222;
-  color: #00bfff;
-}
-
-tr:nth-child(even) { background-color: #2a2a2a; }
-tr:hover { background-color: #333; }
-
-/* Responsivo */
-@media (max-width: 480px) {
-  form, .table-wrapper {
-    max-width: 100%;
-  }
-  input, select, button {
-    font-size: 15px;
-  }
-}
-
   </style>
 </head>
 <body>

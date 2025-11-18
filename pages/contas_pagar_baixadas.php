@@ -1,146 +1,114 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Inclui o novo arquivo de banco de dados
+require_once '../database.php';
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { // ❗️ Verificação atualizada
-    header('Location: login.php');
-    exit;
+// ✅ 1. VERIFICA LOGIN E PERMISSÃO
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
+    header("Location: ../pages/login.php");
+    exit();
 }
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
-// As variáveis de sessão agora são lidas diretamente,
-// pois $_SESSION['usuario_logado'] é 'true' e não mais um array.
-$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
-$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida
-// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
+// ✅ 2. DADOS DO USUÁRIO
+$usuarioId = $_SESSION['usuario_id'];
+$perfil = $_SESSION['nivel_acesso'];
 
 include('../includes/header.php');
 
-// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS E ADICIONA FILTROS
-$where = ["c.status='baixada'"];
-// No modelo SaaS, cada usuário só pode ver seus próprios dados.
-$where[] = "c.usuario_id = " . intval($usuarioId); // ❗️ Agora usa $usuarioId (corrigido)
+// ✅ 3. QUERY SIMPLIFICADA (BAIXADAS)
+// Filtra apenas status 'baixada' e remove referências à coluna 'numero'
+$where = ["cp.status='baixada'"];
+$where[] = "cp.usuario_id = " . intval($usuarioId);
 
-// Filtros de pesquisa
-$fornecedor_search = $_GET['fornecedor'] ?? '';
-$numero_search = $_GET['numero'] ?? '';
-$data_inicio = $_GET['data_inicio'] ?? '';
-$data_fim = $_GET['data_fim'] ?? '';
-
-if (!empty($fornecedor_search)) {
-    $where[] = "(c.fornecedor LIKE '%" . $conn->real_escape_string($fornecedor_search) . "%' OR pf.nome LIKE '%" . $conn->real_escape_string($fornecedor_search) . "%')";
-}
-if (!empty($numero_search)) {
-    $where[] = "c.numero LIKE '%" . $conn->real_escape_string($numero_search) . "%'";
+if (!empty($_GET['fornecedor'])) {
+    $where[] = "cp.fornecedor LIKE '%" . $conn->real_escape_string($_GET['fornecedor']) . "%'";
 }
 
-// ❗️❗️ CORREÇÃO NA QUERY ❗️❗️
-// A coluna 'data_baixa' não existe no seu schema.sql.
-// Vamos assumir que você queira filtrar pela DATA DE VENCIMENTO.
-// Se 'data_baixa' DEVERIA existir, você precisa adicioná-la ao seu banco (ver nota no final).
-if (!empty($data_inicio) && !empty($data_fim)) {
-    // Trocado c.data_baixa por c.data_vencimento
-    $where[] = "c.data_vencimento BETWEEN '" . $conn->real_escape_string($data_inicio) . "' AND '" . $conn->real_escape_string($data_fim) . "'";
+if (!empty($_GET['data_inicio']) && !empty($_GET['data_fim'])) {
+    $where[] = "cp.data_vencimento BETWEEN '" . $conn->real_escape_string($_GET['data_inicio']) . "' AND '" . $conn->real_escape_string($_GET['data_fim']) . "'";
 }
 
-
-// ❗️❗️ INÍCIO DA CORREÇÃO (CONSULTA SQL) ❗️❗️
-// Removidas as colunas 'c.baixado_por' e 'c.data_baixa' que não existem no schema.sql
-$sql = "SELECT c.*, pf.nome AS nome_pessoa_fornecedor
-        FROM contas_pagar c
-        LEFT JOIN pessoas_fornecedores pf ON c.id_pessoa_fornecedor = pf.id
+$sql = "SELECT cp.*, c.nome as nome_categoria, pf.nome as nome_pessoa_fornecedor
+        FROM contas_pagar AS cp
+        LEFT JOIN categorias AS c ON cp.id_categoria = c.id
+        LEFT JOIN pessoas_fornecedores AS pf ON cp.id_pessoa_fornecedor = pf.id
         WHERE " . implode(" AND ", $where) . "
-        ORDER BY c.data_vencimento DESC"; // Trocado data_baixa por data_vencimento
-// ❗️❗️ FIM DA CORREÇÃO (CONSULTA SQL) ❗️❗️
+        ORDER BY cp.data_vencimento DESC"; // Ordenar baixadas pela data mais recente costuma ser melhor
 
 $result = $conn->query($sql);
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <title>Contas a Pagar - Baixadas</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <title>Contas a Pagar - Baixadas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    /* Estilos básicos idênticos ao contas_pagar.php para consistência */
+    * { box-sizing: border-box; }
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 20px;
+    }
+    h2 { text-align: center; color: #00bfff; }
     
-    <style>
-        /* RESET & BASE */
-        * { box-sizing: border-box; }
-        body {
-          background-color: #121212;
-          color: #eee;
-          font-family: Arial, sans-serif;
-          margin: 0; padding: 20px;
-        }
-        h2, h3 { text-align: center; color: #00bfff; }
-        a { color: #00bfff; text-decoration: none; font-weight: bold; }
-        a:hover { text-decoration: underline; }
-        p { text-align: center; margin-top: 20px; }
+    /* Mensagens */
+    .success-message {
+      background-color: #27ae60;
+      color: white; padding: 15px; margin-bottom: 20px;
+      border-radius: 5px; text-align: center;
+      position: relative; font-weight: bold;
+    }
+    .close-msg-btn {
+      position: absolute; top: 50%; right: 15px;
+      transform: translateY(-50%); font-size: 22px;
+      cursor: pointer;
+    }
 
-        /* MENSAGENS DE SUCESSO/ERRO */
-        .success-message {
-          background-color: #27ae60;
-          color: white; padding: 15px; margin-bottom: 20px;
-          border-radius: 5px; text-align: center;
-          position: relative; font-weight: bold;
-        }
-        .close-msg-btn {
-          position: absolute; top: 50%; right: 15px;
-          transform: translateY(-50%); font-size: 22px;
-          line-height: 1; cursor: pointer; transition: color 0.2s;
-        }
-        .close-msg-btn:hover { color: #ddd; }
+    /* Formulário de Busca */
+    form.search-form {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+      margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
+    }
+    form.search-form input {
+      padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444;
+      background-color: #333; color: #eee; min-width: 180px;
+    }
+    form.search-form button, form.search-form a.clear-filters {
+      color: white; border: none; padding: 10px 22px; font-weight: bold;
+      border-radius: 5px; cursor: pointer; text-decoration: none;
+    }
+    form.search-form button { background-color: #27ae60; }
+    form.search-form a.clear-filters { background-color: #cc3333; }
 
-        /* --- Barra de Busca --- */
-        form.search-form {
-          display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
-          margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
-        }
-        form.search-form input[type="text"],
-        form.search-form input[type="date"] {
-          padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444;
-          background-color: #333; color: #eee; min-width: 180px;
-        }
-        form.search-form input::placeholder { color: #aaa; }
-        form.search-form button, form.search-form a.clear-filters {
-          color: white; border: none; padding: 10px 22px; font-weight: bold;
-          border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
-          min-width: 120px; text-align: center; display: inline-flex;
-          align-items: center; justify-content: center; text-decoration: none;
-        }
-        form.search-form button { background-color: #27ae60; font-size: 16px; }
-        form.search-form button:hover { background-color: #1e874b; }
-        form.search-form a.clear-filters { background-color: #cc3333; }
-        form.search-form a.clear-filters:hover { background-color: #a02a2a; }
-        /* --- Fim Barra de Busca --- */
+    /* Tabela */
+    table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
+    th { background-color: #222; color: #00bfff; }
+    tr:nth-child(even) { background-color: #2a2a2a; }
+    tr:hover { background-color: #333; }
 
-
-        /* Tabela */
-        table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
-        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
-        th { background-color: #222; }
-        tr:nth-child(even) { background-color: #2a2a2a; }
-        tr:hover { background-color: #333; }
-        
-        .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 2px; }
-        .btn-excluir { background-color: #cc3333; }
-        .btn-excluir:hover { background-color: #a02a2a; }
-
-        /* MODAL */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-        .modal-content { background-color: #1f1f1f; padding: 25px 35px; border-radius: 10px; box-shadow: 0 0 20px rgba(255, 77, 77, 0.4); width: 90%; max-width: 500px; position: relative; border: 1px solid #333; text-align: center;}
-        .btn { border: none; padding: 10px 22px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
-        .btn-excluir-confirm { background-color: #cc3333; color: white; }
-        .btn-excluir-confirm:hover { background-color: #a02a2a; }
-        .btn-cancelar { background-color: #555; color: white; }
-        .btn-cancelar:hover { background-color: #777; }
-    </style>
+    /* Botões de Ação */
+    .btn-action { 
+        display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; 
+        border-radius: 4px; font-size: 13px; font-weight: bold; 
+        text-decoration: none; color: white; cursor: pointer; margin: 2px; 
+    }
+    .btn-excluir { background-color: #cc3333; }
+    .btn-comprovante { background-color: #f39c12; }
+    
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; text-align: center; position: relative; }
+    .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #aaa; }
+  </style>
 </head>
 <body>
 
@@ -149,15 +117,18 @@ if (isset($_SESSION['success_message'])) {
     echo '<div class="success-message">' . htmlspecialchars($_SESSION['success_message']) . '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
     unset($_SESSION['success_message']);
 }
+if (isset($_SESSION['error_message'])) {
+    echo '<div class="success-message" style="background-color: #cc3333;">' . htmlspecialchars($_SESSION['error_message']) . '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
+    unset($_SESSION['error_message']);
+}
 ?>
 
 <h2>Contas a Pagar - Baixadas</h2>
 
 <form class="search-form" method="GET" action="">
-  <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($fornecedor_search); ?>">
-  <input type="text" name="numero" placeholder="Número" value="<?php echo htmlspecialchars($numero_search); ?>">
-  <input type="date" name="data_inicio" placeholder="Data Venc. Início" value="<?php echo htmlspecialchars($data_inicio); ?>">
-  <input type="date" name="data_fim" placeholder="Data Venc. Fim" value="<?php echo htmlspecialchars($data_fim); ?>">
+  <input type="text" name="fornecedor" placeholder="Fornecedor" value="<?php echo htmlspecialchars($_GET['fornecedor'] ?? ''); ?>">
+  <input type="date" name="data_inicio" placeholder="Data Início" value="<?php echo htmlspecialchars($_GET['data_inicio'] ?? ''); ?>">
+  <input type="date" name="data_fim" placeholder="Data Fim" value="<?php echo htmlspecialchars($_GET['data_fim'] ?? ''); ?>">
   <button type="submit"><i class="fa fa-search"></i> Buscar</button>
   <a href="contas_pagar_baixadas.php" class="clear-filters">Limpar</a>
 </form>
@@ -165,93 +136,97 @@ if (isset($_SESSION['success_message'])) {
 <?php
 if ($result && $result->num_rows > 0) {
     echo "<table>";
-    // ❗️❗️ CORREÇÃO (CABEÇALHO DA TABELA) ❗️❗️
-    // Removidas colunas "Data Baixa" e "Usuário" que não existem
-    echo "<thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th>Número</th><th>Valor</th><th>Forma Pag.</th><th>Categoria</th><th>Comprovante</th><th>Ações</th></tr></thead>";
+    // ✅ CABEÇALHO CORRIGIDO: Removido 'Número', mantido 'Forma Pag.' e 'Comprovante'
+    echo "<thead><tr>
+            <th>Fornecedor</th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Forma Pag.</th>
+            <th>Categoria</th>
+            <th>Comprovante</th>
+            <th>Ações</th>
+          </tr></thead>";
     echo "<tbody>";
+    
     while($row = $result->fetch_assoc()){
-        $categoria_nome = '-';
-        if (!empty($row['id_categoria'])) {
-            $stmtCat = $conn->prepare("SELECT nome FROM categorias WHERE id = ?");
-            $stmtCat->bind_param("i", $row['id_categoria']);
-            $stmtCat->execute();
-            $resultCat = $stmtCat->get_result();
-            if ($catRow = $resultCat->fetch_assoc()) {
-                $categoria_nome = $catRow['nome'];
-            }
-            $stmtCat->close();
-        }
-
-        $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? '');
+        $data_vencimento = $row['data_vencimento'] ?? null;
+        $data_vencimento_formatada = $data_vencimento ? date('d/m/Y', strtotime($data_vencimento)) : 'N/D';
+        
+        // Verifica se nome_pessoa_fornecedor existe, senão usa o campo fornecedor antigo
+        $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? 'N/D');
 
         echo "<tr>";
-        echo "<td data-label='Fornecedor'>".htmlspecialchars($fornecedorDisplay)."</td>";
-        echo "<td data-label='Descrição'>".htmlspecialchars($row['descricao'] ?? '-')."</td>";
-        echo "<td data-label='Vencimento'>".date('d/m/Y', strtotime($row['data_vencimento']))."</td>";
-        echo "<td data-label='Número'>".htmlspecialchars($row['numero'])."</td>";
-        echo "<td data-label='Valor'>R$ ".number_format((float)$row['valor'],2,',','.')."</td>";
+        echo "<td>".htmlspecialchars($fornecedorDisplay)."</td>";
         
-        // ❗️❗️ CORREÇÃO (COLUNAS REMOVIDAS) ❗️❗️
-        // Removida a coluna 'juros' (não existe no schema.sql)
-        echo "<td data-label='Forma de Pagamento'>".htmlspecialchars($row['forma_pagamento'] ?? '-')."</td>";
-        // Removida a coluna 'data_baixa'
-        // Removida a coluna 'usuario_baixou'
+        // Descrição (substituindo o antigo Número)
+        echo "<td>".htmlspecialchars($row['descricao'] ?? '')."</td>";
         
-        echo "<td data-label='Categoria'>".htmlspecialchars($categoria_nome)."</td>";
+        echo "<td>".$data_vencimento_formatada."</td>";
         
+        // Coluna Valor
+        echo "<td>R$ ".number_format($row['valor'], 2, ',', '.')."</td>";
+        
+        // Forma Pagamento (verificando existência)
+        $formaPag = $row['forma_pagamento'] ?? 'N/D';
+        echo "<td>".ucfirst(htmlspecialchars($formaPag))."</td>";
+        
+        echo "<td>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
+        
+        // Lógica do Comprovante (Verifica se a coluna existe no array $row)
+        $linkComprovante = '--';
         if (!empty($row['comprovante'])) {
-            echo "<td data-label='Comprovante'><a href='../".htmlspecialchars($row['comprovante'])."' target='_blank' class='btn-action'>Ver</a></td>";
-        } else {
-            echo "<td data-label='Comprovante'>-</td>";
+            $linkComprovante = "<a href='../{$row['comprovante']}' target='_blank' class='btn-action btn-comprovante'><i class='fa fa-file'></i> Ver</a>";
         }
-
-        echo "<td data-label='Ações'>
-                  <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."')\" class='btn-action btn-excluir'>Excluir</a>
-              </td>";
+        echo "<td>{$linkComprovante}</td>";
+        
+        // Ações (apenas excluir para baixadas, geralmente)
+        echo "<td>
+            <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+        </td>";
+        
         echo "</tr>";
     }
     echo "</tbody></table>";
 } else {
-    // ❗️ Mensagem de erro melhorada
     if (!$result) {
-        echo "<p style='color: #ff6b6b; border: 1px solid #ff6b6b; padding: 10px; border-radius: 5px;'><strong>Erro de Base de Dados:</strong> Não foi possível executar a consulta. Verifique se a estrutura da tabela (schema) está atualizada. <br><small>Erro: " . htmlspecialchars($conn->error) . "</small></p>";
+        echo "<p style='color: #ff6b6b;'>Erro na consulta: " . htmlspecialchars($conn->error) . "</p>";
     } else {
-        echo "<p>Nenhuma conta baixada encontrada.</p>";
+        echo "<p style='text-align:center;'>Nenhuma conta baixada encontrada.</p>";
     }
 }
 ?>
 
 <div id="deleteModal" class="modal">
-    <div class="modal-content">
-        </div>
+    <div class="modal-content"></div>
 </div>
 
 <script>
 function openDeleteModal(id, fornecedor) {
     const modal = document.getElementById('deleteModal');
     const modalContent = modal.querySelector('.modal-content');
-    
-    modalContent.innerHTML = `
-        <h3>Confirmar Exclusão</h3>
-        <p>Tem certeza de que deseja excluir permanentemente este registro?</p>
-        <p><strong>Fornecedor:</strong> ${fornecedor}</p>
-        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
-            <a href="../actions/excluir_conta_pagar.php?id=${id}&origem=baixadas" class="btn btn-excluir-confirm">Sim, Excluir</a>
-            <button type="button" class="btn btn-cancelar" onclick="document.getElementById('deleteModal').style.display='none'">Cancelar</button>
-        </div>
-    `;
 
+    modalContent.innerHTML = `
+      <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
+      <h3>Confirmar Exclusão</h3>
+      <p>Tem certeza de que deseja excluir esta conta baixada?</p>
+      <p><strong>Fornecedor:</strong> ${fornecedor}</p>
+      <div style="margin-top: 20px;">
+        <a href="../actions/excluir_conta_pagar.php?id=${id}&redirect=baixadas" class='btn-action btn-excluir' style='padding: 10px 20px; font-size:16px;'>Sim, Excluir</a>
+        <button onclick="document.getElementById('deleteModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
+      </div>
+    `;
+    
     modal.style.display = 'flex';
 }
 
-window.addEventListener('click', e => {
+// Fechar modal ao clicar fora
+window.onclick = function(event) {
     const deleteModal = document.getElementById('deleteModal');
-    if (e.target === deleteModal) {
-        deleteModal.style.display = 'none';
-    }
-});
+    if (event.target == deleteModal) { deleteModal.style.display = 'none'; }
+};
 </script>
 
+<?php include('../includes/footer.php'); ?>
 </body>
 </html>
-<?php include('../includes/footer.php'); ?>
