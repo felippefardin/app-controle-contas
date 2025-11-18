@@ -1,247 +1,242 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php';
+require_once '../database.php'; // Incluído no início
 
-// 1. Verifica Login
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+// ❗️❗️ CORREÇÃO 1: Verificar se é 'true' e não apenas se 'isset' ❗️❗️
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
 }
-
-// 2. Verifica Permissão
-$nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
-$ja_impersonando = isset($_SESSION['usuario_original_id']);
-
-// Permite acesso se for admin/master/proprietario OU se já estiver impersonando
-if (($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') && !$ja_impersonando) {
-    header('Location: home.php?erro=sem_permissao');
-    exit;
-}
-
 $conn = getTenantConnection();
-if (!$conn) die("Erro de conexão.");
-
-$id_atual = $_SESSION['usuario_id'];
-
-// Busca todos os usuários exceto o atual
-$sql = "SELECT id, nome, email, foto, nivel_acesso, status FROM usuarios WHERE id != ? AND status = 'ativo' ORDER BY nome ASC";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $id_atual);
-$stmt->execute();
-$result = $stmt->get_result();
-
-include('../includes/header.php');
-
-// Tratamento de mensagens de erro
-$erro_msg = '';
-if (isset($_GET['erro'])) {
-    switch($_GET['erro']) {
-        case 'id_invalido': $erro_msg = 'Selecione um usuário válido para acessar.'; break;
-        case 'senha_vazia': $erro_msg = 'A senha é obrigatória para acessar a conta.'; break;
-        case 'senha_incorreta': $erro_msg = 'A senha informada está incorreta.'; break;
-        case 'db_error': $erro_msg = 'Erro de conexão com o banco de dados.'; break;
-        case 'usuario_nao_encontrado': $erro_msg = 'Usuário não encontrado ou inativo.'; break;
-        case 'sem_permissao_troca': $erro_msg = 'Você não tem permissão para trocar de usuário.'; break;
-        default: $erro_msg = 'Ocorreu um erro inesperado.'; break;
-    }
+if ($conn === null) {
+    die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
+
+// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
+// ❗️❗️ CORREÇÃO 2: Ler 'usuario_id' e 'email' direto da SESSÃO ❗️❗️
+// A variável $usuario_logado não é mais um array
+$id_usuario_atual = $_SESSION['usuario_id'] ?? null; // ID do usuário do tenant
+$email = $_SESSION['email'] ?? null; // Email do usuário (do master)
+
+// ✅ 3. BUSCA TODOS OS USUÁRIOS (INCLUINDO A FOTO) DO CLIENTE (TENANT) ATUAL
+// A consulta agora inclui o campo 'foto'
+$sql = "SELECT id, nome, nivel_acesso, foto FROM usuarios ORDER BY nome ASC";
+$stmt = $conn->prepare($sql);
+$stmt->execute();
+$result_usuarios = $stmt->get_result();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>\Selecionar Usuário</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <body>        
-   
-<style>
-    /* Ajustes locais para o Grid de Usuários mantendo o padrão do style.css */
-    .user-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-        margin-top: 20px;
-    }
-
-    .user-card {
-        background-color: #333; /* Cor de fundo padrão dos inputs do style.css */
-        border: 1px solid #444;
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-        transition: transform 0.2s, border-color 0.2s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .user-card:hover {
-        transform: translateY(-5px);
-        border-color: #0af;
-        background-color: #3a3a3a;
-    }
-
-    .user-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 3px solid #222;
-        margin-bottom: 15px;
-    }
-
-    .user-info h4 {
-        margin: 0 0 5px 0;
-        color: #eee;
-        font-size: 1.1rem;
-    }
-
-    .user-info p {
-        margin: 0;
-        font-size: 0.9rem;
-        color: #bbb;
-    }
-
-    .badge-role {
-        display: inline-block;
-        margin-top: 10px;
-        padding: 4px 8px;
-        background-color: rgba(0, 170, 255, 0.2);
-        color: #0af;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: bold;
-    }
-
-    /* Modal Style Overlay */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-        backdrop-filter: blur(3px);
-    }
-
-    /* Reutiliza estilos do form do style.css mas centralizado */
-    .modal-content {
-        background-color: #222;
-        padding: 30px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 400px;
-        box-shadow: 0 0 20px rgba(0, 175, 255, 0.3);
-        position: relative;
-    }
-
-    .close-modal {
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #888;
-    }
-    .close-modal:hover { color: #fff; }
-</style>
-
-<div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="color: #fff; margin: 0;"><i class="fas fa-users-cog"></i> Selecionar Usuário</h2>
-        <a href="home.php" class="btn" style="background-color: #444; color: #fff; border: 1px solid #666; display: inline-flex; align-items: center; gap: 8px;">
-            <i class="fas fa-arrow-left"></i> Voltar
-        </a>
-    </div>
-
-    <?php if (!empty($erro_msg)): ?>
-        <div class="erro"><?= htmlspecialchars($erro_msg) ?></div>
-    <?php endif; ?>
-
-    <p style="color: #ccc;">Selecione o usuário que deseja acessar. Será necessário informar a senha do usuário selecionado.</p>
-
-    <div class="user-grid">
-        <?php if ($result->num_rows > 0): ?>
-            <?php while ($row = $result->fetch_assoc()): ?>
-                <div class="user-card" onclick="abrirModalConfirmacao('<?= $row['id'] ?>', '<?= htmlspecialchars($row['nome'], ENT_QUOTES) ?>')">
-                    <img src="../img/usuarios/<?= htmlspecialchars($row['foto'] ?? 'default-profile.png') ?>" class="user-avatar" alt="Foto">
-                    
-                    <div class="user-info">
-                        <h4><?= htmlspecialchars($row['nome']) ?></h4>
-                        <p><?= htmlspecialchars($row['email']) ?></p>
-                    </div>
-
-                    <div class="badge-role">
-                        <?= ucfirst($row['nivel_acesso']) ?>
-                    </div>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <div style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px;">
-                <i class="fas fa-user-slash fa-3x"></i>
-                <p style="margin-top: 10px;">Nenhum outro usuário ativo encontrado.</p>
-            </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<div id="modalSenha" class="modal-overlay">
-    <div class="modal-content">
-        <span class="close-modal" onclick="fecharModal()">&times;</span>
-        <h3 style="color: #0af; margin-top: 0; margin-bottom: 20px;">Confirmar Acesso</h3>
+    <title>Selecionar Usuário - App Controle de Contas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style> 
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #121212;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+        }
+        .selection-container {
+            padding: 40px;
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.2);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            color: #00bfff;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+            position: relative;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #bbb;
+        }
+        select, input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            padding-right: 40px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: #eee;
+            box-sizing: border-box;
+        }
+        .toggle-password {
+            position: absolute;
+            top: 37px;
+            right: 12px;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .toggle-password:hover {
+            color: #00bfff;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #00bfff;
+            color: #121212;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0095cc;
+        }
+        .mensagem-erro {
+            background-color: #dc3545; /* Vermelho */
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+        }
         
-        <form action="../actions/trocar_usuario.php" method="POST" style="box-shadow: none; padding: 0; margin: 0;">
-            <input type="hidden" name="id_usuario" id="modalIdUsuario">
-            
-            <p>Acessar como: <strong id="modalNomeUsuario" style="color: #fff;"></strong></p>
-            
-            <label for="senha_usuario">Senha do Usuário:</label>
-            <div style="position: relative;">
-                <input type="password" name="senha_usuario" id="senha_usuario" required placeholder="Digite a senha deste usuário" style="padding-right: 40px;">
-                <i class="fas fa-eye" id="toggleSenhaModal" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888;"></i>
-            </div>
+        /* ✅ **NOVO ESTILO PARA MENSAGEM DE SUCESSO** */
+        .mensagem-sucesso {
+            background-color: #28a745; /* Verde */
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+        }
 
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button type="button" class="btn" style="background-color: #555; flex: 1;" onclick="fecharModal()">Cancelar</button>
-                <button type="submit" class="btn" style="flex: 1;">Acessar</button>
+        /* --- NOVOS ESTILOS PARA A LISTA DE USUÁRIOS --- */
+        .user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            max-height: 200px; /* Altura máxima para a lista rolável */
+            overflow-y: auto; /* Adiciona barra de rolagem */
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #333;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+        }
+        .user-item:last-child {
+            border-bottom: none;
+        }
+        .user-item input[type="radio"] {
+            margin-right: 15px;
+            width: auto; /* Reseta o width 100% */
+        }
+        .user-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%; /* Foto redonda */
+            margin-right: 10px;
+            object-fit: cover; /* Garante que a imagem cubra o espaço */
+            border: 1px solid #555;
+        }
+        /* O label agora é o container do clique */
+        .user-item label {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin: 0;
+            font-weight: normal;
+            color: #eee;
+        }
+        /* --- FIM DOS NOVOS ESTILOS --- */
+    </style>
+</head>
+<body>
+    <div class="selection-container">
+        <h2>Selecionar Usuário</h2>
+        
+        <?php if (isset($_SESSION['erro_selecao'])): ?>
+            <div class="mensagem-erro"><?= htmlspecialchars($_SESSION['erro_selecao']); ?></div>
+            <?php unset($_SESSION['erro_selecao']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['sucesso_selecao'])): ?>
+            <div class="mensagem-sucesso"><?= htmlspecialchars($_SESSION['sucesso_selecao']); ?></div>
+            <?php unset($_SESSION['sucesso_selecao']); ?>
+        <?php endif; ?>
+
+        <form action="../actions/trocar_usuario.php" method="POST">
+            
+            <div class="form-group">
+                <label>Acessar como:</label>
+                <div class="user-list">
+                    <?php while ($usuario = $result_usuarios->fetch_assoc()): ?>
+                        <?php
+                            // Define a foto padrão caso o usuário não tenha uma
+                            $foto_usuario = $usuario['foto'] ? $usuario['foto'] : 'default-profile.png';
+                        ?>
+                        <div class="user-item">
+                            <input type="radio" name="usuario_id" id="user_<?= $usuario['id'] ?>" value="<?= $usuario['id'] ?>" <?= ($usuario['id'] === $id_usuario_atual) ? 'checked' : '' ?> required>
+                            
+                            <label for="user_<?= $usuario['id'] ?>">
+                                <img src="../img/usuarios/<?= htmlspecialchars($foto_usuario) ?>" alt="Foto de <?= htmlspecialchars($usuario['nome']) ?>">
+                                <span>
+                                    <?= htmlspecialchars($usuario['nome']) ?>
+                                    <?= ($usuario['nivel_acesso'] === 'proprietario') ? ' (Principal)' : '' ?>
+                                </span>
+                            </label>
+                        </div>
+                    <?php endwhile; ?>
+                    
+                    <?php if ($result_usuarios->num_rows === 0): ?>
+                        <div style="padding: 15px; text-align: center; color: #aaa;">
+                            Nenhum usuário encontrado neste tenant.
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
+            
+            <div class="form-group">
+                <label for="senha">Senha do usuário selecionado:</label>
+                <input type="password" name="senha" id="senha" required>
+                <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
+            </div>
+            <button type="submit">Acessar Sistema</button>
         </form>
+       <a href="../actions/enviar_link_email_perfil.php" 
+          class="btn-padrao-link" 
+          style="background-color: #17a2b8; color: white; margin-left: 10px; display: inline-block; padding: 10px 15px; text-decoration: none; border-radius: 5px; margin-top: 15px;" 
+          
+          onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email ?? 'email.nao.encontrado@error.com') ?>)?');">
+          Redefinir por E-mail
+       </a>
     </div>
-</div>
 
-<script>
-    function abrirModalConfirmacao(id, nome) {
-        document.getElementById('modalIdUsuario').value = id;
-        document.getElementById('modalNomeUsuario').innerText = nome;
-        document.getElementById('senha_usuario').value = ''; // Limpa o campo
-        document.getElementById('modalSenha').style.display = 'flex';
-        setTimeout(() => document.getElementById('senha_usuario').focus(), 100);
-    }
+    
+    </div>
 
-    function fecharModal() {
-        document.getElementById('modalSenha').style.display = 'none';
-    }
+    <script>
+    const toggleSenha = document.getElementById('toggleSenha');
+    const inputSenha = document.getElementById('senha');
 
-    // Fechar ao clicar fora
-    document.getElementById('modalSenha').addEventListener('click', function(e) {
-        if (e.target === this) fecharModal();
+    toggleSenha.addEventListener('click', () => {
+      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
+      inputSenha.setAttribute('type', tipo);
+      toggleSenha.classList.toggle('fa-eye');
+      toggleSenha.classList.toggle('fa-eye-slash');
     });
-
-    // Toggle senha no modal
-    const toggleSenhaModal = document.getElementById('toggleSenhaModal');
-    const inputSenhaModal = document.getElementById('senha_usuario');
-    toggleSenhaModal.addEventListener('click', () => {
-        const tipo = inputSenhaModal.getAttribute('type') === 'password' ? 'text' : 'password';
-        inputSenhaModal.setAttribute('type', tipo);
-        toggleSenhaModal.classList.toggle('fa-eye');
-        toggleSenhaModal.classList.toggle('fa-eye-slash');
-    });
-</script>
-
- </body>
- </html>
-
-<?php include('../includes/footer.php'); ?>
+    </script>
+</body>
+</html>

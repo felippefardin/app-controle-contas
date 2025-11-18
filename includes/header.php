@@ -1,23 +1,22 @@
 <?php
-// --- CORREÇÃO ADICIONADA ---
 // Garante que a sessão seja iniciada ANTES de tentar ler as variáveis $_SESSION.
-// Usar __DIR__ garante que o caminho para 'session_init.php' esteja sempre correto.
 require_once __DIR__ . '/session_init.php';
-// --- FIM DA CORREÇÃO ---
-
 ?>
 
 <?php if (isset($_SESSION['proprietario_id_original'])): ?>
-    <div class="admin-view-banner">
-        Você está visualizando como <strong><?= htmlspecialchars($_SESSION['usuario_principal']['nome']); ?></strong>.
-        <a href="../actions/retornar_admin.php">Voltar para o Acesso Proprietário</a>
+    <div style="background-color: #222; color: #0af; padding: 10px; text-align: center; font-weight: bold; border-bottom: 1px solid #444;">
+        <i class="fas fa-user-secret"></i> Você está visualizando como 
+        <strong><?= htmlspecialchars($_SESSION['usuario_original_nome'] ?? 'Administrador'); ?></strong>.
+        &nbsp;
+        <a href="../actions/retornar_admin.php" style="color: #fff; text-decoration: underline; margin-left: 10px;">
+            <i class="fas fa-undo"></i> Voltar para o Acesso Proprietário
+        </a>
     </div>    
 <?php endif; ?>
+
 <?php if (isset($_SESSION['super_admin_original'])): ?>
-    
     <div style="background-color: #ffc; border: 1px solid #e6db55; padding: 10px; text-align: center; font-weight: bold; position: fixed; top: 0; width: 100%; z-index: 1002; color: #000000;">
         Você está visualizando como um cliente. 
-        
         <a href="../actions/retornar_super_admin.php" style="color: #0056b3; text-decoration: underline;">Retornar ao Dashboard de Administrador</a>
     </div>
     <?php
@@ -45,7 +44,7 @@ require_once __DIR__ . '/session_init.php';
         main {
             flex: 1;
             padding-top: 70px; /* Espaço para o header fixo */
-            padding-bottom: 50px; /* Adicionado: Espaço para o footer fixo */
+            padding-bottom: 50px; /* Espaço para o footer fixo */
         }
         .header-controls {
             background-color: #1f1f1f;

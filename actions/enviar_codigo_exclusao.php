@@ -1,70 +1,115 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php');
-
-// Incluir PHPMailer
-require __DIR__ . '/../lib/PHPMailer/PHPMailer.php';
-require __DIR__ . '/../lib/PHPMailer/SMTP.php';
-require __DIR__ . '/../lib/PHPMailer/Exception.php';
-
+require_once '../database.php';
+require_once '../includes/config/config.php'; // Para pegar configurações de SMTP se houver
+require_once '../vendor/autoload.php'; // Para PHPMailer
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-if (!isset($_SESSION['usuario']) || $_SESSION['usuario']['perfil'] != 'admin') {
-    echo "Acesso negado";
+// 1. Verifica Sessão
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
+    header('Location: ../pages/login.php');
     exit;
 }
 
-$id_conta = $_GET['id'] ?? null;
-if (!$id_conta) {
-    echo "ID da conta não informado";
+// 2. Captura dados da sessão com FALLBACK (Correção Principal)
+// Tenta pegar 'email', se não existir, tenta 'usuario_email'
+$email_usuario = $_SESSION['email'] ?? $_SESSION['usuario_email'] ?? null;
+$id_usuario    = $_SESSION['usuario_id'] ?? null;
+
+if (!$email_usuario) {
+    $_SESSION['erro_perfil'] = 'Erro: E-mail do usuário não encontrado na sessão. Faça login novamente.';
+    header('Location: ../pages/perfil.php');
     exit;
 }
 
-// E-mail do administrador (usuário logado)
-$email_admin = $_SESSION['usuario']['email'];
+if (!$id_usuario) {
+    $_SESSION['erro_perfil'] = 'Erro: ID do usuário não identificado.';
+    header('Location: ../pages/perfil.php');
+    exit;
+}
 
-// Gerar código aleatório de 6 dígitos
-$codigo = rand(100000, 999999);
+// 3. Gera o Token de Exclusão (6 dígitos)
+$token = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+$expira_em = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-// Salvar código no banco
-$stmt = $conn->prepare("INSERT INTO codigos_confirmacao (codigo, email_admin) VALUES (?, ?)");
-$stmt->bind_param("ss", $codigo, $email_admin);
+$conn = getTenantConnection(); // Ou getMasterConnection() dependendo de onde você salva tokens
+// Se a tabela de tokens ficar no banco do tenant:
+if (!$conn) $conn = getMasterConnection(); 
+
+if (!$conn) {
+    $_SESSION['erro_perfil'] = 'Erro de conexão com o banco de dados.';
+    header('Location: ../pages/perfil.php');
+    exit;
+}
+
+// 4. Salva/Atualiza o Token no Banco
+// Verifica se a tabela existe, se não, cria (opcional, mas bom para evitar erros)
+$conn->query("CREATE TABLE IF NOT EXISTS solicitacoes_exclusao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    token VARCHAR(10) NOT NULL,
+    expira_em DATETIME NOT NULL,
+    UNIQUE KEY(id_usuario)
+)");
+
+// Remove solicitação anterior se houver
+$stmt = $conn->prepare("DELETE FROM solicitacoes_exclusao WHERE id_usuario = ?");
+$stmt->bind_param("i", $id_usuario);
 $stmt->execute();
 
-// Criar o objeto PHPMailer
-$mail = new PHPMailer(true);
+// Insere nova
+$stmt = $conn->prepare("INSERT INTO solicitacoes_exclusao (id_usuario, token, expira_em) VALUES (?, ?, ?)");
+$stmt->bind_param("iss", $id_usuario, $token, $expira_em);
 
-try {
-    // Configuração SMTP Gmail
-    $mail->isSMTP();
-    $mail->Host       = 'smtp.gmail.com';
-    $mail->SMTPAuth   = true;
-    $mail->Username   = 'felippefardin@gmail.com';      
-    $mail->Password   = 'ejlg wslz aulp zzgw';         
-    $mail->SMTPSecure = 'tls';
-    $mail->Port       = 587;
+if ($stmt->execute()) {
+    
+    // 5. Envia o E-mail
+    $mail = new PHPMailer(true);
+    try {
+        // Configurações do Servidor (Carregadas do .env ou config.php)
+        $mail->isSMTP();
+        $mail->Host       = $_ENV['SMTP_HOST'] ?? 'sandbox.smtp.mailtrap.io';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $_ENV['SMTP_USER'] ?? '';
+        $mail->Password   = $_ENV['SMTP_PASS'] ?? '';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = $_ENV['SMTP_PORT'] ?? 587;
+        $mail->CharSet    = 'UTF-8';
 
-    $mail->setFrom('nao-responda@seudominio.com', 'App Controle de Contas');
-    $mail->addAddress($email_admin);
+        // Remetente e Destinatário
+        $mail->setFrom('no-reply@seusistema.com', 'Segurança - App Controle');
+        $mail->addAddress($email_usuario);
 
-    $mail->Subject = 'Código de confirmação para exclusão';
-    $mail->Body    = "Olá,\n\nSeu código para confirmar a exclusão da conta é:\n\n$codigo\n\nEste código é válido por 10 minutos.\n\nAtenciosamente,\nEquipe Controle de Contas";
+        // Conteúdo
+        $mail->isHTML(true);
+        $mail->Subject = 'Código de Exclusão de Conta';
+        $mail->Body    = "
+            <h2>Solicitação de Exclusão de Conta</h2>
+            <p>Você solicitou a exclusão da sua conta. Use o código abaixo para confirmar a ação:</p>
+            <h1 style='color: #d9534f; letter-spacing: 5px;'>{$token}</h1>
+            <p>Este código expira em 15 minutos.</p>
+            <p>Se não foi você, altere sua senha imediatamente.</p>
+        ";
+        $mail->AltBody = "Seu código de exclusão é: {$token}";
 
-    $mail->send();
+        $mail->send();
+        
+        $_SESSION['sucesso_perfil'] = 'Código de confirmação enviado para seu e-mail.';
+        // Redireciona para página de confirmar código
+        header('Location: ../pages/confirmar_exclusao_conta.php');
+        exit;
 
-} catch (Exception $e) {
-    echo "Erro ao enviar código: {$mail->ErrorInfo}";
+    } catch (Exception $e) {
+        $_SESSION['erro_perfil'] = "Erro ao enviar e-mail: {$mail->ErrorInfo}";
+        header('Location: ../pages/perfil.php');
+        exit;
+    }
+
+} else {
+    $_SESSION['erro_perfil'] = 'Erro ao gerar código de exclusão.';
+    header('Location: ../pages/perfil.php');
     exit;
 }
-
-// Exibir formulário para digitar o código
 ?>
-
-<h2>Digite o código enviado ao seu e-mail para confirmar a exclusão</h2>
-<form method="POST" action="../actions/validar_codigo_exclusao.php">
-  <input type="hidden" name="id_conta" value="<?=htmlspecialchars($id_conta)?>">
-  <input type="text" name="codigo" placeholder="Código" required>
-  <button type="submit">Confirmar exclusão</button>
-</form>
