@@ -19,7 +19,9 @@ if ($conn === null) {
 
 // 3. Valida os dados de entrada
 $id_venda = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-$id_usuario = $_SESSION['usuario_logado']['id'];
+
+// ✅ CORREÇÃO: Pega o ID corretamente da sessão
+$id_usuario = $_SESSION['usuario_id']; 
 
 if (!$id_venda) {
     http_response_code(400);
@@ -28,10 +30,12 @@ if (!$id_venda) {
 }
 
 // 4. Busca os dados da venda e do cliente
+// Usando LEFT JOIN para evitar erro caso o cliente tenha sido excluído
 $stmt_venda = $conn->prepare(
-    "SELECT v.id, v.data_venda, v.valor_total, v.desconto, v.forma_pagamento, c.nome AS nome_cliente
+    "SELECT v.id, v.data_venda, v.valor_total, v.desconto, v.forma_pagamento, 
+            pf.nome AS nome_cliente
      FROM vendas v
-     JOIN pessoas_fornecedores c ON v.id_cliente = c.id
+     LEFT JOIN pessoas_fornecedores pf ON v.id_cliente = pf.id
      WHERE v.id = ? AND v.id_usuario = ?"
 );
 $stmt_venda->bind_param("ii", $id_venda, $id_usuario);
@@ -47,7 +51,7 @@ if (!$venda) {
 $stmt_items = $conn->prepare(
     "SELECT vi.quantidade, vi.preco_unitario, vi.subtotal, p.nome AS nome_produto
      FROM venda_items vi
-     JOIN produtos p ON vi.id_produto = p.id
+     LEFT JOIN produtos p ON vi.id_produto = p.id
      WHERE vi.id_venda = ?"
 );
 $stmt_items->bind_param("i", $id_venda);
@@ -59,7 +63,7 @@ $items = $stmt_items->get_result();
 
 <div class="romaneio-header" style="border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 15px;">
     <h5>Venda #<?= htmlspecialchars($venda['id']) ?></h5>
-    <p class="mb-0"><strong>Cliente:</strong> <?= htmlspecialchars($venda['nome_cliente']) ?></p>
+    <p class="mb-0"><strong>Cliente:</strong> <?= htmlspecialchars($venda['nome_cliente'] ?? 'Cliente não identificado') ?></p>
     <p class="mb-0"><strong>Data:</strong> <?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></p>
 </div>
 
@@ -79,7 +83,7 @@ $items = $stmt_items->get_result();
             $subtotal_bruto += $item['subtotal'];
         ?>
         <tr>
-            <td><?= htmlspecialchars($item['nome_produto']) ?></td>
+            <td><?= htmlspecialchars($item['nome_produto'] ?? 'Produto removido') ?></td>
             <td class="text-center"><?= $item['quantidade'] ?></td>
             <td class="text-right">R$ <?= number_format($item['preco_unitario'], 2, ',', '.') ?></td>
             <td class="text-right">R$ <?= number_format($item['subtotal'], 2, ',', '.') ?></td>

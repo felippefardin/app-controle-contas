@@ -2,45 +2,53 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
+// Verifica se está logado
 if (!isset($_SESSION['usuario_logado'])) {
-    die("Faça login primeiro.");
+    die("Por favor, faça login primeiro.");
 }
 
 $conn = getTenantConnection();
-if (!$conn) die("Erro ao conectar no banco do tenant.");
+if (!$conn) die("Erro ao conectar no banco do usuário.");
 
-echo "<h3>Verificando e Corrigindo Banco de Dados...</h3>";
+echo "<h2>Corrigindo colunas de Venda...</h2>";
 
-// Lista de colunas necessárias na tabela contas_receber
-$colunas = [
-    "numero" => "VARCHAR(50) DEFAULT NULL AFTER id_pessoa_fornecedor",
-    "descricao" => "VARCHAR(255) DEFAULT NULL AFTER numero",
-    "baixado_por" => "INT DEFAULT NULL",
-    "data_baixa" => "DATE DEFAULT NULL",
-    "forma_pagamento" => "VARCHAR(50) DEFAULT NULL",
-    "comprovante" => "VARCHAR(255) DEFAULT NULL"
+// Lista de tabelas e colunas a verificar
+$correcoes = [
+    'contas_receber' => 'ADD COLUMN id_venda INT DEFAULT NULL AFTER data_vencimento',
+    'caixa_diario'   => 'ADD COLUMN id_venda INT DEFAULT NULL AFTER descricao'
 ];
 
-foreach ($colunas as $coluna => $definicao) {
-    // Verifica se a coluna existe
-    $check = $conn->query("SHOW COLUMNS FROM contas_receber LIKE '$coluna'");
-    
-    if ($check->num_rows == 0) {
-        // Se não existe, cria
-        $sql = "ALTER TABLE contas_receber ADD COLUMN $coluna $definicao";
-        if ($conn->query($sql)) {
-            echo "<p style='color:green'>✅ Coluna <b>$coluna</b> criada com sucesso.</p>";
+foreach ($correcoes as $tabela => $comando) {
+    // Verifica se a tabela existe
+    $res = $conn->query("SHOW TABLES LIKE '$tabela'");
+    if ($res->num_rows > 0) {
+        // Verifica se a coluna id_venda existe
+        $check = $conn->query("SHOW COLUMNS FROM $tabela LIKE 'id_venda'");
+        
+        if ($check->num_rows == 0) {
+            // Se não existe, cria
+            $sql = "ALTER TABLE $tabela $comando";
+            if ($conn->query($sql)) {
+                echo "<p style='color:green'>✅ Coluna <b>id_venda</b> adicionada na tabela <b>$tabela</b>.</p>";
+            } else {
+                echo "<p style='color:red'>❌ Erro em $tabela: " . $conn->error . "</p>";
+            }
         } else {
-            echo "<p style='color:red'>❌ Erro ao criar <b>$coluna</b>: " . $conn->error . "</p>";
+            echo "<p style='color:gray'>🆗 Tabela <b>$tabela</b> já possui a coluna id_venda.</p>";
         }
+        
+        // Adiciona índice para deixar as buscas rápidas
+        $checkIdx = $conn->query("SHOW INDEX FROM $tabela WHERE Key_name = 'idx_venda'");
+        if ($checkIdx->num_rows == 0) {
+             $conn->query("ALTER TABLE $tabela ADD INDEX idx_venda (id_venda)");
+             echo "<p style='color:green'>&nbsp;&nbsp;↳ Índice criado para $tabela.</p>";
+        }
+        
     } else {
-        echo "<p style='color:gray'>🆗 Coluna <b>$coluna</b> já existe.</p>";
+        echo "<p style='color:orange'>⚠️ Tabela <b>$tabela</b> não encontrada.</p>";
     }
 }
 
-// Ajustar o status para ENUM se ainda não for
-$conn->query("ALTER TABLE contas_receber MODIFY COLUMN status ENUM('pendente','baixada') DEFAULT 'pendente'");
-
-echo "<hr><p><b>Processo concluído!</b> Tente adicionar a conta novamente.</p>";
-echo "<a href='contas_receber.php'>Voltar para Contas a Receber</a>";
+echo "<hr><h3>Concluído!</h3>";
+echo "<a href='vendas.php'><button>Voltar para o PDV</button></a>";
 ?>
