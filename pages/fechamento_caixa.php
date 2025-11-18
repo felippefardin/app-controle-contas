@@ -76,10 +76,11 @@ if (!empty($clientes_dia_ids)) {
 }
 
 $stmt_vendas = $conn->prepare("
-    SELECT id, data_venda, valor_total, forma_pagamento 
-    FROM vendas 
-    WHERE id_usuario = ? AND DATE(data_venda) = ? 
-    ORDER BY id DESC
+    SELECT v.id, v.data_venda, v.valor_total, v.forma_pagamento, pf.nome AS nome_cliente
+    FROM vendas v
+    LEFT JOIN pessoas_fornecedores pf ON v.id_cliente = pf.id
+    WHERE v.id_usuario = ? AND DATE(v.data_venda) = ? 
+    ORDER BY v.id DESC
 ");
 $stmt_vendas->bind_param("is", $id_usuario, $data_selecionada);
 $stmt_vendas->execute();
@@ -172,7 +173,7 @@ $vendas = $stmt_vendas->get_result();
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Data</th>
+                <th>Cliente</th> <th>Data</th>
                 <th>Forma de Pagamento</th>
                 <th>Valor Total</th>
             </tr>
@@ -181,6 +182,7 @@ $vendas = $stmt_vendas->get_result();
             <?php while ($venda = $vendas->fetch_assoc()): ?>
             <tr class="venda" data-id="<?= $venda['id'] ?>">
                 <td><?= $venda['id'] ?></td>
+                <td><?= htmlspecialchars($venda['nome_cliente'] ?? 'Cliente Balcão') ?></td>
                 <td><?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></td>
                 <td><?= ucfirst(str_replace('_', ' ', $venda['forma_pagamento'])) ?></td>
                 <td>R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></td>
@@ -210,9 +212,32 @@ $vendas = $stmt_vendas->get_result();
     </div>
 </div>
 
+<div class="modal fade" id="modalConfirmarCancelamento" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;"> <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content bg-dark text-light border-danger">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title text-danger"><i class="fas fa-exclamation-triangle"></i> Cancelar Venda</h5>
+                <button type="button" class="close text-light" data-dismiss="modal" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <p>Tem certeza que deseja cancelar a venda <strong>#<span id="span-venda-id"></span></strong>?</p>
+                <p class="small text-muted">O estoque será devolvido e os lançamentos financeiros removidos. Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer border-top-0 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Não, Voltar</button>
+                <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao">Sim, Cancelar Venda</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 <script>
 $(function() {
+    let vendaIdParaCancelar = null;
+
+    // Função para exibir alertas na tela
     function showAlert(message, type) {
         $('#alert-container-fechamento').html(`
             <div class="alert alert-${type} alert-dismissible fade show" role="alert">
@@ -222,40 +247,62 @@ $(function() {
         `);
     }
 
+    // 1. Clicar na linha da tabela abre o Romaneio (Detalhes)
     $(".venda").click(function() {
         const vendaId = $(this).data("id");
-        $("#conteudoRomaneio").html("Carregando...");
+        $("#conteudoRomaneio").html('<div class="text-center p-3"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Carregando...</div>');
         $("#modalRomaneio").modal("show");
+        
         $.get("buscar_venda.php", { id: vendaId }, function(data) {
             $("#conteudoRomaneio").html(data);
+        }).fail(function() {
+            $("#conteudoRomaneio").html('<div class="alert alert-danger">Erro ao carregar detalhes.</div>');
         });
     });
 
-    $('#modalRomaneio').on('click', '#btn-cancelar-venda', function() {
-        const vendaId = $(this).data('id');
-        if (!confirm('Tem certeza que deseja cancelar esta venda? Esta ação não pode ser desfeita.')) return;
-        $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Cancelando...');
+    // 2. Clicar em "Cancelar Venda" dentro do Romaneio abre a Confirmação
+    $('#modalRomaneio').on('click', '#btn-abrir-cancelar', function() {
+        vendaIdParaCancelar = $(this).data('id');
+        $('#span-venda-id').text(vendaIdParaCancelar);
+        
+        // Fecha o romaneio e abre a confirmação
+        $('#modalRomaneio').modal('hide');
+        setTimeout(() => {
+            $('#modalConfirmarCancelamento').modal('show');
+        }, 200); // Pequeno delay para transição suave
+    });
+
+    // 3. Confirmar o cancelamento no Modal de Confirmação
+    $('#btn-confirmar-exclusao').click(function() {
+        if (!vendaIdParaCancelar) return;
+
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
 
         fetch('cancelar_venda.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'venda_id': vendaId })
+            body: new URLSearchParams({ 'venda_id': vendaIdParaCancelar })
         })
         .then(res => res.json())
         .then(data => {
+            $('#modalConfirmarCancelamento').modal('hide');
+            
             if (data.success) {
-                $('#modalRomaneio').modal('hide');
                 showAlert(data.message, 'success');
-                setTimeout(() => location.reload(), 1500);
+                // Remove a linha da tabela visualmente ou recarrega
+                $(`tr[data-id="${vendaIdParaCancelar}"]`).fadeOut();
+                setTimeout(() => location.reload(), 1500); // Recarrega para atualizar totais
             } else {
-                alert('Erro: ' + data.message);
-                $(this).prop('disabled', false).html('<i class="fas fa-times"></i> Cancelar Venda');
+                showAlert('Erro: ' + data.message, 'danger');
+                btn.prop('disabled', false).html('Sim, Cancelar Venda');
             }
         })
         .catch(err => {
             console.error('Erro:', err);
-            alert('Ocorreu um erro de comunicação ao tentar cancelar a venda.');
-            $(this).prop('disabled', false).html('<i class="fas fa-times"></i> Cancelar Venda');
+            $('#modalConfirmarCancelamento').modal('hide');
+            showAlert('Erro de comunicação com o servidor.', 'danger');
+            btn.prop('disabled', false).html('Sim, Cancelar Venda');
         });
     });
 });

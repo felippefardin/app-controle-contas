@@ -21,22 +21,23 @@ $id_proprio = $_SESSION['usuario_id'];
 if ($id && $id != $id_proprio) {
     $conn = getTenantConnection();
     if (!$conn) {
-        header('Location: ../pages/usuarios.php?erro=1&msg=Erro de conexão');
+        header('Location: ../pages/usuarios.php?erro=1&msg=Erro de banco de dados');
         exit;
     }
-
-    // Previne excluir se o usuário tiver registros importantes (opcional, mas recomendado)
-    // Aqui deletamos direto
-    $stmt = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
+    
+    // Lógica de inversão: Se for 'ativo', vira 'inativo'. Caso contrário, vira 'ativo'.
+    $sql = "UPDATE usuarios SET status = CASE WHEN status = 'ativo' THEN 'inativo' ELSE 'ativo' END WHERE id = ?";
+    
+    $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $id);
     
     if ($stmt->execute()) {
-        header('Location: ../pages/usuarios.php?sucesso=1&msg=Usuário excluído com sucesso');
+        header('Location: ../pages/usuarios.php?sucesso=1&msg=Status alterado com sucesso');
     } else {
-        header('Location: ../pages/usuarios.php?erro=1&msg=Erro ao excluir usuário');
+        header('Location: ../pages/usuarios.php?erro=1&msg=Erro ao atualizar status');
     }
 } else {
-    header('Location: ../pages/usuarios.php?erro=1&msg=ID inválido ou tentativa de excluir próprio usuário');
+    header('Location: ../pages/usuarios.php?erro=1&msg=ID inválido');
 }
 exit;
 ?>

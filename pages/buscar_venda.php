@@ -2,110 +2,87 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// 1. Garante que o usuário está logado e que um ID de venda foi fornecido
-if (!isset($_SESSION['usuario_logado']) || !isset($_GET['id'])) {
-    http_response_code(403);
-    echo '<div class="alert alert-danger">Acesso negado.</div>';
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
+    echo "Sessão expirada.";
     exit;
 }
 
-// 2. Obtém a conexão correta com o banco de dados do tenant
 $conn = getTenantConnection();
-if ($conn === null) {
-    http_response_code(500);
-    echo '<div class="alert alert-danger">Falha ao conectar ao banco de dados.</div>';
-    exit;
-}
+$id_usuario = $_SESSION['usuario_id'];
+$id_venda = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// 3. Valida os dados de entrada
-$id_venda = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-
-// ✅ CORREÇÃO: Pega o ID corretamente da sessão
-$id_usuario = $_SESSION['usuario_id']; 
-
-if (!$id_venda) {
-    http_response_code(400);
-    echo '<div class="alert alert-danger">ID de venda inválido.</div>';
-    exit;
-}
-
-// 4. Busca os dados da venda e do cliente
-// Usando LEFT JOIN para evitar erro caso o cliente tenha sido excluído
-$stmt_venda = $conn->prepare(
-    "SELECT v.id, v.data_venda, v.valor_total, v.desconto, v.forma_pagamento, 
-            pf.nome AS nome_cliente
-     FROM vendas v
-     LEFT JOIN pessoas_fornecedores pf ON v.id_cliente = pf.id
-     WHERE v.id = ? AND v.id_usuario = ?"
-);
-$stmt_venda->bind_param("ii", $id_venda, $id_usuario);
-$stmt_venda->execute();
-$venda = $stmt_venda->get_result()->fetch_assoc();
+// 1. Busca dados da venda
+$sql_venda = "SELECT v.*, pf.nome AS nome_cliente 
+              FROM vendas v
+              LEFT JOIN pessoas_fornecedores pf ON v.id_cliente = pf.id
+              WHERE v.id = ? AND v.id_usuario = ?";
+$stmt = $conn->prepare($sql_venda);
+$stmt->bind_param("ii", $id_venda, $id_usuario);
+$stmt->execute();
+$venda = $stmt->get_result()->fetch_assoc();
 
 if (!$venda) {
-    echo "<div class='alert alert-warning'>Venda não encontrada ou não pertence a este usuário.</div>";
+    echo "<div class='alert alert-danger'>Venda não encontrada.</div>";
     exit;
 }
 
-// 5. Busca os itens da venda
-$stmt_items = $conn->prepare(
-    "SELECT vi.quantidade, vi.preco_unitario, vi.subtotal, p.nome AS nome_produto
-     FROM venda_items vi
-     LEFT JOIN produtos p ON vi.id_produto = p.id
-     WHERE vi.id_venda = ?"
-);
-$stmt_items->bind_param("i", $id_venda);
-$stmt_items->execute();
-$items = $stmt_items->get_result();
-
-// 6. Monta e exibe o HTML do romaneio
+// 2. Busca itens
+$sql_itens = "SELECT vi.*, p.nome AS nome_produto 
+              FROM venda_items vi
+              LEFT JOIN produtos p ON vi.id_produto = p.id
+              WHERE vi.id_venda = ?";
+$stmt_itens = $conn->prepare($sql_itens);
+$stmt_itens->bind_param("i", $id_venda);
+$stmt_itens->execute();
+$result_itens = $stmt_itens->get_result();
 ?>
 
-<div class="romaneio-header" style="border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 15px;">
-    <h5>Venda #<?= htmlspecialchars($venda['id']) ?></h5>
-    <p class="mb-0"><strong>Cliente:</strong> <?= htmlspecialchars($venda['nome_cliente'] ?? 'Cliente não identificado') ?></p>
-    <p class="mb-0"><strong>Data:</strong> <?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?></p>
+<div class="row mb-3">
+    <div class="col-6">
+        <strong>Venda #<?= $venda['id'] ?></strong><br>
+        Data: <?= date('d/m/Y H:i', strtotime($venda['data_venda'])) ?>
+    </div>
+    <div class="col-6 text-right">
+        Cliente: <?= htmlspecialchars($venda['nome_cliente'] ?? 'Balcão') ?><br>
+        Forma: <?= ucfirst($venda['forma_pagamento']) ?>
+    </div>
 </div>
 
-<table class="table table-sm table-borderless text-light">
+<table class="table table-sm table-bordered text-light">
     <thead>
         <tr>
             <th>Produto</th>
-            <th class="text-center">Qtd.</th>
-            <th class="text-right">Preço Unit.</th>
-            <th class="text-right">Subtotal</th>
+            <th class="text-right">Qtd</th>
+            <th class="text-right">Unit.</th>
+            <th class="text-right">Total</th>
         </tr>
     </thead>
     <tbody>
-        <?php
-        $subtotal_bruto = 0;
-        while ($item = $items->fetch_assoc()):
-            $subtotal_bruto += $item['subtotal'];
-        ?>
+        <?php while($item = $result_itens->fetch_assoc()): ?>
         <tr>
-            <td><?= htmlspecialchars($item['nome_produto'] ?? 'Produto removido') ?></td>
-            <td class="text-center"><?= $item['quantidade'] ?></td>
+            <td><?= htmlspecialchars($item['nome_produto']) ?></td>
+            <td class="text-right"><?= $item['quantidade'] ?></td>
             <td class="text-right">R$ <?= number_format($item['preco_unitario'], 2, ',', '.') ?></td>
             <td class="text-right">R$ <?= number_format($item['subtotal'], 2, ',', '.') ?></td>
         </tr>
         <?php endwhile; ?>
     </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="3" class="text-right">Total</th>
+            <th class="text-right">R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></th>
+        </tr>
+    </tfoot>
 </table>
 
-<div class="romaneio-footer" style="border-top: 1px solid #555; padding-top: 10px; margin-top: 15px; text-align: right;">
-    <p class="mb-1"><strong>Subtotal:</strong> R$ <?= number_format($subtotal_bruto, 2, ',', '.') ?></p>
-    <?php if ($venda['desconto'] > 0): ?>
-        <p class="mb-1"><strong>Desconto:</strong> - R$ <?= number_format($venda['desconto'], 2, ',', '.') ?></p>
-    <?php endif; ?>
-    <h5 class="mb-1"><strong>Total: R$ <?= number_format($venda['valor_total'], 2, ',', '.') ?></strong></h5>
-    <p class="mb-0"><strong>Pagamento:</strong> <?= ucfirst(str_replace('_', ' ', $venda['forma_pagamento'])) ?></p>
-</div>
+<hr class="bg-secondary">
 
-<div class="mt-4 text-center">
-    <a href="recibo_venda.php?id=<?= $venda['id'] ?>" target="_blank" class="btn btn-sm btn-info">
-        <i class="fas fa-print"></i> Imprimir Recibo Completo
+<div class="d-flex justify-content-between">
+    <a href="recibo_venda.php?id=<?= $venda['id'] ?>" target="_blank" class="btn btn-primary">
+        <i class="fas fa-print"></i> Imprimir Recibo
     </a>
-    <button id="btn-cancelar-venda" data-id="<?= $venda['id'] ?>" class="btn btn-sm btn-danger">
-        <i class="fas fa-times"></i> Cancelar Venda
+
+    <button type="button" class="btn btn-danger" id="btn-abrir-cancelar" data-id="<?= $venda['id'] ?>">
+        <i class="fas fa-trash"></i> Cancelar Venda
     </button>
 </div>

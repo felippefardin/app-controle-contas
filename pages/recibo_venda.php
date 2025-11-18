@@ -17,15 +17,18 @@ $id_usuario = $_SESSION['usuario_id'];
 
 $id_venda = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// 2. BUSCA DADOS DA VENDA E DO CLIENTE
+// 2. BUSCA DADOS DA VENDA, CLIENTE E PROPRIETÁRIO
 $sql_venda = "SELECT v.*, 
                      pf.nome AS nome_cliente, 
                      pf.cpf_cnpj AS doc_cliente, 
                      pf.endereco AS end_cliente,
-                     u.nome AS nome_vendedor
+                     u.nome AS nome_vendedor,
+                     owner.nome AS nome_proprietario,
+                     owner.documento AS doc_proprietario
               FROM vendas v
               LEFT JOIN pessoas_fornecedores pf ON v.id_cliente = pf.id
               LEFT JOIN usuarios u ON v.id_usuario = u.id
+              LEFT JOIN usuarios owner ON owner.id = COALESCE(u.owner_id, u.id)
               WHERE v.id = ? AND v.id_usuario = ?";
 
 $stmt = $conn->prepare($sql_venda);
@@ -140,9 +143,12 @@ $result_itens = $stmt_itens->get_result();
         <p style="font-size: 11px; margin-top:5px;">Forma Pagto: <?= ucfirst($venda['forma_pagamento']) ?></p>
     </div>
 
-    <div class="footer">
+   <div class="footer">
         <p>Obrigado pela preferência!</p>
-        <p>Sistema Controle de Contas</p>
+        <p>Emitido por: <?= htmlspecialchars($venda['nome_proprietario']) ?></p>
+        <?php if(!empty($venda['doc_proprietario'])): ?>
+            <p>Dados: <?= htmlspecialchars($venda['doc_proprietario']) ?></p>
+        <?php endif; ?>
     </div>
 
     <button onclick="window.print()" class="btn-print">🖨️ Imprimir Recibo</button>

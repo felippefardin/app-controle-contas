@@ -4,8 +4,9 @@ require_once '../database.php';
 
 header('Content-Type: application/json');
 
-// 1. Validação de segurança: verifica se o usuário está logado
-if (!isset($_SESSION['usuario_logado']['id'])) {
+// 1. Validação de segurança: verifica se o usuário está logado e se o ID existe
+// CORREÇÃO: Verifica se usuario_logado é true e se usuario_id está definido
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true || !isset($_SESSION['usuario_id'])) {
     echo json_encode(['success' => false, 'message' => 'Sessão inválida. Por favor, faça login novamente.']);
     exit;
 }
@@ -17,7 +18,9 @@ if ($conn === null) {
     exit;
 }
 
-$id_usuario = $_SESSION['usuario_logado']['id'];
+// CORREÇÃO: Pega o ID da variável direta, não do array
+$id_usuario = $_SESSION['usuario_id']; 
+
 $venda_id = filter_input(INPUT_POST, 'venda_id', FILTER_VALIDATE_INT);
 
 // 3. Validação do ID da venda
@@ -36,10 +39,8 @@ try {
     $stmt_itens->execute();
     $itens_result = $stmt_itens->get_result();
 
+    // Verifica se a venda existe mesmo se não tiver itens (segurança extra)
     if ($itens_result->num_rows === 0) {
-        // Se não houver itens, a venda pode já ter sido cancelada ou é inválida.
-        // Em vez de um erro, podemos considerar uma remoção limpa dos registros restantes.
-        // Por segurança, vamos verificar se a venda principal ainda existe.
         $stmt_venda_check = $conn->prepare("SELECT id FROM vendas WHERE id = ? AND id_usuario = ?");
         $stmt_venda_check->bind_param("ii", $venda_id, $id_usuario);
         $stmt_venda_check->execute();
@@ -61,16 +62,21 @@ try {
         $stmt_estoque->execute();
     }
 
-    // 6. Remove os lançamentos financeiros associados (CORRIGIDO)
+    // 6. Remove os lançamentos financeiros associados
     // Remove do caixa diário usando o id_venda
     $stmt_caixa = $conn->prepare("DELETE FROM caixa_diario WHERE id_venda = ? AND usuario_id = ?");
     $stmt_caixa->bind_param("ii", $venda_id, $id_usuario);
     $stmt_caixa->execute();
 
     // Remove das contas a receber (caso a venda tenha sido a prazo) usando o id_venda
-    $stmt_receber = $conn->prepare("DELETE FROM contas_receber WHERE id_venda = ? AND usuario_id = ?");
-    $stmt_receber->bind_param("ii", $venda_id, $id_usuario);
-    $stmt_receber->execute();
+    // Nota: Certifique-se que sua tabela contas_receber tem a coluna id_venda, senão isso dará erro.
+    // Se não tiver id_venda na tabela contas_receber, remova ou comente o bloco abaixo.
+    $coluna_check = $conn->query("SHOW COLUMNS FROM contas_receber LIKE 'id_venda'");
+    if ($coluna_check && $coluna_check->num_rows > 0) {
+        $stmt_receber = $conn->prepare("DELETE FROM contas_receber WHERE id_venda = ? AND usuario_id = ?");
+        $stmt_receber->bind_param("ii", $venda_id, $id_usuario);
+        $stmt_receber->execute();
+    }
 
     // 7. Remove os itens da venda da tabela 'venda_items'
     $stmt_delete_itens = $conn->prepare("DELETE FROM venda_items WHERE id_venda = ?");
@@ -88,7 +94,7 @@ try {
         $conn->commit();
         echo json_encode(['success' => true, 'message' => 'Venda #' . $venda_id . ' cancelada com sucesso! O estoque foi restaurado.']);
     } else {
-        // Se a venda principal não foi encontrada para este usuário, pode ter sido um ID inválido
+        // Se a venda principal não foi encontrada para este usuário
         throw new Exception("A venda não foi encontrada ou você não tem permissão para cancelá-la.");
     }
 

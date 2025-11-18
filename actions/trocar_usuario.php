@@ -1,65 +1,80 @@
 <?php
 require_once '../includes/session_init.php';
-include('../database.php');
+require_once '../database.php';
 
-// ❗️ CORREÇÃO 1: Verificar se o usuário está logado (se a sessão é 'true')
+// 1. Verifica Login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
-$_SESSION['login_erro'] = "Sessão de usuário não encontrada. Faça o login novamente.";
-header('Location: ../pages/login.php');
- exit;
+    header('Location: ../pages/login.php');
+    exit;
 }
 
-// Obtém a conexão com o banco de dados do tenant.
+// 2. Verifica Permissão
+$nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
+$is_admin = ($nivel === 'admin' || $nivel === 'master' || $nivel === 'proprietario');
+$ja_impersonando = isset($_SESSION['usuario_original_id']);
+
+if (!$is_admin && !$ja_impersonando) {
+    header('Location: ../pages/selecionar_usuario.php?erro=sem_permissao_troca');
+    exit;
+}
+
+// 3. Valida Dados
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['id_usuario']) || empty($_POST['senha_admin'])) {
+    header('Location: ../pages/selecionar_usuario.php?erro=id_invalido');
+    exit;
+}
+
+$target_id = (int)$_POST['id_usuario'];
+$senha_digitada = $_POST['senha_admin'];
+$id_atual = $_SESSION['usuario_id']; // ID do usuário que está tentando trocar (admin)
+
 $conn = getTenantConnection();
-if ($conn === null) {
- die("Falha ao obter a conexão com o banco de dados do cliente.");
+if (!$conn) {
+    header('Location: ../pages/selecionar_usuario.php?erro=db_error');
+    exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['usuario_id']) && isset($_POST['senha'])) {
- $usuario_selecionado_id = (int)$_POST['usuario_id'];
- $senha_fornecida = $_POST['senha'];
+// 4. Valida a senha do usuário atual (Admin)
+// Busca a senha hash do usuário logado para comparar
+$stmt_auth = $conn->prepare("SELECT senha FROM usuarios WHERE id = ?");
+$stmt_auth->bind_param("i", $id_atual);
+$stmt_auth->execute();
+$res_auth = $stmt_auth->get_result();
+$user_auth = $res_auth->fetch_assoc();
 
-// Busca o usuário selecionado no banco de dados do tenant.
-// Garantir que estamos pegando todos os campos necessários
-$sql = "SELECT * FROM usuarios WHERE id = ?"; 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param('i', $usuario_selecionado_id);
+if (!$user_auth || !password_verify($senha_digitada, $user_auth['senha'])) {
+    // Senha incorreta
+    header('Location: ../pages/selecionar_usuario.php?erro=senha_incorreta');
+    exit;
+}
+
+// 5. Busca dados do usuário alvo (Para trocar a sessão)
+$stmt = $conn->prepare("SELECT id, nome, email, nivel_acesso, foto FROM usuarios WHERE id = ? AND status = 'ativo'");
+$stmt->bind_param("i", $target_id);
 $stmt->execute();
 $result = $stmt->get_result();
+$target_user = $result->fetch_assoc();
 
-if ($usuario_selecionado = $result->fetch_assoc()) {
-// Verifica se a senha fornecida corresponde à do banco de dados.
-if (password_verify($senha_fornecida, $usuario_selecionado['senha'])) {
-// ❗️ CORREÇÃO 2: Salvar os dados do usuário ATUAL (antes da troca)
- if (!isset($_SESSION['usuario_principal'])) {
- $_SESSION['usuario_principal'] = [
- 'id'  => $_SESSION['usuario_id'],
- 'nome'  => $_SESSION['nome'],
- 'email'=> $_SESSION['email'],
- 'nivel_acesso' => $_SESSION['nivel_acesso']
-];
+if ($target_user) {
+    // 6. Lógica de Impersonação (Salva o admin original se for a primeira troca)
+    if (!isset($_SESSION['usuario_original_id'])) {
+        $_SESSION['usuario_original_id'] = $_SESSION['usuario_id'];
+        $_SESSION['usuario_original_nome'] = $_SESSION['usuario_nome'] ?? 'Admin';
+        $_SESSION['usuario_original_nivel'] = $_SESSION['nivel_acesso'];
+    }
 
-// Esta sessão ativa o banner no 'header.php'
- $_SESSION['proprietario_id_original'] = $_SESSION['usuario_id'];
+    // 7. Atualiza a sessão para o novo usuário
+    $_SESSION['usuario_id'] = $target_user['id'];
+    $_SESSION['usuario_nome'] = $target_user['nome'];
+    $_SESSION['usuario_email'] = $target_user['email'];
+    $_SESSION['nivel_acesso'] = $target_user['nivel_acesso'];
+    $_SESSION['usuario_foto'] = $target_user['foto'];
+
+    // 8. Redireciona para o Dashboard
+    header('Location: ../pages/home.php?msg=acesso_simulado');
+    exit;
+
+} else {
+    header('Location: ../pages/selecionar_usuario.php?erro=usuario_nao_encontrado');
+    exit;
 }
- 
-// ❗️ CORREÇÃO 3: Atualizar as chaves de sessão individuais (A CORREÇÃO PRINCIPAL)
-            // Nós NÃO mexemos em $_SESSION['usuario_logado'] (que deve permanecer 'true').
-            // Nós atualizamos as chaves individuais que o home.php espera.
- $_SESSION['usuario_id'] = $usuario_selecionado['id'];
- $_SESSION['nome']  = $usuario_selecionado['nome'];
- $_SESSION['email']= $usuario_selecionado['email']; // O e-mail do usuário do tenant
- $_SESSION['nivel_acesso'] = $usuario_selecionado['nivel_acesso'];
-            // $_SESSION['usuario_logado'] continua a ser 'true' (como definido no login.php)
-
- header('Location: ../pages/home.php');
- exit;
- }
- }
-}
-
-// Se a autenticação falhar, redireciona de volta com uma mensagem de erro.
-$_SESSION['erro_selecao'] = "Dados incorretos, não foi possível trocar de usuário.";
-header('Location: ../pages/selecionar_usuario.php');
-exit;
-?>

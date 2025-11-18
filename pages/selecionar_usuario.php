@@ -1,242 +1,246 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php';
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-// ❗️❗️ CORREÇÃO 1: Verificar se é 'true' e não apenas se 'isset' ❗️❗️
+// 1. Verifica Login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
 }
-$conn = getTenantConnection();
-if ($conn === null) {
-    die("Falha ao obter a conexão com o banco de dados do cliente.");
+
+// 2. Verifica Permissão
+$nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
+$ja_impersonando = isset($_SESSION['usuario_original_id']);
+
+// Permite acesso se for admin/master/proprietario OU se já estiver impersonando (para trocar entre usuários)
+if (($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') && !$ja_impersonando) {
+    header('Location: home.php?erro=sem_permissao');
+    exit;
 }
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-// ❗️❗️ CORREÇÃO 2: Ler 'usuario_id' e 'email' direto da SESSÃO ❗️❗️
-// A variável $usuario_logado não é mais um array
-$id_usuario_atual = $_SESSION['usuario_id'] ?? null; // ID do usuário do tenant
-$email = $_SESSION['email'] ?? null; // Email do usuário (do master)
+$conn = getTenantConnection();
+if (!$conn) die("Erro de conexão.");
 
-// ✅ 3. BUSCA TODOS OS USUÁRIOS (INCLUINDO A FOTO) DO CLIENTE (TENANT) ATUAL
-// A consulta agora inclui o campo 'foto'
-$sql = "SELECT id, nome, nivel_acesso, foto FROM usuarios ORDER BY nome ASC";
+$id_atual = $_SESSION['usuario_id'];
+
+// Busca todos os usuários exceto o atual
+$sql = "SELECT id, nome, email, foto, nivel_acesso, status FROM usuarios WHERE id != ? AND status = 'ativo' ORDER BY nome ASC";
 $stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $id_atual);
 $stmt->execute();
-$result_usuarios = $stmt->get_result();
+$result = $stmt->get_result();
+
+include('../includes/header.php');
+
+// Tratamento de mensagens de erro
+$erro_msg = '';
+if (isset($_GET['erro'])) {
+    switch($_GET['erro']) {
+        case 'id_invalido': $erro_msg = 'Selecione um usuário válido para acessar.'; break;
+        case 'db_error': $erro_msg = 'Erro de conexão com o banco de dados.'; break;
+        case 'usuario_nao_encontrado': $erro_msg = 'Usuário não encontrado ou inativo.'; break;
+        case 'sem_permissao_troca': $erro_msg = 'Você não tem permissão para trocar de usuário.'; break;
+        default: $erro_msg = 'Ocorreu um erro inesperado.'; break;
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Selecionar Usuário - App Controle de Contas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style> 
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #121212;
-            color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-        }
-        .selection-container {
-            padding: 40px;
-            background-color: #1e1e1e;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 191, 255, 0.2);
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-        }
-        h2 {
-            color: #00bfff;
-            margin-bottom: 25px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-            position: relative;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #bbb;
-        }
-        select, input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            padding-right: 40px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background-color: #333;
-            color: #eee;
-            box-sizing: border-box;
-        }
-        .toggle-password {
-            position: absolute;
-            top: 37px;
-            right: 12px;
-            color: #aaa;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-        .toggle-password:hover {
-            color: #00bfff;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            background-color: #00bfff;
-            color: #121212;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0095cc;
-        }
-        .mensagem-erro {
-            background-color: #dc3545; /* Vermelho */
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            color: white;
-        }
-        
-        /* ✅ **NOVO ESTILO PARA MENSAGEM DE SUCESSO** */
-        .mensagem-sucesso {
-            background-color: #28a745; /* Verde */
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            color: white;
-        }
+<meta charset="UTF-8">
+<title>Selecionar Usuário</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<style>
+    /* ===== ESTILO GERAL ===== */
+body {
+    background: linear-gradient(135deg, #0f0f0f, #1b1b1b);
+    color: #e8e8e8;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center; /* centraliza toda a página */
+}
 
-        /* --- NOVOS ESTILOS PARA A LISTA DE USUÁRIOS --- */
-        .user-list {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 20px 0;
-            max-height: 200px; /* Altura máxima para a lista rolável */
-            overflow-y: auto; /* Adiciona barra de rolagem */
-            border: 1px solid #444;
-            border-radius: 5px;
-            background-color: #333;
-        }
-        .user-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #444;
-            cursor: pointer;
-        }
-        .user-item:last-child {
-            border-bottom: none;
-        }
-        .user-item input[type="radio"] {
-            margin-right: 15px;
-            width: auto; /* Reseta o width 100% */
-        }
-        .user-item img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%; /* Foto redonda */
-            margin-right: 10px;
-            object-fit: cover; /* Garante que a imagem cubra o espaço */
-            border: 1px solid #555;
-        }
-        /* O label agora é o container do clique */
-        .user-item label {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            margin: 0;
-            font-weight: normal;
-            color: #eee;
-        }
-        /* --- FIM DOS NOVOS ESTILOS --- */
-    </style>
+.container {
+    max-width: 950px;
+    width: 100%;
+    margin-top: 40px;
+}
+
+/* ===== TÍTULO ===== */
+h2 {
+    color: #00bfff;
+    font-weight: 700;
+    border-bottom: 2px solid #00bfff;
+    padding-bottom: 12px;
+    text-shadow: 0 0 10px rgba(0, 191, 255, 0.6);
+}
+
+/* ===== CARTÕES DE USUÁRIOS ===== */
+.user-card {
+    background: rgba(31, 31, 31, 0.8);
+    border: 1px solid #2c2c2c;
+    border-radius: 12px;
+    padding: 20px;
+    transition: 0.2s ease-in-out;
+    cursor: pointer;
+    height: 100%;
+    width: 100%;
+    max-width: 230px; /* 🔥 CARTÃO MENOR */
+    margin: 0 auto;   /* 🔥 CENTRALIZA CADA CARTÃO */
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Glow ao passar o mouse */
+.user-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgba(0, 191, 255, 0.25);
+    border-color: #00bfff;
+}
+
+/* Avatar menor */
+.user-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 2px solid #00bfff;
+    object-fit: cover;
+    margin-bottom: 10px;
+}
+
+/* Nome */
+.user-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Email */
+.user-email {
+    font-size: 0.8rem;
+    color: #bdbdbd;
+    margin-bottom: 10px;
+}
+
+/* Badge */
+.user-role {
+    background: rgba(0, 191, 255, 0.1);
+    border: 1px solid #00bfff;
+    padding: 4px 10px;
+    border-radius: 15px;
+    color: #00bfff;
+    font-size: 0.75rem;
+    display: inline-block;
+    font-weight: 600;
+}
+
+/* Botão */
+.btn-acessar-fake {
+    margin-top: 15px;
+    width: 100%;
+    background-color: #00bfff;
+    color: #fff;
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    transition: 0.3s ease;
+    font-size: 0.85rem;
+}
+
+.user-card:hover .btn-acessar-fake {
+    background-color: #0099cc;
+}
+
+/* ===== CENTRALIZAÇÃO DO GRID ===== */
+.row {
+    display: flex;
+    justify-content: center; /* 🔥 centraliza todos os cartões */
+    gap: 20px;               /* espaçamento melhor */
+    flex-wrap: wrap;
+}
+
+/* ===== ALERTAS ===== */
+.alert-danger {
+    background-color: rgba(255, 0, 0, 0.15);
+    border: 1px solid rgba(255, 80, 80, 0.5);
+    color: #ff8080;
+    font-weight: 600;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+    .user-card {
+        padding: 18px;
+    }
+
+    .user-avatar {
+        width: 70px;
+        height: 70px;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+    }
+
+    .container {
+        padding: 15px;
+    }
+}
+
+</style>
 </head>
 <body>
-    <div class="selection-container">
-        <h2>Selecionar Usuário</h2>
-        
-        <?php if (isset($_SESSION['erro_selecao'])): ?>
-            <div class="mensagem-erro"><?= htmlspecialchars($_SESSION['erro_selecao']); ?></div>
-            <?php unset($_SESSION['erro_selecao']); ?>
-        <?php endif; ?>
 
-        <?php if (isset($_SESSION['sucesso_selecao'])): ?>
-            <div class="mensagem-sucesso"><?= htmlspecialchars($_SESSION['sucesso_selecao']); ?></div>
-            <?php unset($_SESSION['sucesso_selecao']); ?>
-        <?php endif; ?>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-users-cog"></i> Acessar como outro Usuário</h2>
+        <a href="home.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    </div>
 
-        <form action="../actions/trocar_usuario.php" method="POST">
-            
-            <div class="form-group">
-                <label>Acessar como:</label>
-                <div class="user-list">
-                    <?php while ($usuario = $result_usuarios->fetch_assoc()): ?>
-                        <?php
-                            // Define a foto padrão caso o usuário não tenha uma
-                            $foto_usuario = $usuario['foto'] ? $usuario['foto'] : 'default-profile.png';
-                        ?>
-                        <div class="user-item">
-                            <input type="radio" name="usuario_id" id="user_<?= $usuario['id'] ?>" value="<?= $usuario['id'] ?>" <?= ($usuario['id'] === $id_usuario_atual) ? 'checked' : '' ?> required>
-                            
-                            <label for="user_<?= $usuario['id'] ?>">
-                                <img src="../img/usuarios/<?= htmlspecialchars($foto_usuario) ?>" alt="Foto de <?= htmlspecialchars($usuario['nome']) ?>">
-                                <span>
-                                    <?= htmlspecialchars($usuario['nome']) ?>
-                                    <?= ($usuario['nivel_acesso'] === 'proprietario') ? ' (Principal)' : '' ?>
-                                </span>
-                            </label>
+    <?php if (!empty($erro_msg)): ?>
+        <div class="alert alert-danger text-center mb-4">
+            <?= htmlspecialchars($erro_msg) ?>
+        </div>
+    <?php endif; ?>
+
+    <div class="row">
+        <?php if ($result->num_rows > 0): ?>
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <div class="col-md-4 mb-4">
+                    <form action="../actions/trocar_usuario.php" method="POST" style="height: 100%;">
+                        <input type="hidden" name="id_usuario" value="<?= $row['id'] ?>">
+                        
+                        <div class="user-card" onclick="this.parentNode.submit()">
+                            <img src="../img/usuarios/<?= htmlspecialchars($row['foto'] ?? 'default-profile.png') ?>" class="user-avatar" alt="Foto">
+                            <div class="user-name"><?= htmlspecialchars($row['nome']) ?></div>
+                            <div class="user-email"><?= htmlspecialchars($row['email']) ?></div>
+                            <div class="user-role">
+                                <?= ($row['nivel_acesso'] === 'admin' || $row['nivel_acesso'] === 'master') ? 'Administrador' : 'Padrão' ?>
+                            </div>
+                            <div class="mt-3 w-100">
+                                <div class="btn-acessar-fake">
+                                    <i class="fas fa-sign-in-alt"></i> Acessar Conta
+                                </div>
+                            </div>
                         </div>
-                    <?php endwhile; ?>
-                    
-                    <?php if ($result_usuarios->num_rows === 0): ?>
-                        <div style="padding: 15px; text-align: center; color: #aaa;">
-                            Nenhum usuário encontrado neste tenant.
-                        </div>
-                    <?php endif; ?>
+                    </form>
                 </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div class="col-12 text-center text-muted">
+                <h4>Nenhum outro usuário ativo encontrado.</h4>
             </div>
-            
-            <div class="form-group">
-                <label for="senha">Senha do usuário selecionado:</label>
-                <input type="password" name="senha" id="senha" required>
-                <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
-            </div>
-            <button type="submit">Acessar Sistema</button>
-        </form>
-       <a href="../actions/enviar_link_email_perfil.php" 
-          class="btn-padrao-link" 
-          style="background-color: #17a2b8; color: white; margin-left: 10px; display: inline-block; padding: 10px 15px; text-decoration: none; border-radius: 5px; margin-top: 15px;" 
-          
-          onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email ?? 'email.nao.encontrado@error.com') ?>)?');">
-          Redefinir por E-mail
-       </a>
+        <?php endif; ?>
     </div>
+</div>
 
-    
-    </div>
-
-    <script>
-    const toggleSenha = document.getElementById('toggleSenha');
-    const inputSenha = document.getElementById('senha');
-
-    toggleSenha.addEventListener('click', () => {
-      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
-      inputSenha.setAttribute('type', tipo);
-      toggleSenha.classList.toggle('fa-eye');
-      toggleSenha.classList.toggle('fa-eye-slash');
-    });
-    </script>
+<?php include('../includes/footer.php'); ?>
 </body>
 </html>
