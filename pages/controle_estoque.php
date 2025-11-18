@@ -60,6 +60,26 @@ $result = $conn->query($sql);
 </head>
 
 <body>
+    <?php if (isset($_GET['success']) && $_GET['success'] === 'produto_atualizado'): ?>
+    <div style="background:#d4edda;color:#155724;padding:10px;border-radius:6px;margin-bottom:15px;">
+        ✔ Produto atualizado com sucesso!
+    </div>
+<?php endif; ?>
+
+    <?php if (isset($_SESSION['success_message'])): ?>
+    <div class="alert alert-success">
+        <?= $_SESSION['success_message']; ?>
+    </div>
+    <?php unset($_SESSION['success_message']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['error_message'])): ?>
+    <div class="alert alert-danger">
+        <?= $_SESSION['error_message']; ?>
+    </div>
+    <?php unset($_SESSION['error_message']); ?>
+<?php endif; ?>
+
 <div class="container">
     <h1><i class="fa-solid fa-box-open"></i> Controle de Estoque</h1>
 
