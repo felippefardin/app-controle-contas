@@ -39,7 +39,7 @@ $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 $conn->begin_transaction();
 
 try {
-    // 🔹 1. Verificar e-mail duplicado
+    // 🔹 1. Verificar e-mail duplicado no banco Master
     $stmtCheck = $conn->prepare("SELECT id FROM usuarios WHERE email = ? LIMIT 1");
     $stmtCheck->bind_param("s", $email);
     $stmtCheck->execute();
@@ -52,10 +52,10 @@ try {
     }
     $stmtCheck->close();
 
-    // 🔹 2. Inserir usuário MASTER (admin do tenant)
+    // 🔹 2. Inserir usuário MASTER (tabela global de login)
     $stmtUser = $conn->prepare("
         INSERT INTO usuarios (nome, email, senha, tipo_pessoa, documento, telefone, nivel_acesso, perfil, tipo, status, is_master)
-        VALUES (?, ?, ?, ?, ?, ?, 'admin', 'admin', 'admin', 'ativo', 1)
+        VALUES (?, ?, ?, ?, ?, ?, 'proprietario', 'admin', 'admin', 'ativo', 1)
     ");
     $stmtUser->bind_param(
         "ssssss",
@@ -70,15 +70,16 @@ try {
     $new_usuario_id = $conn->insert_id;
     $stmtUser->close();
 
-    // 🔹 3. Criar tenant
+    // 🔹 3. Gerar ID do Tenant e Credenciais
     $tenantId = 'T' . substr(md5(uniqid($email, true)), 0, 32);
 
-    // Nomes curtos para evitar limite de 32 caracteres
+    // Dados do banco do tenant
     $dbHost     = $_ENV['DB_HOST'] ?? 'localhost';
     $dbDatabase = 'tenant_db_' . $new_usuario_id;
     $dbUser     = 'dbuser_' . $new_usuario_id;
     $dbPassword = bin2hex(random_bytes(16));
 
+    // Inserir na tabela tenants
     $stmtTenant = $conn->prepare("
         INSERT INTO tenants (
             tenant_id, usuario_id, nome, admin_email, senha, 
@@ -102,52 +103,116 @@ try {
     $stmtTenant->execute();
     $stmtTenant->close();
 
-    // 🔹 4. Atualizar tenant_id no usuário
+    // 🔹 4. Atualizar tenant_id no usuário Master
     $stmtUpdateUser = $conn->prepare("UPDATE usuarios SET tenant_id = ? WHERE id = ?");
     $stmtUpdateUser->bind_param("si", $tenantId, $new_usuario_id);
     $stmtUpdateUser->execute();
     $stmtUpdateUser->close();
 
-    // 🔹 5. Criar banco e usuário no MySQL
+    // 🔹 5. Criar banco de dados físico e usuário MySQL
     $rootConn = new mysqli($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASSWORD']);
-    $rootConn->query("CREATE DATABASE IF NOT EXISTS `$dbDatabase` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-    $rootConn->query("CREATE USER IF NOT EXISTS '$dbUser'@'localhost' IDENTIFIED BY '$dbPassword'");
-    $rootConn->query("GRANT ALL PRIVILEGES ON `$dbDatabase`.* TO '$dbUser'@'localhost'");
+    if ($rootConn->connect_error) {
+        throw new Exception("Erro de conexão root: " . $rootConn->connect_error);
+    }
+    
+    $safeDbName = $rootConn->real_escape_string($dbDatabase);
+    $safeDbUser = $rootConn->real_escape_string($dbUser);
+    $safeDbPass = $rootConn->real_escape_string($dbPassword);
+
+    // [CORREÇÃO]: Forçar limpeza de usuários antigos órfãos para evitar conflito de senha
+    $rootConn->query("DROP USER IF EXISTS '$safeDbUser'@'localhost'");
+    $rootConn->query("DROP USER IF EXISTS '$safeDbUser'@'%'");
+
+    // Criar banco
+    $rootConn->query("CREATE DATABASE IF NOT EXISTS `$safeDbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    
+    // Criar usuário novo (garantindo senha sincronizada) e dar permissões
+    // Cria para localhost (socket)
+    $rootConn->query("CREATE USER '$safeDbUser'@'localhost' IDENTIFIED BY '$safeDbPass'");
+    $rootConn->query("GRANT ALL PRIVILEGES ON `$safeDbName`.* TO '$safeDbUser'@'localhost'");
+    
+    // Se o host configurado não for localhost, cria para ele também (ex: 127.0.0.1)
+    if ($dbHost !== 'localhost') {
+        $rootConn->query("DROP USER IF EXISTS '$safeDbUser'@'$dbHost'");
+        $rootConn->query("CREATE USER '$safeDbUser'@'$dbHost' IDENTIFIED BY '$safeDbPass'");
+        $rootConn->query("GRANT ALL PRIVILEGES ON `$safeDbName`.* TO '$safeDbUser'@'$dbHost'");
+    }
+
     $rootConn->query("FLUSH PRIVILEGES");
 
-    // 🔹 6. Executar schema.sql no banco do tenant
+    // 🔹 6. Rodar o Schema no banco do Tenant
     $schemaPath = __DIR__ . '/../schema.sql';
     if (file_exists($schemaPath)) {
+        // Conecta no banco NOVO usando as credenciais recém-criadas
         $tenantConn = new mysqli($dbHost, $dbUser, $dbPassword, $dbDatabase);
+        
+        if ($tenantConn->connect_error) {
+            // Se falhar aqui, é porque o GRANT não funcionou ou senha não bateu
+            throw new Exception("Erro ao conectar no banco do tenant ($dbUser): " . $tenantConn->connect_error);
+        }
+
         $schemaSql = file_get_contents($schemaPath);
 
+        // Executa multi_query para criar as tabelas
         if ($tenantConn->multi_query($schemaSql)) {
             do {
                 if ($result = $tenantConn->store_result()) {
                     $result->free();
                 }
             } while ($tenantConn->more_results() && $tenantConn->next_result());
+        } else {
+            throw new Exception("Erro SQL no schema: " . $tenantConn->error);
         }
+
+        // 🔹 6.1 Inserir o Usuário DENTRO do Banco do Tenant
+        // É aqui que resolve o problema de "usuário não encontrado"
+        $stmtTenantInsert = $tenantConn->prepare("
+            INSERT INTO usuarios (
+                nome, email, senha, tipo_pessoa, documento, telefone, 
+                nivel_acesso, perfil, status, is_master, tenant_id
+            ) VALUES (?, ?, ?, ?, ?, ?, 'proprietario', 'admin', 'ativo', 1, ?)
+        ");
+        
+        if (!$stmtTenantInsert) {
+             throw new Exception("Erro prepare insert tenant: " . $tenantConn->error);
+        }
+
+        $stmtTenantInsert->bind_param(
+            "sssssss",
+            $nome,
+            $email,
+            $senha_hash,
+            $tipo_pessoa,
+            $documento,
+            $telefone,
+            $tenantId
+        );
+        
+        if (!$stmtTenantInsert->execute()) {
+            throw new Exception("Erro execute insert tenant: " . $stmtTenantInsert->error);
+        }
+        $stmtTenantInsert->close();
         $tenantConn->close();
+
     } else {
-        error_log("❌ schema.sql não encontrado em $schemaPath");
-        throw new Exception("Erro interno: schema do tenant não encontrado.");
+        error_log("❌ schema.sql não encontrado.");
+        throw new Exception("Erro interno: arquivo de banco de dados não encontrado.");
     }
 
     $rootConn->close();
 
-    // 🔹 7. Commit da transação master
+    // 🔹 7. Commit final
     $conn->commit();
 
-    $_SESSION['registro_sucesso'] = "Cadastro realizado! Você ganhou $dias_teste dias de teste grátis.";
+    $_SESSION['registro_sucesso'] = "Cadastro realizado com sucesso! Aproveite seus $dias_teste dias de teste.";
     header("Location: ../pages/login.php?msg=cadastro_sucesso");
     exit;
 
 } catch (Exception $e) {
     $conn->rollback();
     error_log("Erro no registro: " . $e->getMessage());
-    $_SESSION['erro_registro'] = "Erro ao registrar usuário. Tente novamente.";
-    header("Location: ../pages/registro.php?msg=erro_db_fatal");
+    $_SESSION['erro_registro'] = "Erro no sistema: " . $e->getMessage();
+    header("Location: ../pages/registro.php?msg=erro_fatal");
     exit;
 }
 ?>

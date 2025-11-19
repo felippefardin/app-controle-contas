@@ -3,17 +3,20 @@ require_once '../includes/session_init.php';
 require_once '../database.php';
 
 // 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
-if (!isset($_SESSION['usuario_logado'])) {
+// Verifica se a sessão está ativa (true)
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
 }
+
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// Pega os IDs da sessão e da URL
-$id_usuario = $_SESSION['usuario_logado']['id'];
+// --- CORREÇÃO AQUI ---
+// O ID do usuário agora está em $_SESSION['usuario_id']
+$id_usuario = $_SESSION['usuario_id'];
 $id_registro = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 include('../includes/header.php');
