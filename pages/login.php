@@ -1,228 +1,137 @@
 <?php
-require_once __DIR__ . '/../includes/session_init.php';
+require_once '../includes/session_init.php';
 
-
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
+// Se já estiver logado E não for um redirecionamento de sucesso recente, vai direto
+if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true && !isset($_GET['sucesso'])) {
+    header('Location: selecionar_usuario.php');
+    exit;
 }
-
-$erro = $_SESSION['erro_login'] ?? '';
-unset($_SESSION['erro_login']);
-
-$sucesso = $_SESSION['registro_sucesso'] ?? '';
-unset($_SESSION['registro_sucesso']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Login - App Controle de Contas</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      background-color: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      display: flex;
-      height: 100vh;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
-      padding: 10px;
-    }
-    form {
-      background: #222;
-      padding: 25px 30px;
-      border-radius: 8px;
-      width: 500px;
-      box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-    form h2 {
-      margin-bottom: 20px;
-      text-align: center;
-      color: #00bfff;
-    }
-    label { margin-top: 10px; font-weight: 600; font-size: 0.9rem; }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-    }
-    input:focus {
-      outline: 2px solid #00bfff;
-      background-color: #333;
-      color: #fff;
-    }
-    button {
-      margin-top: 20px;
-      padding: 12px;
-      background-color: #007bff;
-      border: none;
-      border-radius: 5px;
-      color: white;
-      font-weight: bold;
-      font-size: 1.1rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    button:hover { background-color: #0056b3; }
-    .erro {
-      background-color: #cc4444;
-      padding: 10px;
-      margin-bottom: 15px;
-      border-radius: 5px;
-      font-weight: 600;
-      text-align: center;
-    }
-    .sucesso {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px;
-      margin-bottom: 15px;
-      border-radius: 5px;
-      font-weight: 600;
-      text-align: center;
-    }
-    .password-container { position: relative; width: 100%; }
-    .password-container input { padding-right: 35px; }
-    .password-container .toggle-password {
-      position: absolute;
-      top: 50%;
-      right: 10px;
-      transform: translateY(-50%);
-      cursor: pointer;
-      color: black;
-      font-size: 1.1rem;
-    }
-    .action-icons {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      gap: 15px;
-    }
-    .action-icons a {
-      color: #0af;
-      text-decoration: none;
-      font-size: 1.3rem;
-      position: relative;
-      transition: transform 0.3s ease;
-    }
-    .action-icons a:hover { transform: scale(1.2); }
-    .action-icons a.feedback::after {
-      content: "Nos ajude a melhorar o sistema com sua opinião";
-      position: absolute;
-      bottom: 130%;
-      right: 50%;
-      transform: translateX(50%);
-      background-color: #00bfff;
-      color: #fff;
-      font-size: 0.8rem;
-      padding: 8px 10px;
-      border-radius: 6px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-    .action-icons a.feedback:hover::after { opacity: 1; }
-    .action-icons a.suporte::after {
-      content: "Fale Conosco";
-      position: absolute;
-      bottom: 130%;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #00bfff;
-      font-weight: bold;
-      font-size: 0.9rem;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-    .action-icons a.suporte:hover::after { opacity: 1; }
-    @media (max-width: 500px) {
-      form { width: 100%; padding: 20px; }
-      .action-icons { gap: 10px; top: 5px; right: 5px; }
-      .action-icons a { font-size: 1.2rem; }
-      button { font-size: 1rem; padding: 10px; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - App Controle</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #eee;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 { color: #00bfff; margin-bottom: 25px; }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 8px; color: #ccc; }
+        input {
+            width: 100%; padding: 12px; border-radius: 6px;
+            border: 1px solid #444; background-color: #2c2c2c;
+            color: #fff; box-sizing: border-box; font-size: 1rem;
+        }
+        input:focus { outline: none; border-color: #00bfff; }
+        
+        button {
+            width: 100%; padding: 12px; border: none; border-radius: 6px;
+            background: linear-gradient(135deg, #007bff, #00bfff);
+            color: white; font-weight: bold; font-size: 1rem;
+            cursor: pointer; transition: 0.3s; margin-top: 10px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 191, 255, 0.4); }
+        
+        .links { margin-top: 20px; font-size: 0.9rem; }
+        .links a { color: #888; text-decoration: none; margin: 0 10px; }
+        .links a:hover { color: #fff; }
+
+        /* Mensagens */
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .alert-danger { background-color: rgba(220, 53, 69, 0.2); color: #ff6b6b; border: 1px solid #dc3545; }
+        .alert-success { background-color: rgba(40, 167, 69, 0.2); color: #2ecc71; border: 1px solid #28a745; }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #2ecc71;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
-  <form action="../actions/login.php" method="POST" novalidate>
-    <div class="action-icons">
-      <a href="feedback.php" class="feedback" title="Feedback"><i class="fas fa-comment-dots"></i></a>
-      <a href="suporte.php" class="suporte" title="Suporte"><i class="fas fa-headset"></i></a>
-    </div>
-    <h2>Login</h2>
 
-    <?php if (!empty($sucesso)) : ?>
-      <div class="sucesso"><?= htmlspecialchars($sucesso) ?></div>
+<div class="login-container">
+    <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
+
+    <?php if (isset($_SESSION['login_erro'])): ?>
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i> 
+            <?= htmlspecialchars($_SESSION['login_erro']) ?>
+        </div>
+        <?php unset($_SESSION['login_erro']); ?>
     <?php endif; ?>
 
-    <?php if (!empty($erro)) : ?>
-      <div class="erro"><?= htmlspecialchars($erro) ?></div>
-
-      <?php if (stripos($erro, 'assinatura') !== false && stripos($erro, 'ativa') !== false) : ?>
+    <?php if (isset($_GET['sucesso']) && $_GET['sucesso'] == '1'): ?>
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle"></i> 
+            Login registrado com sucesso
+        </div>
+        <p style="color: #aaa;">Acessando sistema...</p>
+        <div class="loading-spinner"></div>
+        
         <script>
-          setTimeout(() => {
-            window.location.href = "assinar.php";
-          }, 2000);
+            // Redireciona após 2 segundos (2000ms)
+            setTimeout(function() {
+                window.location.href = 'selecionar_usuario.php';
+            }, 2000);
         </script>
-      <?php endif; ?>
+    <?php else: ?>
+        <form action="../actions/login.php" method="POST">
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" required autofocus placeholder="seu@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input type="password" id="senha" name="senha" required placeholder="Sua senha">
+            </div>
+
+            <button type="submit">Entrar</button>
+        </form>
+
+        <div class="links">
+            <a href="esqueci_senha_login.php">Esqueci minha senha</a>
+            <span style="color: #444;">|</span>
+            <a href="registro.php">Criar conta</a>
+        </div>
     <?php endif; ?>
-
-    <label for="email">E-mail</label>
-    <input type="email" id="email" name="email" required autofocus />
-
-    <label for="senha">Senha</label>
-    <div class="password-container">
-      <input type="password" id="senha" name="senha" required />
-      <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
-    </div>
-
-    <button type="submit">Entrar</button>
-
-    <p style="margin-top:10px; text-align:center;">
-      <a href="registro.php" style="color:#0af; text-decoration:none;">Não tem conta? Cadastre-se</a>
-    </p>
-    <p style="text-align:center; margin-top: 10px;">
-      <a href="esqueci_senha_login.php" style="color:#0af; text-decoration:none;">Esqueci minha senha</a>
-    </p>
-  </form>
-
-  <script>
-    const toggleSenha = document.getElementById('toggleSenha');
-    const inputSenha = document.getElementById('senha');
-    toggleSenha.addEventListener('click', () => {
-      const tipo = inputSenha.getAttribute('type') === 'password' ? 'text' : 'password';
-      inputSenha.setAttribute('type', tipo);
-      toggleSenha.classList.toggle('fa-eye');
-      toggleSenha.classList.toggle('fa-eye-slash');
-    });
-  </script>
-  <?php if (isset($_GET['msg']) && $_GET['msg'] === 'cadastro_sucesso'): ?>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script>
-    Swal.fire({
-      icon: 'success',
-      title: 'Cadastro realizado com sucesso!',
-      html: '🎉 Sua conta foi criada e você ganhou <b><?php echo $_SESSION["registro_sucesso"] ?? "15 dias de teste grátis"; ?></b>.',
-      confirmButtonText: 'Ir para Login',
-      confirmButtonColor: '#3085d6',
-      allowOutsideClick: false
-    }).then(() => {
-      window.location.href = 'login.php';
-    });
-  </script>
-  <?php unset($_SESSION['registro_sucesso']); ?>
-<?php endif; ?>
+</div>
 
 </body>
 </html>

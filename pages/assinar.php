@@ -1,6 +1,8 @@
 <?php
+// pages/assinar.php
+
 // --- Inicia sessão e configurações ---
-require_once __DIR__ . '/../includes/session_init.php'; // session_init.php já deve iniciar a sessão
+require_once __DIR__ . '/../includes/session_init.php'; 
 
 // --- Bloco para capturar a mensagem de erro ---
 $mensagem_erro_assinatura = '';
@@ -57,17 +59,16 @@ $planos = [
 // 🔹 Processa o formulário de assinatura
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['email'])) {
 
-    // ⬇️ CORREÇÃO 1: Obter o ID do usuário logado e verificar se existe
-    // ❗️❗️ CORREÇÃO DA VARIÁVEL DE SESSÃO ❗️❗️
-    $idUsuario = $_SESSION['usuario_id'] ?? null; // Corrigido de 'id_usuario' para 'usuario_id'
+    // ⬇️ CORREÇÃO PRINCIPAL (Foreign Key) ⬇️
+    // Tenta pegar o ID Master (se logado no painel). Se não, pega o ID normal (se bloqueado no login).
+    $idUsuario = $_SESSION['usuario_id_master'] ?? $_SESSION['usuario_id'] ?? null;
 
     if (!$idUsuario) {
-        // Redireciona para evitar a falha da chave estrangeira, pois id_usuario é obrigatório
-        $_SESSION['erro_assinatura'] = 'Você precisa estar logado para assinar um plano. O ID do usuário não foi encontrado na sessão.';
+        $_SESSION['erro_assinatura'] = 'Erro de sessão: ID do usuário não identificado. Faça login novamente.';
         header("Location: assinar.php");
         exit;
     }
-    // ⬆️ FIM DA CORREÇÃO 1
+    // ⬆️ FIM DA CORREÇÃO ⬆️
 
     $planoSelecionado = $_POST['plano'];
     $emailComprador = trim($_POST['email']);
@@ -79,8 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
     $plano = $planos[$planoSelecionado];
 
     // 🔹 Dados do comprador e vendedor sandbox
-    $payer_email = "test_user_2368268688435555249@testuser.com";
-    $collector_id = "2411601376"; // vendedor sandbox
+    // Idealmente, use o e-mail do comprador real se estiver em produção, ou um fixo em teste
+    $payer_email = "test_user_2368268688435555249@testuser.com"; 
+    $collector_id = "2411601376"; 
 
     // 🔹 Monta dados da assinatura
     $dados = [
@@ -98,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
         ],
         "metadata" => [
             "plano" => $plano['nome'],
-            "email_usuario_real" => $emailComprador
+            "email_usuario_real" => $emailComprador,
+            "id_usuario_sistema" => $idUsuario
         ]
     ];
 
@@ -121,7 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
         // 🔹 Salva assinatura no banco
         $conn = getMasterConnection();
 
-        // ⬇️ CORREÇÃO 2: Incluir a coluna id_usuario no INSERT
         $stmt = $conn->prepare("
             INSERT INTO assinaturas (id_usuario, email, plano, valor, status, mp_preapproval_id)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -129,7 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
 
         $status = 'pendente';
 
-        // ⬇️ CORREÇÃO 3: Adicionar o idUsuario (tipo 'i' para integer) no bind_param
         $stmt->bind_param(
             "isdsss",
             $idUsuario,
@@ -139,11 +140,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
             $status,
             $resposta['id']
         );
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            // 🔹 Redireciona para checkout sandbox
+            header("Location: " . $resposta['init_point']);
+            exit;
+        } else {
+             // Erro ao salvar no banco (ex: tabela não existe ou dados inválidos)
+             echo "Erro de Banco de Dados: " . $stmt->error;
+             exit;
+        }
 
-        // 🔹 Redireciona para checkout sandbox
-        header("Location: " . $resposta['init_point']);
-        exit;
     } else {
         echo "<pre>❌ Erro ao criar assinatura (HTTP $httpcode)\n";
         print_r($resposta);
@@ -268,6 +275,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
             font-family: Arial, sans-serif;
             border: 1px solid #dc3545;
         }
+        .btn-voltar {
+            display: block;
+            width: fit-content;
+            margin: 20px auto 0;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .btn-voltar:hover { color: #fff; }
     </style>
 </head>
 <body>
@@ -307,6 +323,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plano'], $_POST['emai
             <b>test_user_2368268688435555249@testuser.com</b>
         </small>
     </p>
+    
+    <a href="minha_assinatura.php" class="btn-voltar">Voltar</a>
 </div>
 
 </body>

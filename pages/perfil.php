@@ -16,7 +16,6 @@ if ($conn === null) {
 $id_usuario = $_SESSION['usuario_id'];
 $nivel_acesso = $_SESSION['nivel_acesso'] ?? 'padrao';
 
-// Define o texto do perfil para exibição
 $perfil_texto = ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario') 
     ? 'Principal (Administrador)' 
     : 'Usuário Padrão';
@@ -34,17 +33,24 @@ $stmt->close();
 $mensagem = $erro = '';
 $uploadDir = '../img/usuarios/';
 
+// Verifica mensagens via GET (vindo do enviar_link_exclusao.php)
+if (isset($_GET['mensagem'])) {
+    $_SESSION['perfil_msg'] = $_GET['mensagem'];
+}
+if (isset($_GET['erro'])) {
+    $_SESSION['perfil_erro'] = $_GET['erro'];
+}
+
 // 3. Processa o formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome_novo = trim($_POST['nome'] ?? '');
-    $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); // Limpa CPF
+    $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); 
     $telefone_novo = trim($_POST['telefone'] ?? '');
     $email_novo = trim($_POST['email'] ?? '');
     $senha_nova = trim($_POST['senha'] ?? '');
     $senha_confirmar = trim($_POST['senha_confirmar'] ?? '');
     $novoNomeFoto = $foto_atual;
 
-    // Upload de foto
     if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
         $fileTmpPath = $_FILES['foto']['tmp_name'];
         $fileName = $_FILES['foto']['name'];
@@ -56,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $dest_path = $uploadDir . $novoNomeFoto;
 
             if (move_uploaded_file($fileTmpPath, $dest_path)) {
-                // Apaga foto antiga se não for a padrão
                 if ($foto_atual && $foto_atual !== 'default-profile.png' && file_exists($uploadDir . $foto_atual)) {
                     unlink($uploadDir . $foto_atual);
                 }
@@ -69,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif (!filter_var($email_novo, FILTER_VALIDATE_EMAIL)) $erro = "E-mail inválido.";
         elseif (!empty($senha_nova) && $senha_nova !== $senha_confirmar) $erro = "As novas senhas não coincidem.";
         else {
-            // Verifica se e-mail já existe (exceto para o próprio usuário)
             $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
             $stmt_check->bind_param("si", $email_novo, $id_usuario);
             $stmt_check->execute();
@@ -87,11 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($stmt_update->execute()) {
-                    // Atualiza sessão se necessário
                     $_SESSION['usuario_nome'] = $nome_novo;
                     $_SESSION['usuario_foto'] = $novoNomeFoto;
 
-                    // Atualiza variáveis locais para exibir
                     $nome = $nome_novo;
                     $cpf = $cpf_novo;
                     $telefone = $telefone_novo;
@@ -135,7 +137,6 @@ input:focus { outline: 2px solid #00bfff; }
 .password-wrapper input { flex: 1; padding-right: 40px; }
 .toggle-password { position: absolute; right: 10px; color: #ccc; cursor: pointer; }
 
-/* Badge de Perfil */
 .badge-perfil {
     display: inline-block;
     padding: 8px 12px;
@@ -208,9 +209,9 @@ input:focus { outline: 2px solid #00bfff; }
                 <i class="fa-solid fa-save"></i> Salvar Alterações
             </button>
 
-            <a href="../actions/enviar_link_exclusao.php" class="btn-excluir" onclick="return confirm('Você tem certeza que deseja iniciar o processo de exclusão da sua conta?');">
+            <button type="button" id="btnExcluirConta" class="btn-excluir">
                 <i class="fa-solid fa-trash"></i> Excluir Conta
-            </a>
+            </button>
         </div>
 
         <?php if ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario'): ?>
@@ -227,6 +228,29 @@ input:focus { outline: 2px solid #00bfff; }
     $(document).ready(function(){
         $('#cpf').mask('000.000.000-00', {reverse: true});
         $('#telefone').mask('(00) 00000-0000');
+        
+        // Lógica do Modal de Confirmação de Exclusão
+        $('#btnExcluirConta').on('click', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                title: 'Excluir Conta?',
+                text: "Você receberá um e-mail para confirmar a exclusão definitiva de todos os seus dados. Esta ação inicial não pode ser desfeita.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sim, enviar e-mail de exclusão',
+                cancelButtonText: 'Cancelar',
+                background: '#1e1e1e',
+                color: '#eee'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Redireciona para o script de envio
+                    window.location.href = '../actions/enviar_link_exclusao.php';
+                }
+            });
+        });
     });
 
     document.querySelectorAll('.toggle-password').forEach(icon => {
@@ -242,6 +266,8 @@ input:focus { outline: 2px solid #00bfff; }
         icon: 'success',
         title: 'Sucesso!',
         text: '<?= addslashes($_SESSION['perfil_msg']) ?>',
+        background: '#1e1e1e',
+        color: '#eee',
         confirmButtonColor: '#3085d6'
     });
     <?php unset($_SESSION['perfil_msg']); endif; ?>
@@ -251,6 +277,8 @@ input:focus { outline: 2px solid #00bfff; }
         icon: 'error',
         title: 'Erro!',
         text: '<?= addslashes($_SESSION['perfil_erro']) ?>',
+        background: '#1e1e1e',
+        color: '#eee',
         confirmButtonColor: '#d33'
     });
     <?php unset($_SESSION['perfil_erro']); endif; ?>

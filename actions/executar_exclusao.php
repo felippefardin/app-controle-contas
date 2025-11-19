@@ -1,11 +1,13 @@
 <?php
-// Inclui o $env e as funções de conexão
+// actions/executar_exclusao.php
+
+// Carrega as configurações e a conexão
 require_once '../database.php'; 
 
-// Força o mysqli a lançar exceções
+// Configura o PHP para reportar erros do MySQLi como exceções
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-// Conexão principal (para tabelas tenants, usuarios, solicitacoes_exclusao)
+// 1️⃣ Conexão principal (Master)
 $conn = getMasterConnection();
 if ($conn === null) {
     die("Falha ao conectar ao banco de dados principal.");
@@ -13,7 +15,7 @@ if ($conn === null) {
 
 $token = $_POST['token'] ?? '';
 $id_usuario = null;
-$tenant_id = null;
+$tenant_id_string = null; 
 $db_name = null;
 $db_user = null;
 
@@ -23,82 +25,101 @@ if (empty($token)) {
 }
 
 try {
-    // 1️⃣ Valida o token e busca o ID do usuário (na tabela principal 'usuarios')
+    // 2️⃣ Valida o token e busca o ID do usuário
     $stmt = $conn->prepare("SELECT id_usuario FROM solicitacoes_exclusao WHERE token = ? AND expira_em > NOW()");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $stmt->bind_result($id_usuario);
     if (!$stmt->fetch()) {
+        $stmt->close();
         throw new Exception("Token inválido ou expirado.");
     }
     $stmt->close();
 
-    // 2️⃣ Busca o ID do tenant (na tabela principal 'usuarios')
+    // 3️⃣ Busca o ID do tenant (String) na tabela de usuários
     $stmt_tenant = $conn->prepare("SELECT tenant_id FROM usuarios WHERE id = ?");
     $stmt_tenant->bind_param("i", $id_usuario);
     $stmt_tenant->execute();
-    $stmt_tenant->bind_result($tenant_id);
-    if (!$stmt_tenant->fetch() || $tenant_id === null) {
+    $stmt_tenant->bind_result($tenant_id_string);
+    
+    if (!$stmt_tenant->fetch() || $tenant_id_string === null) {
+        $stmt_tenant->close();
         throw new Exception("Não foi possível encontrar o tenant_id para este usuário.");
     }
     $stmt_tenant->close();
 
-    // 3️⃣ Busca as credenciais do banco de dados do tenant (na tabela 'tenants')
-    $stmt_creds = $conn->prepare("SELECT db_database, db_user FROM tenants WHERE id = ?");
-    $stmt_creds->bind_param("i", $tenant_id);
+    // 4️⃣ Busca as credenciais do banco de dados do tenant
+    $stmt_creds = $conn->prepare("SELECT db_database, db_user FROM tenants WHERE tenant_id = ?");
+    $stmt_creds->bind_param("s", $tenant_id_string);
     $stmt_creds->execute();
     $stmt_creds->bind_result($db_name, $db_user);
-    if (!$stmt_creds->fetch() || empty($db_name) || empty($db_user)) {
-        throw new Exception("Não foi possível encontrar as credenciais do banco de dados do tenant.");
+    
+    if (!$stmt_creds->fetch()) {
+        $db_name = null; // Tenant pode já não ter banco associado
     }
     $stmt_creds->close();
 
-    // 4️⃣ Conecta-se como admin do MySQL para apagar o banco e o usuário
-    // (Usa as variáveis $env carregadas pelo 'database.php')
-    $admin_conn = new mysqli($env['DB_HOST'], $env['DB_ADMIN_USER'], $env['DB_ADMIN_PASS']);
-    if ($admin_conn->connect_error) {
-        throw new Exception("Falha ao conectar como admin do MySQL: " . $admin_conn->connect_error);
-    }
-    
-    // Apaga o banco de dados do tenant (ex: tenant_47b79207a6e7b08d)
-    $admin_conn->query("DROP DATABASE IF EXISTS `{$db_name}`");
-    
-    // Apaga o usuário do MySQL associado a esse banco
-    $admin_conn->query("DROP USER IF EXISTS '{$db_user}'@'localhost'");
-    
-    $admin_conn->close();
+    // 5️⃣ Conecta-se como admin do MySQL para apagar o banco e o usuário do DB
+    // CORREÇÃO: Usa $_ENV em vez de $env e define valores padrão
+    if (!empty($db_name) && !empty($db_user)) {
+        $db_host = $_ENV['DB_HOST'] ?? 'localhost';
+        // Tenta usar usuário 'DB_ADMIN_USER' do .env, senão usa o usuário padrão 'DB_USER'
+        $db_admin_user = $_ENV['DB_ADMIN_USER'] ?? $_ENV['DB_USER'] ?? 'root';
+        $db_admin_pass = $_ENV['DB_ADMIN_PASS'] ?? $_ENV['DB_PASSWORD'] ?? '';
 
-    
-    // 5️⃣ Apaga os registros das tabelas principais (tenants e usuarios)
-    //    A linha em 'solicitacoes_exclusao' será apagada pelo 'ON DELETE CASCADE'
-    
+        $admin_conn = new mysqli($db_host, $db_admin_user, $db_admin_pass);
+        
+        if ($admin_conn->connect_error) {
+            throw new Exception("Falha ao conectar para exclusão de DB: " . $admin_conn->connect_error);
+        }
+        
+        // Apaga o banco de dados do tenant
+        $admin_conn->query("DROP DATABASE IF EXISTS `{$db_name}`");
+        
+        // Tenta apagar o usuário do MySQL (pode falhar em alguns servidores, então usamos try/catch)
+        try {
+            $admin_conn->query("DROP USER IF EXISTS '{$db_user}'@'localhost'");
+            $admin_conn->query("DROP USER IF EXISTS '{$db_user}'@'%'");
+        } catch (Exception $e) {
+            error_log("Aviso (exclusão): Não foi possível remover usuário MySQL '{$db_user}'. O banco foi apagado.");
+        }
+        
+        $admin_conn->close();
+    }
+
+    // 6️⃣ Apaga os registros das tabelas principais (tenants e usuarios)
     $conn->begin_transaction();
     
-    // Apaga da tabela 'tenants'
-    $stmt_del_tenant = $conn->prepare("DELETE FROM tenants WHERE id = ?");
-    $stmt_del_tenant->bind_param("i", $tenant_id);
-    $stmt_del_tenant->execute();
-    $stmt_del_tenant->close();
-    
-    // Apaga da tabela 'usuarios'
-    $stmt_del_user = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
-    $stmt_del_user->bind_param("i", $id_usuario);
-    $stmt_del_user->execute();
-    $stmt_del_user->close();
-    
-    $conn->commit();
+    try {
+        // Apaga da tabela 'tenants'
+        $stmt_del_tenant = $conn->prepare("DELETE FROM tenants WHERE tenant_id = ?");
+        $stmt_del_tenant->bind_param("s", $tenant_id_string);
+        $stmt_del_tenant->execute();
+        $stmt_del_tenant->close();
+        
+        // Apaga da tabela 'usuarios'
+        $stmt_del_user = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
+        $stmt_del_user->bind_param("i", $id_usuario);
+        $stmt_del_user->execute();
+        $stmt_del_user->close();
+        
+        $conn->commit();
+    } catch (Exception $ex_trans) {
+        $conn->rollback();
+        throw $ex_trans;
+    }
 
-    // 6️⃣ Finaliza a sessão e redireciona
-    session_start();
+    // 7️⃣ Finaliza a sessão e redireciona
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     session_destroy();
+    
     header("Location: ../pages/login.php?sucesso=conta_excluida");
     exit;
 
 } catch (Exception $e) {
-    if ($conn->in_transaction) {
-        $conn->rollback(); // Desfaz a transação se algo falhar
-    }
-    error_log("Falha na exclusão da conta: " . $e->getMessage());
+    error_log("Falha crítica na exclusão da conta: " . $e->getMessage());
     header("Location: ../pages/login.php?erro=falha_exclusao_completa");
     exit;
 } finally {

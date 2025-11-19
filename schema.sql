@@ -297,3 +297,16 @@ CREATE TABLE IF NOT EXISTS tenants (
   UNIQUE KEY subdominio (subdominio)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS faturas_assinatura (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    valor DECIMAL(10,2) NOT NULL,
+    data_vencimento DATE NOT NULL,
+    data_pagamento DATE,
+    status ENUM('pendente', 'pago', 'cancelado') DEFAULT 'pendente',
+    forma_pagamento VARCHAR(50),
+    transacao_id VARCHAR(100),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
