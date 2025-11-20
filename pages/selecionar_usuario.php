@@ -1,9 +1,8 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php'; 
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
-// ❗️❗️ CORREÇÃO 1: Verificar se é 'true' e não apenas se 'isset' ❗️❗️
+// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
@@ -13,18 +12,37 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-// ❗️❗️ CORREÇÃO 2: Ler 'usuario_id' e 'email' direto da SESSÃO ❗️❗️
-// A variável $usuario_logado não é mais um array
-$id_usuario_atual = $_SESSION['usuario_id'] ?? null; // ID do usuário do tenant
-$email = $_SESSION['email'] ?? null; // Email do usuário (do master)
+// ✅ 2. PEGA OS DADOS DO USUÁRIO
+$id_usuario_atual = $_SESSION['usuario_id'] ?? null; 
+$email = $_SESSION['email'] ?? null; 
 
-// ✅ 3. BUSCA TODOS OS USUÁRIOS (INCLUINDO A FOTO) DO CLIENTE (TENANT) ATUAL
-// A consulta agora inclui o campo 'foto'
+// ❗️❗️ CORREÇÃO CRÍTICA 1: Se o e-mail não estiver na sessão, busca no banco ❗️❗️
+if (empty($email) && $id_usuario_atual) {
+    $stmt_email = $conn->prepare("SELECT email FROM usuarios WHERE id = ?");
+    $stmt_email->bind_param("i", $id_usuario_atual);
+    $stmt_email->execute();
+    $res_email = $stmt_email->get_result();
+    if ($row_email = $res_email->fetch_assoc()) {
+        $email = $row_email['email'];
+        // Opcional: Atualiza a sessão para as próximas vezes
+        $_SESSION['email'] = $email;
+    }
+    $stmt_email->close();
+}
+
+// ✅ 3. BUSCA TODOS OS USUÁRIOS DO CLIENTE
 $sql = "SELECT id, nome, nivel_acesso, foto FROM usuarios ORDER BY nome ASC";
 $stmt = $conn->prepare($sql);
 $stmt->execute();
 $result_usuarios = $stmt->get_result();
+
+// ✅ 4. VERIFICA MENSAGENS DE FEEDBACK (Url Parameters)
+$msg_email_sucesso = '';
+if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
+    // Pega o e-mail enviado ou usa o atual como fallback
+    $email_enviado = $_GET['email'] ?? ($email ?? 'seu e-mail');
+    $msg_email_sucesso = "E-mail de senha enviado para <strong>" . htmlspecialchars($email_enviado) . "</strong>";
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -102,29 +120,37 @@ $result_usuarios = $stmt->get_result();
             background-color: #0095cc;
         }
         .mensagem-erro {
-            background-color: #dc3545; /* Vermelho */
+            background-color: #dc3545;
             padding: 10px;
             border-radius: 5px;
             margin-bottom: 20px;
             color: white;
         }
-        
-        /* ✅ **NOVO ESTILO PARA MENSAGEM DE SUCESSO** */
         .mensagem-sucesso {
-            background-color: #28a745; /* Verde */
+            background-color: #28a745;
             padding: 10px;
             border-radius: 5px;
             margin-bottom: 20px;
             color: white;
+        }
+        /* Estilo específico para o alerta de e-mail que some */
+        .alert-float-success {
+            background-color: #28a745;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #1e7e34;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
         }
 
-        /* --- NOVOS ESTILOS PARA A LISTA DE USUÁRIOS --- */
         .user-list {
             list-style: none;
             padding: 0;
             margin: 0 0 20px 0;
-            max-height: 200px; /* Altura máxima para a lista rolável */
-            overflow-y: auto; /* Adiciona barra de rolagem */
+            max-height: 200px;
+            overflow-y: auto;
             border: 1px solid #444;
             border-radius: 5px;
             background-color: #333;
@@ -141,17 +167,16 @@ $result_usuarios = $stmt->get_result();
         }
         .user-item input[type="radio"] {
             margin-right: 15px;
-            width: auto; /* Reseta o width 100% */
+            width: auto;
         }
         .user-item img {
             width: 40px;
             height: 40px;
-            border-radius: 50%; /* Foto redonda */
+            border-radius: 50%;
             margin-right: 10px;
-            object-fit: cover; /* Garante que a imagem cubra o espaço */
+            object-fit: cover;
             border: 1px solid #555;
         }
-        /* O label agora é o container do clique */
         .user-item label {
             display: flex;
             align-items: center;
@@ -160,7 +185,6 @@ $result_usuarios = $stmt->get_result();
             font-weight: normal;
             color: #eee;
         }
-        /* --- FIM DOS NOVOS ESTILOS --- */
     </style>
 </head>
 <body>
@@ -177,6 +201,12 @@ $result_usuarios = $stmt->get_result();
             <?php unset($_SESSION['sucesso_selecao']); ?>
         <?php endif; ?>
 
+        <?php if (!empty($msg_email_sucesso)): ?>
+            <div class="alert-float-success" id="msgEmailSucesso">
+                <?= $msg_email_sucesso; ?>
+            </div>
+        <?php endif; ?>
+
         <form action="../actions/trocar_usuario.php" method="POST">
             
             <div class="form-group">
@@ -184,7 +214,6 @@ $result_usuarios = $stmt->get_result();
                 <div class="user-list">
                     <?php while ($usuario = $result_usuarios->fetch_assoc()): ?>
                         <?php
-                            // Define a foto padrão caso o usuário não tenha uma
                             $foto_usuario = $usuario['foto'] ? $usuario['foto'] : 'default-profile.png';
                         ?>
                         <div class="user-item">
@@ -215,16 +244,14 @@ $result_usuarios = $stmt->get_result();
             </div>
             <button type="submit">Acessar Sistema</button>
         </form>
-       <a href="../actions/enviar_link_email_perfil.php" 
+
+       <a href="../actions/enviar_link_email_perfil.php?email=<?= urlencode($email) ?>&origem=selecionar_usuario" 
           class="btn-padrao-link" 
           style="background-color: #17a2b8; color: white; margin-left: 10px; display: inline-block; padding: 10px 15px; text-decoration: none; border-radius: 5px; margin-top: 15px;" 
           
           onclick="return confirm('Deseja enviar um link de redefinição de senha para o seu e-mail cadastrado (<?= htmlspecialchars($email ?? 'email.nao.encontrado@error.com') ?>)?');">
           Redefinir por E-mail
        </a>
-    </div>
-
-    
     </div>
 
     <script>
@@ -236,6 +263,20 @@ $result_usuarios = $stmt->get_result();
       inputSenha.setAttribute('type', tipo);
       toggleSenha.classList.toggle('fa-eye');
       toggleSenha.classList.toggle('fa-eye-slash');
+    });
+
+    // ✅ SCRIPT PARA FAZER A MENSAGEM SUMIR EM 3 SEGUNDOS
+    document.addEventListener('DOMContentLoaded', function() {
+        const msgSucesso = document.getElementById('msgEmailSucesso');
+        if (msgSucesso) {
+            setTimeout(function() {
+                msgSucesso.style.opacity = '0';
+                // Aguarda a transição de opacidade terminar para remover do DOM
+                setTimeout(function() {
+                    msgSucesso.remove();
+                }, 500); // Tempo igual ao transition no CSS
+            }, 3000); // 3000 milissegundos = 3 segundos
+        }
     });
     </script>
 </body>

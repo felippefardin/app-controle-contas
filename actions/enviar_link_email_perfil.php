@@ -1,48 +1,66 @@
 <?php
-// 1. Iniciar a sessão PRIMEIRO DE TUDO
+// 1. Iniciar a sessão
 require_once '../includes/session_init.php'; 
 
 // 2. Carregar o banco de dados
 require_once '../database.php';
 
-// 3. Define o fuso horário para corrigir o link expirado
+// 3. Define o fuso horário
 date_default_timezone_set('America/Sao_Paulo');
 
-// 4. Importar as classes necessárias (PHPMailer)
+// 4. Importar PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// 5. VERIFICAR A SESSÃO (Usando as chaves corretas)
-if (!isset($_SESSION['usuario_logado']) || !isset($_SESSION['tenant_db'])) {
+// 5. VERIFICAR A SESSÃO E DADOS BÁSICOS
+// Verifica se o login é válido (boolean) e se temos o ID
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true || !isset($_SESSION['usuario_id'])) {
     header('Location: ../pages/login.php');
     exit;
 }
 
-// 6. Pegar a conexão (Funciona, pois depende de 'tenant_db')
-$conn = getTenantConnection(); 
-if ($conn === null) {
-    $_SESSION['erro_selecao'] = 'Falha de conexão BD.';
+// ✅ CORREÇÃO CRÍTICA 1: PEGAR O E-MAIL DO GET (URL)
+// Isso resolve o erro "Invalid address" pois garante que o e-mail venha do clique do botão
+$email_usuario = $_GET['email'] ?? $_SESSION['email'] ?? null;
+$id_usuario = $_SESSION['usuario_id']; // ID do usuário logado
+
+if (empty($email_usuario)) {
+    $_SESSION['erro_selecao'] = 'E-mail não identificado para envio.';
     header('Location: ../pages/selecionar_usuario.php');
     exit;
 }
 
-// 7. Pegar dados do usuário da sessão
-$usuario_logado = $_SESSION['usuario_logado'];
-$id_usuario = $usuario_logado['id'];
-$email_usuario = $usuario_logado['email'];
-$nome_usuario = $usuario_logado['nome'];
-
-// 8. PEGAR O NOME DO BANCO DE DADOS DA SESSÃO
-$tenant_db_info = $_SESSION['tenant_db'];
-$tenant_db_name = $tenant_db_info['db_database'];
-
-if (empty($tenant_db_name)) {
-     $_SESSION['erro_selecao'] = 'Erro de sessão (Nome do BD não encontrado).';
-     header('Location: ../pages/selecionar_usuario.php');
+// 6. Pegar a conexão
+$conn = getTenantConnection(); 
+if ($conn === null) {
+    $_SESSION['erro_selecao'] = 'Falha de conexão com o Banco de Dados.';
+    header('Location: ../pages/selecionar_usuario.php');
     exit;
 }
 
-// 9. Gerar e salvar o token no banco de dados do tenant
+// 7. PEGAR DADOS DO TENANT (Nome do Banco)
+// Verifica se existe na sessão, senão tenta recuperar do contexto atual
+$tenant_db_name = $_SESSION['tenant_db_name'] ?? $_SESSION['tenant_db']['db_database'] ?? null;
+
+if (empty($tenant_db_name)) {
+     $_SESSION['erro_selecao'] = 'Erro: Nome do banco de dados não encontrado na sessão.';
+     header('Location: ../pages/selecionar_usuario.php');
+     exit;
+}
+
+// 8. BUSCAR NOME DO USUÁRIO (Para o e-mail ficar bonito)
+$nome_usuario = 'Usuário'; // Valor padrão
+$stmt_nome = $conn->prepare("SELECT nome FROM usuarios WHERE id = ?");
+$stmt_nome->bind_param("i", $id_usuario);
+if ($stmt_nome->execute()) {
+    $res_nome = $stmt_nome->get_result();
+    if ($row = $res_nome->fetch_assoc()) {
+        $nome_usuario = $row['nome'];
+    }
+}
+$stmt_nome->close();
+
+// 9. Gerar e salvar o token
 $token = bin2hex(random_bytes(32));
 $expiracao = date('Y-m-d H:i:s', strtotime('+1 hour')); 
 
@@ -52,7 +70,7 @@ $stmt->bind_param("ssi", $token, $expiracao, $id_usuario);
 if (!$stmt->execute()) {
     $stmt->close();
     $conn->close();
-    $_SESSION['erro_selecao'] = 'Erro ao gerar token.';
+    $_SESSION['erro_selecao'] = 'Erro ao gerar token de recuperação.';
     header('Location: ../pages/selecionar_usuario.php');
     exit;
 }
@@ -62,6 +80,7 @@ $stmt->close();
 $mail = new PHPMailer(true);
 
 try {
+    // Configurações do Servidor (Do .env ou config)
     $mail->isSMTP();
     $mail->Host       = $_ENV['MAIL_HOST'];
     $mail->SMTPAuth   = true;
@@ -70,36 +89,38 @@ try {
     $mail->SMTPSecure = $_ENV['MAIL_ENCRYPTION']; 
     $mail->Port       = (int)$_ENV['MAIL_PORT']; 
 
+    // Remetente e Destinatário
     $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'], $_ENV['MAIL_FROM_NAME']);
-    $mail->addAddress($email_usuario, $nome_usuario);
+    $mail->addAddress($email_usuario, $nome_usuario); // ✅ Agora $email_usuario não está vazio
     $mail->CharSet = 'UTF-8';
 
+    // Conteúdo
     $mail->isHTML(true);
-    $mail->Subject = 'Redefinição de senha (Usuário)';
+    $mail->Subject = 'Redefinição de senha (Solicitado via Perfil)';
     
     $appUrl = rtrim($_ENV['APP_URL'], '/'); 
     
-    // ✅ **INÍCIO DA MUDANÇA: Correção do Link**
-    // Vamos codificar os dois parâmetros em uma única string base64 para evitar o '&'
+    // Payload seguro
     $payload = base64_encode(json_encode([
         'token' => $token,
         'tenant' => $tenant_db_name
     ]));
     
-    // O novo link usa apenas um parâmetro 'payload'
     $link = $appUrl . "/pages/resetar_senha_usuario.php?payload=" . urlencode($payload);
-    // ✅ **FIM DA MUDANÇA**
     
-    $mail->Body = "Olá $nome_usuario,<br><br>Você solicitou a redefinição de sua senha. Clique no link abaixo para continuar:<br>
-                   <a href='$link'>Redefinir Minha Senha</a><br><br>
-                   Se você não conseguir clicar no link, copie e cole a seguinte URL no seu navegador:<br>
-                   $link<br><br>Este link expira em 1 hora.";
+    $mail->Body = "Olá <strong>$nome_usuario</strong>,<br><br>
+                   Você solicitou a redefinição de sua senha através da tela de seleção de usuários.<br>
+                   Clique no link abaixo para definir uma nova senha:<br><br>
+                   <a href='$link' style='background-color:#00bfff; color:#fff; padding:10px 20px; text-decoration:none; border-radius:5px;'>Redefinir Minha Senha</a><br><br>
+                   Ou copie o link: $link<br><br>
+                   Este link expira em 1 hora.";
 
     $mail->send();
     $conn->close();
     
-    $_SESSION['sucesso_selecao'] = 'Link de redefinição enviado para o seu e-mail!';
-    header('Location: ../pages/selecionar_usuario.php');
+    // ✅ CORREÇÃO CRÍTICA 3: REDIRECIONAR COM STATUS PARA O ALERTA FLUTUANTE
+    // Passamos 'status=email_enviado' e o email para o script JS na outra página capturar
+    header('Location: ../pages/selecionar_usuario.php?status=email_enviado&email=' . urlencode($email_usuario));
     exit;
 
 } catch (Exception $e) {

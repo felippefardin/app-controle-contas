@@ -15,7 +15,6 @@ $usuarioId = $_SESSION['usuario_id'];
 // AJAX Search (Busca Pessoas/Clientes)
 if (isset($_GET['action']) && $_GET['action'] === 'search_pessoa') {
     $term = $_GET['term'] ?? '';
-    // Busca onde tipo é 'pessoa' (cliente)
     $stmt = $conn->prepare("SELECT id, nome FROM pessoas_fornecedores WHERE id_usuario = ? AND nome LIKE ? AND (tipo = 'pessoa' OR tipo = 'ambos') ORDER BY nome ASC LIMIT 10");
     $searchTerm = "%{$term}%";
     $stmt->bind_param("is", $usuarioId, $searchTerm);
@@ -31,6 +30,12 @@ $stmt = $conn->prepare("SELECT id, nome FROM categorias WHERE id_usuario = ? AND
 $stmt->bind_param("i", $usuarioId);
 $stmt->execute();
 $categorias_receita = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// ✅ BUSCAR CONTAS BANCÁRIAS (Para o Modal de Cobrança)
+$stmt_bancos = $conn->prepare("SELECT nome_banco, chave_pix FROM contas_bancarias WHERE id_usuario = ? AND chave_pix IS NOT NULL AND chave_pix != ''");
+$stmt_bancos->bind_param("i", $usuarioId);
+$stmt_bancos->execute();
+$lista_bancos_pix = $stmt_bancos->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // Query Principal
 $where = ["cr.status='pendente'", "cr.usuario_id = " . intval($usuarioId)];
@@ -62,14 +67,22 @@ $result = $conn->query($sql);
     .close-btn { position: absolute; top: 10px; right: 15px; font-size: 28px; cursor: pointer; color: #aaa; }
     
     form.search-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 25px; align-items: center; }
-    input, select { padding: 8px; background: #333; border: 1px solid #444; color: #eee; border-radius: 5px; }
     
+    /* Estilo Base dos Inputs */
+    input, select, textarea { padding: 8px; background: #333; border: 1px solid #444; color: #eee; border-radius: 5px; }
+    
+    /* Estilo Específico para Inputs dentro dos Modais (Para ficarem largura total e com margem) */
+    .modal-content input, .modal-content select, .modal-content textarea { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+
+    label { display: block; margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
+
     table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
     th { background-color: #222; color: #00bfff; }
     tr:nth-child(even) { background-color: #2a2a2a; }
     tr.vencido { background-color: #622 !important; }
 
+    /* Botões */
     .btn { padding: 8px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; color: white; text-decoration: none; display: inline-block; font-size: 14px; }
     .btn-add { background-color: #00bfff; }
     .btn-search { background-color: #27ae60; }
@@ -81,8 +94,9 @@ $result = $conn->query($sql);
     .btn-editar { background: #00bfff; }
     .btn-excluir { background: #c0392b; }
     .btn-repetir { background: #f39c12; }
+    .btn-cobranca { background-color: #ffc107; color: #121212; }
     
-    .autocomplete-container { position: relative; }
+    .autocomplete-container { position: relative; margin-bottom: 10px; }
     .autocomplete-items { position: absolute; border: 1px solid #444; z-index: 99; top: 100%; left: 0; right: 0; background-color: #333; max-height: 150px; overflow-y: auto; }
     .autocomplete-items div { padding: 10px; cursor: pointer; border-bottom: 1px solid #444; }
     .autocomplete-items div:hover { background-color: #555; }
@@ -105,8 +119,8 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
   <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>" title="Data Início">
   <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>" title="Data Fim">
   
-  <button type="submit" class="btn btn-search"><i class="fa fa-search"></i> Buscar</button>
-  <a href="contas_receber.php" class="btn btn-clear"><i class="fa fa-eraser"></i> Limpar</a>
+  <button type="submit" class="btn btn-search" title="Filtrar"><i class="fa fa-search"></i> Buscar</button>
+  <a href="contas_receber.php" class="btn btn-clear" title="Limpar Filtros"><i class="fa fa-eraser"></i> Limpar</a>
 
   <button type="button" class="btn btn-add" onclick="document.getElementById('addContaModal').style.display='flex'">➕ Nova</button>
   <button type="button" class="btn btn-export" onclick="document.getElementById('exportModal').style.display='flex'"><i class="fa fa-download"></i> Exportar</button>
@@ -140,10 +154,15 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
             <td><?= htmlspecialchars($row['nome_categoria'] ?? '-') ?></td>
             <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
             <td><?= $vencido ? 'Atrasado' : 'Em dia' ?></td>
-            <td>
+            <td style="white-space: nowrap;">
                 <button onclick="abrirModalReceber(<?= $row['id'] ?>, '<?= addslashes($nome) ?>', '<?= $row['valor'] ?>')" class="btn btn-action btn-receber" title="Receber"><i class="fa fa-check"></i></button>
+                
+                <button onclick="abrirModalCobranca(<?= $row['id'] ?>, '<?= addslashes($nome) ?>', '<?= $row['valor'] ?>')" class="btn btn-action btn-cobranca" title="Enviar Cobrança"><i class="fa fa-envelope"></i></button>
+                
                 <a href="editar_conta_receber.php?id=<?= $row['id'] ?>" class="btn btn-action btn-editar"><i class="fa fa-pen"></i></a>
+                
                 <button onclick="abrirModalRepetir(<?= $row['id'] ?>)" class="btn btn-action btn-repetir"><i class="fa-solid fa-repeat"></i></button>
+                
                 <button onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($nome)) ?>')" class="btn btn-action btn-excluir" title="Excluir"><i class="fa fa-trash"></i></button>
             </td>
         </tr>
@@ -154,13 +173,45 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
     <p style="text-align:center; margin-top:20px;">Nenhuma conta a receber encontrada.</p>
 <?php endif; ?>
 
+<div id="cobrancaModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
+    <h3>Enviar Cobrança</h3>
+    <p id="txt-cobranca" style="color:#aaa; font-size:14px; margin-bottom:15px;"></p>
+
+    <form action="../actions/enviar_cobranca_action.php" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="id_conta" id="cobranca_id_conta">
+        
+        <label>Chave Pix para Pagamento (Opcional):</label>
+        <select name="chave_pix">
+            <option value="">-- Não incluir Pix --</option>
+            <?php foreach ($lista_bancos_pix as $banco): ?>
+                <option value="<?= htmlspecialchars($banco['chave_pix']) ?>">
+                    <?= htmlspecialchars($banco['nome_banco']) ?> - <?= htmlspecialchars($banco['chave_pix']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <label>Anexar Arquivo (Fatura/Recibo):</label>
+        <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png">
+        
+        <label>Mensagem Adicional:</label>
+        <textarea name="mensagem" rows="3" placeholder="Ex: Segue em anexo a fatura detalhada..."></textarea>
+
+        <button type="submit" class="btn btn-cobranca" style="margin-top:10px; width:100%;">
+            <i class="fa fa-paper-plane"></i> Enviar E-mail
+        </button>
+    </form>
+  </div>
+</div>
+
 <div id="addContaModal" class="modal">
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Nova Receita</h3>
-    <form action="../actions/add_conta_receber.php" method="POST" style="display:flex; flex-direction:column; gap:10px;">
+    <form action="../actions/add_conta_receber.php" method="POST">
         <div class="autocomplete-container">
-            <input type="text" id="pesquisar_pessoa" name="pessoa_nome" placeholder="Cliente/Pagador..." required style="width:100%;">
+            <input type="text" id="pesquisar_pessoa" name="pessoa_nome" placeholder="Cliente/Pagador..." required>
             <div id="pessoa_list" class="autocomplete-items"></div>
         </div>
         <input type="hidden" name="pessoa_id" id="pessoa_id_hidden">
@@ -175,7 +226,7 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
                 <option value="<?= $cat['id'] ?>"><?= $cat['nome'] ?></option>
             <?php endforeach; ?>
         </select>
-        <button type="submit" class="btn btn-add">Salvar</button>
+        <button type="submit" class="btn btn-add" style="width:100%">Salvar</button>
     </form>
   </div>
 </div>
@@ -186,7 +237,7 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
     <h3>Confirmar Recebimento</h3>
     <p id="texto-receber" style="color:#aaa; margin-bottom:15px;"></p>
     
-    <form action="../actions/baixar_conta_receber.php" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:10px;">
+    <form action="../actions/baixar_conta_receber.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="id_conta" id="id_conta_receber">
         
         <label>Data do Recebimento:</label>
@@ -205,7 +256,7 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
         <label>Anexar Comprovante (Opcional):</label>
         <input type="file" name="comprovante" accept="image/*,.pdf">
         
-        <button type="submit" class="btn btn-receber" style="margin-top:10px;">Confirmar</button>
+        <button type="submit" class="btn btn-receber" style="margin-top:10px; width:100%">Confirmar</button>
     </form>
   </div>
 </div>
@@ -214,11 +265,13 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Repetir Conta</h3>
-    <form action="../actions/repetir_conta_receber.php" method="POST" style="display:flex; flex-direction:column; gap:10px;">
+    <form action="../actions/repetir_conta_receber.php" method="POST">
         <input type="hidden" name="conta_id" id="repetir_conta_id">
-        <input type="number" name="repetir_vezes" placeholder="Quantas vezes?" required>
-        <input type="number" name="repetir_intervalo" value="30" placeholder="Intervalo dias">
-        <button type="submit" class="btn btn-repetir">Repetir</button>
+        <label>Quantas vezes?</label>
+        <input type="number" name="repetir_vezes" placeholder="Ex: 2" required>
+        <label>Intervalo (dias):</label>
+        <input type="number" name="repetir_intervalo" value="30" placeholder="30">
+        <button type="submit" class="btn btn-repetir" style="width:100%; margin-top:10px;">Repetir</button>
     </form>
   </div>
 </div>
@@ -227,10 +280,8 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
         <h3>Exportar Relatório</h3>
-        <p style="color:#aaa; margin-bottom:15px; font-size:14px;">Selecione o tipo, período e formato.</p>
-        
-        <form action="../actions/exportar_contas_receber.php" method="GET" target="_blank" style="display:flex; flex-direction:column; gap:10px;">
-            <label style="text-align:left; color:#ccc; font-size:12px;">Tipo de Relatório:</label>
+        <form action="../actions/exportar_contas_receber.php" method="GET" target="_blank">
+            <label>Tipo:</label>
             <select name="status" required>
                 <option value="pendente">A Receber (Pendentes)</option>
                 <option value="baixada">Recebidas (Baixadas)</option>
@@ -238,24 +289,24 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
 
             <div style="display:flex; gap:10px;">
                 <div style="flex:1;">
-                    <label style="display:block; text-align:left; color:#ccc; font-size:12px;">De:</label>
-                    <input type="date" name="data_inicio" value="<?= date('Y-m-01') ?>" required style="width:100%;">
+                    <label>De:</label>
+                    <input type="date" name="data_inicio" value="<?= date('Y-m-01') ?>" required>
                 </div>
                 <div style="flex:1;">
-                    <label style="display:block; text-align:left; color:#ccc; font-size:12px;">Até:</label>
-                    <input type="date" name="data_fim" value="<?= date('Y-m-t') ?>" required style="width:100%;">
+                    <label>Até:</label>
+                    <input type="date" name="data_fim" value="<?= date('Y-m-t') ?>" required>
                 </div>
             </div>
 
-            <label style="text-align:left; color:#ccc; font-size:12px;">Formato:</label>
+            <label>Formato:</label>
             <select name="formato" required>
                 <option value="excel">Excel (.xlsx)</option>
                 <option value="pdf">PDF (.pdf)</option>
                 <option value="csv">CSV (.csv)</option>
             </select>
 
-            <button type="submit" class="btn btn-export" style="margin-top:10px;">
-                <i class="fa fa-download"></i> Baixar Arquivo
+            <button type="submit" class="btn btn-export" style="margin-top:10px; width:100%">
+                <i class="fa fa-download"></i> Baixar
             </button>
         </form>
     </div>
@@ -275,6 +326,13 @@ if (isset($_SESSION['error_message'])) { echo "<div class='alert alert-danger'>{
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+// ✅ FUNÇÃO PARA ABRIR O MODAL DE COBRANÇA
+function abrirModalCobranca(id, nome, valor) {
+    document.getElementById('cobranca_id_conta').value = id;
+    document.getElementById('txt-cobranca').innerText = `Enviar cobrança para: ${nome} (R$ ${valor})`;
+    document.getElementById('cobrancaModal').style.display = 'flex';
+}
+
 function abrirModalReceber(id, nome, valor) {
     document.getElementById('id_conta_receber').value = id;
     document.getElementById('texto-receber').innerText = `${nome} - R$ ${valor}`;

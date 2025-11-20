@@ -50,7 +50,7 @@ function getMasterConnection()
 }
 
 // -------------------------
-// Conexão TENANT
+// Conexão TENANT (Via Sessão)
 // -------------------------
 function getTenantConnection()
 {
@@ -74,6 +74,53 @@ function getTenantConnection()
 
     } catch (mysqli_sql_exception $e) {
         error_log("Erro TENANT: " . $e->getMessage());
+        return null;
+    }
+}
+
+// -------------------------
+// ✅ NOVA FUNÇÃO: Conexão TENANT por Nome (Para Redefinição de Senha)
+// -------------------------
+function getTenantConnectionByName($dbName)
+{
+    // 1. Conecta ao Master para buscar as credenciais (Host, User, Pass)
+    $connMaster = getMasterConnection();
+    
+    // Busca na tabela tenants usando o nome do banco como chave
+    $stmt = $connMaster->prepare("SELECT db_host, db_user, db_password FROM tenants WHERE db_database = ? LIMIT 1");
+    if (!$stmt) {
+        error_log("Erro ao preparar query no Master (getTenantConnectionByName): " . $connMaster->error);
+        $connMaster->close();
+        return null;
+    }
+
+    $stmt->bind_param("s", $dbName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $tenantData = $result->fetch_assoc();
+    $stmt->close();
+    $connMaster->close();
+
+    if (!$tenantData) {
+        error_log("Tenant não encontrado para o banco: " . $dbName);
+        return null;
+    }
+
+    // 2. Tenta conectar ao banco do cliente usando as credenciais recuperadas
+    try {
+        $conn = mysqli_init();
+        mysqli_real_connect(
+            $conn,
+            $tenantData['db_host'],
+            $tenantData['db_user'],
+            $tenantData['db_password'],
+            $dbName
+        );
+        $conn->set_charset("utf8mb4");
+        return $conn;
+
+    } catch (mysqli_sql_exception $e) {
+        error_log("Erro ao conectar ao tenant via nome ($dbName): " . $e->getMessage());
         return null;
     }
 }
@@ -196,3 +243,4 @@ if (!function_exists('getTenantById')) {
         return $tenant;
     }
 }
+?>

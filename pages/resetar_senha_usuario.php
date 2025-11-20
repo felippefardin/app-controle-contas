@@ -11,7 +11,7 @@ $tenant_db_name = '';
 $usuario = null;
 $conn = null;
 
-// ✅ **INÍCIO DA LÓGICA DE VALIDAÇÃO (NOVA)**
+// ✅ **INÍCIO DA LÓGICA DE VALIDAÇÃO (NOVA)** 
 if (empty($_GET['payload'])) {
     $mensagem_erro = 'Link inválido ou incompleto (cód 1).';
 } else {

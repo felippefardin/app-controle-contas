@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (versão final padronizada para SaaS)
+// home.php (com ícones em todos os botões)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -11,19 +11,16 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
     exit();
 }
 
-// 🔒 Se for o Master Admin, redireciona para dashboard dele
-// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
-// Só redireciona se for master admin E NÃO estiver a personificar um utilizador
+// 🔒 Se for o Master Admin, redireciona
 if (
     isset($_SESSION['is_master_admin']) &&
     $_SESSION['is_master_admin'] === true &&
-    !isset($_SESSION['proprietario_id_original']) && // <- Verifica se NÃO está a personificar (definido em trocar_usuario.php)
-    !isset($_SESSION['super_admin_original']) // <- Verifica se NÃO está a personificar (definido em admin_impersonate.php)
+    !isset($_SESSION['proprietario_id_original']) && 
+    !isset($_SESSION['super_admin_original']) 
 ) {
     header("Location: ../pages/admin/dashboard.php");
     exit();
 }
-// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
 
 // 🔒 Verificar tenant ativo
 if (!isset($_SESSION['tenant_id'])) {
@@ -54,8 +51,8 @@ if (!$connMaster) {
     exit();
 }
 
-$tenant = getTenantById($tenant_id, $connMaster); // Usar a conexão MASTER
-$connMaster->close(); // Fechar a conexão MASTER
+$tenant = getTenantById($tenant_id, $connMaster);
+$connMaster->close();
 
 if (!$tenant) {
     session_destroy();
@@ -63,18 +60,14 @@ if (!$tenant) {
     exit();
 }
 
-// 🔒 Atualiza status da assinatura (função do database.php)
 $_SESSION['subscription_status'] = validarStatusAssinatura($tenant);
 
-// ⚡ Mensagem de sucesso (se houver)
 $mensagem = $_SESSION['sucesso_mensagem'] ?? null;
 unset($_SESSION['sucesso_mensagem']);
 
-// ⚠ Estoque baixo (se houver)
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
-// Cabeçalho
 include('../includes/header.php');
 ?>
 <!DOCTYPE html>
@@ -136,12 +129,25 @@ include('../includes/header.php');
         color: #fff;
         transition: 0.3s;
         box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px; /* Espaço entre ícone e texto */
+    }
+    .card-link i {
+        font-size: 2rem; /* Tamanho maior para os ícones */
+        margin-bottom: 5px;
+        color: #00bfff;
     }
     .card-link:hover {
         background: #00bfff;
         color: #121212;
         transform: translateY(-5px);
         box-shadow: 0 6px 15px rgba(0,191,255,0.4);
+    }
+    .card-link:hover i {
+        color: #121212;
     }
     .mensagem-sucesso {
         background: #28a745;
@@ -186,19 +192,33 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-        <div class="section-title">
-            <i class="fas fa-wallet"></i> Financeiro
-        </div>
+    <div class="section-title">
+        <i class="fas fa-wallet"></i> Financeiro
+    </div>
 
-        <div class="dashboard">
-            <a class="card-link" href="contas_pagar.php">Contas a Pagar</a>
-            <a class="card-link" href="contas_pagar_baixadas.php">Pagas</a>
-            <a class="card-link" href="contas_receber.php">Contas a Receber</a>
-            <a class="card-link" href="contas_receber_baixadas.php">Recebidas</a>
-            <a class="card-link" href="lancamento_caixa.php">Fluxo de Caixa</a>
-        </div>
-    <?php endif; ?>
+    <div class="dashboard">
+        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
+            <a class="card-link" href="contas_pagar.php">
+                <i class="fas fa-file-invoice-dollar"></i> Contas a Pagar
+            </a>
+            <a class="card-link" href="contas_pagar_baixadas.php">
+                <i class="fas fa-check-double"></i> Pagas
+            </a>
+            <a class="card-link" href="contas_receber.php">
+                <i class="fas fa-hand-holding-dollar"></i> Contas a Receber
+            </a>
+            <a class="card-link" href="contas_receber_baixadas.php">
+                <i class="fas fa-clipboard-check"></i> Recebidas
+            </a>
+            <a class="card-link" href="lancamento_caixa.php">
+                <i class="fas fa-exchange-alt"></i> Fluxo de Caixa
+            </a>
+        <?php endif; ?>
+
+        <a class="card-link" href="vendas_periodo.php">
+            <i class="fas fa-chart-line"></i> Vendas e Comissão
+        </a>
+    </div>
 
     <div class="section-title">
         <i class="fas fa-boxes"></i> Estoque & Vendas
@@ -206,13 +226,19 @@ include('../includes/header.php');
 
     <div class="dashboard">
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="controle_estoque.php">Estoque</a>
+            <a class="card-link" href="controle_estoque.php">
+                <i class="fas fa-boxes-stacked"></i> Estoque
+            </a>
         <?php endif; ?>
 
-        <a class="card-link" href="vendas.php">Caixa de Vendas</a>
+        <a class="card-link" href="vendas.php">
+            <i class="fas fa-cash-register"></i> Caixa de Vendas
+        </a>
 
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="compras.php">Compras</a>
+            <a class="card-link" href="compras.php">
+                <i class="fas fa-shopping-bag"></i> Compras
+            </a>
         <?php endif; ?>
     </div>
 
@@ -222,14 +248,20 @@ include('../includes/header.php');
 
     <div class="dashboard">
         <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">
-            Clientes/Fornecedores
+            <i class="fas fa-address-book"></i> Clientes/Forn.
         </a>
 
-        <a class="card-link" href="perfil.php">Perfil</a>
+        <a class="card-link" href="perfil.php">
+            <i class="fas fa-user-circle"></i> Perfil
+        </a>
 
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="../pages/banco_cadastro.php">Contas Bancárias</a>
-            <a class="card-link" href="../pages/categorias.php">Categorias</a>
+            <a class="card-link" href="../pages/banco_cadastro.php">
+                <i class="fas fa-university"></i> Contas Bancárias
+            </a>
+            <a class="card-link" href="../pages/categorias.php">
+                <i class="fas fa-tags"></i> Categorias
+            </a>
         <?php endif; ?>
     </div>
 
@@ -239,14 +271,22 @@ include('../includes/header.php');
 
     <div class="dashboard">
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="relatorios.php">Relatórios</a>
+            <a class="card-link" href="relatorios.php">
+                <i class="fas fa-chart-pie"></i> Relatórios
+            </a>
         <?php endif; ?>
 
-        <a class="card-link" href="selecionar_usuario.php">Trocar Usuário</a>
+        <a class="card-link" href="selecionar_usuario.php">
+            <i class="fas fa-users-cog"></i> Trocar Usuário
+        </a>
 
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="usuarios.php">Usuários</a>
-            <a class="card-link" href="configuracao_fiscal.php">Configurações Fiscais</a>
+            <a class="card-link" href="usuarios.php">
+                <i class="fas fa-users"></i> Usuários
+            </a>
+            <a class="card-link" href="configuracao_fiscal.php">
+                <i class="fas fa-file-invoice"></i> Config. Fiscal
+            </a>
         <?php endif; ?>
     </div>
 </div>
