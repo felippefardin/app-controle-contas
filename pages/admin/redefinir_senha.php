@@ -2,8 +2,13 @@
 require_once '../../includes/session_init.php';
 require_once '../../database.php';
 
-// 🔒 Verifica se é super admin logado
-if (!isset($_SESSION['super_admin'])) {
+// Configuração do Super Admin
+$super_admin_email = 'contatotech.tecnologia@gmail.com.br';
+
+// 🔒 Verifica se é super admin logado E se o e-mail corresponde
+if (!isset($_SESSION['super_admin']) || $_SESSION['super_admin']['email'] !== $super_admin_email) {
+    session_unset();
+    session_destroy();
     header('Location: ../login.php');
     exit;
 }
@@ -17,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirmar = trim($_POST['confirmar_senha']);
 
     $master = getMasterConnection();
-    $email = $_SESSION['super_admin']['email'];
+    $email = $_SESSION['super_admin']['email']; // Usa o email da sessão validada
 
     // Busca o admin no banco
     $stmt = $master->prepare("SELECT senha FROM usuarios WHERE email = ?");
@@ -121,7 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <form method="POST">
-        <h2>Redefinir Senha</h2>
+        <h2>Redefinir Senha Master</h2>
+        <p style="text-align: center; font-size: 0.9em; color: #aaa;">Conta: <?= htmlspecialchars($super_admin_email) ?></p>
 
         <?php if ($mensagem): ?>
             <div class="mensagem <?= $classeMsg ?>"><?= htmlspecialchars($mensagem) ?></div>

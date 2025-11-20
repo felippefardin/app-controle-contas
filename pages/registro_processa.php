@@ -32,6 +32,14 @@ if (!$nome || !$email || !$senha) {
     exit;
 }
 
+// ⛔ IMPEDIR REGISTRO COMO SUPER ADMIN
+// Ninguém pode se registrar externamente com o e-mail do super admin
+if ($email === 'contatotech.tecnologia@gmail.com.br') {
+    $_SESSION['erro_registro'] = "Este e-mail é reservado para administração do sistema.";
+    header("Location: ../pages/registro.php?msg=email_reservado");
+    exit;
+}
+
 // 🔹 Hash da senha
 $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
@@ -53,6 +61,7 @@ try {
     $stmtCheck->close();
 
     // 🔹 2. Inserir usuário MASTER (tabela global de login)
+    // is_master = 1 aqui significa "Dono da Conta/Tenant", não Super Admin do sistema.
     $stmtUser = $conn->prepare("
         INSERT INTO usuarios (nome, email, senha, tipo_pessoa, documento, telefone, nivel_acesso, perfil, tipo, status, is_master)
         VALUES (?, ?, ?, ?, ?, ?, 'proprietario', 'admin', 'admin', 'ativo', 1)
@@ -80,18 +89,24 @@ try {
     $dbPassword = bin2hex(random_bytes(16));
 
     // Inserir na tabela tenants
+    // 🔹 CORREÇÃO: Adicionado 'nome_empresa' na lista de colunas e valores
     $stmtTenant = $conn->prepare("
         INSERT INTO tenants (
-            tenant_id, usuario_id, nome, admin_email, senha, 
+            tenant_id, usuario_id, nome, nome_empresa, admin_email, senha, 
             status_assinatura, data_inicio_teste, plano_atual, 
             db_host, db_database, db_user, db_password
-        ) VALUES (?, ?, ?, ?, ?, 'trial', NOW(), ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, 'trial', NOW(), ?, ?, ?, ?, ?)
     ");
+    
+    // Define o nome da empresa igual ao nome do usuário inicialmente
+    $nome_empresa = $nome; 
+
     $stmtTenant->bind_param(
-        "sissssssss",
+        "sisssssssss", // Ajustado o número de 's' (strings) e 'i' (inteiros)
         $tenantId,
         $new_usuario_id,
         $nome,
+        $nome_empresa, // Valor novo
         $email,
         $senha_hash,
         $plano_escolhido,
@@ -119,19 +134,17 @@ try {
     $safeDbUser = $rootConn->real_escape_string($dbUser);
     $safeDbPass = $rootConn->real_escape_string($dbPassword);
 
-    // [CORREÇÃO]: Forçar limpeza de usuários antigos órfãos para evitar conflito de senha
+    // Limpeza preventiva
     $rootConn->query("DROP USER IF EXISTS '$safeDbUser'@'localhost'");
     $rootConn->query("DROP USER IF EXISTS '$safeDbUser'@'%'");
 
     // Criar banco
     $rootConn->query("CREATE DATABASE IF NOT EXISTS `$safeDbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     
-    // Criar usuário novo (garantindo senha sincronizada) e dar permissões
-    // Cria para localhost (socket)
+    // Criar usuário MySQL específico para este tenant
     $rootConn->query("CREATE USER '$safeDbUser'@'localhost' IDENTIFIED BY '$safeDbPass'");
     $rootConn->query("GRANT ALL PRIVILEGES ON `$safeDbName`.* TO '$safeDbUser'@'localhost'");
     
-    // Se o host configurado não for localhost, cria para ele também (ex: 127.0.0.1)
     if ($dbHost !== 'localhost') {
         $rootConn->query("DROP USER IF EXISTS '$safeDbUser'@'$dbHost'");
         $rootConn->query("CREATE USER '$safeDbUser'@'$dbHost' IDENTIFIED BY '$safeDbPass'");
@@ -143,11 +156,10 @@ try {
     // 🔹 6. Rodar o Schema no banco do Tenant
     $schemaPath = __DIR__ . '/../schema.sql';
     if (file_exists($schemaPath)) {
-        // Conecta no banco NOVO usando as credenciais recém-criadas
+        // Conecta no banco NOVO usando as credenciais do TENANT
         $tenantConn = new mysqli($dbHost, $dbUser, $dbPassword, $dbDatabase);
         
         if ($tenantConn->connect_error) {
-            // Se falhar aqui, é porque o GRANT não funcionou ou senha não bateu
             throw new Exception("Erro ao conectar no banco do tenant ($dbUser): " . $tenantConn->connect_error);
         }
 
@@ -164,8 +176,8 @@ try {
             throw new Exception("Erro SQL no schema: " . $tenantConn->error);
         }
 
-        // 🔹 6.1 Inserir o Usuário DENTRO do Banco do Tenant
-        // É aqui que resolve o problema de "usuário não encontrado"
+        // 🔹 6.1 Inserir o Usuário Proprietário DENTRO do Banco do Tenant
+        // Este usuário poderá criar outros usuários (add_usuario.php) dentro deste banco
         $stmtTenantInsert = $tenantConn->prepare("
             INSERT INTO usuarios (
                 nome, email, senha, tipo_pessoa, documento, telefone, 
@@ -211,6 +223,16 @@ try {
 } catch (Exception $e) {
     $conn->rollback();
     error_log("Erro no registro: " . $e->getMessage());
+    
+    // Limpeza de emergência (Rollback manual)
+    if (isset($rootConn) && isset($dbDatabase) && isset($dbUser)) {
+        // Reconecta root se fechou para limpar
+        $rootConn = new mysqli($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASSWORD']);
+        $rootConn->query("DROP DATABASE IF EXISTS `$dbDatabase`");
+        $rootConn->query("DROP USER IF EXISTS '$dbUser'@'localhost'");
+        $rootConn->close();
+    }
+
     $_SESSION['erro_registro'] = "Erro no sistema: " . $e->getMessage();
     header("Location: ../pages/registro.php?msg=erro_fatal");
     exit;
