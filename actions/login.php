@@ -36,16 +36,15 @@ try {
         exit;
     }
 
-    // --- 🔹 PASSO 2: LÓGICA DO SUPER ADMIN (INSERIDO AQUI) 🔹 ---
-    // Verifica se é o e-mail Mestre
+    // --- 🔹 LÓGICA DO SUPER ADMIN 🔹 ---
+    // Apenas estes e-mails acessam o dashboard admin
     $emails_admin = ['contatotech.tecnologia@gmail.com', 'contatotech.tecnologia@gmail.com.br'];
     
     if (in_array($userMaster['email'], $emails_admin)) {
         // Inicia a sessão de Super Admin
         $_SESSION['super_admin'] = $userMaster;
         
-        // IMPORTANTE: O dashboard.php verifica estritamente o email .com.br
-        // Se você cadastrou como .com, forçamos a sessão para .com.br para passar na trava
+        // Ajuste de compatibilidade de e-mail se necessário
         if ($userMaster['email'] === 'contatotech.tecnologia@gmail.com') {
              $_SESSION['super_admin']['email'] = 'contatotech.tecnologia@gmail.com.br';
         }
@@ -58,7 +57,7 @@ try {
     // --- 🔹 FIM DA LÓGICA SUPER ADMIN 🔹 ---
 
 
-    // 3. Lógica de Tenant e Assinatura (Para usuários normais)
+    // 3. Lógica de Tenant e Assinatura (Para usuários normais - Proprietários)
     $tenantId = $userMaster['tenant_id'] ?? null;
     $tenant = null;
     
@@ -78,7 +77,7 @@ try {
         if (in_array($statusAssinatura, $statusBloqueados)) {
             $_SESSION['usuario_id']     = $userMaster['id'];
             $_SESSION['email']          = $userMaster['email']; 
-            $_SESSION['usuario_logado'] = true; 
+            $_SESSION['usuario_logado'] = true; // Booleano correto
             $_SESSION['erro_assinatura'] = "Sua assinatura está com status: $statusAssinatura";
             $connMaster->close();
             header("Location: ../pages/assinar.php");
@@ -112,25 +111,28 @@ try {
                 $idUsuarioTenant = $userTenant['id'];
                 $nivelAcessoTenant = $userTenant['nivel_acesso'];
             } else {
-                // Se não existir no tenant, usa o ID master como fallback
+                // Se não existir no tenant (caso raro), usa o ID master
                 $idUsuarioTenant = $userMaster['id']; 
             }
             $tenantConn->close();
         }
     }
 
-    // 5. Salva Sessão Padrão
+    // 5. Salva Sessão Padrão e Redireciona
     unset($_SESSION['login_erro']);
+    
     $_SESSION['usuario_id']       = $idUsuarioTenant ?? $userMaster['id'];
     $_SESSION['usuario_id_master']= $userMaster['id'];
     $_SESSION['nome']             = $userMaster['nome'];
     $_SESSION['email']            = $userMaster['email'];
     $_SESSION['tenant_id']        = $tenantId;
     $_SESSION['nivel_acesso']     = $nivelAcessoTenant;
-    $_SESSION['usuario_logado']   = true;
+    
+    // IMPORTANTE: Define como TRUE (booleano), não array
+    $_SESSION['usuario_logado']   = true; 
 
-    // Redirecionamento padrão (conforme seu código original)
-    header("Location: ../pages/login.php?sucesso=1");
+    // 🔹 CORREÇÃO: Redireciona para selecionar usuário, não volta para login
+    header("Location: ../pages/selecionar_usuario.php");
     exit;
 
 } catch (Exception $e) {

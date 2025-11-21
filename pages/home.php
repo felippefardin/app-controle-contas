@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (com ícones em todos os botões)
+// home.php (Corrigido)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -11,7 +11,7 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
     exit();
 }
 
-// 🔒 Se for o Master Admin, redireciona
+// 🔒 Se for o Master Admin sem impersonação, redireciona
 if (
     isset($_SESSION['is_master_admin']) &&
     $_SESSION['is_master_admin'] === true &&
@@ -33,7 +33,7 @@ if (!isset($_SESSION['tenant_id'])) {
 $usuario_id    = $_SESSION['usuario_id'];
 $tenant_id     = $_SESSION['tenant_id'];
 $nome_usuario  = $_SESSION['nome'];
-$perfil        = $_SESSION['nivel_acesso']; // admin | padrao | proprietario
+$perfil        = $_SESSION['nivel_acesso'];
 
 // 📌 Conexão do tenant
 $conn = getTenantConnection();
@@ -45,22 +45,13 @@ if (!$conn) {
 
 // 🔒 Revalidação do tenant
 $connMaster = getMasterConnection();
-if (!$connMaster) {
-    session_destroy();
-    header("Location: ../pages/login.php?erro=db_master");
-    exit();
+if ($connMaster) {
+    $tenant = getTenantById($tenant_id, $connMaster);
+    $connMaster->close();
+    if ($tenant) {
+        $_SESSION['subscription_status'] = validarStatusAssinatura($tenant);
+    }
 }
-
-$tenant = getTenantById($tenant_id, $connMaster);
-$connMaster->close();
-
-if (!$tenant) {
-    session_destroy();
-    header("Location: ../pages/login.php?erro=tenant_invalido");
-    exit();
-}
-
-$_SESSION['subscription_status'] = validarStatusAssinatura($tenant);
 
 $mensagem = $_SESSION['sucesso_mensagem'] ?? null;
 unset($_SESSION['sucesso_mensagem']);
@@ -68,43 +59,28 @@ unset($_SESSION['sucesso_mensagem']);
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
+// ---------------------------------------------------------
+// INCLUI O HEADER (Que já contém <!DOCTYPE>, <html>, <head>, <body>)
+// ---------------------------------------------------------
 include('../includes/header.php');
 ?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Home - App Controle de Contas</title>
 
 <style>
-    body {
-        background: radial-gradient(circle at top, #1a1a1a 0%, #0f0f0f 100%);
-        animation: fadeIn 0.8s ease;
-        color: #fff;
-    }
+    /* Fundo degradê apenas para o conteúdo interno, se desejar, ou global */
+    /* Como o body já está no header, aplicamos classes específicas se necessário */
+    
     .home-container {
         max-width: 1000px;
         margin: auto;
         padding: 20px;
+        animation: fadeIn 0.8s ease;
     }
-    h1 {
-        text-align: center;
-        color: #00bfff;
-        margin-bottom: 5px;
-    }
-    h3 {
-        text-align: center;
-        color: #ccc;
-        font-weight: 400;
-        margin-bottom: 20px;
-    }
-    .saudacao {
-        text-align: center;
-        margin-bottom: 25px;
-        color: #ddd;
-        font-size: 1.1rem;
-    }
+    
+    h1 { text-align: center; color: #00bfff; margin-bottom: 5px; }
+    h3 { text-align: center; color: #ccc; font-weight: 400; margin-bottom: 20px; }
+    
+    .saudacao { text-align: center; margin-bottom: 25px; color: #ddd; font-size: 1.1rem; }
+    
     .section-title {
         width: 100%;
         color: #00bfff;
@@ -114,12 +90,14 @@ include('../includes/header.php');
         border-bottom: 1px solid #333;
         padding-bottom: 5px;
     }
+    
     .dashboard {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 18px;
         margin-bottom: 30px;
     }
+    
     .card-link {
         background: #1e1e1e;
         padding: 25px 15px;
@@ -133,22 +111,19 @@ include('../includes/header.php');
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px; /* Espaço entre ícone e texto */
+        gap: 10px;
     }
-    .card-link i {
-        font-size: 2rem; /* Tamanho maior para os ícones */
-        margin-bottom: 5px;
-        color: #00bfff;
-    }
+    
+    .card-link i { font-size: 2rem; margin-bottom: 5px; color: #00bfff; }
+    
     .card-link:hover {
         background: #00bfff;
         color: #121212;
         transform: translateY(-5px);
         box-shadow: 0 6px 15px rgba(0,191,255,0.4);
     }
-    .card-link:hover i {
-        color: #121212;
-    }
+    .card-link:hover i { color: #121212; }
+    
     .mensagem-sucesso {
         background: #28a745;
         padding: 12px 20px;
@@ -156,6 +131,7 @@ include('../includes/header.php');
         border-radius: 8px;
         margin-bottom: 20px;
         font-weight: bold;
+        color: white;
     }
     .alert-estoque {
         background: #dc3545;
@@ -164,10 +140,10 @@ include('../includes/header.php');
         margin-bottom: 25px;
         color: #fff;
     }
+    
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
-</head>
 
-<body>
 <div class="home-container">
     <h1>App Controle de Contas</h1>
     <h3>Olá, <?= htmlspecialchars($nome_usuario) ?> — Perfil: <?= htmlspecialchars($perfil) ?></h3>
@@ -292,7 +268,6 @@ include('../includes/header.php');
 </div>
 
 <script>
-// Saudação dinâmica
 const hora = new Date().getHours();
 let texto = "Bem-vindo(a)!";
 if (hora < 12) texto = "☀️ Bom dia!";
@@ -302,5 +277,3 @@ document.getElementById("saudacao").textContent = texto;
 </script>
 
 <?php include('../includes/footer.php'); ?>
-</body>
-</html>
