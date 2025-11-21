@@ -1,8 +1,7 @@
 <?php
-
-
 require_once '../vendor/autoload.php';
-require_once '../database.php'; // Espera-se que $conn (mysqli) venha daqui
+require_once '../database.php'; 
+require_once '../includes/session_init.php'; // Garante sessão correta
 require_once '../includes/config/nfe_config.php';
 
 use NFePHP\NFe\Make;
@@ -10,11 +9,8 @@ use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
 
 header('Content-Type: application/json');
-session_start();
 
-// ---------------------------------------------------------
 // 1️⃣ Função de LOG
-// ---------------------------------------------------------
 function log_nfce($msg) {
     $dirLog = __DIR__ . '/../logs/';
     if (!is_dir($dirLog)) mkdir($dirLog, 0755, true);
@@ -23,132 +19,111 @@ function log_nfce($msg) {
     file_put_contents($arquivo, $linha, FILE_APPEND);
 }
 
-// ---------------------------------------------------------
-// 2️⃣ Validação de entrada
-// ---------------------------------------------------------
+// 2️⃣ Validação de Sessão e Entrada
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
+    log_nfce("❌ Sessão inválida ou expirada.");
+    echo json_encode(['success' => false, 'message' => 'Sessão expirada. Faça login novamente.']);
+    exit;
+}
+
+$conn = getTenantConnection(); // ✅ Usa a conexão correta do Tenant
+if (!$conn) {
+    echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
+    exit;
+}
+
 $id_venda = filter_input(INPUT_POST, 'id_venda', FILTER_VALIDATE_INT);
-if (empty($id_venda)) {
-    log_nfce("❌ ID da venda não fornecido.");
-    echo json_encode(['success' => false, 'message' => 'ID da venda não fornecido ou inválido.']);
+if (!$id_venda) {
+    echo json_encode(['success' => false, 'message' => 'ID da venda inválido.']);
     exit;
 }
 
-if ($conn === null) {
-    log_nfce("❌ Conexão com banco falhou.");
-    echo json_encode(['success' => false, 'message' => 'Erro ao conectar ao banco de dados.']);
-    exit;
-}
-
-// ✅ CORRIGIDO (Problema 1 e 5): Validar sessão do usuário
-if (!isset($_SESSION['usuario_logado']['id'])) {
-    log_nfce("❌ Sessão do usuário não encontrada.");
-    echo json_encode(['success' => false, 'message' => 'Sessão do usuário não encontrada ou expirada.']);
-    exit;
-}
-$usuario_id = (int)$_SESSION['usuario_logado']['id'];
-$tpAmb = 2; // Default
-$novo_numero_nf = 0;
-
-// ---------------------------------------------------------
-// 3️⃣ Início do processo
-// ---------------------------------------------------------
 try {
-    log_nfce("🔹 Iniciando emissão da NFC-e para venda #{$id_venda}");
-
-    // ✅ CORRIGIDO (Problema 5): Inicia a transação
+    log_nfce("🔹 Iniciando emissão para venda #{$id_venda}");
     $conn->begin_transaction();
 
-    // ⚙️ Carrega configurações da empresa
-    // ✅ CORRIGIDO (Problema 1 e 5): Busca pelo ID da sessão e trava a linha para update
-    $stmtConfig = $conn->prepare("SELECT * FROM empresa_config WHERE id = ? FOR UPDATE");
-    $stmtConfig->bind_param("i", $usuario_id);
-    $stmtConfig->execute();
-    $resultConfig = $stmtConfig->get_result();
-    $empresaConfig = $resultConfig->fetch_assoc();
+    // 3️⃣ Carrega Configurações (Híbrido: Tabela Antiga + Nova)
+    
+    // A. Busca dados cadastrais (CNPJ, Endereço) da tabela 'empresa_config'
+    // Assumimos que existe apenas 1 configuração por Tenant (LIMIT 1)
+    $stmtConfig = $conn->query("SELECT * FROM empresa_config LIMIT 1");
+    $empresaConfig = $stmtConfig->fetch_assoc();
 
     if (!$empresaConfig) {
-        throw new Exception("Configuração fiscal não encontrada para o usuário #{$usuario_id}.");
+        throw new Exception("Dados da empresa (CNPJ, Endereço) não encontrados em 'empresa_config'.");
     }
 
-    // ✅ CORRIGIDO (Problema 5): Calcula o novo número da NF
+    // B. Busca dados fiscais (CSC, Ambiente) da tabela 'configuracoes_tenant' e SOBREPÕE
+    $stmtTenant = $conn->query("SELECT chave, valor FROM configuracoes_tenant");
+    if ($stmtTenant) {
+        while ($row = $stmtTenant->fetch_assoc()) {
+            // Mapeia os campos da nova tabela para o array antigo
+            $empresaConfig[$row['chave']] = $row['valor'];
+        }
+    }
+
+    // Ajustes manuais de compatibilidade
+    $empresaConfig['ambiente'] = (int)($empresaConfig['ambiente'] ?? 2);
+    $tpAmb = $empresaConfig['ambiente'];
+
+    // 4️⃣ Atualiza Numeração
     $novo_numero_nf = (int)($empresaConfig['ultimo_numero_nfce'] ?? 0) + 1;
+    $conn->query("UPDATE empresa_config SET ultimo_numero_nfce = $novo_numero_nf WHERE id = " . (int)$empresaConfig['id']);
+    log_nfce("🔢 Número NF reservado: {$novo_numero_nf}");
 
-    // ✅ CORRIGIDO (Problema 5): Atualiza o número no banco IMEDIATAMENTE
-    $stmtUpdateNum = $conn->prepare("UPDATE empresa_config SET ultimo_numero_nfce = ? WHERE id = ?");
-    $stmtUpdateNum->bind_param("ii", $novo_numero_nf, $usuario_id);
-    $stmtUpdateNum->execute();
-    log_nfce("NF #{$novo_numero_nf} reservada para a venda #{$id_venda}.");
-
-
-    // Caminho do certificado
-    $certPath = __DIR__ . '/../' . $empresaConfig['certificado_a1_path'];
+    // 5️⃣ Configuração do NFePHP
+    $configJson = getConfigJson($empresaConfig); // Usa função do seu include
+    
+    // Verifica certificado
+    $certPath = __DIR__ . '/../' . ($empresaConfig['certificado_a1_path'] ?? '');
     if (!file_exists($certPath)) {
-        throw new Exception("Certificado não encontrado em: {$empresaConfig['certificado_a1_path']}");
+        throw new Exception("Certificado Digital não encontrado no caminho: $certPath");
     }
+    $certificadoContent = file_get_contents($certPath);
+    
+    $tools = new Tools($configJson, Certificate::readPfx($certificadoContent, $empresaConfig['certificado_senha']));
+    $tools->model('65'); // NFC-e
 
-    // JSON de configuração e ambiente
-    // ✅ CORRIGIDO (Problema 2): Passa o array de config para a função
-    $configJson = getConfigJson($empresaConfig);
-    $configArr = json_decode($configJson, true);
-    $tpAmb = $configArr['tpAmb']; // 1=produção, 2=homologação
-    log_nfce("🌍 Ambiente detectado: " . ($tpAmb == 1 ? "Produção" : "Homologação"));
+    // 6️⃣ Busca Venda e Itens
+    $stmtVenda = $conn->prepare("SELECT * FROM vendas WHERE id = ?");
+    $stmtVenda->bind_param("i", $id_venda);
+    $stmtVenda->execute();
+    $venda = $stmtVenda->get_result()->fetch_assoc();
+    
+    if (!$venda) throw new Exception("Venda #$id_venda não encontrada.");
 
-    // Inicializa o Tools
-    $certificado = file_get_contents($certPath);
-    $tools = new Tools($configJson, Certificate::readPfx($certificado, $empresaConfig['certificado_senha']));
-    $tools->model('65');
-
-    // 🔍 Busca venda
-    $stmt_venda = $conn->prepare("SELECT * FROM vendas WHERE id = ?");
-    $stmt_venda->bind_param("i", $id_venda);
-    $stmt_venda->execute();
-    $venda = $stmt_venda->get_result()->fetch_assoc();
-
-    if (!$venda) throw new Exception("Venda não encontrada.");
-
-    // 🔍 Busca itens
-    $stmt_itens = $conn->prepare("
+    $stmtItens = $conn->prepare("
         SELECT iv.*, p.nome, p.ncm, p.cfop 
         FROM venda_items iv
         JOIN produtos p ON iv.id_produto = p.id
         WHERE iv.id_venda = ?
     ");
-    $stmt_itens->bind_param("i", $id_venda);
-    $stmt_itens->execute();
-    $itens = $stmt_itens->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmtItens->bind_param("i", $id_venda);
+    $stmtItens->execute();
+    $itens = $stmtItens->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    if (empty($itens)) throw new Exception("Nenhum item encontrado para a venda #{$id_venda}.");
+    if (empty($itens)) throw new Exception("Venda sem itens.");
 
-    // ---------------------------------------------------------
-    // 4️⃣ Monta o XML da NFC-e
-    // ---------------------------------------------------------
+    // 7️⃣ Montagem do XML (Resumido)
     $nfe = new Make();
-
-    // infNFe
     $inf = new \stdClass();
     $inf->versao = '4.00';
+    $inf->Id = null; 
+    $inf->pk_nItem = null;
     $nfe->taginfNFe($inf);
 
-    // ide
-    $stmt_uf = $conn->prepare("SELECT codigo_uf FROM estados WHERE sigla = ?");
-    $stmt_uf->bind_param("s", $empresaConfig['uf']);
-    $stmt_uf->execute();
-    $row_uf = $stmt_uf->get_result()->fetch_assoc();
-    $codigo_uf = $row_uf['codigo_uf'] ?? '35';
-
+    // Dados Identificação
     $ide = new \stdClass();
-    $ide->cUF = $codigo_uf;
+    $ide->cUF = '32'; // Exemplo ES, ideal buscar do cadastro
     $ide->cNF = rand(10000000, 99999999);
     $ide->natOp = 'VENDA';
     $ide->mod = 65;
     $ide->serie = 1;
-    // ✅ CORRIGIDO (Problema 5): Usa número sequencial
     $ide->nNF = $novo_numero_nf;
     $ide->dhEmi = date('Y-m-d\TH:i:sP');
     $ide->tpNF = 1;
     $ide->idDest = 1;
-    // ✅ CORRIGIDO (Problema 3): Nome do campo
-    $ide->cMunFG = $empresaConfig['cod_municipio'] ?? '3550308';
+    $ide->cMunFG = $empresaConfig['cod_municipio'] ?? '3205309';
     $ide->tpImp = 4;
     $ide->tpEmis = 1;
     $ide->cDV = 0;
@@ -162,115 +137,94 @@ try {
 
     // Emitente
     $emit = new \stdClass();
-    $emit->CNPJ = $empresaConfig['cnpj'];
+    $emit->CNPJ = preg_replace('/[^0-9]/', '', $empresaConfig['cnpj']);
     $emit->xNome = $empresaConfig['razao_social'];
-    $emit->IE = $empresaConfig['ie'];
-    $emit->CRT = $empresaConfig['regime_tributario'];
+    $emit->IE = preg_replace('/[^0-9]/', '', $empresaConfig['ie']);
+    $emit->CRT = $empresaConfig['regime_tributario'] ?? 1;
     $nfe->tagemit($emit);
 
-    // Endereço emitente
-    $end = new \stdClass();
-    $end->xLgr = $empresaConfig['logradouro'];
-    $end->nro = $empresaConfig['numero'];
-    $end->xBairro = $empresaConfig['bairro'];
-    // ✅ CORRIGIDO (Problema 3): Nome do campo
-    $end->cMun = $empresaConfig['cod_municipio'] ?? '3550308';
-    $end->xMun = $empresaConfig['municipio'];
-    $end->UF = $empresaConfig['uf'];
-    $end->CEP = preg_replace('/\D/', '', $empresaConfig['cep']);
-    $end->cPais = '1058';
-    $end->xPais = 'BRASIL';
-    $nfe->tagenderEmit($end);
+    // Endereço Emitente
+    $enderEmit = new \stdClass();
+    $enderEmit->xLgr = $empresaConfig['logradouro'];
+    $enderEmit->nro = $empresaConfig['numero'];
+    $enderEmit->xBairro = $empresaConfig['bairro'];
+    $enderEmit->cMun = $empresaConfig['cod_municipio'];
+    $enderEmit->xMun = $empresaConfig['municipio'];
+    $enderEmit->UF = $empresaConfig['uf'];
+    $enderEmit->CEP = preg_replace('/[^0-9]/', '', $empresaConfig['cep']);
+    $enderEmit->cPais = '1058';
+    $enderEmit->xPais = 'BRASIL';
+    $nfe->tagenderEmit($enderEmit);
 
-    // Produtos
-    foreach ($itens as $i => $item) {
-        $p = new \stdClass();
-        $p->item = $i + 1;
-        $p->cProd = $item['id_produto'];
-        $p->xProd = $item['nome'];
-        $p->NCM = $item['ncm'];
-        $p->CFOP = $item['cfop'];
-        $p->uCom = 'UN';
-        $p->qCom = number_format($item['quantidade'], 4, '.', '');
-        $p->vUnCom = number_format($item['preco_unitario'], 2, '.', '');
-        $p->vProd = number_format($item['quantidade'] * $item['preco_unitario'], 2, '.', '');
-        $p->indTot = 1;
-        $nfe->tagprod($p);
+    // Itens
+    foreach ($itens as $k => $item) {
+        $std = new \stdClass();
+        $std->item = $k + 1;
+        $std->cProd = $item['id_produto'];
+        $std->xProd = $item['nome'];
+        $std->NCM = $item['ncm'];
+        $std->CFOP = $item['cfop'];
+        $std->uCom = 'UN';
+        $std->qCom = $item['quantidade'];
+        $std->vUnCom = number_format($item['preco_unitario'], 2, '.', '');
+        $std->vProd = number_format($item['subtotal'], 2, '.', '');
+        $std->indTot = 1;
+        $nfe->tagprod($std);
 
-        $icms = new \stdClass();
-        $icms->item = $i + 1;
-        $icms->orig = 0;
-        $icms->CSOSN = '102';
-        $nfe->tagICMSSN($icms);
+        // Imposto Simples (Exemplo 102)
+        $stdIcms = new \stdClass();
+        $stdIcms->item = $k + 1;
+        $stdIcms->orig = 0;
+        $stdIcms->CSOSN = '102';
+        $nfe->tagICMSSN($stdIcms);
     }
 
-    // Totais
-    $tot = new \stdClass();
-    $nfe->tagICMSTot($tot);
+    // Totais e Pagamento
+    $nfe->tagICMSTot(new \stdClass());
+    
+    $stdPag = new \stdClass();
+    $stdPag->vTroco = null; 
+    $nfe->tagpag($stdPag);
 
-    // Pagamento
-    $pag = new \stdClass();
-    $pag->vTroco = 0.00;
-    $nfe->tagpag($pag);
+    $stdDetPag = new \stdClass();
+    $stdDetPag->tPag = '01'; // Dinheiro
+    $stdDetPag->vPag = number_format($venda['valor_total'], 2, '.', '');
+    $nfe->tagdetPag($stdDetPag);
 
-    $detPag = new \stdClass();
-    $detPag->tPag = '01'; // Dinheiro
-    $detPag->vPag = number_format($venda['valor_total'], 2, '.', '');
-    $nfe->tagdetPag($detPag);
-
-    // ---------------------------------------------------------
-    // 5️⃣ Assina, envia e grava
-    // ---------------------------------------------------------
+    // 8️⃣ Assinatura e Envio
     $xml = $nfe->getXML();
-    log_nfce("📄 XML gerado com sucesso.");
+    $xmlAssinado = $tools->signNFe($xml);
+    log_nfce("🔏 XML assinado com sucesso.");
 
-    $signed = $tools->signNFe($xml);
-    log_nfce("🔏 XML assinado.");
-
-    $response = $tools->sefazEnviaLote([$signed]);
-    log_nfce("📡 Enviado para SEFAZ: " . substr($response, 0, 300) . "...");
-
-    $std = json_decode(json_encode(simplexml_load_string($response)));
-
-    if ($std->cStat == 100 || $std->protNFe->infProt->cStat == 100) {
-        $prot = $std->protNFe->infProt;
-        $chave = (string) $prot->chNFe;
-        $protocolo = (string) $prot->nProt;
-
-        $dir = __DIR__ . '/../notas_fiscais/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-        $xmlPath = 'notas_fiscais/' . $chave . '.xml';
-        file_put_contents(__DIR__ . '/../' . $xmlPath, $signed);
-
-        $stmt = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, chave_acesso, protocolo, xml_path, data_emissao, numero_nf)
-                                VALUES (?, ?, 'autorizada', ?, ?, ?, NOW(), ?)");
-        $stmt->bind_param("isssssi", $id_venda, $tpAmb, $chave, $protocolo, $xmlPath, $novo_numero_nf);
-        $stmt->execute();
+    $resp = $tools->sefazEnviaLote([$xmlAssinado], rand(1, 999999));
+    
+    $st = new Tools($configJson, Certificate::readPfx($certificadoContent, $empresaConfig['certificado_senha']));
+    $stdCl = json_decode(json_encode(simplexml_load_string($resp)));
+    
+    if (isset($stdCl->protNFe->infProt->cStat) && $stdCl->protNFe->infProt->cStat == 100) {
+        // Sucesso
+        $chave = (string)$stdCl->protNFe->infProt->chNFe;
+        $prot = (string)$stdCl->protNFe->infProt->nProt;
         
-        // ✅ CORRIGIDO (Problema 5): Confirma a transação (incluindo o incremento do número)
-        $conn->commit();
+        // Salva XML
+        $xmlPath = "../notas_fiscais/{$chave}.xml";
+        file_put_contents($xmlPath, $xmlAssinado); // Nota: Salve o XML protocolado se possível
 
-        log_nfce("✅ NFC-e #{$chave} autorizada. Protocolo: {$protocolo}");
-        echo json_encode(['success' => true, 'message' => 'NFC-e emitida com sucesso!', 'chave' => $chave]);
+        // Grava no banco
+        $stmtNota = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, chave_acesso, protocolo, xml_path, data_emissao) VALUES (?, ?, 'autorizada', ?, ?, ?, NOW())");
+        $stmtNota->bind_param("iisss", $id_venda, $tpAmb, $chave, $prot, $xmlPath);
+        $stmtNota->execute();
+
+        $conn->commit();
+        echo json_encode(['success' => true, 'message' => 'Nota emitida!', 'chave' => $chave]);
     } else {
-        $erro = "[{$std->cStat}] {$std->xMotivo}";
-        throw new Exception($erro);
+        // Erro na SEFAZ
+        $motivo = $stdCl->protNFe->infProt->xMotivo ?? $stdCl->xMotivo ?? 'Erro desconhecido';
+        throw new Exception("Rejeição SEFAZ: $motivo");
     }
 
 } catch (Exception $e) {
-    // ✅ CORRIGIDO (Problema 5): Desfaz o incremento do número da NF se algo falhar
     $conn->rollback();
-    
-    $msg = $e->getMessage();
-    $ambiente = $tpAmb ?? 2; // Pega o ambiente que foi carregado, ou usa Homologação
-
-    log_nfce("❌ ERRO: {$msg}");
-
-    // Loga o erro no banco. Isso será uma nova transação (autocommit)
-    $stmt = $conn->prepare("INSERT INTO notas_fiscais (id_venda, ambiente, status, mensagem_erro, data_emissao, numero_nf)
-                            VALUES (?, ?, 'erro', ?, NOW(), ?)");
-    $stmt->bind_param("iisi", $id_venda, $ambiente, $msg, $novo_numero_nf);
-    $stmt->execute();
-
-    echo json_encode(['success' => false, 'message' => $msg]);
+    log_nfce("❌ ERRO FATAL: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

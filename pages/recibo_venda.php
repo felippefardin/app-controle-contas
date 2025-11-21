@@ -61,38 +61,134 @@ $result_itens = $stmt_itens->get_result();
     <meta charset="UTF-8">
     <title>Recibo de Venda #<?= $id_venda ?></title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; background: #eee; padding: 20px; }
-        .recibo-container {
-            background: #fff;
-            width: 100%;
-            max-width: 400px; /* Largura estilo cupom */
-            margin: 0 auto;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-        .header h2 { margin: 0; font-size: 18px; }
-        .info { font-size: 12px; margin-bottom: 10px; }
-        .info p { margin: 2px 0; }
-        
-        table { width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 10px; }
-        th { text-align: left; border-bottom: 1px solid #000; }
-        td { padding: 4px 0; }
-        .text-right { text-align: right; }
-        
-        .totais { border-top: 1px dashed #000; padding-top: 10px; text-align: right; font-size: 13px; }
-        .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-        
-        .btn-print { 
-            display: block; width: 100%; padding: 10px; background: #007bff; color: white; 
-            text-align: center; border: none; cursor: pointer; margin-top: 20px; text-decoration: none;
-        }
-        
-        @media print {
-            body { background: #fff; padding: 0; }
-            .recibo-container { box-shadow: none; padding: 0; width: 100%; max-width: 100%; }
-            .btn-print, .btn-back { display: none; }
-        }
+      body { 
+    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+    background: #f2f4f7; 
+    padding: 20px;
+    margin: 0;
+}
+
+.recibo-container {
+    background: #ffffff;
+    width: 100%;
+    max-width: 420px; /* Largura estilo cupom */
+    margin: 0 auto;
+    padding: 25px 20px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+}
+
+.header { 
+    text-align: center; 
+    border-bottom: 1px dashed #000; 
+    padding-bottom: 12px; 
+    margin-bottom: 15px; 
+}
+
+.header h2 { 
+    margin: 0; 
+    font-size: 18px; 
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.info { 
+    font-size: 13px; 
+    margin-bottom: 12px; 
+}
+
+.info p { 
+    margin: 3px 0; 
+    color: #333;
+}
+
+table { 
+    width: 100%; 
+    font-size: 12px; 
+    border-collapse: collapse; 
+    margin-bottom: 10px; 
+}
+
+th { 
+    text-align: left; 
+    border-bottom: 1px solid #000; 
+    padding-bottom: 4px;
+    font-weight: 600;
+}
+
+td { 
+    padding: 4px 0; 
+}
+
+.text-right { 
+    text-align: right; 
+}
+
+.totais { 
+    border-top: 1px dashed #000; 
+    padding-top: 12px; 
+    text-align: right; 
+    font-size: 14px; 
+}
+
+.totais strong { 
+    font-weight: 700;
+}
+
+.footer { 
+    text-align: center; 
+    margin-top: 20px; 
+    font-size: 11px; 
+    color: #444;
+    border-top: 1px solid #eee; 
+    padding-top: 10px; 
+}
+
+.btn-print { 
+    display: block; 
+    width: 100%; 
+    /* padding: 11px;  */
+    background: #007bff; 
+    color: white; 
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center; 
+    border-radius: 6px;
+    border: none; 
+    cursor: pointer; 
+    margin-top: 18px; 
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.btn-print:hover { 
+    opacity: 0.85; 
+}
+
+.btn-back { 
+    background-color: #6c757d !important; 
+}
+
+@media print {
+    body { 
+        background: #fff; 
+        padding: 0; 
+        margin: 0;
+    }
+    .recibo-container { 
+        box-shadow: none; 
+        padding: 0; 
+        width: 100%; 
+        max-width: 100%; 
+        border: none;
+        border-radius: 0;
+    }
+    .btn-print, 
+    .btn-back { 
+        display: none !important; 
+    }
+}
     </style>
 </head>
 <body>

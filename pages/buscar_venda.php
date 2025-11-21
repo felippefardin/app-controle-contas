@@ -44,7 +44,7 @@ $result_itens = $stmt_itens->get_result();
     </div>
     <div class="col-6 text-right">
         Cliente: <?= htmlspecialchars($venda['nome_cliente'] ?? 'Balcão') ?><br>
-        Forma: <?= ucfirst($venda['forma_pagamento']) ?>
+        Forma: <?= ucfirst(str_replace('_',' ',$venda['forma_pagamento'])) ?>
     </div>
 </div>
 
@@ -78,11 +78,28 @@ $result_itens = $stmt_itens->get_result();
 <hr class="bg-secondary">
 
 <div class="d-flex justify-content-between">
+
     <a href="recibo_venda.php?id=<?= $venda['id'] ?>" target="_blank" class="btn btn-primary">
         <i class="fas fa-print"></i> Imprimir Recibo
     </a>
 
+    <?php if (!empty($venda['chave_nfe'])): ?>
+        <a 
+            id="btn-imprimir-danfe"
+            href="../actions/gerar_danfe.php?chave=<?= $venda['chave_nfe'] ?>" 
+            target="_blank"
+            class="btn btn-info"
+        >
+            <i class="fas fa-file-invoice"></i> DANFE
+        </a>
+    <?php else: ?>
+        <button class="btn btn-secondary" disabled>
+            <i class="fas fa-file-invoice"></i> DANFE indisponível
+        </button>
+    <?php endif; ?>
+
     <button type="button" class="btn btn-danger" id="btn-abrir-cancelar" data-id="<?= $venda['id'] ?>">
         <i class="fas fa-trash"></i> Cancelar Venda
     </button>
+
 </div>

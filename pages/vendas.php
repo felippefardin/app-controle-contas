@@ -80,7 +80,7 @@ include('../includes/header.php');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />  
 </head>
 <body>
-    <style>
+    <style>
 /* =========================================
    PADRÃO GERAL
 ========================================= */
@@ -452,8 +452,9 @@ label {
             <button type="button" id="btn-recibo" class="btn btn-primary btn-lg mr-2">
                 <i class="fas fa-receipt"></i> Finalizar e Gerar Recibo
             </button>
-            <button type="button" id="btn-nfe" class="btn btn-success btn-lg">
-                <i class="fas fa-file-invoice"></i> Finalizar e Emitir NF-e
+            <!-- ALTERADO: BOTÃO COM CLASSE DIFERENCIADA PARA INDICAR TESTE -->
+            <button type="button" id="btn-nfe" class="btn btn-warning btn-lg">
+                <i class="fas fa-vial"></i> Finalizar e Testar NFC-e (Local)
             </button>
         </div>
 
@@ -507,7 +508,7 @@ $(document).ready(function() {
 
     /* ================================
        CARREGAR META DE VENDAS
-    ================================== */
+       ================================== */
     function carregarMetaVendas() {
         fetch('../actions/get_meta_vendas.php')
         .then(res => res.json())
@@ -547,7 +548,7 @@ $(document).ready(function() {
 
     /* ================================
        MODAL DE META (ADMIN)
-    ================================== */
+       ================================== */
     if (userPerfil === 'admin' || userPerfil === 'proprietario') {
 
         $('#valor_meta_input').mask('000.000.000,00', {reverse: true});
@@ -588,7 +589,7 @@ $(document).ready(function() {
 
     /* ================================
        SELECT2 CLIENTES
-    ================================== */
+       ================================== */
     $('#cliente_id').select2({
         placeholder: 'Selecione ou digite o nome de um cliente',
         ajax: {
@@ -602,7 +603,7 @@ $(document).ready(function() {
 
     /* ================================
        SELECT2 PRODUTOS
-    ================================== */
+       ================================== */
     $('#produto_select').select2({
         placeholder: 'Pesquisar produto pelo nome...',
         ajax: {
@@ -616,7 +617,7 @@ $(document).ready(function() {
 
     /* ================================
        ADICIONAR PRODUTO
-    ================================== */
+       ================================== */
     $('#add-produto').on('click', function() {
 
         const produtoData = $('#produto_select').select2('data')[0];
@@ -650,7 +651,7 @@ $(document).ready(function() {
 
     /* ================================
        ALTERAÇÃO DE QUANTIDADE
-    ================================== */
+       ================================== */
     $('#venda-items').on('input', '.quantidade', function() {
 
         const tr = $(this).closest('tr');
@@ -678,7 +679,7 @@ $(document).ready(function() {
 
     /* ================================
        REMOVER ITEM
-    ================================== */
+       ================================== */
     $('#venda-items').on('click', '.remover-item', function() {
         $(this).closest('tr').remove();
         atualizarTotal();
@@ -686,13 +687,13 @@ $(document).ready(function() {
 
     /* ================================
        MÁSCARA DE DESCONTO
-    ================================== */
+       ================================== */
     $('#desconto').mask('000.000.000,00', {reverse: true});
     $('#desconto').on('input', atualizarTotal);
 
     /* ================================
        CALCULAR TOTAL
-    ================================== */
+       ================================== */
     function atualizarTotal() {
 
         let total = 0;
@@ -714,7 +715,7 @@ $(document).ready(function() {
 
     /* ================================
        BOTÕES FINALIZAR
-    ================================== */
+       ================================== */
     $('#btn-recibo').on('click', function() {
         tipoFinalizacao = 'recibo';
         $('#form-venda').submit();
@@ -727,7 +728,7 @@ $(document).ready(function() {
 
     /* ================================
        SUBMIT DA VENDA
-    ================================== */
+       ================================== */
     $('#form-venda').on('submit', function(e) {
 
         e.preventDefault();
@@ -770,6 +771,7 @@ $(document).ready(function() {
                 if (tipoFinalizacao === 'recibo') {
                     window.open('recibo_venda.php?id=' + data.venda_id, '_blank');
                 } else {
+                    // Chama a função de emissão (agora ajustada para Mock)
                     emitirNFe(data.venda_id);
                 }
 
@@ -788,22 +790,34 @@ $(document).ready(function() {
     });
 
     /* ================================
-       EMITIR NF-e
-    ================================== */
+       EMITIR NF-e (MODO TESTE / MOCK)
+       ================================== */
     function emitirNFe(vendaId) {
 
-        showAlert('⏳ Emitindo NF-e...', 'info');
+        // ⚠️ ATENÇÃO: URL APONTANDO PARA O SCRIPT DE TESTE (MOCK)
+        // Para voltar para produção/homologação real com certificado,
+        // altere para: '../actions/emitir_nfce.php'
+        const urlEmissao = '../actions/testar_emissao_mock.php';
 
-        fetch('../actions/emitir_nfce.php', {
+        showAlert('⏳ Gerando NFC-e de Simulação...', 'info');
+
+        fetch(urlEmissao, {
             method: 'POST',
             body: new URLSearchParams({ id_venda: vendaId })
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success)
-                showAlert('✅ NF-e emitida! Chave: ' + data.chave, 'success');
-            else
-                showAlert('❌ Erro ao emitir NF-e: ' + data.message, 'danger');
+            if (data.success) {
+                // Mensagem ajustada para deixar claro que é um teste
+                showAlert('✅ SIMULAÇÃO: NFC-e gerada com sucesso! Chave Fictícia: ' + data.chave, 'success');
+                
+                // **MODIFICAÇÃO AQUI**: Abrir recibo/danfe em nova aba automaticamente
+                setTimeout(() => {
+                    window.open('../actions/gerar_danfe.php?chave=' + data.chave, '_blank');
+                }, 1500); // Pequeno delay para usuário ler a mensagem de sucesso
+                
+            } else
+                showAlert('❌ Erro na simulação da NFC-e: ' + data.message, 'danger');
         })
         .catch(err => {
             console.error(err);
@@ -813,7 +827,7 @@ $(document).ready(function() {
 
     /* ================================
        LIMPAR FORMULÁRIO
-    ================================== */
+       ================================== */
     function limparFormulario() {
         $('#form-venda')[0].reset();
         $('#cliente_id').val(null).trigger('change');
@@ -823,7 +837,7 @@ $(document).ready(function() {
 
     /* ================================
        ALERTA DINÂMICO
-    ================================== */
+       ================================== */
     function showAlert(message, type) {
 
         $('#alert-container .alert').alert('close');

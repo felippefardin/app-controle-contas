@@ -51,7 +51,20 @@ $result = $conn->query($sql);
   <title>Contas a Pagar</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    body {
+    background-color: #121212;
+    color: #eee;
+    font-family: Arial, sans-serif;
+
+    margin: 0;
+    padding: 0; /* <-- REMOVE o padding que derrubava o header */
+
+    min-height: 100vh;
+}
+.main-content {
+    padding: 20px; /* Espaçamento interno sem afetar o header */
+    margin-top: 80px; /* Garante espaço caso o header tenha altura fixa */
+}
     h2 { text-align: center; color: #00bfff; }
     
     /* Estilos Gerais */

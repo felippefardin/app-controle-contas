@@ -310,3 +310,27 @@ CREATE TABLE IF NOT EXISTS faturas_assinatura (
     INDEX idx_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE `empresa_config` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `razao_social` varchar(255) NOT NULL,
+  `cnpj` varchar(14) NOT NULL,
+  `fantasia` varchar(255) DEFAULT NULL,
+  `ie` varchar(20) DEFAULT NULL,
+  `logradouro` varchar(255) DEFAULT NULL,
+  `numero` varchar(10) DEFAULT NULL,
+  `bairro` varchar(100) DEFAULT NULL,
+  `municipio` varchar(100) DEFAULT NULL,
+  `uf` char(2) DEFAULT NULL,
+  `cep` varchar(8) DEFAULT NULL,
+  `cod_municipio` varchar(7) DEFAULT NULL,
+  `regime_tributario` int DEFAULT NULL,
+  `csc` varchar(100) NOT NULL,
+  `csc_id` varchar(10) NOT NULL,
+  `certificado_a1_path` varchar(255) DEFAULT NULL,
+  `certificado_senha` varchar(255) DEFAULT NULL,
+  `ultimo_numero_nfce` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `cnpj` (`cnpj`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
