@@ -34,179 +34,249 @@ if ($stmtKv) {
 include('../includes/header.php');
 ?>
 
-<link rel="stylesheet" href="../assets/css/style.css">
-
 <style>
-/* === ESTILO GERAL === */
+/* === ESTILO REESTRUTURADO: FULL DESKTOP + MOBILE === */
 :root {
-    --bg-body: #121212;
-    --bg-card: #1e1e1e;
-    --bg-input: #2c2c2c;
-    --border-color: #2a2a2a;
-    --text-primary: #e0e0e0;
-    --text-secondary: #b0b0b0;
+    --bg-card: #1f1f1f;
+    --bg-input: #2a2a2a;
+    --bg-hover: #333;
+    --border-color: #3a3a3a;
+    --text-primary: #fff;
+    --text-secondary: #bdbdbd;
     --primary-color: #00bfff;
     --primary-hover: #009ed1;
 }
 
-body {
-    background-color: var(--bg-body);
-    color: var(--text-primary);
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+/* === TELA FULL DESKTOP === */
+html, body {
+    height: 100%;
 }
 
-/* MAIN CENTRALIZADO */
-main {
+/* Conteúdo ocupar a tela de forma centralizada */
+.fiscal-container {
     width: 100%;
-    max-width: 1450px;
-    margin: auto;
-    padding: 25px 35px;
+    max-width: 1500px; /* Tela larga */
+    margin: 0 auto;
+    padding: 30px;
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn .6s ease;
 }
 
-/* === TÍTULO === */
+/* TÍTULO */
 .page-title {
-    font-size: 1.9rem;
+    font-size: 2.1rem;
     font-weight: 700;
     color: var(--primary-color);
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 25px 0 30px 0;
+    gap: 14px;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 12px;
 }
 
 .page-title i {
-    font-size: 1.8rem;
-    color: var(--primary-color);
+    font-size: 2rem;
 }
 
-/* === CARDS === */
+/* CARDS */
 .card {
-    background-color: var(--bg-card);
+    background: var(--bg-card);
+    border-radius: 12px;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    margin-bottom: 25px;
-    box-shadow: 0 5px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .card-header {
-    background: rgba(255,255,255,0.03);
-    color: var(--primary-color);
     padding: 18px 22px;
+    background: rgba(255,255,255,0.04);
+    color: var(--primary-color);
     font-size: 1.15rem;
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .card-body {
     padding: 28px;
+    flex: 1;
 }
 
-/* === INPUTS === */
+/* INPUTS */
 label {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: .9rem;
     margin-bottom: 6px;
+    display: block;
     font-weight: 500;
 }
 
 .form-control {
-    background-color: var(--bg-input);
+    background: var(--bg-input);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     border-radius: 6px;
     height: 46px;
+    width: 100%;
     padding-left: 12px;
+    transition: .2s;
+    box-sizing: border-box;
+}
+
+.form-control:hover {
+    background: var(--bg-hover);
 }
 
 .form-control:focus {
-    background-color: #303030;
     border-color: var(--primary-color);
-    color: #fff;
-    box-shadow: 0 0 0 0.15rem rgba(0,191,255,0.25);
+    background: #303030;
+    box-shadow: 0 0 0 2px rgba(0,191,255,.25);
+    outline: none;
 }
 
 .form-control::placeholder {
     color: #777;
 }
 
+/* SELECT */
 select.form-control {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 8 8'%3E%3Cpath fill='%23b0b0b0' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%23b0b0b0' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
-    background-size: 12px;
 }
 
-/* BTN */
+/* GRID MODERNO */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+/* Helpers de Grid Interno para Inputs */
+.col-full { width: 100%; }
+.col-half { flex: 1 1 calc(50% - 20px); min-width: 250px; }
+.col-third { flex: 1 1 calc(33.333% - 20px); min-width: 200px; }
+.col-quart { flex: 1 1 calc(25% - 20px); min-width: 150px; }
+.col-small { flex: 0 0 120px; }
+.col-large { flex: 1; }
+
+/* BOTÃO */
 .btn-container {
+    margin-top: 30px;
     display: flex;
     justify-content: flex-end;
-    margin-top: 25px;
-    margin-bottom: 80px;
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
-    color: #121212;
-    font-weight: 700;
+    background: var(--primary-color);
     border: none;
-    padding: 12px 32px;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    text-transform: uppercase;
-    transition: 0.25s ease;
+    color: #000;
+    padding: 12px 35px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .25s;
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background: var(--primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 5px 18px rgba(0,191,255,0.35);
+    box-shadow: 0 4px 14px rgba(0,191,255,.35);
 }
 
-/* === ALERTAS === */
+/* ALERTAS */
 .alert {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--primary-color);
-    color: var(--text-primary);
+    background: #262626;
     padding: 14px 18px;
     border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--primary-color);
+    color: #fff;
 }
+
+.alert-success { border-left-color: #28a745; }
+.alert-danger { border-left-color: #dc3545; }
+.alert-info { border-left-color: #17a2b8; }
 
 /* === RESPONSIVIDADE === */
-@media (max-width: 850px) {
-    main {
+
+/* TABLET */
+@media (max-width: 1024px) {
+    .fiscal-container {
         padding: 20px;
+        max-width: 100%;
     }
-    .page-title { font-size: 1.6rem; }
-    .btn-container { justify-content: center; }
 }
 
-@media (max-width: 480px) {
+/* MOBILE */
+@media (max-width: 768px) {
     .page-title {
-        font-size: 1.4rem;
+        font-size: 1.6rem;
         flex-direction: column;
         text-align: center;
+        gap: 5px;
     }
-    .btn-primary { width: 100%; }
+
+    .row {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .btn-container {
+        justify-content: center;
+    }
+
+    .btn-primary {
+        width: 100%;
+        font-size: 1rem;
+    }
+    
+    /* Forçar inputs a full width no mobile */
+    .col-half, .col-third, .col-quart, .col-small, .col-large {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+/* MOBILE PEQUENO */
+@media (max-width: 480px) {
+    .page-title { font-size: 1.4rem; }
+    .form-control { height: 44px; }
+    .card { border-radius: 10px; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
 
-<main>
+<div class="fiscal-container">
 
-    <!-- FEEDBACK -->
     <?php if (isset($_GET['success'])): ?>
-        <div class="alert alert-success mt-3">
-            <i class="fa-solid fa-check-circle text-success mr-2"></i>
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle mr-2"></i>
             Configurações salvas com sucesso.
         </div>
     <?php endif; ?>
 
     <?php if (isset($_GET['error'])): ?>
-        <div class="alert alert-danger mt-3">
-            <i class="fa-solid fa-circle-exclamation text-danger mr-2"></i>
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation mr-2"></i>
             <?= htmlspecialchars(urldecode($_GET['error'])) ?>
         </div>
     <?php endif; ?>
@@ -217,97 +287,91 @@ select.form-control {
     </div>
 
     <form action="../actions/salvar_configuracao_fiscal.php" method="POST">
-        <div class="row">
+        
+        <div style="display: flex; flex-direction: column; gap: 30px;">
 
-            <!-- Dados da Empresa -->
-            <div class="col-lg-8 col-md-12">
-                <div class="card">
-                    <div class="card-header"><i class="fa-regular fa-building mr-2"></i> Dados da Empresa</div>
-                    <div class="card-body">
+            <div class="card">
+                <div class="card-header"><i class="fa-regular fa-building"></i> Dados da Empresa</div>
+                <div class="card-body">
 
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label>Razão Social</label>
-                                <input type="text" class="form-control" name="razao_social"
-                                    value="<?= htmlspecialchars($dadosEmpresa['razao_social'] ?? '') ?>" required>
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label>Nome Fantasia</label>
-                                <input type="text" class="form-control" name="fantasia"
-                                    value="<?= htmlspecialchars($dadosEmpresa['fantasia'] ?? '') ?>">
-                            </div>
+                    <div class="row">
+                        <div class="col-half">
+                            <label>Razão Social</label>
+                            <input type="text" class="form-control" name="razao_social"
+                                value="<?= htmlspecialchars($dadosEmpresa['razao_social'] ?? '') ?>" required>
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-4">
-                                <label>CNPJ</label>
-                                <input type="text" class="form-control" name="cnpj"
-                                    value="<?= htmlspecialchars($dadosEmpresa['cnpj'] ?? '') ?>"
-                                    required placeholder="Apenas números">
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label>Inscrição Estadual</label>
-                                <input type="text" class="form-control" name="ie"
-                                    value="<?= htmlspecialchars($dadosEmpresa['ie'] ?? '') ?>">
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label>CEP</label>
-                                <input type="text" class="form-control" name="cep" id="cep"
-                                    value="<?= htmlspecialchars($dadosEmpresa['cep'] ?? '') ?>"
-                                    onblur="buscarCep(this.value)">
-                            </div>
+                        <div class="col-half">
+                            <label>Nome Fantasia</label>
+                            <input type="text" class="form-control" name="fantasia"
+                                value="<?= htmlspecialchars($dadosEmpresa['fantasia'] ?? '') ?>">
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-10">
-                                <label>Logradouro</label>
-                                <input type="text" class="form-control" name="logradouro" id="logradouro"
-                                    value="<?= htmlspecialchars($dadosEmpresa['logradouro'] ?? '') ?>">
-                            </div>
-                            <div class="form-group col-md-2">
-                                <label>Número</label>
-                                <input type="text" class="form-control" name="numero"
-                                    value="<?= htmlspecialchars($dadosEmpresa['numero'] ?? '') ?>">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-5">
-                                <label>Bairro</label>
-                                <input type="text" class="form-control" name="bairro" id="bairro"
-                                    value="<?= htmlspecialchars($dadosEmpresa['bairro'] ?? '') ?>">
-                            </div>
-                            <div class="form-group col-md-5">
-                                <label>Município</label>
-                                <input type="text" class="form-control" name="municipio" id="municipio"
-                                    value="<?= htmlspecialchars($dadosEmpresa['municipio'] ?? '') ?>">
-                            </div>
-                            <div class="form-group col-md-2">
-                                <label>UF</label>
-                                <input type="text" class="form-control" name="uf" id="uf"
-                                    value="<?= htmlspecialchars($dadosEmpresa['uf'] ?? '') ?>" maxlength="2">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-3">
-                                <label>Cód. IBGE Mun.</label>
-                                <input type="text" class="form-control" name="cod_municipio" id="ibge"
-                                    value="<?= htmlspecialchars($dadosEmpresa['cod_municipio'] ?? '') ?>">
-                            </div>
-                        </div>
-
                     </div>
+
+                    <div class="row" style="margin-top: 20px;">
+                        <div class="col-third">
+                            <label>CNPJ</label>
+                            <input type="text" class="form-control" name="cnpj"
+                                value="<?= htmlspecialchars($dadosEmpresa['cnpj'] ?? '') ?>"
+                                required placeholder="Apenas números">
+                        </div>
+                        <div class="col-third">
+                            <label>Inscrição Estadual</label>
+                            <input type="text" class="form-control" name="ie"
+                                value="<?= htmlspecialchars($dadosEmpresa['ie'] ?? '') ?>">
+                        </div>
+                        <div class="col-third">
+                            <label>CEP</label>
+                            <input type="text" class="form-control" name="cep" id="cep"
+                                value="<?= htmlspecialchars($dadosEmpresa['cep'] ?? '') ?>"
+                                onblur="buscarCep(this.value)">
+                        </div>
+                    </div>
+
+                    <div class="row" style="margin-top: 20px;">
+                        <div class="col-large">
+                            <label>Logradouro</label>
+                            <input type="text" class="form-control" name="logradouro" id="logradouro"
+                                value="<?= htmlspecialchars($dadosEmpresa['logradouro'] ?? '') ?>">
+                        </div>
+                        <div class="col-small">
+                            <label>Número</label>
+                            <input type="text" class="form-control" name="numero"
+                                value="<?= htmlspecialchars($dadosEmpresa['numero'] ?? '') ?>">
+                        </div>
+                    </div>
+
+                    <div class="row" style="margin-top: 20px;">
+                        <div class="col-third">
+                            <label>Bairro</label>
+                            <input type="text" class="form-control" name="bairro" id="bairro"
+                                value="<?= htmlspecialchars($dadosEmpresa['bairro'] ?? '') ?>">
+                        </div>
+                        <div class="col-third">
+                            <label>Município</label>
+                            <input type="text" class="form-control" name="municipio" id="municipio"
+                                value="<?= htmlspecialchars($dadosEmpresa['municipio'] ?? '') ?>">
+                        </div>
+                        <div class="col-small">
+                            <label>UF</label>
+                            <input type="text" class="form-control" name="uf" id="uf"
+                                value="<?= htmlspecialchars($dadosEmpresa['uf'] ?? '') ?>" maxlength="2">
+                        </div>
+                        <div class="col-small">
+                            <label>Cód. IBGE</label>
+                            <input type="text" class="form-control" name="cod_municipio" id="ibge"
+                                value="<?= htmlspecialchars($dadosEmpresa['cod_municipio'] ?? '') ?>">
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <!-- Parâmetros NFC-e -->
-            <div class="col-lg-4 col-md-12">
-                <div class="card h-100">
-                    <div class="card-header"><i class="fa-solid fa-key mr-2"></i> Parâmetros NFC-e</div>
-                    <div class="card-body d-flex flex-column">
+            <div class="card">
+                <div class="card-header"><i class="fa-solid fa-key"></i> Parâmetros NFC-e</div>
+                <div class="card-body">
 
-                        <div class="form-group">
+                    <div class="row">
+                        <div class="col-half">
                             <label>Ambiente</label>
                             <select class="form-control" name="ambiente">
                                 <option value="2" <?= ($dadosEmpresa['ambiente'] ?? '') == 2 ? 'selected' : '' ?>>
@@ -319,7 +383,7 @@ select.form-control {
                             </select>
                         </div>
 
-                        <div class="form-group">
+                        <div class="col-half">
                             <label>Regime Tributário</label>
                             <select class="form-control" name="regime_tributario">
                                 <option value="1" <?= ($dadosEmpresa['regime_tributario'] ?? '') == 1 ? 'selected' : '' ?>>
@@ -330,27 +394,31 @@ select.form-control {
                                 </option>
                             </select>
                         </div>
+                    </div>
 
-                        <div class="form-group">
+                    <div class="row" style="margin-top: 20px;">
+                        <div class="col-half">
                             <label>ID CSC (Token)</label>
                             <input type="text" class="form-control" name="csc_id"
                                 value="<?= htmlspecialchars($dadosEmpresa['csc_id'] ?? '') ?>" placeholder="Ex: 000001">
-                            <small class="text-muted">Número sequencial do token.</small>
+                            <small style="color: #777;">Número sequencial do token.</small>
                         </div>
 
-                        <div class="form-group">
+                        <div class="col-half">
                             <label>CSC (Código Alpha)</label>
                             <input type="text" class="form-control" name="csc"
                                 value="<?= htmlspecialchars($dadosEmpresa['csc'] ?? '') ?>" placeholder="Código alfanumérico">
                         </div>
+                    </div>
 
-                        <div class="mt-auto pt-3">
-                            <div class="alert alert-info p-2" style="font-size: 0.85rem;">
-                                <i class="fa-solid fa-circle-info"></i> O certificado A1 deve ser enviado ao suporte.
+                    <div class="row" style="margin-top: 20px;">
+                        <div class="col-full">
+                            <div class="alert alert-info" style="margin-bottom: 0; font-size: 0.9rem;">
+                                <i class="fa-solid fa-circle-info"></i> O certificado A1 deve ser enviado ao suporte técnico para configuração.
                             </div>
                         </div>
-
                     </div>
+
                 </div>
             </div>
 
@@ -364,13 +432,14 @@ select.form-control {
 
     </form>
 
-</main>
+</div>
 
 <script>
 function buscarCep(cep) {
     cep = cep.replace(/\D/g, '');
     if (cep.length === 8) {
-        document.getElementById('cep').style.borderColor = '#00bfff';
+        const inputCep = document.getElementById('cep');
+        inputCep.style.borderColor = '#00bfff';
 
         fetch(`https://viacep.com.br/ws/${cep}/json/`)
             .then(r => r.json())
@@ -384,10 +453,10 @@ function buscarCep(cep) {
 
                     document.getElementsByName('numero')[0].focus();
                 }
-                document.getElementById('cep').style.borderColor = '';
+                inputCep.style.borderColor = '';
             })
             .catch(() => {
-                document.getElementById('cep').style.borderColor = 'red';
+                inputCep.style.borderColor = '#dc3545'; // red
             });
     }
 }
