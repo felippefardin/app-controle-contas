@@ -351,7 +351,7 @@
                 <p class="lead text-muted">Teste grátis em qualquer plano.</p>
             </div>
             
-            <div class="row g-4 justify-content-center align-items-end">
+            <div class="row g-4 justify-content-center">
                 
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card">
@@ -368,8 +368,8 @@
                             <li class="mb-2 ms-4 text-muted small"><i class="bi bi-dot"></i> 1 Usuário Admin</li>
                             <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> 2 Usuários Padrão</li>
                             <hr>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Contas a Pagar/Receber</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Relatórios Básicos</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Gestão completa</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte</li>
                         </ul>
                         <a href="pages/registro.php?plano=basico" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold">Escolher Básico</a>
                     </div>
@@ -390,8 +390,9 @@
                             <li class="mb-2 ms-4 text-muted small"><i class="bi bi-dot"></i> 1 Usuário Admin</li>
                             <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> 5 Usuários Padrão</li>
                             <hr>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Todos recursos do Básico</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Suporte Prioritário</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Gestão completa</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Suporte online</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Suporte com visita agendada com taxa adicional</li>
                         </ul>
                         <a href="pages/registro.php?plano=plus" class="btn btn-primary-custom w-100 py-3">Escolher Plus</a>
                     </div>
@@ -414,6 +415,8 @@
                             <hr>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Gestão Completa</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Maior Período de Teste</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte online prioritário</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte com visita agendada sem taxa extra até 2 vezes por mês</li>
                         </ul>
                         <a href="pages/registro.php?plano=essencial" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold">Escolher Essencial</a>
                     </div>
