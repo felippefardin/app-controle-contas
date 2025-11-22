@@ -2,70 +2,33 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// Verifica Login
-if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
-    header('Location: login.php');
-    exit;
-}
-
-$conn = getTenantConnection();
-$id_usuario = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$id_logado = $_SESSION['usuario_id'];
+// Verifica Permissão
 $nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
-$is_admin = ($nivel === 'admin' || $nivel === 'master' || $nivel === 'proprietario');
+$id_logado = $_SESSION['usuario_id'];
 
-// Segurança: Só pode editar se for admin ou se for o próprio usuário
-if (!$is_admin && $id_usuario !== $id_logado) {
-    header('Location: usuarios.php?erro=1&msg=Acesso negado');
+// Se não for admin, só pode editar a si mesmo
+if ($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') {
+    // Se tentar acessar ID de outro, bloqueia
+    if (isset($_GET['id']) && $_GET['id'] != $id_logado) {
+        header('Location: usuarios.php?erro=1&msg=Acesso negado');
+        exit;
+    }
+}
+
+// Busca dados do usuário
+$conn = getTenantConnection();
+$id_usuario = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+if (!$id_usuario) {
+    header('Location: usuarios.php?erro=1&msg=ID inválido');
     exit;
 }
 
-// Processa o Formulário
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim($_POST['nome']);
-    $email = trim($_POST['email']);
-    $telefone = trim($_POST['telefone']);
-    $cpf = preg_replace('/[^0-9]/', '', $_POST['cpf']);
-    $nova_senha = $_POST['senha'];
-    
-    // Define o perfil
-    $perfil_novo = $_POST['perfil'] ?? 'padrao';
-
-    // Se for o próprio usuário se editando, ele não pode mudar seu próprio nível de acesso
-    if ($id_usuario === $id_logado) {
-        // Mantém o perfil atual para não perder acesso de admin acidentalmente
-        $stmt_p = $conn->prepare("SELECT perfil FROM usuarios WHERE id = ?");
-        $stmt_p->bind_param("i", $id_usuario);
-        $stmt_p->execute();
-        $res_p = $stmt_p->get_result();
-        $row_p = $res_p->fetch_assoc();
-        $perfil_novo = $row_p['perfil']; 
-    }
-
-    if (!empty($nova_senha)) {
-        $hash = password_hash($nova_senha, PASSWORD_DEFAULT);
-        $sql = "UPDATE usuarios SET nome=?, email=?, telefone=?, cpf=?, senha=?, perfil=? WHERE id=?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssssi", $nome, $email, $telefone, $cpf, $hash, $perfil_novo, $id_usuario);
-    } else {
-        $sql = "UPDATE usuarios SET nome=?, email=?, telefone=?, cpf=?, perfil=? WHERE id=?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sssssi", $nome, $email, $telefone, $cpf, $perfil_novo, $id_usuario);
-    }
-
-    if ($stmt->execute()) {
-        header('Location: usuarios.php?sucesso=1&msg=Dados atualizados');
-        exit;
-    } else {
-        $erro = "Erro ao atualizar: " . $conn->error;
-    }
-}
-
-// Busca dados atuais
 $stmt = $conn->prepare("SELECT * FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
 if (!$user) {
     header('Location: usuarios.php?erro=1&msg=Usuário não encontrado');
@@ -74,222 +37,235 @@ if (!$user) {
 
 include('../includes/header.php');
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Usuário</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
+        /* ----------- ESTILO GERAL (NEON) ------------ */
         body {
             background-color: #121212;
             color: #eee;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .container {
+
+        .page-container {
             max-width: 600px;
-            margin: 30px auto;
+            margin: 40px auto;
+            background: #1e1e1e;
+            padding: 35px;
+            border-radius: 12px;
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 1px solid #333;
         }
-        .card {
-            background-color: #222;
-            border-radius: 8px;
-            border: 1px solid #444;
-        }
-        .card-header {
-            padding: 15px 25px;
-            border-bottom: 1px solid #444;
-        }
-        .card-body {
-            padding: 25px;
-        }
-        h3 {
-            margin: 0;
+
+        .page-container h2 {
             color: #00bfff;
+            border-bottom: 1px solid #00bfff;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
             font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
+        .form-group { margin-bottom: 20px; }
+
         label {
             display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ccc;
         }
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        select {
+
+        /* Container relativo para posicionar o ícone do olho */
+        .input-wrapper { position: relative; }
+
+        .form-control, select {
             width: 100%;
-            padding: 10px;
-            border-radius: 4px;
+            padding: 12px;
+            padding-right: 40px; /* Espaço para o ícone */
+            border-radius: 6px;
             border: 1px solid #444;
-            margin-bottom: 15px;
+            background: #252525;
+            color: #fff;
+            font-size: 1rem;
             box-sizing: border-box;
-            font-size: 16px;
-            background-color: #333;
-            color: #eee;
+            transition: all 0.3s ease-in-out;
         }
-        input:focus,
-        select:focus {
-            border-color: #0af;
+
+        /* --- EFEITO NEON NO FOCUS --- */
+        .form-control:focus, select:focus {
             outline: none;
+            border-color: #00bfff;
+            background-color: #2a2a2a;
+            box-shadow: 0 0 15px rgba(0, 191, 255, 0.8), 0 0 5px rgba(0, 191, 255, 0.5) inset; 
         }
-        .btn {
-            padding: 10px 14px;
-            font-size: 16px;
-            font-weight: bold;
+
+        /* Ícone de Ver Senha */
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.3s;
+            z-index: 10;
+        }
+        .toggle-password:hover { color: #00bfff; }
+
+        /* Botões */
+        .btn-area {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 15px;
+        }
+
+        .btn-custom {
+            padding: 12px 24px;
             border-radius: 6px;
             cursor: pointer;
             border: none;
+            font-weight: bold;
+            font-size: 1rem;
             text-decoration: none;
             text-align: center;
-            display: inline-block;
-            transition: background-color 0.3s ease;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .btn-primary {
-            background-color: #0af;
-            color: white;
+
+        .btn-back { background: #444; color: #ddd; }
+        .btn-back:hover { background: #555; color: #fff; }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #000;
+            flex-grow: 1;
+            box-shadow: 0 4px 10px rgba(255, 193, 7, 0.2);
         }
-        .btn-primary:hover {
-            background-color: #008cdd;
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(255, 193, 7, 0.4);
         }
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-        .d-flex {
+
+        /* Alertas */
+        .alert-custom {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            background: rgba(220, 53, 69, 0.2); 
+            border: 1px solid #dc3545; 
+            color: #ff6b6b;
             display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
-        .alert-danger {
-            background-color: #dc3545;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        /* Password toggle styles */
-        .password-wrapper {
-            position: relative;
-        }
-        .toggle-password {
-            position: absolute;
-            right: 10px;
-            top: 38%; /* Ajustado para alinhar melhor verticalmente */
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #aaa;
-            z-index: 10;
-        }
-        .toggle-password:hover {
-            color: #00bfff;
-        }
-        /* Estilo para inputs desabilitados ou readonly */
-        input:disabled, select:disabled, input[readonly] {
-            background-color: #2a2a2a;
-            color: #888;
-            cursor: not-allowed;
+            align-items: center;
+            gap: 10px;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h3><i class="fas fa-user-edit"></i> Editar Usuário</h3>
+<div class="page-container">
+    <h2 style="color: #ffc107; border-color: #ffc107;">
+        <i class="fa-solid fa-user-pen"></i> Editar Usuário
+    </h2>
+
+    <?php if (isset($_GET['erro'])): ?>
+        <div class="alert-custom">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <?= htmlspecialchars($_GET['msg'] ?? 'Erro desconhecido') ?>
         </div>
-        <div class="card-body">
-            <?php if (isset($erro)): ?>
-                <div class="alert alert-danger"><?= $erro ?></div>
-            <?php endif; ?>
+    <?php endif; ?>
 
-            <form method="POST" autocomplete="off">
-                <div class="form-group mb-3">
-                    <label>Nome Completo</label>
-                    <input type="text" name="nome" value="<?= htmlspecialchars($user['nome']) ?>" required>
-                </div>
+    <form action="../actions/editar_usuario.php" method="POST">
+        <input type="hidden" name="id" value="<?= $user['id'] ?>">
 
-                <div class="form-group mb-3">
-                    <label>Email</label>
-                    <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" required>
-                </div>
-
-                <div class="row">
-                    <div style="display: flex; gap: 15px;">
-                        <div style="flex: 1;">
-                            <label>CPF</label>
-                            <input type="text" name="cpf" id="cpf" value="<?= htmlspecialchars($user['cpf'] ?? '') ?>">
-                        </div>
-                        <div style="flex: 1;">
-                            <label>Telefone</label>
-                            <input type="text" name="telefone" id="telefone" value="<?= htmlspecialchars($user['telefone'] ?? '') ?>">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SELEÇÃO DE PERFIL (Admin Principal vs Padrão) -->
-                <div class="form-group mb-3">
-                    <label style="color: #00bfff;">Tipo de Acesso</label>
-                    <?php if ($is_admin && $id_usuario != $id_logado): ?>
-                        <select name="perfil">
-                            <option value="padrao" <?= $user['perfil'] == 'padrao' ? 'selected' : '' ?>>Usuário Padrão</option>
-                            <option value="admin" <?= $user['perfil'] == 'admin' ? 'selected' : '' ?>>Administrador Principal</option>
-                        </select>
-                        <small style="color: #aaa; display: block; margin-top: -10px; margin-bottom: 15px;">O Administrador Principal tem acesso total ao sistema.</small>
-                    <?php else: ?>
-                        <input type="hidden" name="perfil" value="<?= htmlspecialchars($user['perfil']) ?>">
-                        <input type="text" value="<?= $user['perfil'] == 'admin' ? 'Administrador Principal' : 'Usuário Padrão' ?>" disabled>
-                        <?php if ($id_usuario == $id_logado): ?>
-                            <small style="color: #ffc107; display: block; margin-top: -10px; margin-bottom: 15px;"><i class="fas fa-info-circle"></i> Você não pode alterar seu próprio nível de acesso.</small>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                </div>
-
-                <div class="form-group mb-4">
-                    <label>Nova Senha <small style="color: #aaa; font-weight: normal;">(Deixe em branco para não alterar)</small></label>
-                    <div class="password-wrapper">
-                        <input type="password" id="senhaInput" name="senha" placeholder="******" autocomplete="new-password">
-                        <i class="fas fa-eye toggle-password" onclick="toggleSenha()"></i>
-                    </div>
-                </div>
-
-                <div class="d-flex">
-                    <a href="usuarios.php" class="btn btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                </div>
-            </form>
+        <div class="form-group">
+            <label>Nome Completo:</label>
+            <input type="text" name="nome" class="form-control" required value="<?= htmlspecialchars($user['nome']) ?>">
         </div>
-    </div>
+
+        <div class="form-group">
+            <label>E-mail:</label>
+            <input type="email" name="email" class="form-control" required value="<?= htmlspecialchars($user['email']) ?>">
+        </div>
+
+        <div class="form-group">
+            <label>CPF:</label>
+            <input type="text" name="cpf" id="cpf" class="form-control" value="<?= htmlspecialchars($user['cpf'] ?? '') ?>">
+        </div>
+
+        <div class="form-group">
+            <label>Nível de Acesso:</label>
+            <select name="nivel" class="form-control">
+                <option value="padrao" <?= ($user['nivel_acesso'] ?? $user['perfil']) === 'padrao' ? 'selected' : '' ?>>Padrão (Acesso Restrito)</option>
+                <option value="admin" <?= ($user['nivel_acesso'] ?? $user['perfil']) === 'admin' ? 'selected' : '' ?>>Administrador (Acesso Total)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Nova Senha (Opcional):</label>
+            <div class="input-wrapper">
+                <input type="password" name="senha" id="senha" class="form-control" placeholder="Deixe em branco para manter a atual">
+                <i class="fa-solid fa-eye toggle-password" onclick="togglePass('senha', this)"></i>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Confirmar Nova Senha:</label>
+            <div class="input-wrapper">
+                <input type="password" name="senha_confirmar" id="senha_confirmar" class="form-control" placeholder="Repita se for alterar">
+                <i class="fa-solid fa-eye toggle-password" onclick="togglePass('senha_confirmar', this)"></i>
+            </div>
+        </div>
+
+        <div class="btn-area">
+            <a href="usuarios.php" class="btn-custom btn-back">
+                <i class="fa-solid fa-arrow-left"></i> Cancelar
+            </a>
+            <button type="submit" class="btn-custom btn-submit">
+                <i class="fa-solid fa-save"></i> Atualizar Dados
+            </button>
+        </div>
+
+    </form>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
+    // Máscara CPF
     $(document).ready(function(){
-        $('#cpf').mask('000.000.000-00', {reverse: true});
-        $('#telefone').mask('(00) 00000-0000');
+        $('#cpf').mask('000.000.000-00');
     });
 
-    function toggleSenha() {
-        const input = document.getElementById('senhaInput');
-        const icon = document.querySelector('.toggle-password');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
+    // Função Toggle Senha
+    function togglePass(fieldId, icon) {
+        const input = document.getElementById(fieldId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
         } else {
-            input.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
+            input.type = "password";
+            icon.classList.remove("fa-eye-slash");
+            icon.classList.add("fa-eye");
         }
     }
 </script>
 
-<?php include('../includes/footer.php'); ?>
 </body>
 </html>
+
+<?php
+$conn->close();
+include('../includes/footer.php'); 
+?>

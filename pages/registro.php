@@ -1,9 +1,5 @@
 <?php 
-// Remova o include do header se ele iniciar a sessão, 
-// pois o session_start() está em session_init.php
-// include('../includes/header.php'); 
-
-// Inicia a sessão para poder exibir erros de registro
+// pages/registro.php
 require_once __DIR__ . '/../includes/session_init.php';
 
 $erro = $_SESSION['erro_registro'] ?? '';
@@ -19,160 +15,34 @@ unset($_SESSION['erro_registro']);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
 <style>
-  body {
-    background-color: #121212;
-    color: #eee;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-  }
+  /* ... (Mantenha o CSS existente do seu arquivo original aqui) ... */
+  body { background-color: #121212; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+  .form-container { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 120px); padding: 20px; box-sizing: border-box; }
+  form { background-color: #1f1f1f; padding: 25px 35px; border-radius: 12px; max-width: 700px; width: 100%; box-sizing: border-box; border: 1px solid rgba(0, 191, 255, 0.2); box-shadow: 0 0 25px rgba(0, 191, 255, 0.08); }
+  h2 { text-align: center; margin-bottom: 20px; color: #00bfff; border-bottom: 2px solid #00bfff; padding-bottom: 10px; }
+  label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.95rem; color: #ccc; }
+  select, input { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 6px; border: 1px solid #333; background-color: #222; color: #eee; font-size: 1rem; box-sizing: border-box; }
+  input:focus, select:focus { outline: 2px solid #00bfff; background-color: #333; color: #fff; }
+  .input-group { position: relative; width: 100%; }
+  .input-group input { padding-right: 40px; }
+  .toggle-password { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #aaa; cursor: pointer; }
+  .rules, .error-message { font-size: 0.85rem; margin-top: 5px; }
+  .error-message { color: #ff4d4d; }
+  .erro-php { background-color: #cc4444; padding: 10px; margin-bottom: 15px; border-radius: 5px; color: white; text-align: center; }
+  .btn-submit { width: 100%; margin-top: 25px; padding: 12px 16px; border: none; border-radius: 8px; background-color: #28a745; color: #fff; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+  .login-link { text-align: center; margin-top: 15px; }
+  .login-link a { color: #00bfff; text-decoration: none; }
 
-  .form-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: calc(100vh - 120px);
-    padding: 20px;
-    box-sizing: border-box;
-  }
-
-  form {
-    background-color: #1f1f1f;
-    padding: 25px 35px;
-    border-radius: 12px;
-    max-width: 600px;
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid rgba(0, 191, 255, 0.2);
-    box-shadow: 0 0 25px rgba(0, 191, 255, 0.08);
-    transition: box-shadow 0.3s ease, transform 0.2s ease;
-  }
-
-  h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #00bfff;
-    border-bottom: 2px solid #00bfff;
-    padding-bottom: 10px;
-    letter-spacing: 0.5px;
-  }
-
-  label {
-    display: block;
-    margin-top: 15px;
-    font-weight: bold;
-    font-size: 0.95rem;
-    color: #ccc;
-  }
-
-  select, input {
-    width: 100%;
-    padding: 10px 12px;
-    margin-top: 6px;
-    border-radius: 6px;
-    border: 1px solid #333;
-    background-color: #222;
-    color: #eee;
-    font-size: 1rem;
-    box-sizing: border-box;
-    transition: all 0.2s ease; 
-  }
-
-  input:focus, select:focus {
-    outline: 2px solid #00bfff;
-    background-color: #333;
-    color: #fff;
-  }
-
-  .input-group {
-    position: relative;
-    width: 100%;
-  }
-
-  .input-group input {
-    padding-right: 40px;
-  }
-
-  .toggle-password {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
-    color: #aaa;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: color 0.3s ease;
-  }
-
-  .toggle-password:hover {
-    color: #00bfff;
-  }
-
-  .rules {
-    font-size: 0.85rem;
-    color: #bbb;
-    margin-top: 5px;
-  }
-
-  .error-message {
-    color: #ff4d4d;
-    font-size: 0.85rem;
-    margin-top: 5px;
-  }
-  
-  /* Bloco de Erro vindo do PHP */
-  .erro-php {
-    background-color: #cc4444;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    font-weight: 600;
-    text-align: center;
-    color: white;
-  }
-
-
-  .btn-submit {
-    width: 100%;
-    margin-top: 25px;
-    padding: 12px 16px; 
-    border: none;
-    border-radius: 8px;
-    background-color: #28a745; 
-    color: #fff;
-    font-weight: bold;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-  }
-
-  .btn-submit:hover,
-  .btn-submit:focus {
-    background-color: #218838;
-    outline: none;
-    transform: translateY(-1px);
-  }
-
-  .login-link {
-    text-align: center;
-    margin-top: 15px;
-    font-size: 0.9rem;
-  }
-  .login-link a {
-    color: #00bfff;
-    text-decoration: none;
-    font-weight: bold;
-  }
-  .login-link a:hover {
-    text-decoration: underline;
-  }
-
-  @media (max-width: 480px) {
-    form { padding: 20px; }
-    input { font-size: 0.95rem; padding: 8px 10px; }
-    .btn-submit { font-size: 1rem; padding: 10px; }
-    .toggle-password { font-size: 0.9rem; right: 10px; }
-  }
+  /* CSS DOS PLANOS */
+  .planos-container { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .plano-card { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.3s; position: relative; min-width: 180px; }
+  .plano-card:hover { border-color: #00bfff; background: #333; }
+  .plano-card input[type="radio"] { display: none; }
+  .plano-card.selected { border-color: #00bfff; background: #2c3e50; box-shadow: 0 0 10px rgba(0, 191, 255, 0.2); }
+  .plano-titulo { color: #00bfff; font-weight: bold; font-size: 1.1rem; display: block; margin-bottom: 5px; }
+  .plano-preco { font-size: 1.2rem; color: #fff; font-weight: bold; display: block; margin-bottom: 5px; }
+  .plano-desc { font-size: 0.85rem; color: #bbb; line-height: 1.4; }
+  .trial-badge { background: #ffc107; color: #000; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; position: absolute; top: 10px; right: 10px; }
 </style>
 </head>
 <body>
@@ -184,6 +54,45 @@ unset($_SESSION['erro_registro']);
     <?php if (!empty($erro)) : ?>
       <div class="erro-php"><?= htmlspecialchars($erro) ?></div>
     <?php endif; ?>
+
+    <label>Escolha seu Plano (Teste Grátis 15 Dias):</label>
+    <div class="planos-container">
+      <label class="plano-card selected" id="card-basico">
+        <input type="radio" name="plano" value="basico" checked onchange="selectPlan(this)">
+        <span class="trial-badge">15 Dias Grátis</span>
+        <span class="plano-titulo">Plano Básico</span>
+        <span class="plano-preco">R$ 19,90/mês</span>
+        <div class="plano-desc">
+          <i class="fas fa-check"></i> 1 Usuário Admin<br>
+          <i class="fas fa-check"></i> 2 Usuários Padrão<br>
+          <small>Total: 3 Usuários</small>
+        </div>
+      </label>
+
+      <label class="plano-card" id="card-plus">
+        <input type="radio" name="plano" value="plus" onchange="selectPlan(this)">
+        <span class="trial-badge">15 Dias Grátis</span>
+        <span class="plano-titulo">Plano Plus</span>
+        <span class="plano-preco">R$ 39,90/mês</span>
+        <div class="plano-desc">
+          <i class="fas fa-check"></i> 1 Usuário Admin<br>
+          <i class="fas fa-check"></i> 5 Usuários Padrão<br>
+          <small>Total: 6 Usuários</small>
+        </div>
+      </label>
+
+      <label class="plano-card" id="card-essencial">
+        <input type="radio" name="plano" value="essencial" onchange="selectPlan(this)">
+        <span class="trial-badge">30 Dias Grátis</span>
+        <span class="plano-titulo">Plano Essencial</span>
+        <span class="plano-preco">R$ 59,90/mês</span>
+        <div class="plano-desc">
+          <i class="fas fa-check"></i> 1 Usuário Admin<br>
+          <i class="fas fa-check"></i> 15 Usuários Padrão<br>
+          <small>Total: 16 Usuários</small>
+        </div>
+      </label>
+    </div>
 
     <label for="tipo_pessoa">Tipo de Pessoa:</label>
     <select id="tipo_pessoa" name="tipo_pessoa" required>
@@ -220,24 +129,26 @@ unset($_SESSION['erro_registro']);
              title="Mínimo 6 caracteres, incluindo letra maiúscula, minúscula, número e caractere especial">
       <i class="fas fa-eye toggle-password" id="toggleSenha"></i>
     </div>
-    <div class="rules">
-      Mínimo 6 caracteres, incluindo letra maiúscula, minúscula, número e caractere especial
-    </div>
+    <div class="rules">Mínimo 6 caracteres, maiúscula, minúscula, número e especial</div>
 
     <label for="senha2">Repetir Senha:</label>
     <input type="password" id="senha2" name="senha2" required>
     <div id="senhaError" class="error-message"></div>
 
-    <button class="btn-submit" type="submit">Finalizar Cadastro</button>
+    <button class="btn-submit" type="submit">Finalizar Cadastro e Testar Grátis</button>
 
-    <div class="login-link">
-      Já tem uma conta? <a href="login.php">Faça Login</a>
-    </div>
-    </form>
+    <div class="login-link">Já tem uma conta? <a href="login.php">Faça Login</a></div>
+  </form>
 </div>
 
 <script>
-  // Alternar visibilidade da senha
+  // Função Visual Seleção de Plano
+  function selectPlan(radio) {
+    document.querySelectorAll('.plano-card').forEach(c => c.classList.remove('selected'));
+    radio.closest('.plano-card').classList.add('selected');
+  }
+
+  // ... (Mantenha o restante dos scripts JS do arquivo original: toggleSenha, mascaras, validações) ...
   const toggleSenha = document.getElementById('toggleSenha');
   const inputSenha = document.getElementById('senha');
   toggleSenha.addEventListener('click', () => {
@@ -247,7 +158,6 @@ unset($_SESSION['erro_registro']);
     toggleSenha.classList.toggle('fa-eye-slash');
   });
 
-  // Máscara e troca dinâmica CPF/CNPJ
   function aplicarMascaraDocumento(tipo) {
     const input = $("#documento");
     input.unmask();
@@ -260,7 +170,6 @@ unset($_SESSION['erro_registro']);
     }
   }
 
-  // Troca de rótulos de nome e documento conforme seleção
   $("#tipo_pessoa").on("change", function() {
     const tipo = $(this).val();
     if (tipo === "fisica") {
@@ -276,11 +185,9 @@ unset($_SESSION['erro_registro']);
     aplicarMascaraDocumento($(this).val());
   });
 
-  // Aplicar máscara inicial
   aplicarMascaraDocumento("cpf");
   $("#telefone").mask("(00) 00000-0000");
 
-  // Validações
   const form = document.getElementById('cadastroForm');
   const senha2 = document.getElementById('senha2');
   const email2 = document.getElementById('email2');
