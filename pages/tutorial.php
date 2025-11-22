@@ -5,33 +5,26 @@
 include_once '../includes/session_init.php';
 require_once '../database.php'; 
 
-// 1. Verifica se tem sessão global (login master feito)
+// 1. Verifica se tem sessão global
 if (!isset($_SESSION['usuario_logado']) && !isset($_SESSION['super_admin'])) {
     header("Location: ../pages/login.php");
     exit();
 }
 
-// 2. Se for usuário comum (não super admin) e ainda não escolheu o perfil (sem usuario_id), manda selecionar
+// 2. Se for usuário comum e não escolheu perfil
 if (isset($_SESSION['usuario_logado']) && !isset($_SESSION['usuario_id']) && !isset($_SESSION['super_admin'])) {
     header("Location: ../pages/selecionar_usuario.php");
     exit();
 }
 
 // --- LÓGICA DE RECUPERAÇÃO DE DADOS ---
-
-// Valores padrão iniciais
 $nome_usuario = 'Usuário';
 $perfil = 'padrao';
 
 if (isset($_SESSION['super_admin'])) {
-    // Caso 1: É Super Admin
     $nome_usuario = $_SESSION['super_admin']['nome'] ?? 'Administrador Master';
     $perfil = 'admin_master';
-
 } elseif (isset($_SESSION['usuario_id'])) {
-    // Caso 2: É Usuário Tenant Logado e Selecionado
-    
-    // Tenta buscar dados frescos do banco do tenant
     try {
         $conn = getTenantConnection();
         if ($conn) {
@@ -48,285 +41,344 @@ if (isset($_SESSION['super_admin'])) {
             }
         }
     } catch (Exception $e) {
-        // Se der erro no banco, tenta usar dados da sessão se existirem (fallback)
         if (isset($_SESSION['usuario_nome'])) $nome_usuario = $_SESSION['usuario_nome'];
         if (isset($_SESSION['nivel_acesso'])) $perfil = $_SESSION['nivel_acesso'];
     }
 }
 
-// Formata o perfil para exibição amigável
 $perfil_exibicao = ucfirst(str_replace('_', ' ', $perfil));
-
-// Define se tem privilégios administrativos para mostrar/ocultar seções do tutorial
+// Verifica permissões para exibir configurações sensíveis
 $is_admin = in_array($perfil, ['proprietario', 'admin', 'admin_master']);
 
+// Inclui o Header padrão do sistema (que já tem o menu)
+include_once '../includes/header.php'; 
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manual do Usuário - App Controle de Contas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    
     <style>
-        body {
-            background-color: #121212;
+        /* Reset básico para garantir que o tutorial não quebre o layout principal */
+        .tutorial-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
             color: #e0e0e0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding-bottom: 50px;
         }
-        .tutorial-wrapper {
-            max-width: 1100px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-        .tutorial-header {
-            text-align: center;
+
+        .intro-header {
+            background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 6px solid #28a745;
             margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        .tutorial-header h1 {
-            color: #00bfff;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        .tutorial-header p {
-            font-size: 1.1rem;
-            color: #aaa;
-        }
-        
-        /* Cards de Módulos */
-        .module-section {
-            background: #1e1e1e;
-            border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 30px;
-            border-left: 5px solid #007bff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: transform 0.2s;
-        }
-        .module-section:hover {
-            transform: translateY(-2px);
-        }
-        
-        /* Destaque para Admin */
-        .module-section.admin-feature {
-            border-left-color: #ffc107;
-        }
-        
-        .module-title {
-            font-size: 1.5rem;
+
+        .intro-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2rem;
             color: #fff;
-            margin-bottom: 15px;
+        }
+
+        .badge-role {
+            background-color: #007bff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* Timeline / Steps Design */
+        .step-section {
+            position: relative;
+            padding-left: 40px;
+            margin-bottom: 50px;
+        }
+
+        .step-section::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #444;
+        }
+
+        .step-section:last-child::before {
+            bottom: auto;
+            height: 100%;
+        }
+
+        .step-number {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background: #007bff;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            color: white;
+            z-index: 2;
+            box-shadow: 0 0 0 5px #121212;
+        }
+
+        .step-content h2 {
+            margin-top: 0;
+            color: #8fd3fe;
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+        }
+
+        /* Cards de Funcionalidade */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: #1f1f1f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            border-color: #007bff;
+        }
+
+        .feature-card h3 {
+            color: #fff;
+            margin-top: 0;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .module-content {
-            margin-left: 10px;
+
+        .feature-card p {
+            color: #aaa;
+            font-size: 0.95rem;
+            line-height: 1.5;
         }
-        
-        /* Listas */
-        .step-list {
-            list-style: none;
-            padding: 0;
+
+        .instruction-list {
+            margin: 15px 0;
+            padding-left: 20px;
+            color: #ccc;
         }
-        .step-list li {
-            margin-bottom: 15px;
-            position: relative;
-            padding-left: 25px;
+        .instruction-list li {
+            margin-bottom: 8px;
         }
-        .step-list li::before {
-            content: "\f058"; /* Check icon */
-            font-family: "Font Awesome 6 Free";
-            font-weight: 900;
-            color: #28a745;
-            position: absolute;
-            left: 0;
-            top: 3px;
-        }
-        .step-list li strong {
-            color: #8fd3fe;
-        }
-        
-        /* Botões de Ação */
-        .btn-goto {
+
+        .btn-action {
             display: inline-block;
-            margin-top: 8px;
-            padding: 5px 12px;
-            font-size: 0.85rem;
-            background-color: #333;
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+            background: #333;
             color: #fff;
-            border-radius: 4px;
             text-decoration: none;
-            border: 1px solid #444;
-            transition: all 0.3s;
-        }
-        .btn-goto:hover {
-            background-color: #007bff;
-            border-color: #007bff;
-            color: #fff;
-        }
-
-        /* Badge de perfil */
-        .badge {
-            background-color: #28a745;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            vertical-align: middle;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .badge-admin {
-            background-color: #ffc107;
-            color: #000;
-        }
-        
-        .perm-note {
-            font-size: 0.8rem;
-            color: #888;
-            margin-left: 8px;
-            font-style: italic;
-        }
-
-        .back-btn {
-            position: fixed;
-            top: 90px;
-            right: 30px;
-            background: #28a745;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            z-index: 999;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: 600;
             transition: background 0.3s;
         }
-        .back-btn:hover { background-color: #218838; }
+        .btn-action:hover {
+            background: #007bff;
+        }
 
+        /* Dicas */
+        .tip-box {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #ffdd57;
+        }
+        .tip-box i { margin-right: 5px; }
+
+        /* Responsividade */
         @media (max-width: 768px) {
-            .back-btn { display: none; }
-            .tutorial-header h1 { font-size: 1.8rem; }
+            .step-section { padding-left: 0; }
+            .step-section::before { display: none; }
+            .step-number { display: inline-block; position: relative; margin-right: 10px; left: auto; top: auto; box-shadow: none; }
+            .intro-header h1 { font-size: 1.5rem; }
         }
     </style>
 </head>
 <body>
 
-    <a href="home.php" class="back-btn"><i class="fas fa-arrow-left"></i> Voltar para Home</a>
+<div class="tutorial-container">
 
-    <div class="tutorial-wrapper">
-        
-        <div class="tutorial-header">
-            <h1><i class="fas fa-book-reader"></i> Manual do Sistema</h1>
-            <p>Olá, <strong><?= htmlspecialchars($nome_usuario) ?></strong>. Bem-vindo(a) ao guia de uso.</p>
-            <p style="margin-top: 10px;">Seu nível de acesso atual: 
-                <span class="badge <?= $is_admin ? 'badge-admin' : '' ?>">
-                    <?= htmlspecialchars($perfil_exibicao) ?>
-                </span>
-            </p>
+    <div class="intro-header">
+        <h1><i class="fas fa-graduation-cap"></i> Guia do Sistema</h1>
+        <p>Olá, <strong><?= htmlspecialchars($nome_usuario) ?></strong>!</p>
+        <p>Este guia foi desenhado para te ajudar a configurar e operar o sistema do zero. Siga os passos na ordem para garantir o funcionamento correto do seu financeiro.</p>
+        <div style="margin-top: 15px;">
+            <span class="badge-role"><?= htmlspecialchars($perfil_exibicao) ?></span>
         </div>
-
-        <!-- MÓDULO 1 -->
-        <div class="module-section admin-feature">
-            <h2 class="module-title"><i class="fas fa-cogs"></i> 1. Configurações Iniciais</h2>
-            <div class="module-content">
-                <p>A base do seu controle financeiro.</p>
-                <ul class="step-list">
-                    <li>
-                        <strong>Categorias:</strong> Organize suas receitas e despesas (ex: Alimentação, Transporte).
-                        <br><a href="categorias.php" class="btn-goto">Configurar Categorias</a>
-                    </li>
-                    <li>
-                        <strong>Contas Bancárias:</strong> Cadastre onde seu dinheiro está (Caixa Físico, Banco X).
-                        <br><a href="banco_cadastro.php" class="btn-goto">Gerenciar Contas</a>
-                    </li>
-                    <li>
-                        <strong>Parceiros:</strong> Cadastre Clientes e Fornecedores.
-                        <br><a href="cadastrar_pessoa_fornecedor.php" class="btn-goto">Cadastrar Parceiros</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- MÓDULO 2 -->
-        <div class="module-section">
-            <h2 class="module-title"><i class="fas fa-shopping-cart"></i> 2. Vendas</h2>
-            <div class="module-content">
-                <p>Registre suas entradas operacionais.</p>
-                <ul class="step-list">
-                    <li>
-                        <strong>PDV (Ponto de Venda):</strong> Lançamento rápido de vendas.
-                        <ul>
-                            <li>Venda à Vista: Entra direto no saldo da conta selecionada.</li>
-                            <li>Venda a Prazo: Gera uma conta a receber futura.</li>
-                        </ul>
-                        <a href="vendas.php" class="btn-goto">Ir para Vendas</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- MÓDULO 3 -->
-        <div class="module-section admin-feature">
-            <h2 class="module-title"><i class="fas fa-wallet"></i> 3. Financeiro</h2>
-            <div class="module-content">
-                <p>Controle total do fluxo de caixa.</p>
-                <ul class="step-list">
-                    <li>
-                        <strong>A Pagar & A Receber:</strong> Lance contas futuras. Lembre-se de dar <strong>Baixa</strong> quando o pagamento for efetivado.
-                        <br>
-                        <a href="contas_pagar.php" class="btn-goto">Contas a Pagar</a>
-                        <a href="contas_receber.php" class="btn-goto" style="margin-left: 5px;">Contas a Receber</a>
-                    </li>
-                    <li>
-                        <strong>Movimento de Caixa:</strong> Lançamentos diretos (sangrias, despesas miúdas) que afetam o saldo hoje.
-                        <br><a href="lancamento_caixa.php" class="btn-goto">Lançar no Caixa</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- MÓDULO 4 -->
-        <div class="module-section admin-feature">
-            <h2 class="module-title"><i class="fas fa-cubes"></i> 4. Estoque e Compras</h2>
-            <div class="module-content">
-                <ul class="step-list">
-                    <li>
-                        <strong>Produtos:</strong> Defina preços e estoque mínimo.
-                        <br><a href="controle_estoque.php" class="btn-goto">Ver Estoque</a>
-                    </li>
-                    <li>
-                        <strong>Compras:</strong> Ao registrar uma compra de fornecedor, o estoque aumenta e o financeiro é atualizado.
-                        <br><a href="compras.php" class="btn-goto">Nova Compra</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- MÓDULO 5 -->
-        <div class="module-section">
-            <h2 class="module-title"><i class="fas fa-chart-pie"></i> 5. Relatórios</h2>
-            <div class="module-content">
-                <ul class="step-list">
-                    <li>
-                        <strong>Análise Completa:</strong> DRE, Fluxo de Caixa Mensal e Curva ABC de produtos.
-                        <br><a href="relatorios.php" class="btn-goto">Acessar Dashboards</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <div style="text-align: center; margin: 50px 0;">
-            <a href="home.php" class="action-link" style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 1.1rem; font-weight: bold; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.4);">
-                <i class="fas fa-home"></i> Voltar para o Início
-            </a>
-        </div>
-        
     </div>
+
+    <?php if ($is_admin): ?>
+    <div class="step-section">
+        <div class="step-number">1</div>
+        <div class="step-content">
+            <h2>Configurações Iniciais (A base de tudo)</h2>
+            <p>Antes de lançar vendas ou contas, precisamos "ensinar" ao sistema como sua empresa funciona. Faça isso nesta ordem:</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3><i class="fas fa-tags" style="color: #e83e8c;"></i> 1. Categorias</h3>
+                    <p>Defina de onde vem (Receita) e para onde vai (Despesa) o dinheiro.</p>
+                    <ul class="instruction-list">
+                        <li>Crie categorias "Pai" (ex: Despesas Fixas).</li>
+                        <li>Crie subcategorias (ex: Aluguel, Energia).</li>
+                    </ul>
+                    <div class="tip-box"><i class="fas fa-lightbulb"></i> Sem categorias, seus relatórios ficarão vazios.</div>
+                    <a href="categorias.php" class="btn-action">Configurar Categorias</a>
+                </div>
+
+                <div class="feature-card">
+                    <h3><i class="fas fa-university" style="color: #28a745;"></i> 2. Contas/Bancos</h3>
+                    <p>Cadastre onde o dinheiro fica fisicamente ou virtualmente.</p>
+                    <ul class="instruction-list">
+                        <li><strong>Caixa Físico:</strong> Dinheiro na gaveta.</li>
+                        <li><strong>Banco X:</strong> Conta corrente/poupança.</li>
+                    </ul>
+                    <a href="banco_cadastro.php" class="btn-action">Cadastrar Bancos</a>
+                </div>
+
+                <div class="feature-card">
+                    <h3><i class="fas fa-users" style="color: #17a2b8;"></i> 3. Pessoas</h3>
+                    <p>Cadastre Clientes e Fornecedores recorrentes.</p>
+                    <ul class="instruction-list">
+                        <li>Necessário para lançar contas a pagar/receber nominais.</li>
+                        <li>Essencial para emitir notas fiscais depois.</li>
+                    </ul>
+                    <a href="cadastrar_pessoa_fornecedor.php" class="btn-action">Gerenciar Parceiros</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="step-section">
+        <div class="step-number"><?= $is_admin ? '2' : '1' ?></div>
+        <div class="step-content">
+            <h2>Estoque e Produtos</h2>
+            <p>Para vender, você precisa ter o que vender. Configure seu catálogo.</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3><i class="fas fa-box-open" style="color: #ffc107;"></i> Produtos</h3>
+                    <p>Cadastre seus itens de venda.</p>
+                    <ul class="instruction-list">
+                        <li>Defina preço de custo e venda.</li>
+                        <li>Defina estoque mínimo para ser avisado quando acabar.</li>
+                    </ul>
+                    <a href="controle_estoque.php" class="btn-action">Ver Estoque</a>
+                </div>
+
+                <div class="feature-card">
+                    <h3><i class="fas fa-truck-loading" style="color: #fd7e14;"></i> Compras (Entrada)</h3>
+                    <p>Registrar entrada de mercadoria.</p>
+                    <ul class="instruction-list">
+                        <li>Aumenta a quantidade no estoque.</li>
+                        <li>Gera automaticamente uma <strong>Conta a Pagar</strong> no financeiro.</li>
+                    </ul>
+                    <a href="compras.php" class="btn-action">Nova Compra</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-section">
+        <div class="step-number"><?= $is_admin ? '3' : '2' ?></div>
+        <div class="step-content">
+            <h2>Rotina Diária (Vendas e Financeiro)</h2>
+            <p>Como operar o sistema no dia a dia da empresa.</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3><i class="fas fa-cash-register" style="color: #007bff;"></i> Vendas (PDV)</h3>
+                    <p>Use para registrar saídas de produtos.</p>
+                    <ul class="instruction-list">
+                        <li><strong>À Vista:</strong> O dinheiro entra direto na conta selecionada.</li>
+                        <li><strong>A Prazo:</strong> Cria uma "Conta a Receber" para o futuro.</li>
+                    </ul>
+                    <a href="vendas.php" class="btn-action">Ir para o PDV</a>
+                </div>
+
+                <div class="feature-card">
+                    <h3><i class="fas fa-calendar-alt" style="color: #6f42c1;"></i> Agendamentos</h3>
+                    <p>Contas que vencem no futuro (Boletos, Aluguel, Recebimentos a prazo).</p>
+                    <div class="tip-box">
+                        <i class="fas fa-exclamation-circle"></i> <strong>Importante:</strong> O saldo só muda quando você clica no botão <span style="color:#fff; background:green; padding:2px 5px; border-radius:3px; font-size:0.7rem;">BAIXAR</span> dentro dessas telas.
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <a href="contas_pagar.php" class="btn-action" style="background:#dc3545;">A Pagar</a>
+                        <a href="contas_receber.php" class="btn-action" style="background:#28a745;">A Receber</a>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3><i class="fas fa-hand-holding-usd" style="color: #20c997;"></i> Movimento de Caixa</h3>
+                    <p>Pequenas movimentações ou ajustes manuais.</p>
+                    <ul class="instruction-list">
+                        <li>Sangria (Retirada de dinheiro do caixa).</li>
+                        <li>Aporte (Colocar troco no início do dia).</li>
+                        <li>Despesas sem nota fiscal (ex: Café, Material de limpeza rápido).</li>
+                    </ul>
+                    <a href="lancamento_caixa.php" class="btn-action">Lançar no Caixa</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-section">
+        <div class="step-number"><?= $is_admin ? '4' : '3' ?></div>
+        <div class="step-content">
+            <h2>Fechamento e Relatórios</h2>
+            <p>Entenda a saúde do seu negócio.</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3><i class="fas fa-chart-line" style="color: #e83e8c;"></i> Dashboards</h3>
+                    <p>Visualize:</p>
+                    <ul class="instruction-list">
+                        <li><strong>DRE:</strong> Lucro real (Receita - Despesa).</li>
+                        <li><strong>Fluxo de Caixa:</strong> Entradas e saídas dia a dia.</li>
+                        <li><strong>Curva ABC:</strong> Quais produtos vendem mais?</li>
+                    </ul>
+                    <a href="relatorios.php" class="btn-action">Ver Relatórios</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 60px; border-top: 1px solid #333; padding-top: 20px;">
+        <p style="color: #888;">Ainda com dúvidas?</p>
+        <a href="suporte.php" class="btn-action" style="max-width: 200px; background: #666;"><i class="fas fa-headset"></i> Contatar Suporte</a>
+        <br><br>
+        <a href="home.php" style="color: #007bff; text-decoration: none;">&larr; Voltar para a Página Inicial</a>
+    </div>
+
+</div>
+
 </body>
 </html>
