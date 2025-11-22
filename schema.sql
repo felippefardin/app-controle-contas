@@ -333,4 +333,17 @@ CREATE TABLE `empresa_config` (
   UNIQUE KEY `cnpj` (`cnpj`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS lembretes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    titulo VARCHAR(100) NOT NULL,
+    descricao TEXT,
+    data_lembrete DATE NOT NULL,
+    hora_lembrete TIME NOT NULL,
+    cor VARCHAR(20) NOT NULL, -- 'success' (verde), 'warning' (amarelo), 'danger' (vermelho)
+    email_enviado TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
 

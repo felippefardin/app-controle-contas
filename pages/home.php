@@ -1,9 +1,10 @@
 <?php
 // ----------------------------------------------
-// home.php (Corrigido)
+// home.php (Atualizado com Lembretes)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/automacao_lembretes.php'; // Garante que a automação rode ao entrar
 
 // 🔒 Usuário precisa estar logado
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -53,22 +54,44 @@ if ($connMaster) {
     }
 }
 
+// --- LÓGICA DE LEMBRETES (POPUP) ---
+$popupLembrete = false;
+try {
+    // Verifica se a tabela existe antes de consultar (para evitar erro fatal se não tiver rodado o SQL)
+    $checkTable = $conn->query("SHOW TABLES LIKE 'lembretes'");
+    if($checkTable && $checkTable->num_rows > 0) {
+        $sqlLembrete = "SELECT COUNT(*) as total FROM lembretes WHERE usuario_id = ? AND data_lembrete = CURDATE()";
+        $stmtL = $conn->prepare($sqlLembrete);
+        if ($stmtL) {
+            $stmtL->bind_param("i", $usuario_id);
+            $stmtL->execute();
+            $resL = $stmtL->get_result();
+            $rowL = $resL->fetch_assoc();
+            if ($rowL['total'] > 0) {
+                $popupLembrete = true;
+            }
+            $stmtL->close();
+        }
+    }
+} catch (Exception $e) {
+    // Silencia erro caso a tabela ainda não tenha sido criada
+}
+// -------------------------------------
+
 $mensagem = $_SESSION['sucesso_mensagem'] ?? null;
 unset($_SESSION['sucesso_mensagem']);
 
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
+
 // ---------------------------------------------------------
-// INCLUI O HEADER (Que já contém <!DOCTYPE>, <html>, <head>, <body>)
+// INCLUI O HEADER
 // ---------------------------------------------------------
 include('../includes/header.php');
 ?>
 
 <style>
-    /* Fundo degradê apenas para o conteúdo interno, se desejar, ou global */
-    /* Como o body já está no header, aplicamos classes específicas se necessário */
-    
     .home-container {
         max-width: 1000px;
         margin: auto;
@@ -139,6 +162,33 @@ include('../includes/header.php');
         border-radius: 10px;
         margin-bottom: 25px;
         color: #fff;
+    }
+
+    /* Estilo do Toast/Popup de Lembrete */
+    #toast-lembrete {
+        visibility: hidden;
+        min-width: 300px;
+        background-color: #00bfff;
+        color: #121212;
+        text-align: center;
+        border-radius: 8px;
+        padding: 16px;
+        position: fixed;
+        z-index: 9999;
+        right: 30px;
+        bottom: 30px;
+        font-size: 17px;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.5s, bottom 0.5s;
+    }
+
+    #toast-lembrete.show {
+        visibility: visible;
+        opacity: 1;
+        bottom: 50px;
     }
     
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -246,6 +296,11 @@ include('../includes/header.php');
     </div>
 
     <div class="dashboard">
+        
+        <a class="card-link" href="lembrete.php">
+            <i class="fas fa-sticky-note"></i> Lembretes
+        </a>
+
         <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
             <a class="card-link" href="relatorios.php">
                 <i class="fas fa-chart-pie"></i> Relatórios
@@ -266,6 +321,21 @@ include('../includes/header.php');
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($popupLembrete): ?>
+    <div id="toast-lembrete" onclick="window.location.href='lembrete.php'">
+        <i class="fas fa-bell"></i> Você tem lembretes para hoje!
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var x = document.getElementById("toast-lembrete");
+            x.className = "show";
+            // Some após 4 segundos (4000ms)
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 4000);
+        });
+    </script>
+<?php endif; ?>
 
 <script>
 const hora = new Date().getHours();
