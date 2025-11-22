@@ -4,7 +4,7 @@
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
-require_once '../includes/automacao_lembretes.php'; // Garante que a automação rode ao entrar
+
 
 // 🔒 Usuário precisa estar logado
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
