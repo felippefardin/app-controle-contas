@@ -67,6 +67,12 @@ try {
         $stmt->execute();
         $tenant = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+        if ($tenant) {
+    // ... (lógica existente de validação de assinatura) ...
+    
+    // ADICIONE ISSO: Salvar o plano na sessão
+    $_SESSION['plano'] = $tenant['plano'] ?? 'basico'; 
+}
     }
 
     // Validação de Assinatura

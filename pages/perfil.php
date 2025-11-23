@@ -107,6 +107,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// -------------------------------------------------------------------
+// LÓGICA DE SUPORTE (CORRIGIDA PARA USAR CONEXÃO MASTER)
+// -------------------------------------------------------------------
+$plano = $_SESSION['plano'] ?? 'basico';
+$uso_suporte = 0;
+$cobrar_extra = false;
+$valor_extra = "20,99";
+$limite_suporte = 0;
+$restantes = 0;
+
+// Apenas roda a lógica se NÃO for básico
+if ($plano === 'essencial' || $plano === 'plus') {
+    $tenant_id = $_SESSION['tenant_id'];
+    $mes_atual = date('Y-m');
+
+    // Define limites baseados no plano
+    if ($plano === 'essencial') $limite_suporte = 3;
+    if ($plano === 'plus') $limite_suporte = 1;
+
+    // Conecta ao Banco Master para checar uso (Tabela suporte_usage fica no Master)
+    $connMaster = getMasterConnection();
+    
+    if ($connMaster) {
+        $stmt_sup = $connMaster->prepare("SELECT contador FROM suporte_usage WHERE tenant_id = ? AND mes_ano = ?");
+        $stmt_sup->bind_param("ss", $tenant_id, $mes_atual);
+        $stmt_sup->execute();
+        $stmt_sup->bind_result($uso_suporte);
+        $stmt_sup->fetch();
+        $stmt_sup->close();
+        $connMaster->close(); // Fecha conexão Master após uso
+    }
+
+    $restantes = max(0, $limite_suporte - $uso_suporte);
+    $cobrar_extra = ($uso_suporte >= $limite_suporte);
+}
+// -------------------------------------------------------------------
+
 include('../includes/header.php');
 ?>
 
@@ -276,7 +313,6 @@ include('../includes/header.php');
 <div class="page-container">
     <h2><i class="fa-solid fa-user-pen"></i> Editar Perfil</h2>
 
-    <!-- Mensagens de Sucesso/Erro -->
     <?php if (!empty($_SESSION['perfil_msg'])): ?>
         <div class="alert-custom alert-success">
             <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_SESSION['perfil_msg']) ?>
@@ -293,7 +329,6 @@ include('../includes/header.php');
 
     <form method="POST" enctype="multipart/form-data">
         
-        <!-- Área da Foto -->
         <div class="profile-photo-container">
             <img src="../img/usuarios/<?= htmlspecialchars($foto_atual ?? 'default-profile.png', ENT_QUOTES, 'UTF-8') ?>" alt="Foto" class="profile-photo">
             <br>
@@ -352,7 +387,6 @@ include('../includes/header.php');
             </button>
         </div>
 
-        <!-- Apenas Admin vê o botão de assinatura -->
         <?php if ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario'): ?>
             <a href="minha_assinatura.php" class="btn-custom btn-secondary">
                 <i class="fa-solid fa-gem"></i> Gerenciar Assinatura
@@ -360,9 +394,38 @@ include('../includes/header.php');
         <?php endif; ?>
 
     </form>
+
+    <?php if ($plano === 'essencial' || $plano === 'plus'): ?>
+    <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 20px;">
+        <h3 style="color: #00bfff;">Suporte Online (Treinamento)</h3>
+        
+        <p>Seu plano: <strong><?= ucfirst($plano) ?></strong></p>
+        <p>Usos este mês: <strong><?= $uso_suporte ?> / <?= $limite_suporte ?></strong> gratuitos.</p>
+
+        <?php if (!$cobrar_extra): ?>
+            <div class="alert-custom alert-success">
+                Você tem <?= $restantes ?> solicitação(ões) gratuita(s) restante(s) este mês.
+            </div>
+            <form action="../actions/solicitar_suporte_plano.php" method="POST">
+                <button type="submit" class="btn-custom" style="background: #28a745; color: white; width: 100%;">
+                    <i class="fas fa-headset"></i> Solicitar Suporte Gratuito
+                </button>
+            </form>
+        <?php else: ?>
+            <div class="alert-custom alert-error">
+                Você atingiu o limite gratuito. O próximo suporte custará <strong>R$ <?= $valor_extra ?></strong>.
+            </div>
+            <form action="../actions/solicitar_suporte_plano.php" method="POST" onsubmit="return confirm('Confirmar cobrança de R$ 20,99 para suporte extra?');">
+                <input type="hidden" name="pagamento_aceito" value="1">
+                <button type="submit" class="btn-custom" style="background: #ffc107; color: #000; width: 100%;">
+                    <i class="fas fa-dollar-sign"></i> Solicitar Suporte Extra (R$ 20,99)
+                </button>
+            </form>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 </div>
 
-<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>

@@ -4,22 +4,19 @@
 // 1. GARANTE A SESSÃO E OUTRAS FUNÇÕES DE UTILIDADE
 require_once '../includes/session_init.php'; 
 
-// 2. INCLUI AS FUNÇÕES DE CONEXÃO (como getMasterConnection)
+// 2. INCLUI AS FUNÇÕES DE CONEXÃO
 include('../database.php');
 
-// 3. ESTABELECE A CONEXÃO CORRETA
-// A tabela 'solicitacoes_exclusao' está no banco de dados master,
-// portanto, precisamos da conexão master.
+// 3. ESTABELECE A CONEXÃO CORRETA (MASTER)
 $conn = getMasterConnection(); 
 
 // 4. VERIFICA SE A CONEXÃO FOI ESTABELECIDA
 if ($conn === null) {
-    // Exibe uma mensagem de erro fatal se não conseguir conectar ao DB Master.
     die("Erro ao conectar com o banco de dados. Tente novamente."); 
 }
 
-
-include('../includes/header.php'); // Inclui o cabeçalho para uma aparência consistente
+// Inclui o cabeçalho para manter o menu e estilos base
+include('../includes/header.php'); 
 
 $token = $_GET['token'] ?? '';
 $mensagem_erro = '';
@@ -54,104 +51,222 @@ if (!empty($token)) {
     $mensagem_erro = "Nenhum token de confirmação foi fornecido. Acesso negado.";
 }
 ?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Confirmar Exclusão de Conta</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <style>
-        body {
-            background-color: #121212;
-            color: #eee;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: #222;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-        }
-        h1 {
-            color: #dc3545;
-            margin-bottom: 20px;
-            font-size: 1.8rem;
-        }
-        p {
-            margin-bottom: 25px;
-            line-height: 1.6;
-        }
-        .btn {
-            border: none;
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: white;
-            margin: 5px;
-        }
-        .btn-danger { background-color: #dc3545; }
-        .btn-danger:hover { background-color: #c82333; }
-        .btn-secondary { background-color: #6c757d; }
-        .btn-secondary:hover { background-color: #5a6268; }
-        .erro {
-            background-color: #cc4444;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-        }
-        /* Novo estilo para a caixa de aviso de backup */
-        .aviso-backup {
-            background-color: #ffc107;
-            color: #333;
+
+<!-- Não é necessário abrir HTML/BODY novamente pois o header.php já faz isso geralmente, 
+     mas garantimos o estilo local para esta página específica -->
+
+<style>
+    /* Garante que o fundo seja o padrão do sistema */
+    body {
+        background-color: #121212;
+        color: #eee;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Wrapper para centralizar o conteúdo descontando a altura do header */
+    .exclusion-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 150px); /* Ajuste para descontar o header */
+        padding: 20px;
+    }
+
+    /* O Cartão Central */
+    .card-confirm {
+        background-color: #1e1e1e;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        text-align: center;
+        max-width: 550px;
+        width: 100%;
+        border: 1px solid #333;
+        position: relative;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    /* Títulos e Ícones */
+    .card-confirm h1 {
+        color: #dc3545; /* Vermelho perigo */
+        margin-bottom: 20px;
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .card-confirm p {
+        margin-bottom: 25px;
+        line-height: 1.6;
+        color: #ccc;
+        font-size: 1rem;
+    }
+
+    .icon-big {
+        font-size: 3.5rem;
+        color: #dc3545;
+        margin-bottom: 20px;
+        display: block;
+    }
+
+    /* Caixa de Aviso Amarela */
+    .aviso-backup {
+        background-color: rgba(255, 193, 7, 0.1); /* Amarelo transparente */
+        color: #ffc107;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        font-size: 0.95rem;
+        border: 1px solid #ffc107;
+        text-align: left;
+    }
+    .aviso-backup strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 1.1rem;
+    }
+
+    /* Botões */
+    .btn-area {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+
+    .btn-action {
+        padding: 12px 24px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-danger-confirm {
+        background-color: #dc3545;
+        color: white;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+    .btn-danger-confirm:hover {
+        background-color: #c82333;
+        transform: translateY(-2px);
+    }
+
+    .btn-cancel {
+        background-color: #2c3e50;
+        color: white;
+        border: 1px solid #444;
+    }
+    .btn-cancel:hover {
+        background-color: #34495e;
+        border-color: #555;
+    }
+
+    /* Estilo para Erro */
+    .erro-container {
+        border: 1px solid #dc3545;
+        background-color: rgba(220, 53, 69, 0.1);
+        padding: 20px;
+        border-radius: 8px;
+    }
+    .erro-text {
+        color: #ff6b6b;
+        font-weight: bold;
+        margin-top: 10px;
+    }
+
+    /* --- RESPONSIVIDADE (MOBILE) --- */
+    @media (max-width: 600px) {
+        .exclusion-wrapper {
             padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 25px;
-            font-weight: bold;
-            border: 2px solid #e0a800;
+            min-height: calc(100vh - 120px);
         }
-    </style>
-</head>
-<body>
-    <div class="container">
+
+        .card-confirm {
+            padding: 25px 20px;
+        }
+
+        .card-confirm h1 {
+            font-size: 1.5rem;
+            flex-direction: column;
+        }
+
+        .btn-area {
+            flex-direction: column; /* Botões um embaixo do outro */
+            gap: 10px;
+        }
+
+        .btn-action {
+            width: 100%; /* Botão ocupa toda a largura */
+            padding: 14px;
+        }
+        
+        .aviso-backup {
+            font-size: 0.9rem;
+        }
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<!-- Conteúdo Principal -->
+<div class="exclusion-wrapper">
+    <div class="card-confirm">
+        
         <?php if ($token_valido): ?>
-            <h1><i class="fa-solid fa-triangle-exclamation"></i> Confirmar Exclusão</h1>
+            <i class="fa-solid fa-triangle-exclamation icon-big"></i>
+            <h1>Confirmar Exclusão</h1>
             
             <div class="aviso-backup">
-                ⚠️ **AVISO IMPORTANTE:** Antes de prosseguir, certifique-se de ter feito o **backup de todos os seus dados** (Contas a Pagar, Receber, Estoque, etc.). Você pode exportá-los em formatos **CSV, Excel ou PDF** através da página de Relatórios.
+                <strong><i class="fas fa-save"></i> ATENÇÃO AO BACKUP</strong>
+                Antes de prosseguir, certifique-se de ter exportado seus dados (Relatórios, Contas, etc.). 
+                Esta ação apagará permanentemente suas contas a pagar, receber, clientes e histórico.
             </div>
             
-            <p>Você tem <strong>certeza absoluta</strong> que deseja excluir sua conta? Todos os seus dados, incluindo contas e usuários associados, serão permanentemente removidos. <strong>Esta ação não pode ser desfeita.</strong></p>
+            <p>Você tem certeza absoluta? <strong>Esta ação não pode ser desfeita.</strong></p>
             
             <form action="../actions/executar_exclusao.php" method="POST">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
-                <button type="submit" class="btn btn-danger">Sim, Excluir Minha Conta Permanentemente</button>
-                <button type="button" class="btn btn-secondary" onclick="window.close();">Não, Cancelar</button>
+                
+                <div class="btn-area">
+                    <button type="button" class="btn-action btn-cancel" onclick="window.location.href='../pages/perfil.php'">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-action btn-danger-confirm">
+                        <i class="fas fa-trash-alt"></i> Sim, Excluir Conta
+                    </button>
+                </div>
             </form>
+
         <?php else: ?>
-            <h1><i class="fa-solid fa-circle-xmark"></i> Erro na Operação</h1>
-            <p class="erro"><?= htmlspecialchars($mensagem_erro) ?></p>
-            <p>Esta janela será fechada em alguns segundos.</p>
+            <div class="erro-container">
+                <i class="fa-solid fa-circle-xmark icon-big" style="margin-bottom: 10px;"></i>
+                <h1>Link Inválido</h1>
+                <p class="erro-text"><?= htmlspecialchars($mensagem_erro) ?></p>
+                <p style="font-size: 0.9rem; color: #aaa;">Redirecionando em alguns segundos...</p>
+            </div>
+            
             <script>
                 setTimeout(function() { 
-                    // Tenta fechar a janela, mas pode não funcionar em todos os navegadores
-                    // por motivos de segurança. Redirecionar é uma alternativa.
-                    window.open('', '_self', ''); // Necessário para alguns navegadores
-                    window.close(); 
-                }, 6000); // Aumentado para 6 segundos para dar tempo de ler
+                    window.location.href = '../pages/perfil.php';
+                }, 5000);
             </script>
+            
+            <div class="btn-area">
+                <a href="../pages/perfil.php" class="btn-action btn-cancel">Voltar ao Perfil</a>
+            </div>
         <?php endif; ?>
+
     </div>
-</body>
-</html>
+</div>
+
+<?php include('../includes/footer.php'); ?>
