@@ -9,6 +9,10 @@ include(__DIR__ . '/../pages/calendario.php');
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <div class="action-buttons">
+    <a href="https://wa.me/5527999642716" target="_blank" title="Suporte via WhatsApp" style="background-color: #25D366;">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+    
     <a href="#" id="abrir-calculadora" title="Abrir Calculadora">
         <i class="fas fa-calculator"></i>
     </a>
@@ -21,6 +25,7 @@ include(__DIR__ . '/../pages/calendario.php');
   <p>
       &copy; <?= date("Y") ?> App Controle de Contas. Desenvolvido por Felippe Fardin.
       <a href="../pages/tutorial.php">Tutorial</a>
+      <a href="../pages/suporte.php">Suporte</a>
       <a href="../pages/protecao_de_dados.php">Proteção de Dados</a>
   </p>
 </footer>
@@ -56,7 +61,7 @@ include(__DIR__ . '/../pages/calendario.php');
     /* Estilos para os botões de ação flutuantes */
     .action-buttons {
         position: fixed;
-        bottom: 70px; /* Ajustado para ficar acima do novo footer */
+        bottom: 70px; 
         left: 20px;
         display: flex;
         flex-direction: column;
@@ -84,6 +89,7 @@ include(__DIR__ . '/../pages/calendario.php');
 </style>
 
 <script>
+    // ... (Mantenha o seu script existente inalterado) ...
     // Funções de ajuste de fonte do header (mantidas)
     function adjustFontSize(amount) {
         const body = document.body;
@@ -95,14 +101,13 @@ include(__DIR__ . '/../pages/calendario.php');
         document.body.style.fontSize = '';
     }
 
-    // Script para os botões flutuantes (adicionado)
+    // Script para os botões flutuantes
     document.addEventListener('DOMContentLoaded', () => {
         const botaoCalc = document.getElementById('abrir-calculadora');
         const botaoCal = document.getElementById('abrir-calendario');
         const calcContainer = document.getElementById('calculadora-container');
         const calContainer = document.getElementById('calendario-container');
 
-        // Garante que os containers existem antes de adicionar eventos
         if (botaoCalc && botaoCal && calcContainer && calContainer) {
             const fecharAmbos = () => {
                 calcContainer.style.display = 'none';
@@ -131,6 +136,19 @@ include(__DIR__ . '/../pages/calendario.php');
         }
     });
 </script>
+<!--Start of Tawk.to Script-->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='https://embed.tawk.to/692252545a6d17195e8d14ce/1jan1ihtl';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+<!--End of Tawk.to Script-->
 
 </body>
 </html>

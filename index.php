@@ -473,16 +473,91 @@
         </div>
     </section>
 
+    <section id="faq" class="py-5 bg-white">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Dúvidas Frequentes</h2>
+                <p class="text-muted">Tire suas dúvidas antes de começar.</p>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="accordion" id="accordionFAQ">
+                        <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                    Preciso cadastrar cartão de crédito para testar?
+                                </button>
+                            </h2>
+                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                                <div class="accordion-body text-muted">
+                                    Não! Você pode criar sua conta e testar todas as funcionalidades gratuitamente sem informar dados de pagamento.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                    Consigo cancelar a qualquer momento?
+                                </button>
+                            </h2>
+                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                                <div class="accordion-body text-muted">
+                                    Sim, nossos planos não possuem fidelidade. Você pode cancelar sua assinatura a qualquer momento diretamente pelo painel.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                    Como funciona o suporte?
+                                </button>
+                            </h2>
+                            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
+                                <div class="accordion-body text-muted">
+                                    Oferecemos suporte via e-mail e whatsapp para todos os planos e suporte prioritário e visita técnica para os planos Plus e Essencial.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <footer class="bg-dark text-white py-4 text-center">
         <div class="container">
             <div class="mb-3">
                 <i class="bi bi-wallet2 fs-4 text-primary"></i> <span class="fw-bold fs-5 ms-2">Controle de Contas</span>
             </div>
             <p class="mb-0 text-secondary">&copy; <?php echo date('Y'); ?> Todos os direitos reservados.</p>
+            
+            <p class="mb-0 mt-3 small">
+                <span class="text-muted me-2">Dúvidas comerciais?</span>
+                <a href="mailto:comercial@seuapp.com.br" class="text-decoration-none link-light opacity-75 hover-opacity-100">
+                    <i class="bi bi-envelope me-1"></i> Fale com nosso time
+                </a>
+            </p>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!--Start of Tawk.to Script-->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='https://embed.tawk.to/692252545a6d17195e8d14ce/1jan136ki';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+<!--End of Tawk.to Script-->
 
     <div vw class="enabled">
         <div vw-access-button class="active"></div>
