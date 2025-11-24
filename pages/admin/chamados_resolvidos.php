@@ -26,7 +26,7 @@ $result_chamados = $master_conn->query($sql_chamados);
 <head>
     <meta charset="UTF-8">
     <title>Chamados Resolvidos</title>
-    <link rel="stylesheet" href="../../assets/css/style.css">
+    <!-- <link rel="stylesheet" href="../../assets/css/style.css"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background-color: #0e0e0e; color: #eee; font-family: Arial, sans-serif; margin: 0; }
