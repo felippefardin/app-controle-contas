@@ -108,35 +108,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // -------------------------------------------------------------------
-// LÓGICA DE SUPORTE (CORRIGIDA PARA USAR CONEXÃO MASTER)
+// LÓGICA DE SUPORTE
 // -------------------------------------------------------------------
-$plano = $_SESSION['plano'] ?? 'basico';
+// Normaliza o plano para minúsculo para evitar erros de comparação ('Essencial' vs 'essencial')
+$plano = strtolower($_SESSION['plano'] ?? 'basico');
 $uso_suporte = 0;
 $cobrar_extra = false;
 $valor_extra = "20,99";
 $limite_suporte = 0;
 $restantes = 0;
 
-// Apenas roda a lógica se NÃO for básico
+// Apenas roda a lógica se NÃO for básico (ou seja, for essencial ou plus)
 if ($plano === 'essencial' || $plano === 'plus') {
     $tenant_id = $_SESSION['tenant_id'];
     $mes_atual = date('Y-m');
 
     // Define limites baseados no plano
     if ($plano === 'essencial') $limite_suporte = 3;
-    if ($plano === 'plus') $limite_suporte = 1;
+    if ($plano === 'plus') $limite_suporte = 1; // Exemplo: Plus pode ter regra diferente, ajustado conforme necessidade
 
     // Conecta ao Banco Master para checar uso (Tabela suporte_usage fica no Master)
     $connMaster = getMasterConnection();
     
     if ($connMaster) {
         $stmt_sup = $connMaster->prepare("SELECT contador FROM suporte_usage WHERE tenant_id = ? AND mes_ano = ?");
-        $stmt_sup->bind_param("ss", $tenant_id, $mes_atual);
-        $stmt_sup->execute();
-        $stmt_sup->bind_result($uso_suporte);
-        $stmt_sup->fetch();
-        $stmt_sup->close();
-        $connMaster->close(); // Fecha conexão Master após uso
+        if ($stmt_sup) {
+            $stmt_sup->bind_param("ss", $tenant_id, $mes_atual);
+            $stmt_sup->execute();
+            $stmt_sup->bind_result($uso_suporte);
+            $stmt_sup->fetch();
+            $stmt_sup->close();
+        }
+        $connMaster->close(); 
     }
 
     $restantes = max(0, $limite_suporte - $uso_suporte);
@@ -397,13 +400,13 @@ include('../includes/header.php');
 
     <?php if ($plano === 'essencial' || $plano === 'plus'): ?>
     <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 20px;">
-        <h3 style="color: #00bfff;">Suporte Online (Treinamento)</h3>
+        <h3 style="color: #00bfff; text-align: center; margin-bottom: 15px;"><i class="fas fa-headset"></i> Suporte Online</h3>
         
-        <p>Seu plano: <strong><?= ucfirst($plano) ?></strong></p>
-        <p>Usos este mês: <strong><?= $uso_suporte ?> / <?= $limite_suporte ?></strong> gratuitos.</p>
+        <p style="text-align: center;">Seu plano: <strong><?= ucfirst($plano) ?></strong></p>
+        <p style="text-align: center; margin-bottom: 15px;">Usos este mês: <strong><?= $uso_suporte ?> / <?= $limite_suporte ?></strong> gratuitos.</p>
 
         <?php if (!$cobrar_extra): ?>
-            <div class="alert-custom alert-success">
+            <div class="alert-custom alert-success" style="justify-content: center;">
                 Você tem <?= $restantes ?> solicitação(ões) gratuita(s) restante(s) este mês.
             </div>
             <form action="../actions/solicitar_suporte_plano.php" method="POST">
@@ -412,7 +415,7 @@ include('../includes/header.php');
                 </button>
             </form>
         <?php else: ?>
-            <div class="alert-custom alert-error">
+            <div class="alert-custom alert-error" style="justify-content: center;">
                 Você atingiu o limite gratuito. O próximo suporte custará <strong>R$ <?= $valor_extra ?></strong>.
             </div>
             <form action="../actions/solicitar_suporte_plano.php" method="POST" onsubmit="return confirm('Confirmar cobrança de R$ 20,99 para suporte extra?');">
@@ -423,7 +426,7 @@ include('../includes/header.php');
             </form>
         <?php endif; ?>
     </div>
-<?php endif; ?>
+    <?php endif; ?>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>

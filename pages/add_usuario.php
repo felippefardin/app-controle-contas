@@ -1,11 +1,53 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../database.php'; // Necessário para buscar o plano
 
 // Verifica Permissão
 $nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
 if ($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') {
     header('Location: usuarios.php?erro=1&msg=Acesso negado');
     exit;
+}
+
+// --- BUSCA O PLANO ATUAL ---
+$connMaster = getMasterConnection();
+$plano_tenant = 'basico';
+if ($connMaster && isset($_SESSION['tenant_id'])) {
+    $tenant = getTenantById($_SESSION['tenant_id'], $connMaster);
+    if ($tenant) {
+        $plano_tenant = $tenant['plano_atual'] ?? 'basico';
+    }
+    $connMaster->close();
+}
+
+// Define itens disponíveis
+$itens_basicos = [
+    'contas_pagar.php' => 'Contas a Pagar',
+    'contas_pagar_baixadas.php' => 'Contas Pagas',
+    'contas_receber.php' => 'Contas a Receber',
+    'contas_receber_baixadas.php' => 'Contas Recebidas',
+    'lembretes.php' => 'Lembretes',
+    'perfil.php' => 'Perfil',
+    'trocar_usuario.php' => 'Trocar Usuário',
+    'usuarios.php' => 'Gestão de Usuários'
+];
+
+$itens_avancados = [
+    'lancamento_caixa.php' => 'Fluxo de Caixa',
+    'vendas_periodo.php' => 'Vendas e Comissão',
+    'controle_estoque.php' => 'Estoque',
+    'vendas.php' => 'Caixa de Vendas',
+    'compras.php' => 'Compras',
+    'cadastrar_pessoa_fornecedor.php' => 'Clientes e Fornecedores',
+    'banco_cadastro.php' => 'Contas Bancárias',
+    'categorias.php' => 'Categorias',
+    'relatorios.php' => 'Relatórios',
+    'configuracao_fiscal.php' => 'Configuração Fiscal'
+];
+
+$opcoes_para_exibir = $itens_basicos;
+if ($plano_tenant === 'plus' || $plano_tenant === 'essencial') {
+    $opcoes_para_exibir = array_merge($itens_basicos, $itens_avancados);
 }
 
 include('../includes/header.php');
@@ -20,127 +62,25 @@ include('../includes/header.php');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ----------- ESTILO GERAL (NEON) ------------ */
-        body {
-            background-color: #121212;
-            color: #eee;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .page-container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #1e1e1e;
-            padding: 35px;
-            border-radius: 12px;
-            color: #fff;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            border: 1px solid #333;
-        }
-
-        .page-container h2 {
-            color: #00bfff;
-            border-bottom: 1px solid #00bfff;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
+        /* Mesmos estilos originais mantidos para consistência */
+        body { background-color: #121212; color: #eee; font-family: 'Segoe UI', sans-serif; }
+        .page-container { max-width: 600px; margin: 40px auto; background: #1e1e1e; padding: 35px; border-radius: 12px; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #333; }
+        .page-container h2 { color: #00bfff; border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
         .form-group { margin-bottom: 20px; }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #ccc;
-        }
-
-        /* Container relativo para posicionar o ícone do olho */
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #ccc; }
         .input-wrapper { position: relative; }
-
-        .form-control, select {
-            width: 100%;
-            padding: 12px;
-            padding-right: 40px; /* Espaço para o ícone */
-            border-radius: 6px;
-            border: 1px solid #444;
-            background: #252525;
-            color: #fff;
-            font-size: 1rem;
-            box-sizing: border-box;
-            transition: all 0.3s ease-in-out;
-        }
-
-        /* --- EFEITO NEON NO FOCUS --- */
-        .form-control:focus, select:focus {
-            outline: none;
-            border-color: #00bfff;
-            background-color: #2a2a2a;
-            box-shadow: 0 0 15px rgba(0, 191, 255, 0.8), 0 0 5px rgba(0, 191, 255, 0.5) inset; 
-        }
-
-        /* Ícone de Ver Senha */
-        .toggle-password {
-            position: absolute;
-            top: 50%;
-            right: 15px;
-            transform: translateY(-50%);
-            color: #aaa;
-            cursor: pointer;
-            transition: color 0.3s;
-            z-index: 10;
-        }
-        .toggle-password:hover { color: #00bfff; }
-
-        /* Botões */
-        .btn-area {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-            gap: 15px;
-        }
-
-        .btn-custom {
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: none;
-            font-weight: bold;
-            font-size: 1rem;
-            text-decoration: none;
-            text-align: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
+        .form-control, select { width: 100%; padding: 12px; padding-right: 40px; border-radius: 6px; border: 1px solid #444; background: #252525; color: #fff; font-size: 1rem; box-sizing: border-box; transition: all 0.3s; }
+        .form-control:focus, select:focus { outline: none; border-color: #00bfff; background-color: #2a2a2a; box-shadow: 0 0 15px rgba(0, 191, 255, 0.8); }
+        .toggle-password { position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #aaa; cursor: pointer; }
+        .btn-area { display: flex; justify-content: space-between; margin-top: 30px; gap: 15px; }
+        .btn-custom { padding: 12px 24px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; font-size: 1rem; text-decoration: none; text-align: center; }
         .btn-back { background: #444; color: #ddd; }
-        .btn-back:hover { background: #555; color: #fff; }
-
-        .btn-submit {
-            background: linear-gradient(135deg, #00bfff, #0099cc);
-            color: #fff;
-            flex-grow: 1;
-            box-shadow: 0 4px 10px rgba(0, 191, 255, 0.2);
-        }
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 191, 255, 0.4);
-        }
-
-        /* Alertas */
-        .alert-custom {
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            background: rgba(220, 53, 69, 0.2); 
-            border: 1px solid #dc3545; 
-            color: #ff6b6b;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .btn-submit { background: linear-gradient(135deg, #00bfff, #0099cc); color: #fff; flex-grow: 1; }
+        
+        /* Estilo dos Checkboxes */
+        .permissoes-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #252525; padding: 15px; border-radius: 6px; border: 1px solid #444; }
+        .check-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+        .check-item input { accent-color: #00bfff; width: 16px; height: 16px; }
     </style>
 </head>
 <body>
@@ -149,8 +89,7 @@ include('../includes/header.php');
     <h2><i class="fa-solid fa-user-plus"></i> Novo Usuário</h2>
 
     <?php if (isset($_GET['erro'])): ?>
-        <div class="alert-custom">
-            <i class="fa-solid fa-circle-exclamation"></i>
+        <div style="padding: 12px; border-radius: 6px; margin-bottom: 20px; background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff6b6b;">
             <?= htmlspecialchars($_GET['msg'] ?? 'Erro desconhecido') ?>
         </div>
     <?php endif; ?>
@@ -174,10 +113,23 @@ include('../includes/header.php');
 
         <div class="form-group">
             <label>Nível de Acesso:</label>
-            <select name="nivel" class="form-control">
-                <option value="padrao">Padrão (Acesso Restrito)</option>
+            <select name="nivel" id="nivel_acesso" class="form-control" onchange="togglePermissoes()">
+                <option value="padrao">Padrão (Selecionar Permissões)</option>
                 <option value="admin">Administrador (Acesso Total)</option>
             </select>
+        </div>
+
+        <div class="form-group" id="area_permissoes">
+            <label>Permissões de Acesso:</label>
+            <div class="permissoes-container">
+                <?php foreach ($opcoes_para_exibir as $arquivo => $label): ?>
+                    <label class="check-item">
+                        <input type="checkbox" name="permissoes[]" value="<?= $arquivo ?>">
+                        <?= $label ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <small style="color: #aaa; margin-top: 5px; display:block;">Marque o que este usuário poderá ver na Home.</small>
         </div>
 
         <div class="form-group">
@@ -208,16 +160,11 @@ include('../includes/header.php');
     </form>
 </div>
 
-<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
-    // Máscara CPF
-    $(document).ready(function(){
-        $('#cpf').mask('000.000.000-00');
-    });
+    $(document).ready(function(){ $('#cpf').mask('000.000.000-00'); });
 
-    // Função Toggle Senha
     function togglePass(fieldId, icon) {
         const input = document.getElementById(fieldId);
         if (input.type === "password") {
@@ -230,9 +177,20 @@ include('../includes/header.php');
             icon.classList.add("fa-eye");
         }
     }
+
+    function togglePermissoes() {
+        var nivel = document.getElementById('nivel_acesso').value;
+        var area = document.getElementById('area_permissoes');
+        if (nivel === 'admin') {
+            area.style.display = 'none';
+        } else {
+            area.style.display = 'block';
+        }
+    }
+    // Inicializa estado
+    togglePermissoes();
 </script>
 
 </body>
 </html>
-
 <?php include('../includes/footer.php'); ?>

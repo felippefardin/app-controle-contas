@@ -22,7 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $senha = $_POST['senha'];
     $senha_conf = $_POST['senha_confirmar'];
     $nivel_novo = $_POST['nivel'] === 'admin' ? 'admin' : 'padrao';
-    $tenant_id = $_SESSION['tenant_id'] ?? null; // Se usar sistema multi-tenant
+    $tenant_id = $_SESSION['tenant_id'] ?? null;
+    $criador = $_SESSION['usuario_id'];
+
+    // Tratamento das permissões
+    $json_permissoes = null;
+    if ($nivel_novo === 'padrao' && isset($_POST['permissoes']) && is_array($_POST['permissoes'])) {
+        $json_permissoes = json_encode($_POST['permissoes']);
+    }
 
     // Validações
     if ($senha !== $senha_conf) {
@@ -41,19 +48,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Insere
     $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
-    // Ajuste os campos conforme seu schema.sql exato. 
-    // Assumindo: nome, email, cpf, senha, nivel_acesso, status, tenant_id
-    $sql = "INSERT INTO usuarios (nome, email, cpf, senha, nivel_acesso, status, tenant_id, criado_por_usuario_id) VALUES (?, ?, ?, ?, ?, 'ativo', ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $criador = $_SESSION['usuario_id'];
     
-    // Se tenant_id for string ou int, ajuste o "s" ou "i" abaixo. Assumi string/misto.
-    $stmt->bind_param("ssssssi", $nome, $email, $cpf, $senha_hash, $nivel_novo, $tenant_id, $criador);
+    // Atualizado para incluir a coluna 'permissoes'
+    $sql = "INSERT INTO usuarios (nome, email, cpf, senha, nivel_acesso, status, tenant_id, criado_por_usuario_id, permissoes) VALUES (?, ?, ?, ?, ?, 'ativo', ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    
+    // ssssssis (string, string, string, string, string, string, int, string/null)
+    // O tenant_id pode ser string, criador int, permissoes string(json)
+    $stmt->bind_param("ssssssis", $nome, $email, $cpf, $senha_hash, $nivel_novo, $tenant_id, $criador, $json_permissoes);
 
     if ($stmt->execute()) {
         header('Location: ../pages/usuarios.php?sucesso=1&msg=Usuário criado com sucesso');
     } else {
-        header('Location: ../pages/add_usuario.php?erro=1&msg=Erro ao salvar no banco');
+        header('Location: ../pages/add_usuario.php?erro=1&msg=Erro ao salvar no banco: ' . $conn->error);
     }
 }
 ?>
