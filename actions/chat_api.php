@@ -5,18 +5,18 @@ include '../database.php';
 header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
-$userId = $_SESSION['user_id'] ?? 0; 
-// Verificação simples de admin, ajuste conforme sua sessão real
+$userId = $_SESSION['usuario_id'] ?? 0; 
+
+// Verificação simples de admin
 $isAdmin = (isset($_SESSION['super_admin']) || (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'));
 
-$conn = getMasterConnection(); // ✅ MySQLi
+$conn = getMasterConnection(); 
 
 if ($action === 'iniciar_suporte') {
-    // Se não for admin, bloqueia
     if (!$isAdmin) { echo json_encode(['status' => 'error', 'msg' => 'Acesso negado']); exit; }
     
     $targetUserId = $_POST['target_user_id'];
-    $currentAdminId = isset($_SESSION['usuario_id']) ? $_SESSION['usuario_id'] : 1; // Ajuste para pegar ID do admin logado
+    $currentAdminId = isset($_SESSION['super_admin']['id']) ? $_SESSION['super_admin']['id'] : (isset($_SESSION['usuario_id']) ? $_SESSION['usuario_id'] : 1); 
     
     $stmt = $conn->prepare("INSERT INTO chat_sessions (usuario_id, admin_id, status) VALUES (?, ?, 'pending')");
     $stmt->bind_param("ii", $targetUserId, $currentAdminId);
@@ -30,11 +30,31 @@ if ($action === 'iniciar_suporte') {
 }
 
 if ($action === 'aceitar_convite') {
-    $chatId = $_POST['chat_id'];
+    $chatId = (int)$_POST['chat_id'];
     
+    // 1. Verifica se o chat existe
+    $stmtCheck = $conn->prepare("SELECT id, status FROM chat_sessions WHERE id = ?");
+    $stmtCheck->bind_param("i", $chatId);
+    $stmtCheck->execute();
+    $resCheck = $stmtCheck->get_result();
+    $chatData = $resCheck->fetch_assoc();
+    $stmtCheck->close();
+
+    if (!$chatData) {
+        echo json_encode(['status' => 'error', 'msg' => 'Chat não encontrado.']);
+        exit;
+    }
+
+    // Se já estiver ativo, apenas sucesso
+    if ($chatData['status'] === 'active') {
+        echo json_encode(['status' => 'success', 'msg' => 'Chat retomado.']);
+        exit;
+    }
+
+    // 2. Configura horários
     $now = new DateTime();
-    $inicio = clone $now;
-    $inicio->modify('+2 minutes');
+    $inicio = clone $now; 
+    $inicio->modify('+0 minutes'); // Inicia agora
     $expiracao = clone $inicio;
     $expiracao->modify('+1 hour');
     $limite = clone $expiracao;
@@ -44,11 +64,15 @@ if ($action === 'aceitar_convite') {
     $expiracaoStr = $expiracao->format('Y-m-d H:i:s');
     $limiteStr = $limite->format('Y-m-d H:i:s');
 
-    $stmt = $conn->prepare("UPDATE chat_sessions SET status = 'active', data_inicio = ?, data_expiracao = ?, data_limite_final = ? WHERE id = ? AND usuario_id = ?");
-    $stmt->bind_param("sssii", $inicioStr, $expiracaoStr, $limiteStr, $chatId, $userId);
-    $stmt->execute();
+    // 3. Atualiza para ATIVO (Sem WHERE usuario_id para evitar erro de ID cruzado)
+    $stmt = $conn->prepare("UPDATE chat_sessions SET status = 'active', data_inicio = ?, data_expiracao = ?, data_limite_final = ? WHERE id = ?");
+    $stmt->bind_param("sssi", $inicioStr, $expiracaoStr, $limiteStr, $chatId);
     
-    echo json_encode(['status' => 'success']);
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error', 'msg' => 'Erro DB: ' . $conn->error]);
+    }
     exit;
 }
 
@@ -70,7 +94,8 @@ if ($action === 'get_status') {
     $stmt = $conn->prepare("SELECT * FROM chat_sessions WHERE id = ?");
     $stmt->bind_param("i", $chatId);
     $stmt->execute();
-    $chat = $stmt->get_result()->fetch_assoc();
+    $res = $stmt->get_result();
+    $chat = $res->fetch_assoc();
     
     if (!$chat) { echo json_encode(['status' => 'error']); exit; }
 
@@ -106,7 +131,6 @@ if ($action === 'get_status') {
          }
     }
 
-    // Mensagens
     $lastId = $_POST['last_msg_id'] ?? 0;
     $stmtMsg = $conn->prepare("SELECT * FROM chat_messages WHERE chat_session_id = ? AND id > ? ORDER BY id ASC");
     $stmtMsg->bind_param("ii", $chatId, $lastId);

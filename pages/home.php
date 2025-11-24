@@ -58,11 +58,14 @@ if ($connMaster) {
     // 2. LÓGICA DE CHAT SUPORTE (Busca no Master)
     $conviteChat = null;
     try {
-        // Verifica se existe convite pendente para este usuário no banco Master
+        // CORREÇÃO: Usar o ID do usuário vinculado ao Tenant (Master ID), e não o ID da sessão local
+        $master_usuario_id = isset($tenant['usuario_id']) ? $tenant['usuario_id'] : 0;
+
+        // Verifica se existe convite pendente para este usuário (Master)
         $sqlChat = "SELECT id FROM chat_sessions WHERE usuario_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1";
         $stmtChat = $connMaster->prepare($sqlChat);
         if ($stmtChat) {
-            $stmtChat->bind_param("i", $usuario_id);
+            $stmtChat->bind_param("i", $master_usuario_id); // Alterado de $usuario_id para $master_usuario_id
             $stmtChat->execute();
             $resChat = $stmtChat->get_result();
             $conviteChat = $resChat->fetch_assoc();

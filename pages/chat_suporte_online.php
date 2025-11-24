@@ -1,49 +1,72 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
-// Tenta incluir o header correto dependendo se é admin ou usuário comum
+
+// Inclui o header se existir
 if(file_exists('../includes/header.php')) {
     include '../includes/header.php';
 }
 
-// ✅ Conexão via MySQLi
+// Conexão Master
 $conn = getMasterConnection();
 
 $chatId = isset($_GET['chat_id']) ? (int)$_GET['chat_id'] : 0;
 
-// ✅ Correção da lógica de Sessão (Admin vs Usuário)
+// Verifica se é Admin
 $isAdmin = isset($_SESSION['super_admin']);
-$userId = 0;
+$userId = $_SESSION['usuario_id'] ?? 0;
+$tenantId = $_SESSION['tenant_id'] ?? 0;
 
-if ($isAdmin) {
-    $adminData = $_SESSION['super_admin'];
-    $userId = $adminData['id'] ?? 1; // Fallback para 1 se não houver ID na sessão do admin
-} elseif (isset($_SESSION['usuario_id'])) {
-    $userId = $_SESSION['usuario_id']; // ✅ Nome correto da variável de sessão do usuário
-} else {
-    // Se não estiver logado, redireciona
+if (!$isAdmin && $userId == 0) {
     header("Location: login.php");
     exit;
 }
 
-// ✅ Verificação de Permissão (MySQLi)
-if ($isAdmin) {
-    // Admin pode ver qualquer chat (pode filtrar por admin_id se necessário)
-    $stmt = $conn->prepare("SELECT * FROM chat_sessions WHERE id = ?");
-    $stmt->bind_param("i", $chatId);
-} else {
-    // Usuário só pode ver seu próprio chat
-    $stmt = $conn->prepare("SELECT * FROM chat_sessions WHERE id = ? AND usuario_id = ?");
-    $stmt->bind_param("ii", $chatId, $userId);
-}
-
+// 1. Busca o Chat pelo ID (sem filtrar por usuário ainda)
+$stmt = $conn->prepare("SELECT * FROM chat_sessions WHERE id = ?");
+$stmt->bind_param("i", $chatId);
 $stmt->execute();
 $result = $stmt->get_result();
 $chat = $result->fetch_assoc();
 
-// Se não achou o chat ou status pendente (e não for admin)
-if (!$chat || ($chat['status'] == 'pending' && !$isAdmin)) {
-    echo "<script>alert('Chat não disponível ou não encontrado.'); window.location.href='home.php';</script>";
+// 2. Verificações de Acesso
+$acessoPermitido = false;
+
+if ($chat) {
+    if ($isAdmin) {
+        // Admin sempre pode acessar
+        $acessoPermitido = true;
+    } else {
+        // Usuário Comum: Precisa verificar propriedade
+        
+        // Verifica se o ID do chat bate com o ID da sessão atual
+        if ($chat['usuario_id'] == $userId) {
+            $acessoPermitido = true;
+        } 
+        // Verifica se o ID do chat bate com o ID Master do Tenant (Correção para conflito de IDs)
+        elseif ($tenantId > 0) {
+            $stmtT = $conn->prepare("SELECT usuario_id FROM tenants WHERE id = ?");
+            $stmtT->bind_param("i", $tenantId);
+            $stmtT->execute();
+            $resT = $stmtT->get_result();
+            $tenantData = $resT->fetch_assoc();
+            
+            if ($tenantData && $chat['usuario_id'] == $tenantData['usuario_id']) {
+                $acessoPermitido = true;
+            }
+            $stmtT->close();
+        }
+    }
+}
+
+// 3. Valida se pode exibir a tela
+if (!$chat || !$acessoPermitido) {
+    echo "<script>alert('Chat não disponível ou acesso negado.'); window.location.href='home.php';</script>";
+    exit;
+}
+
+if ($chat['status'] == 'pending' && !$isAdmin) {
+    echo "<script>alert('Aguardando início do suporte pelo administrador.'); window.location.href='home.php';</script>";
     exit;
 }
 ?>
@@ -111,7 +134,6 @@ function atualizarStatus() {
     .then(data => {
         if(data.status !== 'success') return;
 
-        // Atualiza Timer e Estado
         const timerDisplay = document.getElementById('timerDisplay');
         if (data.chat_state === 'waiting_start') {
             timerDisplay.textContent = "Iniciando em: " + formatTime(data.time_left);
@@ -129,12 +151,16 @@ function atualizarStatus() {
             else mostrarProtocolo(data.protocolo);
         }
 
-        // Atualiza Mensagens
         const chatBox = document.getElementById('chatBox');
-        // Identifica quem sou eu no JS para alinhar mensagens
         const myType = '<?php echo $isAdmin ? 'admin' : 'user'; ?>';
 
         if(data.messages && data.messages.length > 0) {
+            let scroll = false;
+            // Verifica se o usuário já estava no final antes de adicionar
+            if (chatBox.scrollHeight - chatBox.scrollTop === chatBox.clientHeight) {
+                scroll = true;
+            }
+
             data.messages.forEach(msg => {
                 const div = document.createElement('div');
                 const isMe = (msg.sender_type === myType);
@@ -142,18 +168,20 @@ function atualizarStatus() {
                 div.style.textAlign = isMe ? 'right' : 'left';
                 div.style.margin = '10px';
                 
-                const bg = isMe ? '#dcf8c6' : '#fff';
+                const bg = isMe ? '#dcf8c6' : '#e2e2e2';
                 
                 div.innerHTML = `
-                    <span style="background: ${bg}; padding: 8px 15px; border-radius: 15px; display: inline-block; border: 1px solid #ddd; text-align: left;">
+                    <span style="background: ${bg}; padding: 8px 15px; border-radius: 15px; display: inline-block; border: 1px solid #ccc; text-align: left; color:#333;">
                         ${msg.mensagem}
-                        <br><small style="font-size:0.7em; color:#888;">${msg.data_envio}</small>
+                        <br><small style="font-size:0.7em; color:#666;">${msg.data_envio}</small>
                     </span>`;
                 
                 chatBox.appendChild(div);
                 lastMsgId = msg.id;
+                scroll = true; // Força scroll para nova mensagem
             });
-            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            if(scroll) chatBox.scrollTop = chatBox.scrollHeight;
         }
     })
     .catch(err => console.error("Erro no polling:", err));
@@ -202,14 +230,12 @@ function mostrarProtocolo(protocolo) {
     document.getElementById('msgInput').disabled = true;
 }
 
-// Enviar com Enter
 document.getElementById('msgInput').addEventListener('keypress', function (e) {
     if (e.key === 'Enter') enviarMensagem();
 });
 
-// Inicia o loop de atualização
 setInterval(atualizarStatus, 3000);
-atualizarStatus(); // Primeira chamada imediata
+atualizarStatus();
 </script>
 
 <?php 
