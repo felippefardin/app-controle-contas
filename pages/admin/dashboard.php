@@ -38,7 +38,7 @@ $result_chamados = $master_conn->query($sql_chamados);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Master</title>
-    <link rel="stylesheet" href="../../assets/css/style.css">
+    <!-- <link rel="stylesheet" href="../../assets/css/style.css"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* --- GLOBAL --- */
@@ -48,6 +48,7 @@ $result_chamados = $master_conn->query($sql_chamados);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
             padding-bottom: 40px;
+            overflow-x: hidden; /* Evita rolagem horizontal indesejada */
         }
 
         /* --- TOPBAR --- */
@@ -66,7 +67,7 @@ $result_chamados = $master_conn->query($sql_chamados);
         }
         .topbar-title { font-size: 1.2rem; color: #00bfff; font-weight: bold; }
         .topbar-actions { display: flex; gap: 15px; align-items: center; }
-        .topbar span { font-weight: bold; color: #ccc; display: none; } /* Oculto em mobile, visível em desktop via media query */
+        .topbar span { font-weight: bold; color: #ccc; display: none; } 
         .topbar a { 
             color: #eee; 
             text-decoration: none; 
@@ -80,10 +81,10 @@ $result_chamados = $master_conn->query($sql_chamados);
         .topbar .logout { background-color: #d13c3c; }
         .topbar .logout:hover { background-color: #ff4a4a; }
 
-        /* --- CONTAINER FULL WIDTH --- */
+        /* --- CONTAINER FULL WIDTH (AJUSTADO) --- */
         .container { 
-            width: 98%; 
-            max-width: 100%; /* Remove limite fixo para ser Full Screen */
+            width: 98%; /* Ocupa 98% da largura da tela */
+            max-width: 100%; /* Remove limite de pixels para telas grandes */
             margin: 20px auto; 
             background: #121212; 
             padding: 25px; 
@@ -112,10 +113,19 @@ $result_chamados = $master_conn->query($sql_chamados);
         .btn-search:hover { background-color: #218838; }
         .btn-clear { color: #aaa; text-decoration: underline; font-size: 14px; align-self: center; }
 
-        /* --- TABLE --- */
-        table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #1a1a1a; }
+        /* --- TABLE (FULL WIDTH) --- */
+        table { 
+            width: 100%; 
+            min-width: 100%; /* Força largura mínima */
+            border-collapse: collapse; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            margin-bottom: 20px; 
+            background: #1a1a1a; 
+            table-layout: auto; /* Permite que colunas se ajustem ao conteúdo */
+        }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a2a2a; }
-        th { background-color: #252525; color: #00bfff; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+        th { background-color: #252525; color: #00bfff; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; white-space: nowrap; }
         td { color: #ddd; vertical-align: middle; }
         tr:hover { background-color: #2a2a2a; }
 
@@ -129,6 +139,7 @@ $result_chamados = $master_conn->query($sql_chamados);
             font-size: 13px; 
             display: inline-block; 
             transition: 0.2s;
+            white-space: nowrap;
         }
         .btn-gerenciar:hover { background-color: #009acd; }
         
@@ -239,7 +250,6 @@ $result_chamados = $master_conn->query($sql_chamados);
 
     <div class="container">
         
-        <!-- Tabela de Tenants -->
         <h1>Painel de Controle</h1>
         <form method="GET" class="search-container">
             <input type="text" name="busca" class="search-input" placeholder="Buscar Cliente (Nome, Empresa, CPF/CNPJ)..." value="<?= htmlspecialchars($busca) ?>">
@@ -273,7 +283,6 @@ $result_chamados = $master_conn->query($sql_chamados);
             </tbody>
         </table>
 
-        <!-- SEÇÃO DE SUPORTE -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 30px; flex-wrap: wrap; gap: 10px;">
             <h2 style="margin: 0; border: none; padding: 0; color: #ff9f43;"><i class="fas fa-headset"></i> Fila de Suporte</h2>
             <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
@@ -289,18 +298,20 @@ $result_chamados = $master_conn->query($sql_chamados);
         <table>
             <thead>
                 <tr>
-                    <th>Status</th>
-                    <th>Empresa / Cliente</th>
-                    <th>Tipo</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 20%;">Empresa / Cliente</th>
+                    <th style="width: 10%;">Tipo</th>
+                    <th style="width: 10%;">Custo</th>
                     <th>Descrição</th>
-                    <th>Ações</th>
+                    <th style="width: 15%;">Ações</th>
                 </tr>
             </thead>
             <tbody>
             <?php if ($result_chamados && $result_chamados->num_rows > 0): ?>
                 <?php while ($c = $result_chamados->fetch_assoc()): 
                     $statusClass = 'status-' . ($c['status'] == 'aberto' ? 'aberto' : 'em-atendimento');
-                    $statusNome = ($c['status'] == 'aberto') ? 'Aberto' : 'Em Atendimento';
+                    // CORREÇÃO AQUI: Se 'aberto' (vermelho), exibe 'Fechado'.
+                    $statusNome = ($c['status'] == 'aberto') ? 'Fechado' : 'Em Atendimento';
                     
                     // BUSCAR HISTÓRICO
                     $id_chamado = $c['id'];
@@ -330,8 +341,6 @@ $result_chamados = $master_conn->query($sql_chamados);
                 <tr>
                     <td data-label="Status">
                         <div style="display: flex; align-items: center; justify-content: flex-end; /* Mobile align fix */">
-                            <!-- No mobile o justify-content acima precisa ser sobrescrito ou a estrutura flex repensada. 
-                                 Abaixo usamos um span wrapper para o desktop e mobile -->
                             <span class="status-ball <?= $statusClass ?>"></span>
                             <span style="font-size: 0.9rem; color: #eee;"><?= $statusNome ?></span>
                         </div>
@@ -349,6 +358,19 @@ $result_chamados = $master_conn->query($sql_chamados);
                             : '<span style="background:#3498db; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">ONLINE</span>' 
                         ?>
                     </td>
+                    
+                    <td data-label="Custo">
+                        <?php if (floatval($c['custo']) > 0): ?>
+                            <span style="background:rgba(255, 193, 7, 0.2); color:#ffc107; border:1px solid #ffc107; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">
+                                R$ <?= number_format($c['custo'], 2, ',', '.') ?>
+                            </span>
+                        <?php else: ?>
+                            <span style="background:rgba(40, 167, 69, 0.2); color:#2ecc71; border:1px solid #2ecc71; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">
+                                GRÁTIS
+                            </span>
+                        <?php endif; ?>
+                    </td>
+
                     <td data-label="Descrição">
                         <div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help;" title="<?= htmlspecialchars($c['descricao']) ?>">
                             <?= htmlspecialchars($c['descricao']) ?>
@@ -374,14 +396,13 @@ $result_chamados = $master_conn->query($sql_chamados);
                 </tr>
                 <?php endwhile; ?>
             <?php else: ?>
-                <tr><td colspan="5" style="text-align:center; padding: 30px; color: #777; font-size: 1.1rem;">Nenhum chamado pendente no momento.</td></tr>
+                <tr><td colspan="6" style="text-align:center; padding: 30px; color: #777; font-size: 1.1rem;">Nenhum chamado pendente no momento.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
 
     </div>
 
-    <!-- MODAL DE ATENDIMENTO -->
     <div id="modalAtendimento" class="modal">
         <div class="modal-content">
             <span class="close" onclick="fecharModal()">&times;</span>
@@ -398,8 +419,7 @@ $result_chamados = $master_conn->query($sql_chamados);
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #ccc; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 15px;">Histórico de Interações</h4>
                 <div id="modalHistoryContainer" class="history-container">
-                    <!-- Timeline via JS -->
-                </div>
+                    </div>
             </div>
 
             <form action="../../actions/admin_suporte.php" method="POST">

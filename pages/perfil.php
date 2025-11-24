@@ -42,8 +42,7 @@ if (isset($_GET['erro'])) {
 
 // 3. Processa o formulário de atualização de perfil
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Lógica de exclusão é feita via JS + GET, aqui tratamos apenas atualização (se não for salvar chamado)
-    // A ação do chamado vai para outra página (actions/salvar_chamado.php), então este POST é só para dados cadastrais
+    // Lógica de exclusão é feita via JS + GET, aqui tratamos apenas atualização
     if (!isset($_POST['excluir_conta']) && !isset($_POST['tipo_suporte'])) {
         $nome_novo = trim($_POST['nome'] ?? '');
         $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); 
@@ -112,20 +111,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // -------------------------------------------------------------------
 // LÓGICA DE SUPORTE (Buscar dados do Master)
 // -------------------------------------------------------------------
-$plano = strtolower($_SESSION['plano'] ?? 'basico');
 $tenant_id = $_SESSION['tenant_id'] ?? 0; 
 $mes_atual = date('Y-m');
 
-// Variáveis para uso no JS/Frontend
+// Valores padrão iniciais
+$plano = 'basico'; 
 $uso_chat_online = 0;
 $uso_chat_aovivo = 0;
 
-// Conecta ao Banco Master para checar uso atual
+// Conecta ao Banco Master para checar PLANO REAL e USO
 $connMaster = getMasterConnection();
 if ($connMaster) {
+    // 1. Busca o Plano atualizado na tabela tenants (Garante que pega o plano correto: Plus, Essencial, etc)
+    $stmt_plano = $connMaster->prepare("SELECT plano FROM tenants WHERE id = ?");
+    if ($stmt_plano) {
+        $stmt_plano->bind_param("i", $tenant_id);
+        $stmt_plano->execute();
+        $stmt_plano->bind_result($plano_db);
+        if ($stmt_plano->fetch()) {
+            // Normaliza para minúsculo para o JS reconhecer (ex: 'Plus' vira 'plus')
+            $plano = strtolower(trim($plano_db));
+        }
+        $stmt_plano->close();
+    }
+
+    // 2. Busca o uso do suporte neste mês
     $stmt_sup = $connMaster->prepare("SELECT uso_chat_online, uso_chat_aovivo FROM suporte_usage WHERE tenant_id = ? AND mes_ano = ?");
     if ($stmt_sup) {
-        $stmt_sup->bind_param("ss", $tenant_id, $mes_atual); // ss pois tenant_id pode ser string ou int dependendo da implementação
+        $stmt_sup->bind_param("is", $tenant_id, $mes_atual);
         $stmt_sup->execute();
         $stmt_sup->bind_result($uso_chat_online, $uso_chat_aovivo);
         $stmt_sup->fetch();
@@ -133,11 +146,11 @@ if ($connMaster) {
     }
     $connMaster->close(); 
 }
-// Se não retornou nada (primeiro uso no mês), mantém 0
-if(is_null($uso_chat_online)) $uso_chat_online = 0;
-if(is_null($uso_chat_aovivo)) $uso_chat_aovivo = 0;
 
-// -------------------------------------------------------------------
+// Fallbacks de segurança
+if (empty($plano)) { $plano = 'basico'; }
+if (is_null($uso_chat_online)) $uso_chat_online = 0;
+if (is_null($uso_chat_aovivo)) $uso_chat_aovivo = 0;
 
 include('../includes/header.php');
 ?>
@@ -515,13 +528,14 @@ include('../includes/header.php');
     /* ---------------- LÓGICA DO MODAL DE SUPORTE ---------------- */
     
     // Dados vindos do PHP
-    const planoUsuario = "<?= $plano ?>";
+    // Normaliza o nome do plano para minúsculo no JS também para evitar erros
+    const planoUsuario = "<?= $plano ?>".toLowerCase().trim();
     const usoAtual = {
         online: <?= $uso_chat_online ?>,
         aovivo: <?= $uso_chat_aovivo ?>
     };
 
-    // Regras de Cobrança
+    // Regras de Cobrança Atualizadas
     const regras = {
         'basico':    { cota_online: 0, cota_aovivo: 0, preco_online: 5.99, preco_aovivo: 15.99 },
         'plus':      { cota_online: 1, cota_aovivo: 1, preco_online: 8.99, preco_aovivo: 15.99 },
@@ -549,15 +563,19 @@ include('../includes/header.php');
             return;
         }
 
-        // Se plano não existir nas regras, usa básico como fallback
+        // Se plano não existir nas regras (fallback), usa básico
         const regra = regras[planoUsuario] || regras['basico'];
+        
         let custo = 0;
         let ehGratis = false;
+        let msgRestante = "";
 
         if (tipo === 'chat_online') {
             if (usoAtual.online < regra.cota_online) {
                 custo = 0;
                 ehGratis = true;
+                let restantes = regra.cota_online - usoAtual.online;
+                msgRestante = `(Resta: ${restantes})`;
             } else {
                 custo = regra.preco_online;
             }
@@ -565,6 +583,8 @@ include('../includes/header.php');
             if (usoAtual.aovivo < regra.cota_aovivo) {
                 custo = 0;
                 ehGratis = true;
+                let restantes = regra.cota_aovivo - usoAtual.aovivo;
+                msgRestante = `(Resta: ${restantes})`;
             } else {
                 custo = regra.preco_aovivo;
             }
@@ -575,11 +595,11 @@ include('../includes/header.php');
         if (ehGratis) {
             aviso.style.background = "rgba(40, 167, 69, 0.2)";
             aviso.style.borderColor = "#28a745";
-            aviso.innerHTML = `<i class="fas fa-gift"></i> Custo: <strong>Grátis</strong> (Incluso no seu plano)`;
+            aviso.innerHTML = `<i class="fas fa-gift"></i> Custo: <strong>Grátis</strong> ${msgRestante} <br><small style='color:#ccc'>Incluso no plano ${planoUsuario.toUpperCase()}</small>`;
         } else {
             aviso.style.background = "rgba(255, 193, 7, 0.1)";
             aviso.style.borderColor = "#ffc107";
-            aviso.innerHTML = `<i class="fas fa-coins"></i> Custo Extra: <strong>R$ ${custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (Será cobrado na fatura)`;
+            aviso.innerHTML = `<i class="fas fa-coins"></i> Custo Extra: <strong>R$ ${custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (Cota excedida)`;
         }
         aviso.style.display = "block";
     }
