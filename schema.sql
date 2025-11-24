@@ -333,17 +333,40 @@ CREATE TABLE `empresa_config` (
   UNIQUE KEY `cnpj` (`cnpj`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS lembretes (
+CREATE TABLE `lembretes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int NOT NULL,
+  `titulo` varchar(100) NOT NULL,
+  `descricao` text,
+  `data_lembrete` date NOT NULL,
+  `hora_lembrete` time NOT NULL,
+  `cor` varchar(20) NOT NULL,
+  `email_enviado` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `tipo_visibilidade` enum('particular','grupo') DEFAULT 'particular',
+  `email_notificacao` varchar(150) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `usuario_id` (`usuario_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `lembretes_enviados` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tipo` enum('pagar','receber') NOT NULL,
+  `conta_id` int NOT NULL,
+  `data_envio` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS chamados_historico (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario_id INT NOT NULL,
-    titulo VARCHAR(100) NOT NULL,
-    descricao TEXT,
-    data_lembrete DATE NOT NULL,
-    hora_lembrete TIME NOT NULL,
-    cor VARCHAR(20) NOT NULL, -- 'success' (verde), 'warning' (amarelo), 'danger' (vermelho)
-    email_enviado TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-);
+    chamado_id INT NOT NULL,
+    autor_tipo ENUM('admin', 'usuario') DEFAULT 'admin', -- Quem escreveu
+    autor_nome VARCHAR(100), -- Nome de quem escreveu
+    mensagem TEXT NOT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chamado_id) REFERENCES chamados_suporte(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 
 

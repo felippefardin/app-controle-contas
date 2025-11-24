@@ -8,6 +8,7 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
     exit;
 }
 
+// Conexão com o Banco do Tenant (para dados do usuário)
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados.");
@@ -31,7 +32,7 @@ $stmt->close();
 $uploadDir = '../img/usuarios/';
 $erro = '';
 
-// Verifica mensagens via GET (vindo do enviar_link_exclusao.php)
+// Verifica mensagens via GET
 if (isset($_GET['mensagem'])) {
     $_SESSION['perfil_msg'] = $_GET['mensagem'];
 }
@@ -39,10 +40,11 @@ if (isset($_GET['erro'])) {
     $_SESSION['perfil_erro'] = $_GET['erro'];
 }
 
-// 3. Processa o formulário
+// 3. Processa o formulário de atualização de perfil
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Lógica de exclusão é feita via JS + GET, aqui tratamos apenas atualização
-    if (!isset($_POST['excluir_conta'])) {
+    // Lógica de exclusão é feita via JS + GET, aqui tratamos apenas atualização (se não for salvar chamado)
+    // A ação do chamado vai para outra página (actions/salvar_chamado.php), então este POST é só para dados cadastrais
+    if (!isset($_POST['excluir_conta']) && !isset($_POST['tipo_suporte'])) {
         $nome_novo = trim($_POST['nome'] ?? '');
         $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); 
         $telefone_novo = trim($_POST['telefone'] ?? '');
@@ -108,43 +110,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // -------------------------------------------------------------------
-// LÓGICA DE SUPORTE
+// LÓGICA DE SUPORTE (Buscar dados do Master)
 // -------------------------------------------------------------------
-// Normaliza o plano para minúsculo para evitar erros de comparação ('Essencial' vs 'essencial')
 $plano = strtolower($_SESSION['plano'] ?? 'basico');
-$uso_suporte = 0;
-$cobrar_extra = false;
-$valor_extra = "20,99";
-$limite_suporte = 0;
-$restantes = 0;
+$tenant_id = $_SESSION['tenant_id'] ?? 0; 
+$mes_atual = date('Y-m');
 
-// Apenas roda a lógica se NÃO for básico (ou seja, for essencial ou plus)
-if ($plano === 'essencial' || $plano === 'plus') {
-    $tenant_id = $_SESSION['tenant_id'];
-    $mes_atual = date('Y-m');
+// Variáveis para uso no JS/Frontend
+$uso_chat_online = 0;
+$uso_chat_aovivo = 0;
 
-    // Define limites baseados no plano
-    if ($plano === 'essencial') $limite_suporte = 3;
-    if ($plano === 'plus') $limite_suporte = 1; // Exemplo: Plus pode ter regra diferente, ajustado conforme necessidade
-
-    // Conecta ao Banco Master para checar uso (Tabela suporte_usage fica no Master)
-    $connMaster = getMasterConnection();
-    
-    if ($connMaster) {
-        $stmt_sup = $connMaster->prepare("SELECT contador FROM suporte_usage WHERE tenant_id = ? AND mes_ano = ?");
-        if ($stmt_sup) {
-            $stmt_sup->bind_param("ss", $tenant_id, $mes_atual);
-            $stmt_sup->execute();
-            $stmt_sup->bind_result($uso_suporte);
-            $stmt_sup->fetch();
-            $stmt_sup->close();
-        }
-        $connMaster->close(); 
+// Conecta ao Banco Master para checar uso atual
+$connMaster = getMasterConnection();
+if ($connMaster) {
+    $stmt_sup = $connMaster->prepare("SELECT uso_chat_online, uso_chat_aovivo FROM suporte_usage WHERE tenant_id = ? AND mes_ano = ?");
+    if ($stmt_sup) {
+        $stmt_sup->bind_param("ss", $tenant_id, $mes_atual); // ss pois tenant_id pode ser string ou int dependendo da implementação
+        $stmt_sup->execute();
+        $stmt_sup->bind_result($uso_chat_online, $uso_chat_aovivo);
+        $stmt_sup->fetch();
+        $stmt_sup->close();
     }
-
-    $restantes = max(0, $limite_suporte - $uso_suporte);
-    $cobrar_extra = ($uso_suporte >= $limite_suporte);
+    $connMaster->close(); 
 }
+// Se não retornou nada (primeiro uso no mês), mantém 0
+if(is_null($uso_chat_online)) $uso_chat_online = 0;
+if(is_null($uso_chat_aovivo)) $uso_chat_aovivo = 0;
+
 // -------------------------------------------------------------------
 
 include('../includes/header.php');
@@ -309,6 +301,48 @@ include('../includes/header.php');
         }
         .alert-success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; color: #2ecc71; }
         .alert-error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff6b6b; }
+
+        /* MODAL STYLES */
+        #modalSuporte {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.8);
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal-content {
+            background-color: #1e1e1e;
+            margin: 5% auto; 
+            padding: 30px;
+            border: 1px solid #00bfff;
+            width: 90%; 
+            max-width: 500px; 
+            border-radius: 10px; 
+            position: relative; 
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.3);
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .close-modal:hover { color: #fff; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -398,35 +432,58 @@ include('../includes/header.php');
 
     </form>
 
-    <?php if ($plano === 'essencial' || $plano === 'plus'): ?>
     <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 20px;">
-        <h3 style="color: #00bfff; text-align: center; margin-bottom: 15px;"><i class="fas fa-headset"></i> Suporte Online</h3>
+        <h3 style="color: #00bfff; text-align: center; margin-bottom: 15px;">
+            <i class="fas fa-headset"></i> Central de Suporte
+        </h3>
         
-        <p style="text-align: center;">Seu plano: <strong><?= ucfirst($plano) ?></strong></p>
-        <p style="text-align: center; margin-bottom: 15px;">Usos este mês: <strong><?= $uso_suporte ?> / <?= $limite_suporte ?></strong> gratuitos.</p>
-
-        <?php if (!$cobrar_extra): ?>
-            <div class="alert-custom alert-success" style="justify-content: center;">
-                Você tem <?= $restantes ?> solicitação(ões) gratuita(s) restante(s) este mês.
-            </div>
-            <form action="../actions/solicitar_suporte_plano.php" method="POST">
-                <button type="submit" class="btn-custom" style="background: #28a745; color: white; width: 100%;">
-                    <i class="fas fa-headset"></i> Solicitar Suporte Gratuito
-                </button>
-            </form>
-        <?php else: ?>
-            <div class="alert-custom alert-error" style="justify-content: center;">
-                Você atingiu o limite gratuito. O próximo suporte custará <strong>R$ <?= $valor_extra ?></strong>.
-            </div>
-            <form action="../actions/solicitar_suporte_plano.php" method="POST" onsubmit="return confirm('Confirmar cobrança de R$ 20,99 para suporte extra?');">
-                <input type="hidden" name="pagamento_aceito" value="1">
-                <button type="submit" class="btn-custom" style="background: #ffc107; color: #000; width: 100%;">
-                    <i class="fas fa-dollar-sign"></i> Solicitar Suporte Extra (R$ 20,99)
-                </button>
-            </form>
-        <?php endif; ?>
+        <p style="text-align: center;">Seu plano atual: <strong style="color: #2ecc71; text-transform: uppercase;"><?= htmlspecialchars($plano) ?></strong></p>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button type="button" class="btn-custom" style="background: #00bfff; color: #fff; min-width: 250px;" onclick="abrirModalSuporte()">
+                <i class="fas fa-plus-circle"></i> Abrir Novo Chamado
+            </button>
+        </div>
     </div>
-    <?php endif; ?>
+
+</div> 
+<div id="modalSuporte">
+    <div class="modal-content">
+        <span onclick="fecharModalSuporte()" class="close-modal">&times;</span>
+        
+        <h3 style="color: #00bfff; margin-top: 0;"><i class="fas fa-ticket-alt"></i> Novo Chamado</h3>
+        <hr style="border-color: #444;">
+        
+        <form action="../actions/salvar_chamado.php" method="POST">
+            <div class="form-group">
+                <label>E-mail de Contato:</label>
+                <input type="text" name="email_fixo" class="form-control" value="<?= htmlspecialchars($email) ?>" readonly style="background: #333; color: #aaa; border: 1px solid #555;">
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Suporte:</label>
+                <select name="tipo_suporte" id="tipo_suporte" class="form-control" onchange="atualizarPreco()" required>
+                    <option value="">Selecione uma opção...</option>
+                    <option value="chat_online">Chat Online (Texto)</option>
+                    <option value="chat_aovivo">Chat Ao Vivo (Vídeo/Voz)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Descrição do Problema:</label>
+                <textarea name="descricao" class="form-control" rows="4" placeholder="Descreva detalhadamente o que está acontecendo..." required></textarea>
+            </div>
+
+            <div id="avisoPreco" class="alert-custom" style="display: none; background: rgba(0, 191, 255, 0.1); border: 1px solid #00bfff; color: #fff;">
+                Custo estimado: <strong>R$ <span id="valorEstimado">0,00</span></strong>
+            </div>
+
+            <div style="text-align: right; margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-custom btn-danger-custom" onclick="fecharModalSuporte()">Cancelar</button>
+                <button type="submit" class="btn-custom btn-submit">Confirmar e Enviar</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -454,6 +511,86 @@ include('../includes/header.php');
     setTimeout(function() {
         $('.alert-custom').fadeOut('slow');
     }, 5000);
+
+    /* ---------------- LÓGICA DO MODAL DE SUPORTE ---------------- */
+    
+    // Dados vindos do PHP
+    const planoUsuario = "<?= $plano ?>";
+    const usoAtual = {
+        online: <?= $uso_chat_online ?>,
+        aovivo: <?= $uso_chat_aovivo ?>
+    };
+
+    // Regras de Cobrança
+    const regras = {
+        'basico':    { cota_online: 0, cota_aovivo: 0, preco_online: 5.99, preco_aovivo: 15.99 },
+        'plus':      { cota_online: 1, cota_aovivo: 1, preco_online: 8.99, preco_aovivo: 15.99 },
+        'essencial': { cota_online: 2, cota_aovivo: 1, preco_online: 8.99, preco_aovivo: 15.99 }
+    };
+
+    function abrirModalSuporte() {
+        document.getElementById('modalSuporte').style.display = "block";
+        // Reseta o form ao abrir
+        document.getElementById('tipo_suporte').value = "";
+        document.getElementById('avisoPreco').style.display = "none";
+    }
+
+    function fecharModalSuporte() {
+        document.getElementById('modalSuporte').style.display = "none";
+    }
+
+    function atualizarPreco() {
+        const tipo = document.getElementById('tipo_suporte').value;
+        const aviso = document.getElementById('avisoPreco');
+        const spanValor = document.getElementById('valorEstimado');
+        
+        if (!tipo) {
+            aviso.style.display = "none";
+            return;
+        }
+
+        // Se plano não existir nas regras, usa básico como fallback
+        const regra = regras[planoUsuario] || regras['basico'];
+        let custo = 0;
+        let ehGratis = false;
+
+        if (tipo === 'chat_online') {
+            if (usoAtual.online < regra.cota_online) {
+                custo = 0;
+                ehGratis = true;
+            } else {
+                custo = regra.preco_online;
+            }
+        } else if (tipo === 'chat_aovivo') {
+            if (usoAtual.aovivo < regra.cota_aovivo) {
+                custo = 0;
+                ehGratis = true;
+            } else {
+                custo = regra.preco_aovivo;
+            }
+        }
+
+        spanValor.innerText = custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        
+        if (ehGratis) {
+            aviso.style.background = "rgba(40, 167, 69, 0.2)";
+            aviso.style.borderColor = "#28a745";
+            aviso.innerHTML = `<i class="fas fa-gift"></i> Custo: <strong>Grátis</strong> (Incluso no seu plano)`;
+        } else {
+            aviso.style.background = "rgba(255, 193, 7, 0.1)";
+            aviso.style.borderColor = "#ffc107";
+            aviso.innerHTML = `<i class="fas fa-coins"></i> Custo Extra: <strong>R$ ${custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (Será cobrado na fatura)`;
+        }
+        aviso.style.display = "block";
+    }
+
+    // Fechar modal ao clicar fora dele
+    window.onclick = function(event) {
+        const modal = document.getElementById('modalSuporte');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
 </script>
 
 </body>
