@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (Corrigido para buscar Chat no Master)
+// home.php (Ajustado para Permissões Granulares)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -33,7 +33,7 @@ if (!isset($_SESSION['tenant_id'])) {
 $usuario_id    = $_SESSION['usuario_id'];
 $tenant_id     = $_SESSION['tenant_id'];
 $nome_usuario  = $_SESSION['nome'];
-$perfil        = $_SESSION['nivel_acesso'];
+$perfil        = $_SESSION['nivel_acesso']; // 'admin', 'proprietario' ou 'padrao'
 
 // 📌 Conexão do tenant (Dados do cliente)
 $conn = getTenantConnection();
@@ -42,6 +42,47 @@ if (!$conn) {
     header("Location: ../pages/login.php?erro=db_tenant");
     exit();
 }
+
+// ==========================================================================
+// 🔍 LÓGICA DE PERMISSÕES (NOVO)
+// ==========================================================================
+$permissoes_usuario = [];
+
+// Se NÃO for admin/proprietário, busca as permissões específicas no banco
+if ($perfil !== 'admin' && $perfil !== 'proprietario' && $perfil !== 'master') {
+    $stmtPerm = $conn->prepare("SELECT permissoes FROM usuarios WHERE id = ?");
+    if ($stmtPerm) {
+        $stmtPerm->bind_param("i", $usuario_id);
+        $stmtPerm->execute();
+        $resPerm = $stmtPerm->get_result();
+        if ($rowPerm = $resPerm->fetch_assoc()) {
+            // Decodifica o JSON salvo (ex: ["contas_pagar.php", "vendas.php"])
+            $json = $rowPerm['permissoes'];
+            if (!empty($json)) {
+                $permissoes_usuario = json_decode($json, true);
+            }
+        }
+        $stmtPerm->close();
+    }
+    // Garante que é um array para evitar erros
+    if (!is_array($permissoes_usuario)) {
+        $permissoes_usuario = [];
+    }
+}
+
+/**
+ * Função auxiliar para verificar se exibe o botão
+ */
+function temPermissao($arquivo_chave, $permissoes_array, $perfil_atual) {
+    // Se for Admin, Proprietário ou Master, tem acesso total
+    if ($perfil_atual === 'admin' || $perfil_atual === 'proprietario' || $perfil_atual === 'master') {
+        return true;
+    }
+    // Se for usuário padrão, verifica se a chave está no array de permissões
+    return in_array($arquivo_chave, $permissoes_array);
+}
+// ==========================================================================
+
 
 // 📌 Conexão Master (Para verificar Assinatura e CHAT)
 $connMaster = getMasterConnection();
@@ -55,50 +96,46 @@ if ($connMaster) {
         $status_assinatura = $_SESSION['subscription_status'];
     }
 
-    // 2. LÓGICA DE CHAT SUPORTE (Busca no Master)
+    // 2. LÓGICA DE CHAT SUPORTE
     $conviteChat = null;
     try {
-        // CORREÇÃO: Usar o ID do usuário vinculado ao Tenant (Master ID), e não o ID da sessão local
         $master_usuario_id = isset($tenant['usuario_id']) ? $tenant['usuario_id'] : 0;
-
-        // Verifica se existe convite pendente para este usuário (Master)
         $sqlChat = "SELECT id FROM chat_sessions WHERE usuario_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1";
         $stmtChat = $connMaster->prepare($sqlChat);
         if ($stmtChat) {
-            $stmtChat->bind_param("i", $master_usuario_id); // Alterado de $usuario_id para $master_usuario_id
+            $stmtChat->bind_param("i", $master_usuario_id);
             $stmtChat->execute();
             $resChat = $stmtChat->get_result();
             $conviteChat = $resChat->fetch_assoc();
             $stmtChat->close();
         }
-    } catch (Exception $e) {
-        // Silencia erro caso tabela não exista
-    }
+    } catch (Exception $e) { }
     
-    $connMaster->close(); // Fecha conexão Master após uso
+    $connMaster->close();
 }
 
-// --- LÓGICA DE LEMBRETES (No banco do Tenant) ---
+// --- LÓGICA DE LEMBRETES ---
 $popupLembrete = false;
 try {
-    $checkTable = $conn->query("SHOW TABLES LIKE 'lembretes'");
-    if($checkTable && $checkTable->num_rows > 0) {
-        $sqlLembrete = "SELECT COUNT(*) as total FROM lembretes WHERE usuario_id = ? AND data_lembrete = CURDATE()";
-        $stmtL = $conn->prepare($sqlLembrete);
-        if ($stmtL) {
-            $stmtL->bind_param("i", $usuario_id);
-            $stmtL->execute();
-            $resL = $stmtL->get_result();
-            $rowL = $resL->fetch_assoc();
-            if ($rowL['total'] > 0) {
-                $popupLembrete = true;
+    // Só verifica lembretes se o usuário tiver permissão de ver lembretes
+    if (temPermissao('lembretes.php', $permissoes_usuario, $perfil)) {
+        $checkTable = $conn->query("SHOW TABLES LIKE 'lembretes'");
+        if($checkTable && $checkTable->num_rows > 0) {
+            $sqlLembrete = "SELECT COUNT(*) as total FROM lembretes WHERE usuario_id = ? AND data_lembrete = CURDATE()";
+            $stmtL = $conn->prepare($sqlLembrete);
+            if ($stmtL) {
+                $stmtL->bind_param("i", $usuario_id);
+                $stmtL->execute();
+                $resL = $stmtL->get_result();
+                $rowL = $resL->fetch_assoc();
+                if ($rowL['total'] > 0) {
+                    $popupLembrete = true;
+                }
+                $stmtL->close();
             }
-            $stmtL->close();
         }
     }
-} catch (Exception $e) {
-    // Silencia erro
-}
+} catch (Exception $e) { }
 
 $mensagem = $_SESSION['sucesso_mensagem'] ?? null;
 unset($_SESSION['sucesso_mensagem']);
@@ -106,9 +143,6 @@ unset($_SESSION['sucesso_mensagem']);
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
-// ---------------------------------------------------------
-// INCLUI O HEADER
-// ---------------------------------------------------------
 include('../includes/header.php');
 ?>
 
@@ -119,12 +153,9 @@ include('../includes/header.php');
         padding: 20px;
         animation: fadeIn 0.8s ease;
     }
-    
     h1 { text-align: center; color: #00bfff; margin-bottom: 5px; }
     h3 { text-align: center; color: #ccc; font-weight: 400; margin-bottom: 20px; }
-    
     .saudacao { text-align: center; margin-bottom: 25px; color: #ddd; font-size: 1.1rem; }
-    
     .section-title {
         width: 100%;
         color: #00bfff;
@@ -134,14 +165,12 @@ include('../includes/header.php');
         border-bottom: 1px solid #333;
         padding-bottom: 5px;
     }
-    
     .dashboard {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 18px;
         margin-bottom: 30px;
     }
-    
     .card-link {
         background: #1e1e1e;
         padding: 25px 15px;
@@ -157,9 +186,7 @@ include('../includes/header.php');
         justify-content: center;
         gap: 10px;
     }
-    
     .card-link i { font-size: 2rem; margin-bottom: 5px; color: #00bfff; }
-    
     .card-link:hover {
         background: #00bfff;
         color: #121212;
@@ -167,7 +194,6 @@ include('../includes/header.php');
         box-shadow: 0 6px 15px rgba(0,191,255,0.4);
     }
     .card-link:hover i { color: #121212; }
-    
     .mensagem-sucesso {
         background: #28a745;
         padding: 12px 20px;
@@ -184,8 +210,6 @@ include('../includes/header.php');
         margin-bottom: 25px;
         color: #fff;
     }
-
-    /* CSS DO ALERTA DE CHAT VERMELHO */
     .chat-alert {
         background-color: #ff4444;
         color: white;
@@ -201,68 +225,22 @@ include('../includes/header.php');
         text-decoration: none;
     }
     .chat-alert:hover { color: #fff; text-decoration: none; }
-    
     @keyframes pulse {
         0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
         70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
         100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
     }
-
     /* CSS DO MODAL CUSTOMIZADO */
-    .custom-modal {
-        display: none;
-        position: fixed;
-        z-index: 10000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.8);
-    }
-    .custom-modal-content {
-        background-color: #fefefe;
-        margin: 10% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 600px;
-        border-radius: 8px;
-        color: #333;
-    }
+    .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
+    .custom-modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: #333; }
     .custom-modal-header h5 { margin: 0; font-size: 1.5rem; }
     .custom-modal-body { margin: 20px 0; line-height: 1.6; font-size: 1rem; }
     .custom-modal-footer { text-align: right; }
     .btn-modal { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
     .btn-cancel { background: #ccc; color: #333; margin-right: 10px; }
     .btn-accept { background: #28a745; color: #fff; }
-
-    /* Toast Lembrete */
-    #toast-lembrete {
-        visibility: hidden;
-        min-width: 300px;
-        background-color: #00bfff;
-        color: #121212;
-        text-align: center;
-        border-radius: 8px;
-        padding: 16px;
-        position: fixed;
-        z-index: 9999;
-        right: 30px;
-        bottom: 30px;
-        font-size: 17px;
-        font-weight: bold;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        cursor: pointer;
-        opacity: 0;
-        transition: opacity 0.5s, bottom 0.5s;
-    }
-    #toast-lembrete.show {
-        visibility: visible;
-        opacity: 1;
-        bottom: 50px;
-    }
-    
+    #toast-lembrete { visibility: hidden; min-width: 300px; background-color: #00bfff; color: #121212; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999; right: 30px; bottom: 30px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
+    #toast-lembrete.show { visibility: visible; opacity: 1; bottom: 50px; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 
@@ -283,7 +261,7 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <?php if (!empty($produtos_estoque_baixo)): ?>
+    <?php if (!empty($produtos_estoque_baixo) && temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
         <div class="alert-estoque">
             <strong>⚠ Produtos com estoque baixo:</strong>
             <ul>
@@ -296,107 +274,170 @@ include('../includes/header.php');
         </div>
     <?php endif; ?>
 
-    <div class="section-title">
-        <i class="fas fa-wallet"></i> Financeiro
-    </div>
+    <?php 
+    // Verifica se existe ao menos UM item visível nesta seção para mostrar o título
+    $financeiro_items = ['contas_pagar.php', 'contas_pagar_baixadas.php', 'contas_receber.php', 'contas_receber_baixadas.php', 'lancamento_caixa.php', 'vendas_periodo.php'];
+    $show_financeiro = false;
+    foreach($financeiro_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_financeiro = true; }
+    ?>
 
-    <div class="dashboard">
-        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="contas_pagar.php">
-                <i class="fas fa-file-invoice-dollar"></i> Contas a Pagar
-            </a>
-            <a class="card-link" href="contas_pagar_baixadas.php">
-                <i class="fas fa-check-double"></i> Pagas
-            </a>
-            <a class="card-link" href="contas_receber.php">
-                <i class="fas fa-hand-holding-dollar"></i> Contas a Receber
-            </a>
-            <a class="card-link" href="contas_receber_baixadas.php">
-                <i class="fas fa-clipboard-check"></i> Recebidas
-            </a>
-            <a class="card-link" href="lancamento_caixa.php">
-                <i class="fas fa-exchange-alt"></i> Fluxo de Caixa
-            </a>
-        <?php endif; ?>
+    <?php if($show_financeiro): ?>
+        <div class="section-title">
+            <i class="fas fa-wallet"></i> Financeiro
+        </div>
+        <div class="dashboard">
+            <?php if (temPermissao('contas_pagar.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="contas_pagar.php">
+                    <i class="fas fa-file-invoice-dollar"></i> Contas a Pagar
+                </a>
+            <?php endif; ?>
 
-        <a class="card-link" href="vendas_periodo.php">
-            <i class="fas fa-chart-line"></i> Vendas e Comissão
-        </a>
-    </div>
+            <?php if (temPermissao('contas_pagar_baixadas.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="contas_pagar_baixadas.php">
+                    <i class="fas fa-check-double"></i> Pagas
+                </a>
+            <?php endif; ?>
 
-    <div class="section-title">
-        <i class="fas fa-boxes"></i> Estoque & Vendas
-    </div>
+            <?php if (temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="contas_receber.php">
+                    <i class="fas fa-hand-holding-dollar"></i> Contas a Receber
+                </a>
+            <?php endif; ?>
 
-    <div class="dashboard">
-        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="controle_estoque.php">
-                <i class="fas fa-boxes-stacked"></i> Estoque
-            </a>
-        <?php endif; ?>
+            <?php if (temPermissao('contas_receber_baixadas.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="contas_receber_baixadas.php">
+                    <i class="fas fa-clipboard-check"></i> Recebidas
+                </a>
+            <?php endif; ?>
 
-        <a class="card-link" href="vendas.php">
-            <i class="fas fa-cash-register"></i> Caixa de Vendas
-        </a>
+            <?php if (temPermissao('lancamento_caixa.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="lancamento_caixa.php">
+                    <i class="fas fa-exchange-alt"></i> Fluxo de Caixa
+                </a>
+            <?php endif; ?>
 
-        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="compras.php">
-                <i class="fas fa-shopping-bag"></i> Compras
-            </a>
-        <?php endif; ?>
-    </div>
+            <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="vendas_periodo.php">
+                    <i class="fas fa-chart-line"></i> Vendas e Comissão
+                </a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
-    <div class="section-title">
-        <i class="fas fa-users"></i> Cadastros
-    </div>
 
-    <div class="dashboard">
-        <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">
-            <i class="fas fa-address-book"></i> Clientes/Forn.
-        </a>
+    <?php 
+    $estoque_items = ['controle_estoque.php', 'vendas.php', 'compras.php'];
+    $show_estoque = false;
+    foreach($estoque_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_estoque = true; }
+    ?>
 
-        <a class="card-link" href="perfil.php">
-            <i class="fas fa-user-circle"></i> Perfil
-        </a>
+    <?php if($show_estoque): ?>
+        <div class="section-title">
+            <i class="fas fa-boxes"></i> Estoque & Vendas
+        </div>
+        <div class="dashboard">
+            <?php if (temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="controle_estoque.php">
+                    <i class="fas fa-boxes-stacked"></i> Estoque
+                </a>
+            <?php endif; ?>
 
-        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="../pages/banco_cadastro.php">
-                <i class="fas fa-university"></i> Contas Bancárias
-            </a>
-            <a class="card-link" href="../pages/categorias.php">
-                <i class="fas fa-tags"></i> Categorias
-            </a>
-        <?php endif; ?>
-    </div>
+            <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="vendas.php">
+                    <i class="fas fa-cash-register"></i> Caixa de Vendas
+                </a>
+            <?php endif; ?>
 
-    <div class="section-title">
-        <i class="fas fa-cogs"></i> Sistema
-    </div>
+            <?php if (temPermissao('compras.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="compras.php">
+                    <i class="fas fa-shopping-bag"></i> Compras
+                </a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
-    <div class="dashboard">
-        <a class="card-link" href="lembrete.php">
-            <i class="fas fa-sticky-note"></i> Lembretes
-        </a>
 
-        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="relatorios.php">
-                <i class="fas fa-chart-pie"></i> Relatórios
-            </a>
-        <?php endif; ?>
+    <?php 
+    $cadastro_items = ['cadastrar_pessoa_fornecedor.php', 'perfil.php', 'banco_cadastro.php', 'categorias.php'];
+    $show_cadastro = false;
+    foreach($cadastro_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_cadastro = true; }
+    ?>
 
-        <a class="card-link" href="selecionar_usuario.php">
-            <i class="fas fa-users-cog"></i> Trocar Usuário
-        </a>
+    <?php if($show_cadastro): ?>
+        <div class="section-title">
+            <i class="fas fa-users"></i> Cadastros
+        </div>
+        <div class="dashboard">
+            <?php if (temPermissao('cadastrar_pessoa_fornecedor.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php">
+                    <i class="fas fa-address-book"></i> Clientes/Forn.
+                </a>
+            <?php endif; ?>
 
-        <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
-            <a class="card-link" href="usuarios.php">
-                <i class="fas fa-users"></i> Usuários
-            </a>
-            <a class="card-link" href="configuracao_fiscal.php">
-                <i class="fas fa-file-invoice"></i> Config. Fiscal
-            </a>
-        <?php endif; ?>
-    </div>
+            <?php if (temPermissao('perfil.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="perfil.php">
+                    <i class="fas fa-user-circle"></i> Perfil
+                </a>
+            <?php endif; ?>
+
+            <?php if (temPermissao('banco_cadastro.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="../pages/banco_cadastro.php">
+                    <i class="fas fa-university"></i> Contas Bancárias
+                </a>
+            <?php endif; ?>
+
+            <?php if (temPermissao('categorias.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="../pages/categorias.php">
+                    <i class="fas fa-tags"></i> Categorias
+                </a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+
+    <?php 
+    $sistema_items = ['lembretes.php', 'relatorios.php', 'trocar_usuario.php', 'usuarios.php', 'configuracao_fiscal.php'];
+    $show_sistema = false;
+    foreach($sistema_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_sistema = true; }
+    ?>
+
+    <?php if($show_sistema): ?>
+        <div class="section-title">
+            <i class="fas fa-cogs"></i> Sistema
+        </div>
+        <div class="dashboard">
+            <?php if (temPermissao('lembretes.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="lembrete.php">
+                    <i class="fas fa-sticky-note"></i> Lembretes
+                </a>
+            <?php endif; ?>
+
+            <?php if (temPermissao('relatorios.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="relatorios.php">
+                    <i class="fas fa-chart-pie"></i> Relatórios
+                </a>
+            <?php endif; ?>
+
+            <?php if (temPermissao('trocar_usuario.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="selecionar_usuario.php">
+                    <i class="fas fa-users-cog"></i> Trocar Usuário
+                </a>
+            <?php endif; ?>
+
+            <?php if (temPermissao('usuarios.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="usuarios.php">
+                    <i class="fas fa-users"></i> Usuários
+                </a>
+            <?php endif; ?>
+
+            <?php if (temPermissao('configuracao_fiscal.php', $permissoes_usuario, $perfil)): ?>
+                <a class="card-link" href="configuracao_fiscal.php">
+                    <i class="fas fa-file-invoice"></i> Config. Fiscal
+                </a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
 </div>
 
 <div id="modalChatInvite" class="custom-modal">

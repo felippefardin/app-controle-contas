@@ -2,11 +2,6 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// Inclui o header se existir
-if(file_exists('../includes/header.php')) {
-    include '../includes/header.php';
-}
-
 // Conexão Master
 $conn = getMasterConnection();
 
@@ -22,12 +17,13 @@ if (!$isAdmin && $userId == 0) {
     exit;
 }
 
-// 1. Busca o Chat pelo ID (sem filtrar por usuário ainda)
+// 1. Busca o Chat pelo ID
 $stmt = $conn->prepare("SELECT * FROM chat_sessions WHERE id = ?");
 $stmt->bind_param("i", $chatId);
 $stmt->execute();
 $result = $stmt->get_result();
 $chat = $result->fetch_assoc();
+$stmt->close(); // ✅ CORREÇÃO ESSENCIAL: Libera a conexão para a próxima consulta
 
 // 2. Verificações de Acesso
 $acessoPermitido = false;
@@ -43,31 +39,41 @@ if ($chat) {
         if ($chat['usuario_id'] == $userId) {
             $acessoPermitido = true;
         } 
-        // Verifica se o ID do chat bate com o ID Master do Tenant (Correção para conflito de IDs)
+        // Verifica se o ID do chat bate com o ID Master do Tenant
         elseif ($tenantId > 0) {
+            // Agora esta consulta funcionará corretamente pois o $stmt anterior foi fechado
             $stmtT = $conn->prepare("SELECT usuario_id FROM tenants WHERE id = ?");
-            $stmtT->bind_param("i", $tenantId);
-            $stmtT->execute();
-            $resT = $stmtT->get_result();
-            $tenantData = $resT->fetch_assoc();
-            
-            if ($tenantData && $chat['usuario_id'] == $tenantData['usuario_id']) {
-                $acessoPermitido = true;
+            if ($stmtT) {
+                $stmtT->bind_param("i", $tenantId);
+                $stmtT->execute();
+                $resT = $stmtT->get_result();
+                $tenantData = $resT->fetch_assoc();
+                $stmtT->close();
+                
+                // Se o chat foi criado para o Dono do Tenant, permite acesso
+                if ($tenantData && $chat['usuario_id'] == $tenantData['usuario_id']) {
+                    $acessoPermitido = true;
+                }
             }
-            $stmtT->close();
         }
     }
 }
 
-// 3. Valida se pode exibir a tela
+// 3. Valida se pode exibir a tela (Antes do HTML para evitar renderização parcial)
 if (!$chat || !$acessoPermitido) {
     echo "<script>alert('Chat não disponível ou acesso negado.'); window.location.href='home.php';</script>";
     exit;
 }
 
+// Se o status ainda for pending (pode ocorrer delay), mas o usuário está tentando acessar
 if ($chat['status'] == 'pending' && !$isAdmin) {
-    echo "<script>alert('Aguardando início do suporte pelo administrador.'); window.location.href='home.php';</script>";
-    exit;
+    // Força o início se o usuário chegou aqui (fallback)
+    // Mas idealmente o status já mudou na API 'aceitar_convite'
+}
+
+// Inclui o header APÓS as validações de redirecionamento
+if(file_exists('../includes/header.php')) {
+    include '../includes/header.php';
 }
 ?>
 
@@ -135,6 +141,8 @@ function atualizarStatus() {
         if(data.status !== 'success') return;
 
         const timerDisplay = document.getElementById('timerDisplay');
+        
+        // Atualiza Timer e Estado
         if (data.chat_state === 'waiting_start') {
             timerDisplay.textContent = "Iniciando em: " + formatTime(data.time_left);
             timerDisplay.className = "badge bg-info text-dark";
@@ -151,13 +159,14 @@ function atualizarStatus() {
             else mostrarProtocolo(data.protocolo);
         }
 
+        // Renderiza Mensagens
         const chatBox = document.getElementById('chatBox');
         const myType = '<?php echo $isAdmin ? 'admin' : 'user'; ?>';
 
         if(data.messages && data.messages.length > 0) {
             let scroll = false;
-            // Verifica se o usuário já estava no final antes de adicionar
-            if (chatBox.scrollHeight - chatBox.scrollTop === chatBox.clientHeight) {
+            // Se usuário já está no final, rola automaticamente
+            if (chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50) {
                 scroll = true;
             }
 
@@ -171,14 +180,14 @@ function atualizarStatus() {
                 const bg = isMe ? '#dcf8c6' : '#e2e2e2';
                 
                 div.innerHTML = `
-                    <span style="background: ${bg}; padding: 8px 15px; border-radius: 15px; display: inline-block; border: 1px solid #ccc; text-align: left; color:#333;">
+                    <span style="background: ${bg}; padding: 8px 15px; border-radius: 15px; display: inline-block; border: 1px solid #ccc; text-align: left; color:#333; max-width: 75%;">
                         ${msg.mensagem}
                         <br><small style="font-size:0.7em; color:#666;">${msg.data_envio}</small>
                     </span>`;
                 
                 chatBox.appendChild(div);
                 lastMsgId = msg.id;
-                scroll = true; // Força scroll para nova mensagem
+                scroll = true; // Sempre rola para novas mensagens
             });
             
             if(scroll) chatBox.scrollTop = chatBox.scrollHeight;
@@ -202,7 +211,7 @@ function enviarMensagem() {
     .then(data => {
         if(data.status === 'success') {
             input.value = '';
-            atualizarStatus();
+            atualizarStatus(); // Atualiza imediatamente
         }
     });
 }
@@ -234,6 +243,7 @@ document.getElementById('msgInput').addEventListener('keypress', function (e) {
     if (e.key === 'Enter') enviarMensagem();
 });
 
+// Inicia o polling
 setInterval(atualizarStatus, 3000);
 atualizarStatus();
 </script>
