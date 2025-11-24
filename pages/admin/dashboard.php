@@ -299,6 +299,7 @@ $result_chamados = $master_conn->query($sql_chamados);
             <thead>
                 <tr>
                     <th style="width: 12%;">Status</th>
+                    <th style="width: 12%;">Data/Hora</th>
                     <th style="width: 20%;">Empresa / Cliente</th>
                     <th style="width: 10%;">Tipo</th>
                     <th style="width: 10%;">Custo</th>
@@ -344,6 +345,9 @@ $result_chamados = $master_conn->query($sql_chamados);
                             <span class="status-ball <?= $statusClass ?>"></span>
                             <span style="font-size: 0.9rem; color: #eee;"><?= $statusNome ?></span>
                         </div>
+                    </td>
+                    <td data-label="Data/Hora">
+                        <?= date('d/m/Y H:i', strtotime($c['criado_em'])) ?>
                     </td>
                     <td data-label="Empresa">
                         <div style="line-height: 1.4;">
@@ -396,7 +400,7 @@ $result_chamados = $master_conn->query($sql_chamados);
                 </tr>
                 <?php endwhile; ?>
             <?php else: ?>
-                <tr><td colspan="6" style="text-align:center; padding: 30px; color: #777; font-size: 1.1rem;">Nenhum chamado pendente no momento.</td></tr>
+                <tr><td colspan="7" style="text-align:center; padding: 30px; color: #777; font-size: 1.1rem;">Nenhum chamado pendente no momento.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
