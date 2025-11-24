@@ -9,21 +9,25 @@ if (!isset($_SESSION['super_admin'])) {
 }
 
 $admin = $_SESSION['super_admin'];
-$master_conn = getMasterConnection();
+$master_conn = getMasterConnection(); // Conexão MySQLi do database.php
 
 // --- LÓGICA DE PESQUISA DE TENANTS ---
 $busca = trim($_GET['busca'] ?? '');
-$sql = "SELECT t.id, t.nome, t.nome_empresa, t.status_assinatura, t.data_criacao, u.documento 
+
+// ✅ CORREÇÃO: Adicionado t.usuario_id e u.email na seleção
+$sql = "SELECT t.id, t.usuario_id, t.nome, t.nome_empresa, t.status_assinatura, t.data_criacao, 
+               u.documento, u.email 
         FROM tenants t 
         LEFT JOIN usuarios u ON t.usuario_id = u.id";
+
 if (!empty($busca)) {
     $term = $master_conn->real_escape_string($busca);
-    $sql .= " WHERE t.nome LIKE '%$term%' OR t.nome_empresa LIKE '%$term%' OR u.documento LIKE '%$term%'";
+    $sql .= " WHERE t.nome LIKE '%$term%' OR t.nome_empresa LIKE '%$term%' OR u.documento LIKE '%$term%' OR u.email LIKE '%$term%'";
 }
 $sql .= " ORDER BY t.id DESC";
 $tenants_result = $master_conn->query($sql);
 
-// --- LÓGICA DE CHAMADOS ---
+// --- LÓGICA DE CHAMADOS (FILA) ---
 $sql_chamados = "
     SELECT c.*, t.nome_empresa, t.nome as nome_proprietario
     FROM chamados_suporte c
@@ -38,7 +42,6 @@ $result_chamados = $master_conn->query($sql_chamados);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Master</title>
-    <!-- <link rel="stylesheet" href="../../assets/css/style.css"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* --- GLOBAL --- */
@@ -48,7 +51,7 @@ $result_chamados = $master_conn->query($sql_chamados);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
             padding-bottom: 40px;
-            overflow-x: hidden; /* Evita rolagem horizontal indesejada */
+            overflow-x: hidden;
         }
 
         /* --- TOPBAR --- */
@@ -81,10 +84,10 @@ $result_chamados = $master_conn->query($sql_chamados);
         .topbar .logout { background-color: #d13c3c; }
         .topbar .logout:hover { background-color: #ff4a4a; }
 
-        /* --- CONTAINER FULL WIDTH (AJUSTADO) --- */
+        /* --- CONTAINER --- */
         .container { 
-            width: 98%; /* Ocupa 98% da largura da tela */
-            max-width: 100%; /* Remove limite de pixels para telas grandes */
+            width: 98%; 
+            max-width: 100%;
             margin: 20px auto; 
             background: #121212; 
             padding: 25px; 
@@ -113,23 +116,23 @@ $result_chamados = $master_conn->query($sql_chamados);
         .btn-search:hover { background-color: #218838; }
         .btn-clear { color: #aaa; text-decoration: underline; font-size: 14px; align-self: center; }
 
-        /* --- TABLE (FULL WIDTH) --- */
+        /* --- TABLE --- */
         table { 
             width: 100%; 
-            min-width: 100%; /* Força largura mínima */
+            min-width: 100%; 
             border-collapse: collapse; 
             border-radius: 8px; 
             overflow: hidden; 
             margin-bottom: 20px; 
             background: #1a1a1a; 
-            table-layout: auto; /* Permite que colunas se ajustem ao conteúdo */
+            table-layout: auto;
         }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a2a2a; }
         th { background-color: #252525; color: #00bfff; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; white-space: nowrap; }
         td { color: #ddd; vertical-align: middle; }
         tr:hover { background-color: #2a2a2a; }
 
-        /* --- BOTÕES E BADGES --- */
+        /* --- BUTTONS --- */
         .btn-gerenciar { 
             background-color: #00bfff; 
             color: #fff; 
@@ -140,15 +143,33 @@ $result_chamados = $master_conn->query($sql_chamados);
             display: inline-block; 
             transition: 0.2s;
             white-space: nowrap;
+            margin-right: 5px;
         }
         .btn-gerenciar:hover { background-color: #009acd; }
         
+        /* Botão CHAT */
+        .btn-chat {
+            background-color: #e91e63; 
+            color: #fff; 
+            padding: 6px 12px; 
+            border: none;
+            border-radius: 4px; 
+            text-decoration: none; 
+            font-size: 13px; 
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-chat:hover { background-color: #c2185b; }
+
         .btn-action { border: none; border-radius: 4px; padding: 8px; cursor: pointer; font-size: 14px; color: white; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; margin-right: 5px; transition: 0.2s; }
         .btn-atender { background-color: #e67e22; } .btn-atender:hover { background-color: #d35400; }
         .btn-resolver { background-color: #27ae60; } .btn-resolver:hover { background-color: #219150; }
         .btn-excluir { background-color: #c0392b; } .btn-excluir:hover { background-color: #a93226; }
 
-        /* Status Balls */
         .status-ball { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
         .status-aberto { background-color: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
         .status-em-atendimento { background-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
@@ -174,65 +195,24 @@ $result_chamados = $master_conn->query($sql_chamados);
         textarea { width: 100%; background: #2c2c2c; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; resize: vertical; box-sizing: border-box; font-family: inherit; }
         textarea:focus { outline: none; border-color: #00bfff; }
 
-        /* --- HISTORY TIMELINE --- */
         .history-container { margin-bottom: 25px; border-left: 2px solid #333; padding-left: 20px; margin-left: 10px; }
         .history-item { margin-bottom: 20px; position: relative; }
         .history-item::before { content: ''; position: absolute; left: -25px; top: 6px; width: 10px; height: 10px; background: #555; border-radius: 50%; border: 2px solid #1e1e1e; }
         .history-meta { font-size: 0.85rem; color: #888; margin-bottom: 5px; font-weight: 600; }
         .history-msg { background: #252525; padding: 12px 15px; border-radius: 6px; font-size: 0.95rem; color: #ddd; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        
-        /* Diferenciação de mensagens */
-        .admin-msg { border-left: 4px solid #e67e22; } /* Laranja para Admin */
-        .admin-msg::before { background-color: #e67e22; } /* Bolinha laranja */
-        
-        /* --- RESPONSIVIDADE --- */
-        @media (min-width: 768px) {
-            .topbar span { display: inline; }
-        }
+        .admin-msg { border-left: 4px solid #e67e22; }
+        .admin-msg::before { background-color: #e67e22; }
 
+        @media (min-width: 768px) { .topbar span { display: inline; } }
         @media (max-width: 900px) {
             .container { width: 100%; margin: 0; padding: 15px; border-radius: 0; }
             .search-input { width: 100%; }
-            
-            /* Tabela Mobile -> Transformação em Cards */
             table, thead, tbody, th, td, tr { display: block; }
-            thead { display: none; } /* Esconde cabeçalho */
-            
-            tr { 
-                background: #202020; 
-                margin-bottom: 15px; 
-                border-radius: 8px; 
-                padding: 15px; 
-                border: 1px solid #333;
-            }
-            
-            td { 
-                border: none; 
-                padding: 8px 0; 
-                display: flex; 
-                justify-content: space-between; 
-                text-align: right;
-                font-size: 0.95rem;
-            }
-            
-            td::before {
-                content: attr(data-label);
-                font-weight: bold;
-                color: #00bfff;
-                text-align: left;
-                flex-basis: 40%; /* Largura do label */
-                padding-right: 10px;
-            }
-
-            td:last-child {
-                margin-top: 10px;
-                padding-top: 10px;
-                border-top: 1px solid #333;
-                justify-content: flex-end;
-                gap: 10px;
-            }
-
-            .btn-action { padding: 10px 15px; font-size: 16px; } /* Botões maiores para toque */
+            thead { display: none; }
+            tr { background: #202020; margin-bottom: 15px; border-radius: 8px; padding: 15px; border: 1px solid #333; }
+            td { border: none; padding: 8px 0; display: flex; justify-content: space-between; text-align: right; font-size: 0.95rem; }
+            td::before { content: attr(data-label); font-weight: bold; color: #00bfff; text-align: left; flex-basis: 40%; padding-right: 10px; }
+            td:last-child { margin-top: 10px; padding-top: 10px; border-top: 1px solid #333; justify-content: flex-end; gap: 10px; }
             .modal-content { width: 95%; margin: 10% auto; padding: 20px; }
         }
     </style>
@@ -252,7 +232,7 @@ $result_chamados = $master_conn->query($sql_chamados);
         
         <h1>Painel de Controle</h1>
         <form method="GET" class="search-container">
-            <input type="text" name="busca" class="search-input" placeholder="Buscar Cliente (Nome, Empresa, CPF/CNPJ)..." value="<?= htmlspecialchars($busca) ?>">
+            <input type="text" name="busca" class="search-input" placeholder="Buscar Cliente (Nome, Email, CPF/CNPJ)..." value="<?= htmlspecialchars($busca) ?>">
             <button type="submit" class="btn-search"><i class="fas fa-search"></i></button>
             <?php if (!empty($busca)): ?>
                 <a href="dashboard.php" class="btn-clear">Limpar</a>
@@ -262,7 +242,7 @@ $result_chamados = $master_conn->query($sql_chamados);
         <table>
             <thead>
                 <tr>
-                    <th>ID</th><th>Cliente</th><th>CPF/CNPJ</th><th>Status</th><th>Cadastro</th><th>Acesso</th>
+                    <th>ID</th><th>Cliente / Email</th><th>CPF/CNPJ</th><th>Status</th><th>Cadastro</th><th>Acesso</th>
                 </tr>
             </thead>
             <tbody>
@@ -270,11 +250,26 @@ $result_chamados = $master_conn->query($sql_chamados);
                 <?php while ($tenant = $tenants_result->fetch_assoc()): ?>
                     <tr>
                         <td data-label="ID">#<?= $tenant['id']; ?></td>
-                        <td data-label="Cliente" style="color:#fff;font-weight:bold;"><?= htmlspecialchars($tenant['nome_empresa'] ?: $tenant['nome'] ?: 'Sem Nome'); ?></td>
+                        <td data-label="Cliente">
+                            <div style="font-weight:bold; color:#fff;">
+                                <?= htmlspecialchars($tenant['nome_empresa'] ?: $tenant['nome'] ?: 'Sem Nome'); ?>
+                            </div>
+                            <div style="font-size:0.85rem; color:#aaa;">
+                                <i class="fas fa-envelope"></i> <?= htmlspecialchars($tenant['email'] ?? 'Sem Email'); ?>
+                            </div>
+                        </td>
                         <td data-label="Documento"><?= htmlspecialchars($tenant['documento'] ?? '-'); ?></td>
                         <td data-label="Status"><?= htmlspecialchars($tenant['status_assinatura'] ?? '-'); ?></td>
                         <td data-label="Cadastro"><?= !empty($tenant['data_criacao']) ? date('d/m/y', strtotime($tenant['data_criacao'])) : '-'; ?></td>
-                        <td data-label="Ação"><a class="btn-gerenciar" href="../../actions/admin_impersonate.php?tenant_id=<?= $tenant['id']; ?>"><i class="fas fa-external-link-alt"></i> Acessar</a></td>
+                        <td data-label="Ação">
+                            <a class="btn-gerenciar" href="../../actions/admin_impersonate.php?tenant_id=<?= $tenant['id']; ?>"><i class="fas fa-external-link-alt"></i> Acessar</a>
+                            
+                            <?php if(!empty($tenant['usuario_id'])): ?>
+                                <button class="btn-chat" onclick="iniciarSuporte(<?= $tenant['usuario_id']; ?>, '<?= htmlspecialchars($tenant['email'] ?? '') ?>')" title="Iniciar Chat Online com <?= htmlspecialchars($tenant['email']) ?>">
+                                    <i class="fas fa-comments"></i> Chat
+                                </button>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endwhile; ?>
             <?php else: ?>
@@ -285,7 +280,10 @@ $result_chamados = $master_conn->query($sql_chamados);
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 30px; flex-wrap: wrap; gap: 10px;">
             <h2 style="margin: 0; border: none; padding: 0; color: #ff9f43;"><i class="fas fa-headset"></i> Fila de Suporte</h2>
-            <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
+            <div>
+                <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
+                <a href="arquivos_suportes.php" class="btn-gerenciar" style="background: #34495e;"><i class="fas fa-file-pdf"></i> Logs de Chat</a>
+            </div>
         </div>
 
         <?php if(isset($_SESSION['msg_suporte'])): ?>
@@ -311,10 +309,8 @@ $result_chamados = $master_conn->query($sql_chamados);
             <?php if ($result_chamados && $result_chamados->num_rows > 0): ?>
                 <?php while ($c = $result_chamados->fetch_assoc()): 
                     $statusClass = 'status-' . ($c['status'] == 'aberto' ? 'aberto' : 'em-atendimento');
-                    // CORREÇÃO AQUI: Se 'aberto' (vermelho), exibe 'Fechado'.
                     $statusNome = ($c['status'] == 'aberto') ? 'Fechado' : 'Em Atendimento';
                     
-                    // BUSCAR HISTÓRICO
                     $id_chamado = $c['id'];
                     $res_hist = $master_conn->query("SELECT * FROM chamados_historico WHERE chamado_id = $id_chamado ORDER BY criado_em ASC");
                     $historico_html = "";
@@ -324,8 +320,6 @@ $result_chamados = $master_conn->query($sql_chamados);
                             $data = date('d/m/y H:i', strtotime($h['criado_em']));
                             $msg = nl2br(htmlspecialchars($h['mensagem']));
                             $tipoClass = ($h['autor_tipo'] == 'admin') ? 'admin-msg' : '';
-                            
-                            // Adiciona classe específica ao item para estilizar a bolinha da timeline se for admin
                             $itemClass = ($h['autor_tipo'] == 'admin') ? 'admin-msg-item' : '';
 
                             $historico_html .= "
@@ -341,7 +335,7 @@ $result_chamados = $master_conn->query($sql_chamados);
                 ?>
                 <tr>
                     <td data-label="Status">
-                        <div style="display: flex; align-items: center; justify-content: flex-end; /* Mobile align fix */">
+                        <div style="display: flex; align-items: center; justify-content: flex-end;">
                             <span class="status-ball <?= $statusClass ?>"></span>
                             <span style="font-size: 0.9rem; color: #eee;"><?= $statusNome ?></span>
                         </div>
@@ -362,7 +356,6 @@ $result_chamados = $master_conn->query($sql_chamados);
                             : '<span style="background:#3498db; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">ONLINE</span>' 
                         ?>
                     </td>
-                    
                     <td data-label="Custo">
                         <?php if (floatval($c['custo']) > 0): ?>
                             <span style="background:rgba(255, 193, 7, 0.2); color:#ffc107; border:1px solid #ffc107; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">
@@ -374,7 +367,6 @@ $result_chamados = $master_conn->query($sql_chamados);
                             </span>
                         <?php endif; ?>
                     </td>
-
                     <td data-label="Descrição">
                         <div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help;" title="<?= htmlspecialchars($c['descricao']) ?>">
                             <?= htmlspecialchars($c['descricao']) ?>
@@ -384,13 +376,11 @@ $result_chamados = $master_conn->query($sql_chamados);
                         <button class="btn-action btn-atender" onclick="abrirModal(<?= $c['id'] ?>, `<?= htmlspecialchars(addslashes($c['descricao'])) ?>`, `<?= htmlspecialchars($c['usuario_nome']) ?>`, `<?= $historico_js ?>`)" title="Atender">
                             <i class="fas fa-edit"></i>
                         </button>
-                        
                         <form action="../../actions/admin_suporte.php" method="POST" style="display:inline;" onsubmit="return confirm('Marcar este chamado como resolvido?');">
                             <input type="hidden" name="acao" value="resolver">
                             <input type="hidden" name="id" value="<?= $c['id'] ?>">
                             <button type="submit" class="btn-action btn-resolver" title="Resolver"><i class="fas fa-check"></i></button>
                         </form>
-
                         <form action="../../actions/admin_suporte.php" method="POST" style="display:inline;" onsubmit="return confirm('ATENÇÃO: Isso excluirá o chamado e todo o histórico permanentemente. Confirmar?');">
                             <input type="hidden" name="acao" value="excluir">
                             <input type="hidden" name="id" value="<?= $c['id'] ?>">
@@ -404,14 +394,12 @@ $result_chamados = $master_conn->query($sql_chamados);
             <?php endif; ?>
             </tbody>
         </table>
-
     </div>
 
     <div id="modalAtendimento" class="modal">
         <div class="modal-content">
             <span class="close" onclick="fecharModal()">&times;</span>
             <h2 style="color: #00bfff; text-align: left; border: none; margin-top: 0; padding-top: 0;"><i class="fas fa-headset"></i> Atendimento #<span id="modalIdDisplay"></span></h2>
-            
             <div style="background: #252525; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #3498db;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                     <strong style="color: #fff;">Solicitante: <span id="modalSolicitante"></span></strong>
@@ -419,20 +407,15 @@ $result_chamados = $master_conn->query($sql_chamados);
                 </div>
                 <p id="modalDescricao" style="white-space: pre-wrap; margin: 0; color: #ddd;"></p>
             </div>
-
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #ccc; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 15px;">Histórico de Interações</h4>
-                <div id="modalHistoryContainer" class="history-container">
-                    </div>
+                <div id="modalHistoryContainer" class="history-container"></div>
             </div>
-
             <form action="../../actions/admin_suporte.php" method="POST">
                 <input type="hidden" name="acao" value="salvar_notas">
                 <input type="hidden" name="id" id="modalIdInput">
-                
                 <label for="nova_mensagem" style="display:block; margin-bottom: 8px; color: #00bfff; font-weight: bold;">Adicionar Nova Nota / Resposta:</label>
                 <textarea name="nova_mensagem" id="novaMensagem" rows="4" placeholder="Digite os detalhes do atendimento aqui..." required></textarea>
-                
                 <div style="text-align: right; margin-top: 15px;">
                     <button type="button" onclick="fecharModal()" style="padding: 10px 20px; background: transparent; border: 1px solid #666; color: #ccc; border-radius: 5px; cursor: pointer; margin-right: 10px;">Cancelar</button>
                     <button type="submit" class="btn-search" style="background: #00bfff; width: auto;">Salvar e Atualizar</button>
@@ -442,6 +425,7 @@ $result_chamados = $master_conn->query($sql_chamados);
     </div>
 
     <script>
+        // Lógica para abrir modal de chamados
         function abrirModal(id, descricao, solicitante, historicoHtml) {
             document.getElementById('modalIdDisplay').innerText = id;
             document.getElementById('modalIdInput').value = id;
@@ -450,18 +434,45 @@ $result_chamados = $master_conn->query($sql_chamados);
             document.getElementById('modalHistoryContainer').innerHTML = historicoHtml;
             document.getElementById('novaMensagem').value = ''; 
             document.getElementById('modalAtendimento').style.display = "block";
-            document.body.style.overflow = 'hidden'; // Evita scroll no fundo
+            document.body.style.overflow = 'hidden';
         }
 
         function fecharModal() {
             document.getElementById('modalAtendimento').style.display = "none";
-            document.body.style.overflow = 'auto'; // Restaura scroll
+            document.body.style.overflow = 'auto';
         }
 
         window.onclick = function(event) {
             if (event.target == document.getElementById('modalAtendimento')) {
                 fecharModal();
             }
+        }
+
+        // --- LÓGICA DO CHAT ONLINE (AJUSTADA COM EMAIL) ---
+        function iniciarSuporte(userId, userEmail) {
+            if(!confirm("Deseja iniciar um Chat Online com o email: " + userEmail + "? Ele receberá um convite na Home.")) return;
+
+            const formData = new FormData();
+            formData.append('action', 'iniciar_suporte');
+            formData.append('target_user_id', userId);
+            
+            fetch('../../actions/chat_api.php', { 
+                method: 'POST', 
+                body: formData 
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('Solicitação enviada! Você será redirecionado para a sala de espera.');
+                    window.location.href = '../../pages/chat_suporte_online.php?chat_id=' + data.chat_id;
+                } else {
+                    alert('Erro: ' + (data.msg || 'Verifique se já existe um chat pendente.'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erro de conexão.');
+            });
         }
     </script>
 </body>
