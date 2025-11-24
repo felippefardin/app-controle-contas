@@ -24,6 +24,13 @@ $extras_comprados = 0;
 $nome_plano_atual = 'Básico';
 $limite_total = 3;
 
+// Definição dos planos disponíveis
+$mapa_planos = [
+    'basico'    => ['nome' => 'Plano Básico', 'base' => 3, 'desc' => 'Ideal para pequenos negócios'],
+    'plus'      => ['nome' => 'Plano Plus', 'base' => 6, 'desc' => 'Para empresas em crescimento'],
+    'essencial' => ['nome' => 'Plano Essencial', 'base' => 16, 'desc' => 'Gestão completa para sua equipe']
+];
+
 if ($tenant_id) {
     $stmt = $conn->prepare("SELECT * FROM tenants WHERE tenant_id = ?");
     $stmt->bind_param("s", $tenant_id);
@@ -41,12 +48,6 @@ if ($tenant_id) {
 
         $plano_db = $dados_assinatura['plano_atual'] ?? 'basico';
         $extras_comprados = (int)($dados_assinatura['usuarios_extras'] ?? 0);
-
-        $mapa_planos = [
-            'basico'    => ['nome' => 'Plano Básico', 'base' => 3],
-            'plus'      => ['nome' => 'Plano Plus', 'base' => 6],
-            'essencial' => ['nome' => 'Plano Essencial', 'base' => 16]
-        ];
 
         $info_plano = $mapa_planos[$plano_db] ?? $mapa_planos['basico'];
         $limite_base = $info_plano['base'];
@@ -257,6 +258,29 @@ include('../includes/header.php');
             gap: 8px;
         }
         .footer-link:hover { color: #fff; }
+
+        /* Planos Grid */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .plan-card {
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .plan-card:hover {
+            transform: translateY(-3px);
+        }
+        .plan-card h3 { margin-top: 0; margin-bottom: 10px; font-size: 1.4rem; }
+        .plan-desc { color: #aaa; font-size: 0.85rem; margin-bottom: 15px; }
+        .plan-limit { color: #fff; font-size: 1.1rem; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -267,7 +291,6 @@ include('../includes/header.php');
         <h2><i class="fa-solid fa-star"></i> Gestão da Assinatura</h2>
     </div>
 
-    <!-- Mensagens de Feedback -->
     <?php if(!empty($_SESSION['sucesso_extra'])): ?>
         <div class="alert-message alert-success">
             <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_SESSION['sucesso_extra']) ?>
@@ -289,7 +312,6 @@ include('../includes/header.php');
         <?php unset($_SESSION['sucesso_pagamento']); ?>
     <?php endif; ?>
 
-    <!-- Alerta Trial -->
     <?php if ($is_trial && $dias_restantes > 0): ?>
         <div class="trial-alert">
             <i class="fa-solid fa-clock fa-lg"></i>
@@ -305,7 +327,6 @@ include('../includes/header.php');
 
     <div class="grid-layout">
         
-        <!-- CARD 1: Detalhes do Plano -->
         <div class="card-custom">
             <div class="card-title"><i class="fa-solid fa-file-contract"></i> Detalhes do Plano</div>
             
@@ -345,7 +366,6 @@ include('../includes/header.php');
             <?php endif; ?>
         </div>
 
-        <!-- CARD 2: Usuários Extras -->
         <div class="card-custom" style="border-color: rgba(0, 191, 255, 0.3);">
             <div class="card-title"><i class="fa-solid fa-users-gear"></i> Capacidade</div>
             
@@ -365,11 +385,10 @@ include('../includes/header.php');
 
             <div class="action-box">
                 <div style="font-size: 0.85rem; color: #ccc; margin-bottom: 10px; text-align: center;">
-                    Gerencie seus slots extras (R$ 1,50/mês cada).
+                    Gerencie seus slots extras (R$ 4,50/mês cada).
                 </div>
                 
                 <div class="action-row">
-                    <!-- Adicionar -->
                     <form id="formAddExtra" action="../actions/comprar_extra_action.php" method="POST">
                         <input type="hidden" name="qtd_extra" value="1">
                         <button type="button" class="btn-custom btn-add-user" title="Adicionar vaga" onclick="confirmarAdicao()">
@@ -377,7 +396,6 @@ include('../includes/header.php');
                         </button>
                     </form>
 
-                    <!-- Remover (Só aparece se tiver extras) -->
                     <?php if ($extras_comprados > 0): ?>
                     <form id="formRemoveExtra" action="../actions/remover_extra_action.php" method="POST">
                         <input type="hidden" name="qtd_remover" value="1">
@@ -392,7 +410,42 @@ include('../includes/header.php');
 
     </div>
 
-    <!-- CARD 3: Financeiro -->
+    <div class="card-custom">
+        <div class="card-title"><i class="fa-solid fa-layer-group"></i> Planos Disponíveis</div>
+        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Você pode alterar seu plano a qualquer momento. O novo plano entrará em vigor imediatamente.</p>
+        
+        <div class="plans-grid">
+            <?php foreach ($mapa_planos as $slug => $plano): ?>
+                <?php 
+                    $ativo = ($slug === $plano_db);
+                    $border = $ativo ? '2px solid #00bfff' : '1px solid #333';
+                    $bg = $ativo ? 'rgba(0, 191, 255, 0.08)' : '#252525';
+                    $color_title = $ativo ? '#00bfff' : '#fff';
+                ?>
+                <div class="plan-card" style="background: <?= $bg ?>; border: <?= $border ?>;">
+                    <div>
+                        <h3 style="color: <?= $color_title ?>"><?= $plano['nome'] ?></h3>
+                        <p class="plan-desc"><?= $plano['desc'] ?></p>
+                        <div class="plan-limit"><i class="fa-solid fa-user-group"></i> <?= $plano['base'] ?> Usuários</div>
+                    </div>
+                    
+                    <?php if ($ativo): ?>
+                        <button disabled class="btn-custom" style="background: transparent; border: 1px solid #00bfff; color: #00bfff; width: 100%; cursor: default; opacity: 0.8;">
+                            <i class="fa-solid fa-check"></i> Plano Atual
+                        </button>
+                    <?php else: ?>
+                        <form id="formPlano_<?= $slug ?>" action="checkout_plano.php" method="POST">
+                            <input type="hidden" name="plano" value="<?= $slug ?>">
+                            <button type="button" class="btn-custom" style="background: #00bfff; width: 100%;" onclick="confirmarTrocaPlano('<?= $slug ?>', '<?= $plano['nome'] ?>')">
+                                Mudar Plano
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
     <div class="card-custom">
         <div class="card-title"><i class="fa-solid fa-wallet"></i> Financeiro</div>
         <p style="color: #aaa; font-size: 0.9rem;">Acesse seu histórico completo de pagamentos e notas fiscais.</p>
@@ -425,11 +478,11 @@ include('../includes/header.php');
         $('.alert-message').fadeOut('slow');
     }, 6000);
 
-    // Modal de Confirmação de Adição
+    // Modal de Confirmação de Adição (PREÇO ATUALIZADO)
     function confirmarAdicao() {
         Swal.fire({
             title: 'Adicionar Usuário Extra?',
-            text: "Isso adicionará R$ 1,50 mensais à sua fatura.",
+            text: "Isso adicionará R$ 4,50 mensais à sua fatura.",
             icon: 'info',
             showCancelButton: true,
             confirmButtonColor: '#00bfff',
@@ -461,6 +514,26 @@ include('../includes/header.php');
         }).then((result) => {
             if (result.isConfirmed) {
                 document.getElementById('formRemoveExtra').submit();
+            }
+        });
+    }
+
+    // NOVO: Modal de Confirmação de Troca de Plano
+    function confirmarTrocaPlano(slug, nomePlano) {
+        Swal.fire({
+            title: 'Alterar para ' + nomePlano + '?',
+            html: "Você está prestes a migrar para o <strong>" + nomePlano + "</strong>.<br>Seu limite de usuários será atualizado e a nova cobrança entrará em vigor.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#00bfff',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sim, alterar plano',
+            cancelButtonText: 'Cancelar',
+            background: '#1e1e1e',
+            color: '#eee'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('formPlano_' + slug).submit();
             }
         });
     }

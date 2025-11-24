@@ -16,8 +16,8 @@ $qtd_extra = (int)($_POST['qtd_extra'] ?? 1);
 
 if ($qtd_extra < 1) $qtd_extra = 1;
 
-// Valor unitário
-$valor_unitario = 1.50;
+// Valor unitário ATUALIZADO
+$valor_unitario = 4.50; 
 $valor_total_adicional = $qtd_extra * $valor_unitario;
 
 try {

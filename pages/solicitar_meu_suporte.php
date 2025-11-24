@@ -27,7 +27,7 @@ if ($connTenant) {
     // Não fechamos a conexão aqui propositalmente: getTenantConnection() gerencia
 }
 
-// Valores Padrão
+// Valores Padrão (Inicialização segura)
 $plano = 'basico';
 $uso_chat_online = 0;
 $uso_chat_aovivo = 0;
@@ -35,7 +35,7 @@ $uso_chat_aovivo = 0;
 // Conecta ao Banco Master para checar PLANO REAL e USO
 $connMaster = getMasterConnection();
 if ($connMaster) {
-    // 1. Busca o plano atual (CORREÇÃO: usar plano_atual)
+    // 1. Busca o plano atual
     $stmt_plano = $connMaster->prepare("SELECT plano_atual FROM tenants WHERE tenant_id = ? LIMIT 1");
     if ($stmt_plano) {
         $stmt_plano->bind_param("s", $tenant_id);
@@ -57,8 +57,8 @@ if ($connMaster) {
         $stmt_sup->execute();
         $stmt_sup->bind_result($uso_online_db, $uso_aovivo_db);
         if ($stmt_sup->fetch()) {
-            $uso_chat_online = (int)$uso_online_db;
-            $uso_chat_aovivo = (int)$uso_aovivo_db;
+            $uso_chat_online = $uso_online_db;
+            $uso_chat_aovivo = $uso_aovivo_db;
         }
         $stmt_sup->close();
     }
@@ -66,10 +66,12 @@ if ($connMaster) {
     $connMaster->close();
 }
 
-// Fallbacks
+// --- CORREÇÃO DOS FALLBACKS (BLINDAGEM CONTRA ERROS) ---
+// Se a variável não estiver definida ou for nula, assume 0. Se for string, converte para int.
+$uso_chat_online = isset($uso_chat_online) ? (int)$uso_chat_online : 0;
+$uso_chat_aovivo = isset($uso_chat_aovivo) ? (int)$uso_chat_aovivo : 0;
 if (empty($plano)) $plano = 'basico';
-if (!is_int($uso_chat_online)) $uso_chat_online = (int)$uso_chat_online;
-if (!is_int($uso_chat_aovivo)) $uso_chat_aovivo = (int)$uso_chat_aovivo;
+// -------------------------------------------------------
 
 // Definição das Regras de Negócio (padronizadas conforme solicitado)
 // NOTE: ESSENCIAL tem 3 atendimentos online gratuitos/mês; PLUS tem 1.
