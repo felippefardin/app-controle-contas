@@ -1,5 +1,5 @@
 -- =========================================
--- SCHEMA COMPLETO MULTI-TENANT SAAS (VERSÃO FINAL)
+-- SCHEMA COMPLETO MULTI-TENANT SAAS (VERSÃO FINAL CORRIGIDA)
 -- =========================================
 
 -- Usuários
@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
   status VARCHAR(20) NOT NULL DEFAULT 'ativo',
   nivel_acesso VARCHAR(20) DEFAULT 'padrao',
   tenant_id VARCHAR(32) DEFAULT NULL,
-  documento_clean VARCHAR(14)
-  usuarios ADD COLUMN tipo_cancelamento ENUM('desativar', 'excluir') DEFAULT NULL;
-    GENERATED ALWAYS AS (REGEXP_REPLACE(documento, '[^0-9]', ''))
-    STORED,
+  -- Correção: Definição da coluna adicionada corretamente
+  tipo_cancelamento ENUM('desativar', 'excluir') DEFAULT NULL,
+  -- Correção: Sintaxe da coluna gerada consertada
+  documento_clean VARCHAR(14) GENERATED ALWAYS AS (REGEXP_REPLACE(documento, '[^0-9]', '')) STORED,
   cpf VARCHAR(14) DEFAULT NULL,
   token_reset VARCHAR(255) DEFAULT NULL,
   token_expira_em DATETIME DEFAULT NULL,
@@ -96,7 +96,6 @@ CREATE TABLE `contas_receber` (
   CONSTRAINT `fk_cr_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-
 -- Contas a Pagar 
 CREATE TABLE IF NOT EXISTS `contas_pagar` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -121,6 +120,7 @@ CREATE TABLE IF NOT EXISTS `contas_pagar` (
   CONSTRAINT `fk_contas_pagar_fornecedor` FOREIGN KEY (`id_pessoa_fornecedor`) REFERENCES `pessoas_fornecedores`(`id`),
   CONSTRAINT `fk_cp_baixado_por` FOREIGN KEY (`baixado_por`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Contas Bancárias
 CREATE TABLE IF NOT EXISTS `contas_bancarias` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -281,6 +281,7 @@ CREATE TABLE IF NOT EXISTS configuracoes_tenant (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Tenants (master)
+-- Atualizado com as colunas necessárias para o fluxo de cancelamento
 CREATE TABLE IF NOT EXISTS tenants (
   id INT NOT NULL AUTO_INCREMENT,
   nome VARCHAR(255) DEFAULT NULL,
@@ -294,6 +295,11 @@ CREATE TABLE IF NOT EXISTS tenants (
   status_assinatura VARCHAR(50) DEFAULT 'ativo',
   role VARCHAR(50) NOT NULL DEFAULT 'usuario',
   data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Colunas adicionadas para controle de renovação e cancelamento
+  data_renovacao DATE DEFAULT NULL,
+  tipo_cancelamento ENUM('desativar', 'excluir') DEFAULT NULL,
+
   PRIMARY KEY (id),
   UNIQUE KEY admin_email (admin_email),
   UNIQUE KEY subdominio (subdominio)
@@ -334,6 +340,3 @@ CREATE TABLE `empresa_config` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `cnpj` (`cnpj`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-
-

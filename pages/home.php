@@ -470,12 +470,32 @@ include('../includes/header.php');
 <?php endif; ?>
 
 <script>
-const hora = new Date().getHours();
-let texto = "Bem-vindo(a)!";
-if (hora < 12) texto = "☀️ Bom dia!";
-else if (hora < 18) texto = "🌤️ Boa tarde!";
-else texto = "🌙 Boa noite!";
-document.getElementById("saudacao").textContent = texto;
+// Função para atualizar saudação, data e hora
+function atualizarSaudacao() {
+    const agora = new Date();
+    const hora = agora.getHours();
+    const minutos = String(agora.getMinutes()).padStart(2, '0');
+    const dia = String(agora.getDate()).padStart(2, '0');
+    const mes = String(agora.getMonth() + 1).padStart(2, '0'); // Meses começam do 0
+    const ano = agora.getFullYear();
+
+    // Define a saudação
+    let texto = "Bem-vindo(a)!";
+    if (hora < 12) texto = "☀️ Bom dia!";
+    else if (hora < 18) texto = "🌤️ Boa tarde!";
+    else texto = "🌙 Boa noite!";
+
+    // Formata a data e hora
+    const dataFormatada = `${dia}/${mes}/${ano}`;
+    const horaFormatada = `${hora}:${minutos}`;
+
+    // Exibe o texto completo
+    document.getElementById("saudacao").innerHTML = `${texto} <br><span style="font-size: 0.9em; color: #aaa;">${dataFormatada} — ${horaFormatada}</span>`;
+}
+
+// Atualiza imediatamente e depois a cada minuto
+atualizarSaudacao();
+setInterval(atualizarSaudacao, 60000);
 
 // Lógica do Modal de Chat
 let currentChatId = null;

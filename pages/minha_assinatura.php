@@ -15,7 +15,8 @@ if ($conn === null) {
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $dados_assinatura = [];
-$dias_restantes = 0;
+$dias_restantes_teste = 0;
+$dias_ate_renovacao = 0;
 $is_trial = false;
 $nome_exibicao = $_SESSION['nome'] ?? 'Cliente'; 
 
@@ -32,6 +33,7 @@ $mapa_planos = [
 ];
 
 if ($tenant_id) {
+    // Buscamos t.* para garantir que pegamos data_renovacao e tipo_cancelamento
     $stmt = $conn->prepare("SELECT * FROM tenants WHERE tenant_id = ?");
     $stmt->bind_param("s", $tenant_id);
     $stmt->execute();
@@ -56,6 +58,27 @@ if ($tenant_id) {
 
         $status = $dados_assinatura['status_assinatura'] ?? 'padrao';
         
+        // --- CÁLCULO DE DIAS ATÉ RENOVAÇÃO ---
+        $data_renovacao_str = $dados_assinatura['data_renovacao'] ?? null;
+        if ($data_renovacao_str) {
+            try {
+                $dt_hoje = new DateTime();
+                $dt_hoje->setTime(0, 0, 0);
+                
+                $dt_renovacao = new DateTime($data_renovacao_str);
+                $dt_renovacao->setTime(0, 0, 0);
+                
+                if ($dt_renovacao > $dt_hoje) {
+                    $diff = $dt_hoje->diff($dt_renovacao);
+                    $dias_ate_renovacao = (int)$diff->format('%a');
+                } else {
+                    $dias_ate_renovacao = 0; // Vence hoje ou já venceu
+                }
+            } catch (Exception $e) {
+                $dias_ate_renovacao = 0;
+            }
+        }
+
         // LÓGICA DE CONTAGEM DO PERÍODO DE TESTE
         if ($status === 'trial') {
             $is_trial = true;
@@ -74,12 +97,12 @@ if ($tenant_id) {
                 
                 if ($hoje < $data_fim_teste) {
                     $intervalo = $hoje->diff($data_fim_teste);
-                    $dias_restantes = (int)$intervalo->format('%a');
+                    $dias_restantes_teste = (int)$intervalo->format('%a');
                 } else {
-                    $dias_restantes = 0;
+                    $dias_restantes_teste = 0;
                 }
             } catch (Exception $e) { 
-                $dias_restantes = 0; 
+                $dias_restantes_teste = 0; 
             }
         }
     }
@@ -171,7 +194,7 @@ include('../includes/header.php');
         .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #2c2c2c; }
         .info-row:last-child { border-bottom: none; }
         .label { color: #aaa; font-size: 0.95rem; }
-        .value { font-weight: bold; color: #fff; font-size: 1rem; }
+        .value { font-weight: bold; color: #fff; font-size: 1rem; text-align: right; }
 
         /* Status */
         .status-ativo { color: #2ecc71; }
@@ -225,7 +248,7 @@ include('../includes/header.php');
             box-shadow: 0 0 10px rgba(220, 53, 69, 0.2);
         }
 
-        /* --- CSS NOVO PARA O BOTÃO CANCELAR (NEON VERMELHO) --- */
+        /* Botão Cancelar */
         .btn-cancel {
             background: transparent;
             border: 1px solid #ff003c;
@@ -320,11 +343,7 @@ include('../includes/header.php');
         .plan-desc { color: #aaa; font-size: 0.85rem; margin-bottom: 15px; }
         .plan-limit { color: #fff; font-size: 1.1rem; margin-bottom: 20px; }
 
-        /* --- CORREÇÃO DO MODAL ABERTO --- */
-        /* Garante que o modal esteja oculto por padrão se o JS falhar */
-        #modalCancelarAssinatura {
-            display: none;
-        }
+        #modalCancelarAssinatura { display: none; }
     </style>
 </head>
 <body>
@@ -336,11 +355,11 @@ include('../includes/header.php');
     </div>
 
     <?php 
-    if ($is_trial && $dias_restantes > 0): 
+    if ($is_trial && $dias_restantes_teste > 0): 
     ?>
         <div class="trial-alert">
             <i class="fa-solid fa-clock fa-lg"></i>
-            <div>PERÍODO DE TESTE: Restam <strong><?= $dias_restantes ?> dias</strong> gratuitos.</div>
+            <div>PERÍODO DE TESTE: Restam <strong><?= $dias_restantes_teste ?> dias</strong> gratuitos.</div>
             <a href="assinar.php" class="btn-custom" style="background: #ffc107; color: #000; padding: 6px 15px; font-size: 0.9rem;">Assinar Agora</a>
         </div>
     <?php endif; ?>
@@ -364,27 +383,55 @@ include('../includes/header.php');
                 <span class="label">Status:</span>
                 <span class="value">
                     <?php 
-                    $st = $dados_assinatura['status_assinatura'] ?? '-';
-                    if ($st === 'ativo') {
-                        echo '<span class="status-ativo"><i class="fa-solid fa-check-circle"></i> Ativo</span>';
-                    } elseif ($st === 'trial') {
-                        if ($dias_restantes > 0) {
-                            echo '<span style="color: #ffc107"><i class="fa-solid fa-flask"></i> Em Teste</span>';
-                        } else {
-                            echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Teste Expirado</span>';
-                        }
+                    $tipo_cancelamento = $dados_assinatura['tipo_cancelamento'] ?? null;
+
+                    if ($tipo_cancelamento) {
+                        // SE HOUVER CANCELAMENTO AGENDADO
+                        echo '<div style="margin-bottom:5px; color: #ffc107; font-weight:bold;">
+                                <i class="fa-solid fa-calendar-xmark"></i> Cancelamento Agendado
+                              </div>';
+                        echo '<small style="color:#ccc; font-size: 0.85rem;">Sistema sai do ar em: <strong style="color:#fff">' . $dias_ate_renovacao . ' dias</strong></small>';
                     } else {
-                        echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Inativo</span>';
+                        // LÓGICA PADRÃO
+                        $st = $dados_assinatura['status_assinatura'] ?? '-';
+                        if ($st === 'ativo') {
+                            echo '<span class="status-ativo"><i class="fa-solid fa-check-circle"></i> Ativo</span>';
+                        } elseif ($st === 'trial') {
+                            if ($dias_restantes_teste > 0) {
+                                echo '<span style="color: #ffc107"><i class="fa-solid fa-flask"></i> Em Teste</span>';
+                            } else {
+                                echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Teste Expirado</span>';
+                            }
+                        } else {
+                            echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Inativo</span>';
+                        }
                     }
                     ?>
                 </span>
             </div>
 
-            <div class="mt-4 text-center">
-                <button type="button" class="btn-custom btn-cancel" onclick="abrirModalCancelamento()">
-                    <i class="fa-solid fa-ban"></i> Cancelar Assinatura
-                </button>
-            </div>
+            <?php if (!$is_trial && isset($dados_assinatura['data_renovacao'])): ?>
+                <div class="info-row" style="margin-top: 15px;">
+                    <span class="label">
+                        <?= $tipo_cancelamento ? 'Encerramento em:' : 'Próxima Cobrança:' ?>
+                    </span>
+                    <span class="value">
+                        <?= date('d/m/Y', strtotime($dados_assinatura['data_renovacao'])) ?>
+                        <br>
+                        <small style="font-size:0.8rem; color:#888; font-weight:normal;">
+                            (Faltam <?= $dias_ate_renovacao ?> dias)
+                        </small>
+                    </span>
+                </div>
+            <?php endif; ?>
+
+            <?php if (empty($tipo_cancelamento)): ?>
+                <div class="mt-4 text-center">
+                    <button type="button" class="btn-custom btn-cancel" onclick="abrirModalCancelamento()">
+                        <i class="fa-solid fa-ban"></i> Cancelar Assinatura
+                    </button>
+                </div>
+            <?php endif; ?>
 
             <div class="modal fade" id="modalCancelarAssinatura" tabindex="-1" aria-labelledby="modalCancelarLabel" aria-hidden="true">
                 <div class="modal-dialog">
@@ -394,14 +441,14 @@ include('../includes/header.php');
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <p>Sentimos muito que você queira partir. Por favor, escolha como deseja proceder com sua conta após o vencimento da fatura atual:</p>
+                            <p>Sentimos muito que você queira partir. Por favor, escolha como deseja proceder com sua conta:</p>
                             
                             <form id="formCancelarAssinatura" action="../actions/solicitar_cancelamento.php" method="POST">
                                 <div class="form-check mb-3 p-3" style="background: rgba(255,255,255,0.05); border-radius: 5px;">
                                     <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao1" value="desativar" required>
                                     <label class="form-check-label" for="opcao1">
                                         <strong style="color: #fff;">Opção 1 - Apenas desativar a conta:</strong><br>
-                                        <small style="color: #aaa;">Você terá acesso até o próximo vencimento. Após isso, a conta será suspensa. Você poderá reativá-la futuramente mantendo seus dados.</small>
+                                        <small style="color: #aaa;">Você terá acesso até <strong><?= date('d/m/Y', strtotime($dados_assinatura['data_renovacao'] ?? 'now')) ?></strong> (daqui a <?= $dias_ate_renovacao ?> dias). Após isso, a conta será suspensa.</small>
                                     </label>
                                 </div>
                                 
@@ -409,7 +456,7 @@ include('../includes/header.php');
                                     <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao2" value="excluir" required>
                                     <label class="form-check-label text-danger" for="opcao2">
                                         <strong>Opção 2 - Cancelar e excluir tudo:</strong><br>
-                                        <small style="color: #ffb3b3;">Você terá acesso até o próximo vencimento. Após isso, sua conta e <strong>TODOS os dados serão excluídos permanentemente</strong>.</small>
+                                        <small style="color: #ffb3b3;">Você terá acesso até <strong><?= date('d/m/Y', strtotime($dados_assinatura['data_renovacao'] ?? 'now')) ?></strong>. Após isso, sua conta e <strong>TODOS os dados serão excluídos permanentemente</strong>.</small>
                                     </label>
                                 </div>
                             </form>
@@ -422,16 +469,9 @@ include('../includes/header.php');
                 </div>
             </div>
 
-            <?php if (!$is_trial && isset($dados_assinatura['data_renovacao'])): ?>
-                <div class="info-row" style="margin-top: 15px;">
-                    <span class="label">Renovação:</span>
-                    <span class="value"><?= date('d/m/Y', strtotime($dados_assinatura['data_renovacao'])) ?></span>
-                </div>
-            <?php endif; ?>
-
             <?php if ($is_trial || ($dados_assinatura['status_assinatura'] ?? '') !== 'ativo'): ?>
                 <a href="assinar.php" class="btn-custom btn-assinar">
-                    <i class="fa-solid fa-crown"></i> <?= ($is_trial && $dias_restantes > 0) ? 'Efetivar Assinatura' : 'Reativar Plano' ?>
+                    <i class="fa-solid fa-crown"></i> <?= ($is_trial && $dias_restantes_teste > 0) ? 'Efetivar Assinatura' : 'Reativar Plano' ?>
                 </a>
             <?php endif; ?>
         </div>

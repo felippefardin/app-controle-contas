@@ -127,7 +127,7 @@ include('../includes/header.php');
     <div class="text-center mt-4">
         <p style="color: #666;">
             <i class="fa-solid fa-lock"></i> Pagamento seguro via Mercado Pago. Cancele quando quiser.<br>
-            Precisa de mais usuários? Adicione avulso por R$ 1,50/mês na gestão da assinatura.
+            Precisa de mais usuários? Adicione avulso por R$ 4,50/mês na gestão da assinatura.
         </p>
     </div>
 </div>
