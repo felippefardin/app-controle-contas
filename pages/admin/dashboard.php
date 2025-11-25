@@ -281,8 +281,9 @@ $result_chamados = $master_conn->query($sql_chamados);
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 30px; flex-wrap: wrap; gap: 10px;">
     <h2 style="margin: 0; border: none; padding: 0; color: #ff9f43;"><i class="fas fa-headset"></i> Fila de Suporte</h2>
     <div>
-        <a href="email_marketing.php" class="btn-gerenciar" style="background: #8e44ad;"><i class="fas fa-bullhorn"></i> Email Marketing</a>
+        <a href="cupom_desconto.php" class="btn-gerenciar" style="background: #d35400;"><i class="fas fa-ticket-alt"></i> Cupons</a>
         
+        <a href="email_marketing.php" class="btn-gerenciar" style="background: #8e44ad;"><i class="fas fa-bullhorn"></i> Email Marketing</a>
         <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
         <a href="arquivos_suportes.php" class="btn-gerenciar" style="background: #34495e;"><i class="fas fa-file-pdf"></i> Logs de Chat</a>
     </div>

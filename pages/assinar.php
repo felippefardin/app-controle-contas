@@ -33,6 +33,13 @@ include('../includes/header.php');
     .btn-primary-custom { background: linear-gradient(135deg, #00bfff, #008cba); color: white; }
     .btn-primary-custom:hover { filter: brightness(1.1); }
     .badge-pop { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #ffc107; color: #000; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
+    
+    /* Area Cupom */
+    .cupom-area { max-width: 400px; margin: 0 auto 30px auto; display: flex; gap: 10px; justify-content: center; }
+    .cupom-input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #1c1c1c; color: #fff; width: 100%; text-transform: uppercase; }
+    .btn-cupom { background: #ff9f43; border: none; border-radius: 5px; padding: 0 20px; font-weight: bold; cursor: pointer; color: #000; }
+    .msg-cupom { text-align: center; font-size: 0.9rem; margin-top: -20px; margin-bottom: 20px; min-height: 20px; }
+    .old-price { text-decoration: line-through; font-size: 1rem; color: #777; display: block; }
 </style>
 
 <div class="container">
@@ -41,12 +48,20 @@ include('../includes/header.php');
         <p style="color: #aaa;">Desbloqueie o potencial máximo do seu negócio.</p>
     </div>
 
+    <div class="cupom-area">
+        <input type="text" id="inputCupom" class="cupom-input" placeholder="Tem um cupom de desconto?">
+        <button onclick="aplicarCupom()" class="btn-cupom">Aplicar</button>
+    </div>
+    <div class="msg-cupom" id="msgCupom"></div>
+
     <div class="planos-wrapper">
         
         <div class="plano-card">
             <div class="plano-header">
                 <div class="plano-title">Básico</div>
-                <div class="plano-price">R$ 19,90<small style="font-size: 1rem; color: #aaa">/mês</small></div>
+                <div class="plano-price" data-original="19.90">
+                    R$ 19,90<small style="font-size: 1rem; color: #aaa">/mês</small>
+                </div>
                 <div style="color: #888; font-size: 0.9rem;">Ideal para começar</div>
             </div>
             <ul class="plano-features">
@@ -57,6 +72,7 @@ include('../includes/header.php');
             </ul>
             <form action="../actions/checkout_plano.php" method="POST">
                 <input type="hidden" name="plano" value="basico">
+                <input type="hidden" name="cupom" class="hidden-cupom-field">
                 <button type="submit" class="btn-plano btn-outline">Assinar Básico</button>
             </form>
         </div>
@@ -65,7 +81,9 @@ include('../includes/header.php');
             <span class="badge-pop">Mais Popular</span>
             <div class="plano-header">
                 <div class="plano-title" style="color: #00bfff;">Plus</div>
-                <div class="plano-price">R$ 39,90<small style="font-size: 1rem; color: #aaa">/mês</small></div>
+                <div class="plano-price" data-original="39.90">
+                    R$ 39,90<small style="font-size: 1rem; color: #aaa">/mês</small>
+                </div>
                 <div style="color: #888; font-size: 0.9rem;">Para crescer rápido</div>
             </div>
             <ul class="plano-features">
@@ -77,6 +95,7 @@ include('../includes/header.php');
             </ul>
             <form action="../actions/checkout_plano.php" method="POST">
                 <input type="hidden" name="plano" value="plus">
+                <input type="hidden" name="cupom" class="hidden-cupom-field">
                 <button type="submit" class="btn-plano btn-primary-custom">Assinar Plus</button>
             </form>
         </div>
@@ -84,7 +103,9 @@ include('../includes/header.php');
         <div class="plano-card">
             <div class="plano-header">
                 <div class="plano-title">Essencial</div>
-                <div class="plano-price">R$ 59,90<small style="font-size: 1rem; color: #aaa">/mês</small></div>
+                <div class="plano-price" data-original="59.90">
+                    R$ 59,90<small style="font-size: 1rem; color: #aaa">/mês</small>
+                </div>
                 <div style="color: #888; font-size: 0.9rem;">Controle total</div>
             </div>
             <ul class="plano-features">
@@ -96,6 +117,7 @@ include('../includes/header.php');
             </ul>
             <form action="../actions/checkout_plano.php" method="POST">
                 <input type="hidden" name="plano" value="essencial">
+                <input type="hidden" name="cupom" class="hidden-cupom-field">
                 <button type="submit" class="btn-plano btn-outline">Assinar Essencial</button>
             </form>
         </div>
@@ -109,5 +131,70 @@ include('../includes/header.php');
         </p>
     </div>
 </div>
+
+<script>
+function aplicarCupom() {
+    const codigo = document.getElementById('inputCupom').value;
+    const msgDiv = document.getElementById('msgCupom');
+    
+    if (!codigo) {
+        msgDiv.innerHTML = '<span style="color: #e74c3c;">Digite um código.</span>';
+        return;
+    }
+
+    msgDiv.innerHTML = '<span style="color: #aaa;">Verificando...</span>';
+
+    const formData = new FormData();
+    formData.append('codigo', codigo);
+
+    fetch('../actions/validar_cupom_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.valid) {
+            msgDiv.innerHTML = '<span style="color: #2ecc71;">Cupom ' + data.codigo + ' aplicado com sucesso!</span>';
+            
+            // Atualiza inputs hidden nos formulários
+            document.querySelectorAll('.hidden-cupom-field').forEach(input => {
+                input.value = data.codigo;
+            });
+
+            // Atualiza UI visualmente
+            document.querySelectorAll('.plano-price').forEach(el => {
+                let original = parseFloat(el.getAttribute('data-original'));
+                let novoPreco = original;
+
+                if (data.tipo === 'porcentagem') {
+                    novoPreco = original - (original * (data.valor / 100));
+                } else if (data.tipo === 'fixo') {
+                    novoPreco = Math.max(0, original - data.valor);
+                }
+
+                // Formata para PT-BR
+                let precoFormatado = novoPreco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                
+                el.innerHTML = `<span class="old-price">R$ ${original.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                R$ ${precoFormatado}<small style="font-size: 1rem; color: #aaa">/mês</small>`;
+            });
+
+        } else {
+            msgDiv.innerHTML = '<span style="color: #e74c3c;">' + data.msg + '</span>';
+            // Reseta
+            document.querySelectorAll('.hidden-cupom-field').forEach(input => input.value = '');
+            document.querySelectorAll('.plano-price').forEach(el => {
+                let original = parseFloat(el.getAttribute('data-original'));
+                let originalFmt = original.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                el.innerHTML = `R$ ${originalFmt}<small style="font-size: 1rem; color: #aaa">/mês</small>`;
+            });
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        msgDiv.innerHTML = '<span style="color: #e74c3c;">Erro ao validar cupom.</span>';
+    });
+}
+</script>
 
 <?php include('../includes/footer.php'); ?>
