@@ -23,20 +23,22 @@ while ($user = $result->fetch_assoc()) {
         $upd->close();
 
         $assunto = "Conta Suspensa";
-        $msg = "Olá " . $user['nome'] . ",<br>Sua conta foi suspensa. Para reativar, acesse o login.";
+        $msg = "Olá " . $user['nome'] . ",<br>Sua conta foi suspensa pois o período vigente acabou e você solicitou o não cancelamento automático. Para reativar, acesse o login.";
+        
+        // Chamada corrigida pela existência da função
         enviarEmail($user['email'], $user['nome'], $assunto, $msg);
 
     } elseif ($user['tipo_cancelamento'] == 'excluir') {
         // Opção 2: Exclusão Total
-        // Aqui você deve chamar suas funções de limpeza de dados das tabelas relacionadas
-        
-        // Exemplo simplificado de exclusão:
+        // Certifique-se de ter lógica para limpar dados dependentes (FKs) se necessário antes de deletar
         $del = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
         $del->bind_param("i", $user['id']);
         
         if ($del->execute()) {
             $assunto = "Conta Excluída";
-            $msg = "Sua conta foi excluída permanentemente.";
+            $msg = "Olá " . $user['nome'] . ",<br>Conforme solicitado, sua conta e seus dados foram excluídos permanentemente.";
+            
+            // Chamada corrigida pela existência da função
             enviarEmail($user['email'], $user['nome'], $assunto, $msg);
         }
         $del->close();

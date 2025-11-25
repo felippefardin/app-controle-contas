@@ -64,7 +64,6 @@ if ($tenant_id) {
             
             try {
                 $data_inicio = new DateTime($data_ref);
-                // Ajusta para comparar apenas datas, ignorando hora exata de criação
                 $data_inicio->setTime(0, 0, 0);
                 
                 $data_fim_teste = clone $data_inicio;
@@ -73,12 +72,11 @@ if ($tenant_id) {
                 $hoje = new DateTime();
                 $hoje->setTime(0, 0, 0);
                 
-                // Se hoje for menor que o fim do teste, calcula a diferença
                 if ($hoje < $data_fim_teste) {
                     $intervalo = $hoje->diff($data_fim_teste);
-                    $dias_restantes = (int)$intervalo->format('%a'); // %a retorna o total de dias absoluto
+                    $dias_restantes = (int)$intervalo->format('%a');
                 } else {
-                    $dias_restantes = 0; // Período acabou
+                    $dias_restantes = 0;
                 }
             } catch (Exception $e) { 
                 $dias_restantes = 0; 
@@ -89,6 +87,25 @@ if ($tenant_id) {
 }
 $conn->close();
 
+// Captura mensagens de sessão para exibir no SweetAlert
+$swal_alert = [];
+if (!empty($_SESSION['sucesso'])) {
+    $swal_alert = ['type' => 'success', 'title' => 'Sucesso!', 'text' => $_SESSION['sucesso']];
+    unset($_SESSION['sucesso']);
+} elseif (!empty($_SESSION['erro'])) {
+    $swal_alert = ['type' => 'error', 'title' => 'Atenção!', 'text' => $_SESSION['erro']];
+    unset($_SESSION['erro']);
+} elseif (!empty($_SESSION['sucesso_extra'])) {
+    $swal_alert = ['type' => 'success', 'title' => 'Atualizado!', 'text' => $_SESSION['sucesso_extra']];
+    unset($_SESSION['sucesso_extra']);
+} elseif (!empty($_SESSION['erro_extra'])) {
+    $swal_alert = ['type' => 'error', 'title' => 'Erro!', 'text' => $_SESSION['erro_extra']];
+    unset($_SESSION['erro_extra']);
+} elseif (!empty($_SESSION['sucesso_pagamento'])) {
+    $swal_alert = ['type' => 'success', 'title' => 'Pagamento Confirmado!', 'text' => $_SESSION['sucesso_pagamento']];
+    unset($_SESSION['sucesso_pagamento']);
+}
+
 include('../includes/header.php');
 ?>
 
@@ -97,6 +114,7 @@ include('../includes/header.php');
 <head>
     <meta charset="UTF-8">
     <title>Minha Assinatura</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
@@ -206,6 +224,24 @@ include('../includes/header.php');
             color: #ff4d4d; 
             box-shadow: 0 0 10px rgba(220, 53, 69, 0.2);
         }
+
+        /* --- CSS NOVO PARA O BOTÃO CANCELAR (NEON VERMELHO) --- */
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid #ff003c;
+            color: #ff003c;
+            width: 100%;
+            margin-top: 10px;
+            box-shadow: 0 0 5px rgba(255, 0, 60, 0.2);
+            font-size: 0.95rem;
+        }
+        .btn-cancel:hover {
+            background: rgba(255, 0, 60, 0.1);
+            color: #ff4d79;
+            border-color: #ff4d79;
+            box-shadow: 0 0 15px rgba(255, 0, 60, 0.4);
+            transform: translateY(-2px);
+        }
         
         .btn-history { background-color: #17a2b8; flex: 1; }
         .btn-receipt { background-color: #6c757d; flex: 1; }
@@ -242,19 +278,6 @@ include('../includes/header.php');
             box-shadow: 0 0 10px rgba(255, 193, 7, 0.1);
         }
 
-        /* Alertas Sucesso/Erro */
-        .alert-message { 
-            padding: 12px; 
-            border-radius: 6px; 
-            margin-bottom: 25px; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            font-weight: 500;
-        }
-        .alert-success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; color: #2ecc71; }
-        .alert-error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff6b6b; }
-
         /* Footer links */
         .footer-links {
             text-align: center; 
@@ -267,7 +290,7 @@ include('../includes/header.php');
             color: #666; 
             text-decoration: none; 
             font-size: 0.95rem; 
-            transition: color 0.3s;
+            transition: color 0.3s; 
             display: flex;
             align-items: center;
             gap: 8px;
@@ -296,6 +319,12 @@ include('../includes/header.php');
         .plan-card h3 { margin-top: 0; margin-bottom: 10px; font-size: 1.4rem; }
         .plan-desc { color: #aaa; font-size: 0.85rem; margin-bottom: 15px; }
         .plan-limit { color: #fff; font-size: 1.1rem; margin-bottom: 20px; }
+
+        /* --- CORREÇÃO DO MODAL ABERTO --- */
+        /* Garante que o modal esteja oculto por padrão se o JS falhar */
+        #modalCancelarAssinatura {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -306,29 +335,7 @@ include('../includes/header.php');
         <h2><i class="fa-solid fa-star"></i> Gestão da Assinatura</h2>
     </div>
 
-    <?php if(!empty($_SESSION['sucesso_extra'])): ?>
-        <div class="alert-message alert-success">
-            <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_SESSION['sucesso_extra']) ?>
-        </div>
-        <?php unset($_SESSION['sucesso_extra']); ?>
-    <?php endif; ?>
-
-    <?php if(!empty($_SESSION['erro_extra'])): ?>
-        <div class="alert-message alert-error">
-            <i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($_SESSION['erro_extra']) ?>
-        </div>
-        <?php unset($_SESSION['erro_extra']); ?>
-    <?php endif; ?>
-
-    <?php if(!empty($_SESSION['sucesso_pagamento'])): ?>
-        <div class="alert-message alert-success">
-            <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_SESSION['sucesso_pagamento']) ?>
-        </div>
-        <?php unset($_SESSION['sucesso_pagamento']); ?>
-    <?php endif; ?>
-
     <?php 
-    // SÓ EXIBE O CONTADOR SE ESTIVER EM TRIAL E AINDA HOUVER DIAS
     if ($is_trial && $dias_restantes > 0): 
     ?>
         <div class="trial-alert">
@@ -358,11 +365,9 @@ include('../includes/header.php');
                 <span class="value">
                     <?php 
                     $st = $dados_assinatura['status_assinatura'] ?? '-';
-                    // Se estiver em trial mas os dias acabaram, ajusta a exibição visual do status se desejar, ou mantém a lógica original
                     if ($st === 'ativo') {
                         echo '<span class="status-ativo"><i class="fa-solid fa-check-circle"></i> Ativo</span>';
                     } elseif ($st === 'trial') {
-                        // Se quiser que apareça "Inativo" quando acabar o tempo do trial no card também:
                         if ($dias_restantes > 0) {
                             echo '<span style="color: #ffc107"><i class="fa-solid fa-flask"></i> Em Teste</span>';
                         } else {
@@ -376,49 +381,49 @@ include('../includes/header.php');
             </div>
 
             <div class="mt-4 text-center">
-    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalCancelarAssinatura">
-        Cancelar Assinatura
-    </button>
-</div>
+                <button type="button" class="btn-custom btn-cancel" onclick="abrirModalCancelamento()">
+                    <i class="fa-solid fa-ban"></i> Cancelar Assinatura
+                </button>
+            </div>
 
-<div class="modal fade" id="modalCancelarAssinatura" tabindex="-1" aria-labelledby="modalCancelarLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalCancelarLabel">Cancelar Assinatura</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Sentimos muito que você queira partir. Por favor, escolha como deseja proceder com sua conta após o vencimento da fatura atual:</p>
-                
-                <form id="formCancelarAssinatura" action="../actions/solicitar_cancelamento.php" method="POST">
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao1" value="desativar" required>
-                        <label class="form-check-label" for="opcao1">
-                            <strong>Opção 1 - Apenas desativar a conta:</strong>
-                            Você terá acesso até o próximo vencimento. Após isso, a conta será suspensa. Você poderá reativá-la futuramente mantendo seus dados.
-                        </label>
+            <div class="modal fade" id="modalCancelarAssinatura" tabindex="-1" aria-labelledby="modalCancelarLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content" style="background-color: #2c2c2c; color: #eee; border: 1px solid #444;">
+                        <div class="modal-header" style="border-bottom: 1px solid #444;">
+                            <h5 class="modal-title" id="modalCancelarLabel" style="color: #ff003c;">Cancelar Assinatura</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Sentimos muito que você queira partir. Por favor, escolha como deseja proceder com sua conta após o vencimento da fatura atual:</p>
+                            
+                            <form id="formCancelarAssinatura" action="../actions/solicitar_cancelamento.php" method="POST">
+                                <div class="form-check mb-3 p-3" style="background: rgba(255,255,255,0.05); border-radius: 5px;">
+                                    <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao1" value="desativar" required>
+                                    <label class="form-check-label" for="opcao1">
+                                        <strong style="color: #fff;">Opção 1 - Apenas desativar a conta:</strong><br>
+                                        <small style="color: #aaa;">Você terá acesso até o próximo vencimento. Após isso, a conta será suspensa. Você poderá reativá-la futuramente mantendo seus dados.</small>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check p-3" style="background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3); border-radius: 5px;">
+                                    <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao2" value="excluir" required>
+                                    <label class="form-check-label text-danger" for="opcao2">
+                                        <strong>Opção 2 - Cancelar e excluir tudo:</strong><br>
+                                        <small style="color: #ffb3b3;">Você terá acesso até o próximo vencimento. Após isso, sua conta e <strong>TODOS os dados serão excluídos permanentemente</strong>.</small>
+                                    </label>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid #444;">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                            <button type="submit" form="formCancelarAssinatura" class="btn btn-danger">Confirmar Cancelamento</button>
+                        </div>
                     </div>
-                    
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao2" value="excluir" required>
-                        <label class="form-check-label text-danger" for="opcao2">
-                            <strong>Opção 2 - Cancelar e excluir tudo:</strong>
-                            Você terá acesso até o próximo vencimento. Após isso, sua conta e <strong>TODOS os dados serão excluídos permanentemente</strong> do sistema.
-                        </label>
-                    </div>
-                </form>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="submit" form="formCancelarAssinatura" class="btn btn-danger">Confirmar Cancelamento</button>
-            </div>
-        </div>
-    </div>
-</div>
 
             <?php if (!$is_trial && isset($dados_assinatura['data_renovacao'])): ?>
-                <div class="info-row">
+                <div class="info-row" style="margin-top: 15px;">
                     <span class="label">Renovação:</span>
                     <span class="value"><?= date('d/m/Y', strtotime($dados_assinatura['data_renovacao'])) ?></span>
                 </div>
@@ -537,13 +542,31 @@ include('../includes/header.php');
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script>
-    // Remove alertas automaticamente
-    setTimeout(function() {
-        $('.alert-message').fadeOut('slow');
-    }, 6000);
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    // Modal de Confirmação de Adição (PREÇO ATUALIZADO)
+<script>
+    // Exibe o alerta do SweetAlert se houver mensagem na sessão
+    document.addEventListener('DOMContentLoaded', function() {
+        <?php if (!empty($swal_alert)): ?>
+            Swal.fire({
+                icon: '<?= $swal_alert['type'] ?>',
+                title: '<?= $swal_alert['title'] ?>',
+                text: '<?= $swal_alert['text'] ?>',
+                background: '#1e1e1e',
+                color: '#eee',
+                confirmButtonColor: '#00bfff'
+            });
+        <?php endif; ?>
+    });
+
+    // --- SCRIPT PARA ABRIR O MODAL DE CANCELAMENTO ---
+    function abrirModalCancelamento() {
+        // Instancia o modal usando o ID e chama o método show()
+        var myModal = new bootstrap.Modal(document.getElementById('modalCancelarAssinatura'));
+        myModal.show();
+    }
+
+    // Modal de Confirmação de Adição
     function confirmarAdicao() {
         Swal.fire({
             title: 'Adicionar Usuário Extra?',
@@ -583,7 +606,7 @@ include('../includes/header.php');
         });
     }
 
-    // NOVO: Modal de Confirmação de Troca de Plano
+    // Modal de Confirmação de Troca de Plano
     function confirmarTrocaPlano(slug, nomePlano) {
         Swal.fire({
             title: 'Alterar para ' + nomePlano + '?',

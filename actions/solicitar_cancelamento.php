@@ -38,6 +38,7 @@ if ($opcao == 'excluir') {
     $mensagem .= "Você terá acesso ao sistema até: <strong>$data_vencimento</strong>.<br><br>";
     $mensagem .= "<strong style='color:red;'>IMPORTANTE:</strong> Salve seus dados antes desta data.<br>";
     
+    // Agora a função existe
     enviarEmail($user['email'], $user['nome'], $assunto, $mensagem);
 } else {
     $assunto = "Cancelamento de Renovação Automática";
@@ -45,6 +46,7 @@ if ($opcao == 'excluir') {
     $mensagem .= "Sua solicitação para não renovar a assinatura foi recebida.<br>";
     $mensagem .= "Sua conta ficará ativa até $data_vencimento.<br>";
     
+    // Agora a função existe
     enviarEmail($user['email'], $user['nome'], $assunto, $mensagem);
 }
 
