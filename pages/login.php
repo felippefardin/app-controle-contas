@@ -14,10 +14,8 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - App Controle</title>
 
-    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-    <!-- Bootstrap (para modal melhorar visual) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
@@ -172,7 +170,6 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
 
     <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
 
-    <!-- Erro -->
     <?php if (isset($_SESSION['login_erro'])): ?>
         <div class="alert alert-danger">
             <i class="fa-solid fa-circle-exclamation"></i>
@@ -181,7 +178,22 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
         <?php unset($_SESSION['login_erro']); ?>
     <?php endif; ?>
 
-    <!-- Sucesso -->
+    <?php if (isset($_SESSION['erro'])): ?>
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <?= htmlspecialchars($_SESSION['erro']) ?>
+        </div>
+        <?php unset($_SESSION['erro']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['sucesso'])): ?>
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle"></i>
+            <?= htmlspecialchars($_SESSION['sucesso']) ?>
+        </div>
+        <?php unset($_SESSION['sucesso']); ?>
+    <?php endif; ?>
+
     <?php if (isset($_GET['sucesso']) && $_GET['sucesso'] == '1'): ?>
         <div class="alert alert-success">
             <i class="fa-solid fa-check-circle"></i>
@@ -220,7 +232,6 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
             </a>
         </div>
 
-        <!-- Modal Reativar Conta -->
         <div class="modal fade" id="modalReativarConta" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content" style="background:#1d1d1d; color:#eee; border-radius:12px;">
