@@ -55,6 +55,8 @@ $result = $stmt->get_result();
         .btn-primary { background-color: #007bff; } .btn-primary:hover { background-color: #0056b3; }
         .btn-danger { background-color: #dc3545; } .btn-danger:hover { background-color: #a71d2a; }
         .btn-secondary { background-color: #6c757d; } .btn-secondary:hover { background-color: #545b62; }
+        /* Botão específico para lixeira com estilo sutilmente diferente se desejar, ou reusar btn-danger */
+        .btn-trash { background-color: #e74c3c; margin-left: 5px; } .btn-trash:hover { background-color: #c0392b; }
         
         .form-control { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 300px; font-size: 1rem; }
         .actions-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
@@ -74,6 +76,16 @@ $result = $stmt->get_result();
         .attach-link:hover { background: #dfe4ea; color: #007bff; }
         .attach-icon-img { color: #198754; }
         .attach-icon-pdf { color: #dc3545; }
+
+        /* Informação de validade 5 anos */
+        .validade-info { font-size: 0.75rem; color: #888; margin-top: 4px; display: block; }
+        .validade-info i { margin-right: 3px; }
+
+        /* Modal Styles */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-buttons { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .modal-title { margin-top: 0; color: #333; }
     </style>
 </head>
 <body>
@@ -100,10 +112,23 @@ $result = $stmt->get_result();
         <tbody>
             <?php if($result->num_rows > 0): ?>
                 <?php while($chat = $result->fetch_assoc()): ?>
+                
+                <?php 
+                    // Lógica para cálculo de 5 anos
+                    $dataFechamento = new DateTime($chat['closed_at']);
+                    $dataExpiracao = clone $dataFechamento;
+                    $dataExpiracao->modify('+5 years');
+                ?>
+
                 <tr>
                     <td><strong><?php echo htmlspecialchars($chat['protocolo']); ?></strong></td>
                     <td><?php echo htmlspecialchars($chat['usuario_nome']); ?></td>
-                    <td><?php echo date('d/m/Y H:i', strtotime($chat['closed_at'])); ?></td>
+                    <td>
+                        <?php echo $dataFechamento->format('d/m/Y H:i'); ?>
+                        <span class="validade-info" title="Data legal de arquivamento">
+                            <i class="fas fa-clock"></i> Expira: <?php echo $dataExpiracao->format('d/m/Y'); ?>
+                        </span>
+                    </td>
                     
                     <td>
                         <div class="attachment-list">
@@ -147,9 +172,13 @@ $result = $stmt->get_result();
                     </td>
 
                     <td>
-                        <a href="../../actions/gerar_pdf_chat.php?chat_id=<?php echo $chat['id']; ?>" class="btn btn-danger btn-sm" target="_blank">
-                            <i class="fas fa-file-pdf"></i> Baixar Histórico
+                        <a href="../../actions/gerar_pdf_chat.php?chat_id=<?php echo $chat['id']; ?>" class="btn btn-primary btn-sm" target="_blank" title="Baixar PDF">
+                            <i class="fas fa-file-pdf"></i>
                         </a>
+                        
+                        <button type="button" class="btn btn-trash btn-sm" onclick="abrirModalExclusao(<?php echo $chat['id']; ?>)" title="Excluir Arquivo">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 <?php endwhile; ?>
@@ -159,6 +188,41 @@ $result = $stmt->get_result();
         </tbody>
     </table>
 </div>
+
+<div id="modalExclusao" class="modal-overlay">
+    <div class="modal-content">
+        <h3 class="modal-title">Confirmar Exclusão</h3>
+        <p>Tem certeza que deseja excluir este arquivo de suporte permanentemente?</p>
+        <p style="font-size: 0.9rem; color: #d9534f;">Esta ação não pode ser desfeita.</p>
+        
+        <form id="formExclusao" action="../../actions/excluir_arquivo_suporte.php" method="POST">
+            <input type="hidden" name="id" id="idExclusao">
+            <div class="modal-buttons">
+                <button type="button" class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalExclusao(id) {
+        document.getElementById('idExclusao').value = id;
+        document.getElementById('modalExclusao').style.display = 'flex';
+    }
+
+    function fecharModal() {
+        document.getElementById('modalExclusao').style.display = 'none';
+    }
+
+    // Fechar modal ao clicar fora
+    window.onclick = function(event) {
+        var modal = document.getElementById('modalExclusao');
+        if (event.target == modal) {
+            fecharModal();
+        }
+    }
+</script>
 
 </body>
 </html>
