@@ -18,7 +18,7 @@ $dados_assinatura = [];
 $dias_restantes_teste = 0;
 $dias_ate_renovacao = 0;
 $is_trial = false;
-$status_assinatura = 'padrao'; // Default
+$status_assinatura = 'padrao'; 
 $nome_exibicao = $_SESSION['nome'] ?? 'Cliente'; 
 
 $limite_base = 3;
@@ -26,11 +26,11 @@ $extras_comprados = 0;
 $nome_plano_atual = 'Básico';
 $limite_total = 3;
 
-// Definição dos planos disponíveis (Sincronizado com o checkout)
+// Definição dos planos disponíveis
 $mapa_planos = [
-    'basico'    => ['nome' => 'Plano Básico', 'base' => 3, 'desc' => 'Ideal para pequenos negócios', 'preco' => 49.90],
-    'plus'      => ['nome' => 'Plano Plus', 'base' => 6, 'desc' => 'Para empresas em crescimento', 'preco' => 89.90],
-    'essencial' => ['nome' => 'Plano Essencial', 'base' => 16, 'desc' => 'Gestão completa para sua equipe', 'preco' => 149.90]
+    'basico'    => ['nome' => 'Plano Básico', 'base' => 3, 'desc' => 'Ideal para pequenos negócios', 'preco' => 19.00],
+    'plus'      => ['nome' => 'Plano Plus', 'base' => 6, 'desc' => 'Para empresas em crescimento', 'preco' => 39.00],
+    'essencial' => ['nome' => 'Plano Essencial', 'base' => 16, 'desc' => 'Gestão completa para sua equipe', 'preco' => 59.00]
 ];
 
 if ($tenant_id) {
@@ -140,11 +140,37 @@ include('../includes/header.php');
         
         .container-assinatura { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
         
+        /* HEADER AJUSTADO PARA BOTÃO NA DIREITA */
         .page-header {
-            border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px;
-            display: flex; align-items: center; gap: 15px;
+            border-bottom: 1px solid #00bfff; 
+            padding-bottom: 15px; 
+            margin-bottom: 30px;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; /* Isso separa o título do botão */
+            gap: 15px;
         }
         .page-header h2 { margin: 0; color: #00bfff; font-size: 1.8rem; }
+
+        /* Botão de Voltar Topo */
+        .btn-top-back {
+            color: #aaa;
+            text-decoration: none;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background-color: #1e1e1e;
+            transition: all 0.3s;
+        }
+        .btn-top-back:hover {
+            color: #fff;
+            border-color: #555;
+            background-color: #2c2c2c;
+        }
 
         /* Cards */
         .card-custom { 
@@ -221,6 +247,7 @@ include('../includes/header.php');
         .btn-remove-user { background: transparent; border: 1px solid #dc3545; color: #ff6b6b; }
         .btn-remove-user:hover { background: rgba(220, 53, 69, 0.1); }
 
+        /* Footer apenas para o botão de início */
         .footer-links { text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 25px; }
         .footer-link { color: #666; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.3s; }
         .footer-link:hover { color: #fff; }
@@ -228,17 +255,12 @@ include('../includes/header.php');
 </head>
 <body>
 
-<div class="footer-links">
-        <a href="perfil.php" class="footer-link"><i class="fa-solid fa-user"></i> Voltar para Perfil</a>       
-    </div>
-
 <div class="container-assinatura">
-
-
     
     <div class="page-header">
-         
         <h2><i class="fa-solid fa-star"></i> Gestão da Assinatura</h2>
+        
+       
     </div>
 
     <?php if ($is_trial && $dias_restantes_teste > 0): ?>
@@ -368,7 +390,6 @@ include('../includes/header.php');
         <div class="plans-grid">
             <?php foreach ($mapa_planos as $slug => $plano): ?>
                 <?php 
-                    // Verifica se é o plano atual E se está ativo
                     $e_plano_atual = ($slug === $plano_db);
                     $ativo = ($e_plano_atual && $status_assinatura === 'ativo');
                     
@@ -409,7 +430,13 @@ include('../includes/header.php');
             <a href="historico_pagamento.php" class="btn-custom btn-history"><i class="fa-solid fa-list-ul"></i> Histórico</a>
             <a href="recibo_pagamentos.php" class="btn-custom btn-receipt"><i class="fa-solid fa-file-invoice-dollar"></i> Comprovantes</a>
         </div>
-    </div>   
+    </div>
+
+    <div class="footer-links">       
+         <a href="perfil.php" class="btn-top-back">
+            <i class="fa-solid fa-user"></i> Voltar para Perfil
+        </a>
+    </div>
 
 </div>
 

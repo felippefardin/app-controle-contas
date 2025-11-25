@@ -16,19 +16,19 @@ $plano_selecionado = $_POST['plano'] ?? $_GET['plano'] ?? '';
 $tabela_planos = [
     'basico'    => [
         'nome' => 'Plano Básico', 
-        'preco' => 49.90, // Exemplo de valor
+        'preco' => 19,00, // Exemplo de valor
         'limite' => 3,
         'desc' => 'Ideal para pequenos negócios'
     ],
     'plus'      => [
         'nome' => 'Plano Plus', 
-        'preco' => 89.90, // Exemplo de valor
+        'preco' => 39,00, // Exemplo de valor
         'limite' => 6,
         'desc' => 'Para empresas em crescimento'
     ],
     'essencial' => [
         'nome' => 'Plano Essencial', 
-        'preco' => 149.90, // Exemplo de valor
+        'preco' => 59,00, // Exemplo de valor
         'limite' => 16,
         'desc' => 'Gestão completa para sua equipe'
     ]
