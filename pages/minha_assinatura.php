@@ -55,6 +55,8 @@ if ($tenant_id) {
         $limite_total = $limite_base + $extras_comprados;
 
         $status = $dados_assinatura['status_assinatura'] ?? 'padrao';
+        
+        // LÓGICA DE CONTAGEM DO PERÍODO DE TESTE
         if ($status === 'trial') {
             $is_trial = true;
             $dias_teste = ($plano_db === 'essencial') ? 30 : 15;
@@ -62,12 +64,25 @@ if ($tenant_id) {
             
             try {
                 $data_inicio = new DateTime($data_ref);
+                // Ajusta para comparar apenas datas, ignorando hora exata de criação
+                $data_inicio->setTime(0, 0, 0);
+                
                 $data_fim_teste = clone $data_inicio;
                 $data_fim_teste->modify("+$dias_teste days");
+                
                 $hoje = new DateTime();
-                $intervalo = $hoje->diff($data_fim_teste);
-                $dias_restantes = (int)$intervalo->format('%r%a');
-            } catch (Exception $e) { $dias_restantes = 0; }
+                $hoje->setTime(0, 0, 0);
+                
+                // Se hoje for menor que o fim do teste, calcula a diferença
+                if ($hoje < $data_fim_teste) {
+                    $intervalo = $hoje->diff($data_fim_teste);
+                    $dias_restantes = (int)$intervalo->format('%a'); // %a retorna o total de dias absoluto
+                } else {
+                    $dias_restantes = 0; // Período acabou
+                }
+            } catch (Exception $e) { 
+                $dias_restantes = 0; 
+            }
         }
     }
     $stmt->close();
@@ -312,16 +327,14 @@ include('../includes/header.php');
         <?php unset($_SESSION['sucesso_pagamento']); ?>
     <?php endif; ?>
 
-    <?php if ($is_trial && $dias_restantes > 0): ?>
+    <?php 
+    // SÓ EXIBE O CONTADOR SE ESTIVER EM TRIAL E AINDA HOUVER DIAS
+    if ($is_trial && $dias_restantes > 0): 
+    ?>
         <div class="trial-alert">
             <i class="fa-solid fa-clock fa-lg"></i>
             <div>PERÍODO DE TESTE: Restam <strong><?= $dias_restantes ?> dias</strong> gratuitos.</div>
             <a href="assinar.php" class="btn-custom" style="background: #ffc107; color: #000; padding: 6px 15px; font-size: 0.9rem;">Assinar Agora</a>
-        </div>
-    <?php elseif ($is_trial && $dias_restantes <= 0): ?>
-        <div class="trial-alert" style="border-color: #dc3545; color: #dc3545; background: rgba(220, 53, 69, 0.1);">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <div>Seu período de teste expirou!</div>
         </div>
     <?php endif; ?>
 
@@ -345,12 +358,64 @@ include('../includes/header.php');
                 <span class="value">
                     <?php 
                     $st = $dados_assinatura['status_assinatura'] ?? '-';
-                    if ($st === 'ativo') echo '<span class="status-ativo"><i class="fa-solid fa-check-circle"></i> Ativo</span>';
-                    elseif ($st === 'trial') echo '<span style="color: #ffc107"><i class="fa-solid fa-flask"></i> Em Teste</span>';
-                    else echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Inativo</span>';
+                    // Se estiver em trial mas os dias acabaram, ajusta a exibição visual do status se desejar, ou mantém a lógica original
+                    if ($st === 'ativo') {
+                        echo '<span class="status-ativo"><i class="fa-solid fa-check-circle"></i> Ativo</span>';
+                    } elseif ($st === 'trial') {
+                        // Se quiser que apareça "Inativo" quando acabar o tempo do trial no card também:
+                        if ($dias_restantes > 0) {
+                            echo '<span style="color: #ffc107"><i class="fa-solid fa-flask"></i> Em Teste</span>';
+                        } else {
+                            echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Teste Expirado</span>';
+                        }
+                    } else {
+                        echo '<span class="status-inativo"><i class="fa-solid fa-times-circle"></i> Inativo</span>';
+                    }
                     ?>
                 </span>
             </div>
+
+            <div class="mt-4 text-center">
+    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalCancelarAssinatura">
+        Cancelar Assinatura
+    </button>
+</div>
+
+<div class="modal fade" id="modalCancelarAssinatura" tabindex="-1" aria-labelledby="modalCancelarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCancelarLabel">Cancelar Assinatura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Sentimos muito que você queira partir. Por favor, escolha como deseja proceder com sua conta após o vencimento da fatura atual:</p>
+                
+                <form id="formCancelarAssinatura" action="../actions/solicitar_cancelamento.php" method="POST">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao1" value="desativar" required>
+                        <label class="form-check-label" for="opcao1">
+                            <strong>Opção 1 - Apenas desativar a conta:</strong>
+                            Você terá acesso até o próximo vencimento. Após isso, a conta será suspensa. Você poderá reativá-la futuramente mantendo seus dados.
+                        </label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="opcao_cancelamento" id="opcao2" value="excluir" required>
+                        <label class="form-check-label text-danger" for="opcao2">
+                            <strong>Opção 2 - Cancelar e excluir tudo:</strong>
+                            Você terá acesso até o próximo vencimento. Após isso, sua conta e <strong>TODOS os dados serão excluídos permanentemente</strong> do sistema.
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="submit" form="formCancelarAssinatura" class="btn btn-danger">Confirmar Cancelamento</button>
+            </div>
+        </div>
+    </div>
+</div>
 
             <?php if (!$is_trial && isset($dados_assinatura['data_renovacao'])): ?>
                 <div class="info-row">
@@ -361,7 +426,7 @@ include('../includes/header.php');
 
             <?php if ($is_trial || ($dados_assinatura['status_assinatura'] ?? '') !== 'ativo'): ?>
                 <a href="assinar.php" class="btn-custom btn-assinar">
-                    <i class="fa-solid fa-crown"></i> <?= $is_trial ? 'Efetivar Assinatura' : 'Reativar Plano' ?>
+                    <i class="fa-solid fa-crown"></i> <?= ($is_trial && $dias_restantes > 0) ? 'Efetivar Assinatura' : 'Reativar Plano' ?>
                 </a>
             <?php endif; ?>
         </div>

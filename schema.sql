@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nivel_acesso VARCHAR(20) DEFAULT 'padrao',
   tenant_id VARCHAR(32) DEFAULT NULL,
   documento_clean VARCHAR(14)
+  usuarios ADD COLUMN tipo_cancelamento ENUM('desativar', 'excluir') DEFAULT NULL;
     GENERATED ALWAYS AS (REGEXP_REPLACE(documento, '[^0-9]', ''))
     STORED,
   cpf VARCHAR(14) DEFAULT NULL,
