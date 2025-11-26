@@ -1,41 +1,64 @@
 <?php
-// pages/fix_permissoes.php
+// Arquivo: pages/fix_permissoes_db.php
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// Força o login para pegar a conexão correta do tenant
-if (!isset($_SESSION['usuario_logado'])) {
-    die("<h2>Erro:</h2> Por favor, faça login no sistema primeiro para que eu saiba qual banco de dados corrigir.");
+// Verifica login apenas para garantir que a sessão carregou os dados do tenant
+if (empty($_SESSION['usuario_logado'])) {
+    die("Por favor, faça login no sistema antes de executar este script.");
 }
 
+// Conecta no banco do Tenant atual (ex: tenant_db_27)
 $conn = getTenantConnection();
-$dbName = $_SESSION['db_database'] ?? 'banco desconhecido';
 
-echo "<h1>🔧 Reparador de Banco de Dados</h1>";
-echo "<p>Conectado ao banco: <strong>$dbName</strong></p>";
-echo "<hr>";
-
-try {
-    // 1. Verifica se a coluna 'permissoes' existe na tabela 'usuarios'
-    $check = $conn->query("SHOW COLUMNS FROM usuarios LIKE 'permissoes'");
-
-    if ($check->num_rows == 0) {
-        // Se não existe, cria
-        $sql = "ALTER TABLE usuarios ADD COLUMN permissoes TEXT DEFAULT NULL";
-        if ($conn->query($sql)) {
-            echo "<h3 style='color: green;'>✅ Sucesso! Coluna 'permissoes' foi criada.</h3>";
-        } else {
-            echo "<h3 style='color: red;'>❌ Erro ao criar coluna: " . $conn->error . "</h3>";
-        }
-    } else {
-        // Se já existe, avisa
-        echo "<h3 style='color: blue;'>ℹ️ A coluna 'permissoes' já existe neste banco. Nada a fazer.</h3>";
-    }
-
-} catch (Exception $e) {
-    echo "<h3 style='color: red;'>❌ Erro Crítico: " . $e->getMessage() . "</h3>";
+if (!$conn) {
+    die("Erro: Não foi possível conectar ao banco de dados do tenant.");
 }
 
-echo "<br><hr><br>";
-echo "<a href='home.php' style='background: #007bff; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Voltar para Home</a>";
+echo "<h2><i class='fas fa-tools'></i> Atualizando Banco de Dados (Permissões)</h2>";
+
+$comandos = [
+    // 1. Criar tabela de Permissões Disponíveis
+    "CREATE TABLE IF NOT EXISTS `permissoes` (
+      `id` int NOT NULL AUTO_INCREMENT,
+      `nome` varchar(100) NOT NULL,
+      `slug` varchar(50) NOT NULL,
+      `descricao` text,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `slug` (`slug`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+    // 2. Criar tabela de Vínculo (Usuário <-> Permissão)
+    "CREATE TABLE IF NOT EXISTS `usuario_permissoes` (
+      `id` int NOT NULL AUTO_INCREMENT,
+      `usuario_id` int NOT NULL,
+      `permissao_id` int NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `uk_user_perm` (`usuario_id`, `permissao_id`),
+      CONSTRAINT `fk_up_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE,
+      CONSTRAINT `fk_up_permissao` FOREIGN KEY (`permissao_id`) REFERENCES `permissoes` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+    // 3. Inserir permissões padrão
+    "INSERT INTO `permissoes` (`nome`, `slug`) VALUES 
+    ('Admin', 'admin'), 
+    ('Financeiro', 'financeiro'), 
+    ('Suporte', 'suporte'), 
+    ('Vendas', 'vendas'),
+    ('Master', 'master')
+    ON DUPLICATE KEY UPDATE nome = VALUES(nome);"
+];
+
+foreach ($comandos as $index => $sql) {
+    if ($conn->query($sql) === TRUE) {
+        echo "<div style='color: green; margin-bottom: 10px;'>✔️ Passo " . ($index + 1) . " executado com sucesso.</div>";
+    } else {
+        echo "<div style='color: red; margin-bottom: 10px;'>❌ Erro no Passo " . ($index + 1) . ": " . $conn->error . "</div>";
+    }
+}
+
+echo "<hr>";
+echo "<a href='usuarios.php' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Voltar para Usuários</a>";
+
+$conn->close();
 ?>

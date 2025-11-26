@@ -47,6 +47,8 @@ if (isset($_SESSION['super_admin_original']) && is_array($_SESSION['super_admin_
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>App Controle de Contas</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <style>
    /* ====== CONFIGURAÇÃO GERAL ====== */
@@ -188,9 +190,145 @@ main {
     </div>
 
     <div class="header-group">
+        <?php 
+        // --- LÓGICA: EXIBIR FEEDBACK APENAS NA HOME ---
+        if (basename($_SERVER['PHP_SELF']) === 'home.php'): 
+        ?>
+            <button type="button" class="btn btn-header" data-bs-toggle="modal" data-bs-target="#modalFeedbackHeader" title="Deixe seu feedback" style="background-color: #ffc107; color: #000;">
+                <i class="fa-solid fa-comment-dots"></i> Feedback
+            </button>
+        <?php endif; ?>
+
         <a href="../pages/home.php" class="btn btn-home btn-header" title="Página Inicial"><i class="fas fa-home"></i>Home</a>
         <a href="../pages/logout.php" class="btn btn-exit btn-header" title="Sair do sistema"><i class="fas fa-sign-out-alt"></i>Sair</a>
     </div>
 </header>
+
+<?php 
+// --- MODAL DE FEEDBACK E SCRIPTS (APENAS NA HOME) ---
+if (basename($_SERVER['PHP_SELF']) === 'home.php'): 
+?>
+<div class="modal fade" id="modalFeedbackHeader" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: #1f1f1f; color: #eee; border: 1px solid #333;">
+            <div class="modal-header" style="border-bottom: 1px solid #333;">
+                <h5 class="modal-title" style="color: #ffc107;"><i class="fa-solid fa-star"></i> Enviar Feedback</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFeedbackHeader">
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="anonimoFeedHeader" name="anonimo">
+                        <label class="form-check-label" for="anonimoFeedHeader" style="color: #aaa;">Enviar Anonimamente</label>
+                    </div>
+
+                    <div id="dadosIdentificacaoHeader">
+                        <div class="mb-3">
+                            <label class="form-label" style="color: #ccc;">Nome</label>
+                            <input type="text" name="nome" class="form-control" style="background: #252525; border: 1px solid #444; color: #fff;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="color: #ccc;">Email</label>
+                            <input type="email" name="email" class="form-control" style="background: #252525; border: 1px solid #444; color: #fff;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="color: #ccc;">WhatsApp</label>
+                            <input type="text" name="whatsapp" class="form-control" style="background: #252525; border: 1px solid #444; color: #fff;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #ccc;">Avaliação</label>
+                        <select name="pontuacao" class="form-select" style="background: #252525; border: 1px solid #444; color: #fff;">
+                            <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
+                            <option value="4">⭐⭐⭐⭐ Muito Bom</option>
+                            <option value="3">⭐⭐⭐ Bom</option>
+                            <option value="2">⭐⭐ Regular</option>
+                            <option value="1">⭐ Ruim</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #ccc;">Descrição</label>
+                        <textarea name="descricao" class="form-control" rows="3" required style="background: #252525; border: 1px solid #444; color: #fff;" placeholder="Conte sua experiência..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #333;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-warning" onclick="enviarFeedbackHeader()" style="color: #000; font-weight: bold;">Enviar Feedback</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Lógica do checkbox anônimo
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkAnonimo = document.getElementById('anonimoFeedHeader');
+        const dadosIdentificacao = document.getElementById('dadosIdentificacaoHeader');
+
+        if(checkAnonimo && dadosIdentificacao) {
+            checkAnonimo.addEventListener('change', function() {
+                if (this.checked) {
+                    dadosIdentificacao.style.display = 'none';
+                    dadosIdentificacao.querySelectorAll('input').forEach(input => input.value = '');
+                } else {
+                    dadosIdentificacao.style.display = 'block';
+                }
+            });
+        }
+    });
+
+    // Função de envio
+    function enviarFeedbackHeader() {
+        const form = document.getElementById('formFeedbackHeader');
+        if(!form) return;
+
+        const formData = new FormData(form);
+        
+        // Botão com loading
+        const btnEnviar = document.querySelector('#modalFeedbackHeader .modal-footer button.btn-warning');
+        const textoOriginal = btnEnviar.innerText;
+        btnEnviar.disabled = true;
+        btnEnviar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+        fetch('../actions/enviar_feedback_publico.php', { 
+            method: 'POST', 
+            body: formData 
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.status === 'success') {
+                if(typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'success', title: 'Sucesso!', text: data.msg, background: '#1f1f1f', color: '#fff' });
+                } else {
+                    alert(data.msg);
+                }
+                form.reset();
+                
+                // Fecha o modal usando a instância do Bootstrap
+                const modalEl = document.getElementById('modalFeedbackHeader');
+                // Tenta obter a instância existente ou cria uma nova
+                let modal = bootstrap.Modal.getInstance(modalEl);
+                if (!modal) {
+                    modal = new bootstrap.Modal(modalEl);
+                }
+                modal.hide();
+            } else {
+                alert(data.msg || 'Erro ao enviar feedback.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de conexão ao enviar feedback.');
+        })
+        .finally(() => {
+            btnEnviar.disabled = false;
+            btnEnviar.innerText = textoOriginal;
+        });
+    }
+</script>
+<?php endif; ?>
 
 <main>

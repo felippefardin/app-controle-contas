@@ -2,67 +2,55 @@
 require_once '../includes/session_init.php';
 include('../database.php');
 
-if (!isset($_GET['id'])) {
-    header('Location: ../pages/usuarios.php');
-    exit;
-}
+$nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
+$is_admin = in_array($nivel, ['admin', 'master', 'proprietario']);
 
-$id = intval($_GET['id']);
+if (!isset($_POST['id'])) { header('Location: ../pages/usuarios.php'); exit; }
 
-// Recebe os dados do formulário
+$id = intval($_POST['id']);
 $nome = trim($_POST['nome']);
 $email = trim($_POST['email']);
 $cpf = trim($_POST['cpf']);
-$telefone = trim($_POST['telefone']);
 $senha = $_POST['senha'];
-$senha_confirmar = $_POST['senha_confirmar'];
+$novo_nivel = $_POST['nivel'] ?? 'padrao';
 
-// Valida senha
-if (!empty($senha) && $senha !== $senha_confirmar) {
-    header("Location: ../pages/editar_usuario.php?id=$id&erro=senha");
-    exit;
-}
+$conn = getTenantConnection();
 
-// Padroniza CPF (remove pontos e traços)
-$cpf_clean = preg_replace('/[^\d]/', '', $cpf);
+// 1. Atualizar Dados Básicos
+$sql = "UPDATE usuarios SET nome=?, email=?, cpf=?, nivel_acesso=? WHERE id=?";
+$params = [$nome, $email, $cpf, $novo_nivel, $id];
+$types = "ssssi";
 
-// Verifica duplicidade de e-mail em outros usuários
-$stmt = $conn->prepare("SELECT id FROM usuarios WHERE email=? AND id<>?");
-$stmt->bind_param("si", $email, $id);
-$stmt->execute();
-$stmt->store_result();
-if ($stmt->num_rows > 0) {
-    $stmt->close();
-    header("Location: ../pages/editar_usuario.php?id=$id&erro=duplicado_email");
-    exit;
-}
-$stmt->close();
-
-// Verifica duplicidade de CPF em outros usuários
-$stmt = $conn->prepare("SELECT id FROM usuarios WHERE REPLACE(REPLACE(REPLACE(cpf,'.',''),'-',''),'/','')=? AND id<>?");
-$stmt->bind_param("si", $cpf_clean, $id);
-$stmt->execute();
-$stmt->store_result();
-if ($stmt->num_rows > 0) {
-    $stmt->close();
-    header("Location: ../pages/editar_usuario.php?id=$id&erro=duplicado_cpf");
-    exit;
-}
-$stmt->close();
-
-// Atualiza usuário
 if (!empty($senha)) {
+    $sql = "UPDATE usuarios SET nome=?, email=?, cpf=?, nivel_acesso=?, senha=? WHERE id=?";
     $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
-    $stmt = $conn->prepare("UPDATE usuarios SET nome=?, email=?, cpf=?, telefone=?, senha=? WHERE id=?");
-    $stmt->bind_param("sssssi", $nome, $email, $cpf, $telefone, $senha_hash, $id);
-} else {
-    $stmt = $conn->prepare("UPDATE usuarios SET nome=?, email=?, cpf=?, telefone=? WHERE id=?");
-    $stmt->bind_param("ssssi", $nome, $email, $cpf, $telefone, $id);
+    $params = [$nome, $email, $cpf, $novo_nivel, $senha_hash, $id];
+    $types = "sssssi";
 }
 
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
 $stmt->close();
 
-header("Location: ../pages/usuarios.php?sucesso=1");
+// 2. Atualizar Permissões (Apenas Admin)
+if ($is_admin) {
+    // Limpa atuais
+    $conn->query("DELETE FROM usuario_permissoes WHERE usuario_id = $id");
+
+    // Insere novas se houver checkboxes marcados
+    if (isset($_POST['permissoes']) && is_array($_POST['permissoes'])) {
+        $stmtPerm = $conn->prepare("INSERT INTO usuario_permissoes (usuario_id, permissao_id) VALUES (?, ?)");
+        foreach ($_POST['permissoes'] as $permId) {
+            $permId = intval($permId);
+            $stmtPerm->bind_param("ii", $id, $permId);
+            $stmtPerm->execute();
+        }
+        $stmtPerm->close();
+    }
+}
+
+$conn->close();
+header("Location: ../pages/usuarios.php?msg=Usuário atualizado com sucesso");
 exit;
 ?>
