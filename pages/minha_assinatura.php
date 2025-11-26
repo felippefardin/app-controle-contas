@@ -3,14 +3,6 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-/*
-  Reestruturação completa do arquivo:
-  - Coleta de dados no topo (defensiva)
-  - Tratamento de variáveis inexistentes (evita warnings)
-  - Cálculos de datas e trial
-  - Saída HTML preservando estilo original
-*/
-
 /* -------------------- 1) Verificações iniciais -------------------- */
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
@@ -21,7 +13,7 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $usuario_nome_sess = $_SESSION['usuario_nome'] ?? $_SESSION['nome'] ?? 'Cliente';
 
-/* -------------------- 2) Conexão com BD master e inicializações -------------------- */
+/* -------------------- 2) Conexão com BD master -------------------- */
 $conn = getMasterConnection();
 if ($conn === null) {
     die("Erro ao conectar ao banco de dados principal.");
@@ -40,14 +32,14 @@ $dias_restantes_teste = 0;
 $dias_ate_renovacao = 0;
 $tipo_cancelamento = null;
 
-/* Mapa de planos (fonte única) */
+/* Mapa de planos */
 $mapa_planos = [
     'basico'    => ['nome' => 'Plano Básico', 'base' => 3,  'desc' => 'Ideal para pequenos negócios',       'preco' => 19.00],
     'plus'      => ['nome' => 'Plano Plus',   'base' => 6,  'desc' => 'Para empresas em crescimento',      'preco' => 39.00],
     'essencial' => ['nome' => 'Plano Essencial','base' => 16,'desc' => 'Gestão completa para sua equipe',   'preco' => 59.00]
 ];
 
-/* -------------------- 3) Buscar dados do tenant (assinatura) -------------------- */
+/* -------------------- 3) Buscar dados do tenant -------------------- */
 if ($tenant_id) {
     $stmt = $conn->prepare("SELECT * FROM tenants WHERE tenant_id = ?");
     if ($stmt) {
@@ -58,53 +50,41 @@ if ($tenant_id) {
         if ($result && $result->num_rows > 0) {
             $dados_assinatura = $result->fetch_assoc();
 
-            // Exibição do nome da empresa / cliente
             if (!empty($dados_assinatura['nome_empresa'])) {
                 $usuario_nome_sess = $dados_assinatura['nome_empresa'];
             } elseif (!empty($dados_assinatura['nome'])) {
                 $usuario_nome_sess = $dados_assinatura['nome'];
             }
 
-            // Plano salvo no banco (defensivo)
             $plano_db = $dados_assinatura['plano_atual'] ?? 'basico';
             if (!array_key_exists($plano_db, $mapa_planos)) {
                 $plano_db = 'basico';
             }
 
-            // extras
             $extras_comprados = (int)($dados_assinatura['usuarios_extras'] ?? 0);
-
-            // info plano
             $info_plano = $mapa_planos[$plano_db];
             $limite_base = (int)($info_plano['base'] ?? 3);
             $nome_plano_atual = $info_plano['nome'] ?? 'Plano Básico';
             $limite_total = $limite_base + $extras_comprados;
-
-            // status
             $status_assinatura = $dados_assinatura['status_assinatura'] ?? 'padrao';
             $tipo_cancelamento = $dados_assinatura['tipo_cancelamento'] ?? null;
 
-            // Cálculo data renovação (defensivo)
+            // Data renovação
             $data_renovacao_str = $dados_assinatura['data_renovacao'] ?? null;
             if (!empty($data_renovacao_str)) {
                 try {
                     $dt_hoje = new DateTime('now');
                     $dt_hoje->setTime(0,0,0);
-
                     $dt_renovacao = new DateTime($data_renovacao_str);
                     $dt_renovacao->setTime(0,0,0);
-
                     $dias_ate_renovacao = ($dt_renovacao > $dt_hoje) ? (int)$dt_hoje->diff($dt_renovacao)->format('%a') : 0;
-                } catch (Exception $e) {
-                    $dias_ate_renovacao = 0;
-                }
+                } catch (Exception $e) { $dias_ate_renovacao = 0; }
             }
 
-            // Se trial
+            // Trial
             if (($dados_assinatura['status_assinatura'] ?? '') === 'trial') {
                 $is_trial = true;
                 $dias_teste = ($plano_db === 'essencial') ? 30 : 15;
-
                 $data_ref = $dados_assinatura['data_inicio_teste'] ?? $dados_assinatura['data_criacao'] ?? null;
                 if ($data_ref) {
                     try {
@@ -114,23 +94,17 @@ if ($tenant_id) {
                         $data_fim_teste->modify("+{$dias_teste} days");
                         $hoje = new DateTime('now');
                         $hoje->setTime(0,0,0);
-
                         $dias_restantes_teste = ($hoje < $data_fim_teste) ? (int)$hoje->diff($data_fim_teste)->format('%a') : 0;
-                    } catch (Exception $e) {
-                        $dias_restantes_teste = 0;
-                    }
+                    } catch (Exception $e) { $dias_restantes_teste = 0; }
                 }
             }
         }
-
         $stmt->close();
     }
 }
-
-/* Fechar conexão master (vamos reabrir se preciso) */
 $conn->close();
 
-/* -------------------- 4) Captura mensagens de sessão para SweetAlert -------------------- */
+/* -------------------- 4) SweetAlert Mensagens -------------------- */
 $swal_alert = [];
 if (!empty($_SESSION['sucesso_pagamento'])) {
     $swal_alert = ['type' => 'success', 'title' => 'Pagamento Confirmado!', 'text' => $_SESSION['sucesso_pagamento']];
@@ -143,89 +117,58 @@ if (!empty($_SESSION['sucesso_pagamento'])) {
     unset($_SESSION['erro']);
 }
 
-/* -------------------- 5) Incluir header e começar HTML -------------------- */
 include('../includes/header.php');
-
-// Dados disponíveis para JS
-$cupom_registro = $dados_assinatura['cupom_registro'] ?? '';
-$msg_cupom_visto = (isset($dados_assinatura['msg_cupom_visto']) ? (int)$dados_assinatura['msg_cupom_visto'] : 0);
-$msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$dados_assinatura['msg_indicacao_visto'] : 0);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <title>Minha Assinatura</title>
-
-    <!-- Bootstrap e FontAwesome (preservados) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* ----------- ESTILO NEON DARK (mantido e levemente limpo) ------------ */
         body { background-color: #121212; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .container-assinatura { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
-        .page-header { border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px;
-                        display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+        .page-header { border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; gap: 15px; }
         .page-header h2 { margin: 0; color: #00bfff; font-size: 1.8rem; }
-        .btn-top-back { color: #aaa; text-decoration: none; font-size: 1rem; display: flex; align-items: center;
-                        gap: 8px; padding: 8px 15px; border: 1px solid #333; border-radius: 6px; background-color: #1e1e1e; transition: all 0.3s; }
+        .btn-top-back { color: #aaa; text-decoration: none; font-size: 1rem; display: flex; align-items: center; gap: 8px; padding: 8px 15px; border: 1px solid #333; border-radius: 6px; background-color: #1e1e1e; transition: all 0.3s; }
         .btn-top-back:hover { color: #fff; border-color: #555; background-color: #2c2c2c; }
-
-        .card-custom { background-color: #1e1e1e; border: 1px solid #333; border-radius: 12px;
-                       padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: border-color 0.3s; }
+        .card-custom { background-color: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: border-color 0.3s; }
         .card-custom:hover { border-color: #444; box-shadow: 0 4px 20px rgba(0, 191, 255, 0.1); }
-        .card-title { color: #00bfff; font-size: 1.3rem; border-bottom: 1px solid #333; padding-bottom: 15px;
-                      margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-
+        .card-title { color: #00bfff; font-size: 1.3rem; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
         @media(max-width: 768px) { .grid-layout { grid-template-columns: 1fr; } }
-
-        .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
-                    padding-bottom: 12px; border-bottom: 1px solid #2c2c2c; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #2c2c2c; }
         .info-row:last-child { border-bottom: none; }
         .label { color: #aaa; font-size: 0.95rem; }
         .value { font-weight: bold; color: #fff; font-size: 1rem; text-align: right; }
-
         .status-ativo { color: #2ecc71; }
         .status-inativo { color: #e74c3c; }
         .extra-highlight { color: #00bfff; font-weight: 800; }
-
-        .neon-number { font-size: 3.5rem; font-weight: bold; color: #fff; line-height: 1;
-                       text-shadow: 0 0 15px rgba(0, 191, 255, 0.6); }
-
-        .btn-custom { padding: 12px; border-radius: 6px; font-weight: bold; text-decoration: none; text-align: center;
-                      display: flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer;
-                      color: #fff; transition: all 0.2s; font-size: 1rem; width: 100%; }
+        .neon-number { font-size: 3.5rem; font-weight: bold; color: #fff; line-height: 1; text-shadow: 0 0 15px rgba(0, 191, 255, 0.6); }
+        .btn-custom { padding: 12px; border-radius: 6px; font-weight: bold; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer; color: #fff; transition: all 0.2s; font-size: 1rem; width: 100%; }
         .btn-custom:hover { transform: translateY(-2px); color: #fff; }
-
         .btn-assinar { background: linear-gradient(135deg, #28a745, #218838); box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3); }
         .btn-cancel { background: transparent; border: 1px solid #ff003c; color: #ff003c; margin-top: 10px; font-size: 0.95rem; width: auto; display: inline-flex; padding: 8px 20px; }
         .btn-cancel:hover { background: rgba(255, 0, 60, 0.1); color: #ff4d79; border-color: #ff4d79; }
-
         .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 10px; }
         .plan-card { padding: 20px; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; text-align: center; transition: transform 0.2s; }
         .plan-card:hover { transform: translateY(-3px); }
         .plan-card h3 { margin-top: 0; margin-bottom: 10px; font-size: 1.4rem; }
         .plan-desc { color: #aaa; font-size: 0.85rem; margin-bottom: 15px; }
         .plan-limit { color: #fff; font-size: 1.1rem; margin-bottom: 20px; }
-
-        .trial-alert { background: rgba(255, 193, 7, 0.15); border: 1px solid #ffc107; color: #ffc107;
-                        padding: 15px; border-radius: 8px; font-weight: bold; text-align: center; margin-bottom: 30px;
-                        display: flex; align-items: center; justify-content: center; gap: 15px; }
-
+        .trial-alert { background: rgba(255, 193, 7, 0.15); border: 1px solid #ffc107; color: #ffc107; padding: 15px; border-radius: 8px; font-weight: bold; text-align: center; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 15px; }
         .btn-group { display: flex; gap: 15px; margin-top: 15px; }
         .btn-history { background-color: #17a2b8; flex: 1; }
         .btn-receipt { background-color: #6c757d; flex: 1; }
-
         .action-box { background: #252525; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #444; }
         .action-row { display: flex; gap: 10px; }
         .action-row form { flex: 1; }
         .btn-add-user { background: linear-gradient(135deg, #00bfff, #008cba); }
         .btn-remove-user { background: transparent; border: 1px solid #dc3545; color: #ff6b6b; }
         .btn-remove-user:hover { background: rgba(220, 53, 69, 0.1); }
-
         .footer-links { text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 25px; }
         .footer-link { color: #666; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.3s; }
         .footer-link:hover { color: #fff; }
@@ -241,20 +184,17 @@ $msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$
         </div>
     </div>
 
-    <!-- Trial alert -->
     <?php if ($is_trial && $dias_restantes_teste > 0): ?>
         <div class="trial-alert">
             <i class="fa-solid fa-clock fa-lg"></i>
             <div>PERÍODO DE TESTE: Restam <strong><?= (int)$dias_restantes_teste ?> dias</strong> gratuitos.</div>
-            <button type="button" class="btn-custom" style="background: #ffc107; color: #000; padding: 6px 15px; font-size: 0.9rem; width: auto;"
-                    onclick="confirmarTrocaPlano('<?= htmlspecialchars($plano_db) ?>', '<?= htmlspecialchars($nome_plano_atual) ?>')">
+            <a href="assinar.php?plano_selecionado=<?= htmlspecialchars($plano_db) ?>" class="btn-custom" style="background: #ffc107; color: #000; padding: 6px 15px; font-size: 0.9rem; width: auto; text-decoration:none;">
                 Assinar Agora
-            </button>
+            </a>
         </div>
     <?php endif; ?>
 
     <div class="grid-layout">
-        <!-- Detalhes do Plano -->
         <div class="card-custom">
             <div class="card-title"><i class="fa-solid fa-file-contract"></i> Detalhes do Plano</div>
 
@@ -311,19 +251,13 @@ $msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$
 
             <?php if ($status_assinatura === 'inativo' || ($is_trial && $dias_restantes_teste <= 0)): ?>
                 <div class="mt-4">
-                    <form id="formPlano_<?= htmlspecialchars($plano_db) ?>_reativar" action="checkout_plano.php" method="POST">
-                        <input type="hidden" name="plano" value="<?= htmlspecialchars($plano_db) ?>">
-                        <input type="hidden" name="cupom" value="<?= htmlspecialchars($cupom_registro) ?>">
-                        <input type="hidden" name="codigo_indicacao" value="">
-                        <button type="button" class="btn-custom btn-assinar" onclick="confirmarTrocaPlano('<?= htmlspecialchars($plano_db) ?>', '<?= htmlspecialchars($nome_plano_atual) ?>')">
-                            <i class="fa-solid fa-rotate-right"></i> Reativar Meu Plano
-                        </button>
-                    </form>
+                    <a href="assinar.php?plano_selecionado=<?= htmlspecialchars($plano_db) ?>" class="btn-custom btn-assinar">
+                        <i class="fa-solid fa-rotate-right"></i> Reativar Meu Plano
+                    </a>
                 </div>
             <?php endif; ?>
         </div>
 
-        <!-- Capacidade -->
         <div class="card-custom" style="border-color: rgba(0, 191, 255, 0.3);">
             <div class="card-title"><i class="fa-solid fa-users-gear"></i> Capacidade</div>
 
@@ -366,10 +300,9 @@ $msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$
         </div>
     </div>
 
-    <!-- Planos Disponíveis -->
     <div class="card-custom" id="planos-disponiveis">
         <div class="card-title"><i class="fa-solid fa-layer-group"></i> Planos Disponíveis</div>
-        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Escolha o plano ideal para o seu negócio. A alteração é imediata.</p>
+        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Escolha o plano ideal para o seu negócio. A alteração é gerenciada na próxima etapa.</p>
 
         <div class="plans-grid">
             <?php foreach ($mapa_planos as $slug => $plano):
@@ -395,21 +328,15 @@ $msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$
                             <i class="fa-solid fa-check"></i> Plano Atual
                         </button>
                     <?php else: ?>
-                        <form id="formPlano_<?= htmlspecialchars($slug) ?>" action="checkout_plano.php" method="POST">
-                            <input type="hidden" name="plano" value="<?= htmlspecialchars($slug) ?>">
-                            <input type="hidden" name="cupom" value="<?= htmlspecialchars($cupom_registro) ?>">
-                            <input type="hidden" name="codigo_indicacao" value="">
-                            <button type="button" class="btn-custom" style="background: #00bfff;" onclick="confirmarTrocaPlano('<?= htmlspecialchars($slug) ?>', '<?= htmlspecialchars($plano['nome']) ?>')">
-                                <?= $e_plano_atual ? 'Reativar Plano' : 'Mudar Plano' ?>
-                            </button>
-                        </form>
+                        <a href="assinar.php?plano_selecionado=<?= htmlspecialchars($slug) ?>" class="btn-custom" style="background: #00bfff;">
+                            <?= $e_plano_atual ? 'Reativar Plano' : 'Selecionar Plano' ?>
+                        </a>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
     </div>
 
-    <!-- Financeiro -->
     <div class="card-custom">
         <div class="card-title"><i class="fa-solid fa-wallet"></i> Financeiro</div>
         <div class="btn-group">
@@ -425,7 +352,6 @@ $msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$
     </div>
 </div>
 
-<!-- Modal Cancelamento -->
 <div class="modal fade" id="modalCancelarAssinatura" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content" style="background-color: #2c2c2c; color: #eee; border: 1px solid #444;">
@@ -460,38 +386,6 @@ $msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$
     </div>
 </div>
 
-<!-- Modal: inserir cupom / indicação (quando não houver cupom_registro salvo) -->
-<div class="modal fade" id="modalCupomIndicacao" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background-color:#1e1e1e; color:#eee; border:1px solid #333;">
-            <div class="modal-header">
-                <h5 class="modal-title text-info"><i class="fa-solid fa-ticket"></i> Aplicar Cupom / Indicação</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p style="color:#aaa;">Você não tem cupom salvo. Se possuir, digite abaixo para aplicar no checkout. Opcional: código de indicação.</p>
-
-                <div class="mb-3">
-                    <label class="form-label">Código do Cupom (opcional)</label>
-                    <input type="text" id="modal_cupom" class="form-control bg-dark text-white" placeholder="Ex: PROMO10" style="text-transform:uppercase;">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Código de Indicação (opcional)</label>
-                    <input type="text" id="modal_indicacao" class="form-control bg-dark text-white" placeholder="Ex: A1B2C3" style="text-transform:uppercase;">
-                </div>
-
-                <input type="hidden" id="modal_target_form_id" value="">
-            </div>
-            <div class="modal-footer" style="border-top:1px solid #333;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="aplicarCupomEAvancar()">Ir para checkout</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -509,13 +403,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php endif; ?>
 });
 
-/* Modal cancelar */
 function abrirModalCancelamento() {
     var myModal = new bootstrap.Modal(document.getElementById('modalCancelarAssinatura'));
     myModal.show();
 }
 
-/* Confirm dialogs */
 function confirmarAdicao() {
     Swal.fire({
         title: 'Adicionar Usuário?',
@@ -544,65 +436,6 @@ function confirmarRemocao() {
     }).then((result) => {
         if (result.isConfirmed && document.getElementById('formRemoveExtra')) document.getElementById('formRemoveExtra').submit();
     });
-}
-
-/* Troca de plano / fluxo de checkout
-   - Cada plano tem um form id="formPlano_{slug}"
-   - Se existir cupom_registro salvo (variável PHP), ele é enviado automaticamente
-   - Se não existir, abre modal para digitar cupom/indicacao e então envia
-*/
-const EXISTE_CUPOM_SALVO = <?= json_encode(!empty($cupom_registro)) ?>;
-const CUPOM_SALVO_VALOR = <?= json_encode($cupom_registro) ?>;
-
-function confirmarTrocaPlano(slug, nomePlano) {
-    // form id
-    const formId = 'formPlano_' + slug;
-    const form = document.getElementById(formId);
-    if (!form) {
-        // fallback: redirect via generic form for plano atual
-        const fallback = document.getElementById('formPlano_' + slug + '_reativar');
-        if (fallback) fallback.submit();
-        return;
-    }
-
-    // se já existe cupom salvo, submete diretamente (mantendo o cupom no hidden)
-    if (EXISTE_CUPOM_SALVO && CUPOM_SALVO_VALOR) {
-        // garante que o hidden cupom do form receba o valor salvo
-        const cupomInput = form.querySelector('input[name="cupom"]');
-        if (cupomInput) cupomInput.value = CUPOM_SALVO_VALOR;
-        form.submit();
-        return;
-    }
-
-    // senão: abrir modal para digitar cupom/indicacao
-    const modalEl = new bootstrap.Modal(document.getElementById('modalCupomIndicacao'));
-    document.getElementById('modal_target_form_id').value = formId;
-    modalEl.show();
-}
-
-/* Pegar dados do modal e submeter o form alvo */
-function aplicarCupomEAvancar() {
-    const cupom = document.getElementById('modal_cupom').value.trim();
-    const indic = document.getElementById('modal_indicacao').value.trim();
-    const targetId = document.getElementById('modal_target_form_id').value;
-    const form = document.getElementById(targetId);
-    if (!form) {
-        alert('Formulário alvo não encontrado.');
-        return;
-    }
-
-    const cupomInput = form.querySelector('input[name="cupom"]');
-    const indicInput = form.querySelector('input[name="codigo_indicacao"]');
-
-    if (cupomInput) cupomInput.value = cupom.toUpperCase();
-    if (indicInput) indicInput.value = indic.toUpperCase();
-
-    // fechar modal antes do submit
-    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalCupomIndicacao'));
-    if (modalInstance) modalInstance.hide();
-
-    // submeter
-    form.submit();
 }
 </script>
 

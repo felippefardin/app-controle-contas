@@ -1,6 +1,7 @@
 <?php
 // pages/assinar.php
 require_once '../includes/session_init.php';
+require_once '../database.php'; 
 include('../includes/header.php');
 
 $msg_erro = $_SESSION['erro_assinatura'] ?? '';
@@ -8,6 +9,44 @@ unset($_SESSION['erro_assinatura']);
 
 // Pega o plano selecionado da URL (padrão: basico)
 $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
+
+$conn = getMasterConnection();
+
+// Recupera ID do Tenant e do Usuário com segurança
+$tenant_id = $_SESSION['tenant_id'] ?? null;
+$user_id   = $_SESSION['usuario_id_master'] ?? $_SESSION['usuario_id'] ?? 0;
+
+$saved_cupom = '';
+$saved_indicacao = '';
+
+if ($tenant_id && $user_id) {
+    // 1. Verifica se já existe Cupom salvo no registro
+    $stmtCupom = $conn->prepare("SELECT cupom_registro FROM tenants WHERE tenant_id = ?");
+    if ($stmtCupom) {
+        $stmtCupom->bind_param("s", $tenant_id);
+        $stmtCupom->execute();
+        $resCupom = $stmtCupom->get_result();
+        $saved_cupom = ($resCupom->num_rows > 0) ? $resCupom->fetch_assoc()['cupom_registro'] : '';
+        $stmtCupom->close();
+    }
+
+    // 2. Verifica se já existe Indicação salva no registro
+    $stmtInd = $conn->prepare("
+        SELECT u.codigo_indicacao 
+        FROM indicacoes i 
+        JOIN usuarios u ON i.id_indicador = u.id 
+        WHERE i.id_indicado = ? LIMIT 1
+    ");
+    if ($stmtInd) {
+        $stmtInd->bind_param("i", $user_id);
+        $stmtInd->execute();
+        $resInd = $stmtInd->get_result();
+        if ($resInd->num_rows > 0) {
+            $saved_indicacao = $resInd->fetch_assoc()['codigo_indicacao'];
+        }
+        $stmtInd->close();
+    }
+}
 ?>
 
 <style>
@@ -17,7 +56,6 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
         text-align: center; transition: transform 0.3s, border-color 0.3s; position: relative; display: flex; flex-direction: column;
     }
     .plano-card:hover { transform: translateY(-5px); border-color: #00bfff; box-shadow: 0 5px 20px rgba(0, 191, 255, 0.15); }
-    /* Classe dinâmica para destacar o plano selecionado */
     .plano-card.destaque-selecionado { border: 2px solid #00bfff; background: #252525; transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px rgba(0,191,255,0.3); }
     
     .plano-header { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 20px; }
@@ -38,6 +76,7 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
     .option-content.active { display: block; }
     .input-row { display: flex; gap: 10px; }
     .custom-input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #1c1c1c; color: #fff; width: 100%; }
+    .custom-input[readonly] { background: #333; color: #aaa; border-color: #2ecc71; cursor: not-allowed; }
     .btn-check { padding: 10px 15px; border-radius: 5px; border: none; background: #6c757d; color: white; font-weight: bold; cursor: pointer; white-space: nowrap; }
     .valid-border { border-color: #2ecc71 !important; box-shadow: 0 0 5px rgba(46, 204, 113, 0.5); }
     .invalid-border { border-color: #e74c3c !important; }
@@ -59,7 +98,6 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
     </div>
 
     <div class="extra-options-container">
-        <!-- Box Cupom -->
         <div class="option-box">
             <div class="option-title" onclick="toggleBox('boxCupom')"><i class="fas fa-ticket-alt"></i> Possui um Cupom?</div>
             <div id="boxCupom" class="option-content">
@@ -71,7 +109,6 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
             </div>
         </div>
 
-        <!-- Box Indicação -->
         <div class="option-box">
             <div class="option-title" onclick="toggleBox('boxIndicacao')"><i class="fas fa-user-friends"></i> Foi indicado por alguém?</div>
             <div id="boxIndicacao" class="option-content">
@@ -86,7 +123,6 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
     </div>
 
     <div class="planos-wrapper">
-        <!-- PLANO BÁSICO -->
         <div class="plano-card <?= $plano_selecionado == 'basico' ? 'destaque-selecionado' : '' ?>">
             <div class="plano-header">
                 <div class="plano-title">Básico</div>
@@ -104,7 +140,6 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
             </form>
         </div>
 
-        <!-- PLANO PLUS -->
         <div class="plano-card <?= $plano_selecionado == 'plus' ? 'destaque-selecionado' : '' ?>">
             <?php if($plano_selecionado == 'plus'): ?><span class="badge-pop">Selecionado</span><?php endif; ?>
             <div class="plano-header">
@@ -123,7 +158,6 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
             </form>
         </div>
 
-        <!-- PLANO ESSENCIAL -->
         <div class="plano-card <?= $plano_selecionado == 'essencial' ? 'destaque-selecionado' : '' ?>">
             <?php if($plano_selecionado == 'essencial'): ?><span class="badge-pop">Selecionado</span><?php endif; ?>
             <div class="plano-header">
@@ -145,7 +179,9 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
 </div>
 
 <script>
-let indicacaoValida = false;
+// Dados salvos no Banco de Dados (vindos do PHP)
+const cupomSalvoDB = "<?= htmlspecialchars($saved_cupom ?? '') ?>";
+const indicacaoSalvaDB = "<?= htmlspecialchars($saved_indicacao ?? '') ?>";
 
 // Função para pegar parâmetros da URL
 function getQueryParam(name) {
@@ -175,6 +211,7 @@ function validarCupom() {
         btn.disabled = false;
         if(data.valid) {
             msg.innerHTML = `<span class="text-success">Cupom aplicado! -${data.valor}${data.tipo=='porcentagem'?'%':''}</span>`;
+            // Atualiza os inputs ocultos em TODOS os formulários
             document.querySelectorAll('.hidden-cupom').forEach(i => i.value = data.codigo);
             atualizarPrecos(data.tipo, data.valor);
         } else {
@@ -208,7 +245,6 @@ function validarIndicacao() {
         btn.disabled = false;
         
         if(data.valid) {
-            indicacaoValida = true;
             input.classList.add('valid-border');
             input.classList.remove('invalid-border');
             
@@ -216,10 +252,10 @@ function validarIndicacao() {
                 <span class="text-success"><i class="fas fa-check-circle"></i> Indicado por: ${data.nome_indicador}</span>
                 <span class="text-promo">Desconto de 10% aplicado!</span>
             `;
+            // Atualiza os inputs ocultos em TODOS os formulários
             document.querySelectorAll('.hidden-codigo-indicacao').forEach(i => i.value = codigo);
             atualizarPrecos('porcentagem', 10);
         } else {
-            indicacaoValida = false;
             input.classList.add('invalid-border');
             input.classList.remove('valid-border');
             msg.innerHTML = `<span class="text-error">${data.message}</span>`;
@@ -252,9 +288,18 @@ function resetarPrecos() {
     });
 }
 
+// Função executada ao clicar em "Assinar"
 function prepararEnvio(form) {
-    if(indicacaoValida) {
-        form.querySelector('.hidden-codigo-indicacao').value = document.getElementById('inputCodigoIndicacao').value;
+    const inputCupom = document.getElementById('inputCupom');
+    const inputIndicacao = document.getElementById('inputCodigoIndicacao');
+
+    // Força a cópia do que está digitado para o hidden, caso o usuário não tenha clicado em "Aplicar"
+    if (inputCupom && inputCupom.value.trim() !== "") {
+        form.querySelector('.hidden-cupom').value = inputCupom.value.trim().toUpperCase();
+    }
+    
+    if (inputIndicacao && inputIndicacao.value.trim() !== "") {
+        form.querySelector('.hidden-codigo-indicacao').value = inputIndicacao.value.trim().toUpperCase();
     }
 }
 
@@ -263,18 +308,44 @@ window.onload = function() {
     const urlCupom = getQueryParam('cupom');
     const urlIndicacao = getQueryParam('codigo_indicacao');
 
-    // Aplica Indicação Automaticamente
-    if (urlIndicacao) {
+    // --- LÓGICA DE INDICAÇÃO (Prioridade: Banco de Dados > URL) ---
+    if (indicacaoSalvaDB) {
+        const box = document.getElementById('boxIndicacao');
+        const input = document.getElementById('inputCodigoIndicacao');
+        const btn = document.getElementById('btnConfInd');
+        
+        box.classList.add('active');
+        input.value = indicacaoSalvaDB;
+        input.readOnly = true; 
+        btn.innerText = "Ativado";
+        btn.disabled = true; 
+        
+        validarIndicacao(); 
+    } 
+    else if (urlIndicacao) {
         document.getElementById('boxIndicacao').classList.add('active');
         document.getElementById('inputCodigoIndicacao').value = urlIndicacao;
-        validarIndicacao(); // Dispara validação automática
+        validarIndicacao();
     }
 
-    // Aplica Cupom Automaticamente
-    if (urlCupom) {
+    // --- LÓGICA DE CUPOM (Prioridade: Banco de Dados > URL) ---
+    if (cupomSalvoDB) {
+        const box = document.getElementById('boxCupom');
+        const input = document.getElementById('inputCupom');
+        const btn = document.getElementById('btnValidarCupom');
+
+        box.classList.add('active');
+        input.value = cupomSalvoDB;
+        input.readOnly = true; 
+        btn.innerText = "Aplicado";
+        btn.disabled = true;
+
+        validarCupom();
+    }
+    else if (urlCupom) {
         document.getElementById('boxCupom').classList.add('active');
         document.getElementById('inputCupom').value = urlCupom;
-        validarCupom(); // Dispara validação automática
+        validarCupom();
     }
 };
 </script>
