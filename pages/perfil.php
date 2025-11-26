@@ -26,9 +26,11 @@ $nome = '';
 $cpf = '';
 $telefone = '';
 $email = '';
+$codigo_indicacao = ''; // Variável para o código
 $foto_atual = 'default-profile.png';
 
-// 2. Busca dados atuais do usuário
+// 2. Busca dados atuais do usuário no Banco do Tenant
+// REMOVIDO 'codigo_indicacao' daqui para evitar o erro "Unknown column"
 $stmt = $conn->prepare("SELECT nome, cpf, telefone, email, foto FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 if ($stmt->execute()) {
@@ -40,6 +42,21 @@ if ($stmt->execute()) {
     }
 }
 $stmt->close();
+
+// 2.1 Busca o Código de Indicação no Banco Master (onde ele realmente existe)
+$connMaster = getMasterConnection();
+if ($connMaster) {
+    // Busca pelo e-mail, que é único e compartilhado entre os bancos
+    $stmtM = $connMaster->prepare("SELECT codigo_indicacao FROM usuarios WHERE email = ? LIMIT 1");
+    $stmtM->bind_param("s", $email);
+    if ($stmtM->execute()) {
+        $stmtM->bind_result($cod_db_master);
+        if ($stmtM->fetch()) {
+            $codigo_indicacao = $cod_db_master;
+        }
+    }
+    $stmtM->close();
+}
 
 $uploadDir = '../img/usuarios/';
 $erro = '';
@@ -297,6 +314,34 @@ include('../includes/header.php');
         .alert-success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; color: #2ecc71; }
         .alert-error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff6b6b; }
 
+        /* Input Group para Copiar */
+        .input-group {
+            display: flex;
+        }
+        .input-group .form-control {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .btn-outline-secondary {
+            background-color: transparent;
+            border: 1px solid #444;
+            border-left: none;
+            color: #00bfff;
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+            padding: 0 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-outline-secondary:hover {
+            background-color: rgba(0, 191, 255, 0.1);
+        }
+        .text-primary { color: #00bfff !important; }
+        .fw-bold { font-weight: bold; }
+        .text-center { text-align: center; }
+        .mb-3 { margin-bottom: 1rem; }
+        .text-muted { color: #aaa; font-size: 0.85rem; display: block; margin-top: 5px; }
+
     </style>
 </head>
 <body>
@@ -341,6 +386,18 @@ include('../includes/header.php');
         <div class="form-group">
             <label>E-mail:</label>
             <input type="email" name="email" class="form-control" required value="<?= htmlspecialchars($email ?? '') ?>">
+        </div>
+
+        <div class="form-group">
+            <label for="codigo_indicacao" class="fw-bold">Seu Código de Indicação (Exclusivo)</label>
+            <div class="input-group">
+                <!-- Agora exibe o código buscado do banco Master -->
+                <input type="text" class="form-control text-center fw-bold text-primary" id="codigo_indicacao" value="<?= htmlspecialchars($codigo_indicacao ?: 'Não disponível') ?>" readonly>
+                <button class="btn-outline-secondary" type="button" onclick="copiarCodigo()">
+                    <i class="fa-regular fa-copy"></i> Copiar
+                </button>
+            </div>
+            <small class="text-muted">Compartilhe este código para indicar amigos.</small>
         </div>
 
         <div class="form-group">
@@ -395,6 +452,14 @@ include('../includes/header.php');
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
+    function copiarCodigo() {
+        var copyText = document.getElementById("codigo_indicacao");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); 
+        navigator.clipboard.writeText(copyText.value);
+        alert("Código copiado: " + copyText.value);
+    }
+
     $(document).ready(function(){
         $('#cpf').mask('000.000.000-00', {reverse: true});
         $('#telefone').mask('(00) 00000-0000');

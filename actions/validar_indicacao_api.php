@@ -1,45 +1,41 @@
 <?php
-// actions/validar_indicacao_api.php
-header('Content-Type: application/json');
-session_start();
+require_once '../includes/session_init.php';
 require_once '../database.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['valid' => false, 'msg' => 'Método inválido']);
-    exit;
-}
-
-$email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
-$doc   = preg_replace('/[^0-9]/', '', $_POST['documento'] ?? '');
-$usuario_atual_id = $_SESSION['user_id'] ?? 0;
-
-if (empty($email) || empty($doc)) {
-    echo json_encode(['valid' => false, 'msg' => 'Preencha e-mail e CPF/CNPJ.']);
-    exit;
-}
+header('Content-Type: application/json; charset=utf-8');
 
 $conn = getMasterConnection();
 
-$sql = "SELECT id, nome FROM usuarios WHERE email = ? AND documento_clean = ? AND id != ? LIMIT 1";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("ssi", $email, $doc, $usuario_atual_id);
+// Verifica se veio o código
+$codigo = trim($_POST['codigo_indicacao'] ?? '');
+
+if (empty($codigo)) {
+    echo json_encode([
+        'valid' => false,
+        'message' => 'Código não informado.'
+    ]);
+    exit;
+}
+
+// Valida existencia no banco
+$stmt = $conn->prepare("SELECT id, nome, codigo_indicacao FROM usuarios WHERE codigo_indicacao = ?");
+$stmt->bind_param("s", $codigo);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows > 0) {
-    $user = $result->fetch_assoc();
+if ($result->num_rows === 0) {
     echo json_encode([
-        'valid' => true, 
-        'msg' => 'Indicado por: ' . $user['nome'],
-        'nome' => $user['nome']
+        'valid' => false,
+        'message' => 'Código inválido ou não encontrado.'
     ]);
-} else {
-    echo json_encode([
-        'valid' => false, 
-        'msg' => 'Conta não encontrada ou dados incorretos.'
-    ]);
+    exit;
 }
 
-$stmt->close();
-$conn->close();
-?>
+$usuario = $result->fetch_assoc();
+
+// Sucesso
+echo json_encode([
+    'valid' => true,
+    'message' => "Indicação válida! Indicador: " . $usuario['nome'],
+    'id_indicador' => $usuario['id']
+]);

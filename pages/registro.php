@@ -55,6 +55,16 @@ unset($_SESSION['erro_registro']);
   .invalid-msg { color: #e74c3c; font-size: 0.85rem; margin-top: 5px; display: block; }
   .input-valid { border-color: #2ecc71 !important; }
   .input-invalid { border-color: #e74c3c !important; }
+
+  /* Classes Auxiliares para o JS de Validação do Código */
+  .text-danger { color: #e74c3c !important; }
+  .text-success { color: #2ecc71 !important; }
+  .fw-bold { font-weight: bold; }
+  .d-none { display: none !important; }
+  .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+  .btn-success { background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+  /* Ajuste de layout para o input e botão ficarem na mesma linha no form de indicação */
+  #formIndicacao .mb-3 div { display: flex; gap: 10px; } 
 </style>
 </head>
 <body>
@@ -155,14 +165,25 @@ unset($_SESSION['erro_registro']);
 
             <hr style="border-color: #444; margin: 15px 0;">
 
-            <label>Foi indicado por alguém?</label>
-            <input type="email" id="ind_email" name="ind_email" placeholder="E-mail de quem indicou" oninput="saveLocal('ind_email', this.value)">
-            
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <input type="text" id="ind_doc" name="ind_doc" placeholder="CPF/CNPJ de quem indicou" oninput="saveLocal('ind_doc', this.value)">
-                <button type="button" class="btn-check" onclick="checkIndicacao()">Validar</button>
+            <!-- Bloco de Indicação -->
+            <div id="formIndicacao">
+                <div class="mb-3">
+                    <label for="inputCodigoIndicacao" class="form-label">Código de Indicação</label>
+                    <!-- Div flex para alinhar input e botão na mesma linha -->
+                    <div style="display: flex; gap: 10px;">
+                        <!-- REMOVIDO 'required' PARA GARANTIR O ENVIO DO FORMULÁRIO QUANDO OPCIONAL -->
+                        <input type="text" class="form-control" id="inputCodigoIndicacao" name="codigo_indicacao" placeholder="Ex: A1B2C3D4" style="text-transform: uppercase;" oninput="saveLocal('codigo_indicacao', this.value)">
+                        <button type="button" class="btn btn-primary" onclick="validarCodigoIndicacao()">Validar Código</button>
+                    </div>
+                    <div id="feedbackIndicacao" class="form-text mt-2"></div>
+                </div>
+                
+                <input type="hidden" id="id_indicador_validado" name="id_indicador">
+
+                <!-- O botão 'Confirmar Indicação' é visual/feedback, já que o submit real é do formulário principal -->
+                <button type="button" class="btn btn-success d-none" id="btnConfirmarIndicacao" style="width:100%; margin-top:10px; cursor:default;">Indicação Confirmada <i class="fas fa-check"></i></button>
             </div>
-            <span id="msgIndicacao"></span>
+
         </div>
     </div>
 
@@ -179,7 +200,7 @@ unset($_SESSION['erro_registro']);
   }
 
   function loadLocal() {
-      const fields = ['tipo_pessoa', 'nome', 'tipo_doc', 'documento', 'telefone', 'email', 'cupom', 'ind_email', 'ind_doc'];
+      const fields = ['tipo_pessoa', 'nome', 'tipo_doc', 'documento', 'telefone', 'email', 'cupom', 'inputCodigoIndicacao'];
       fields.forEach(id => {
           const val = localStorage.getItem('reg_' + id);
           if (val) {
@@ -240,37 +261,48 @@ unset($_SESSION['erro_registro']);
       });
   }
 
-  function checkIndicacao() {
-      const email = document.getElementById('ind_email').value;
-      const doc = document.getElementById('ind_doc').value;
-      const msg = document.getElementById('msgIndicacao');
-      const inEmail = document.getElementById('ind_email');
-      const inDoc = document.getElementById('ind_doc');
+  // --- SCRIPT SOLICITADO (VALIDAR CODIGO) ---
+  function validarCodigoIndicacao() {
+    let codigo = document.getElementById('inputCodigoIndicacao').value;
+    let feedback = document.getElementById('feedbackIndicacao');
+    let btnConfirmar = document.getElementById('btnConfirmarIndicacao');
+    let hiddenId = document.getElementById('id_indicador_validado');
+    let input = document.getElementById('inputCodigoIndicacao'); // Adicionado para feedback visual no input
 
-      if(!email || !doc) {
-          msg.innerHTML = "<span class='invalid-msg'>Preencha e-mail e documento.</span>";
-          return;
-      }
+    if(codigo.length < 3) {
+        feedback.innerHTML = "<span class='text-danger'>Código muito curto.</span>";
+        return;
+    }
 
-      msg.innerHTML = '<span style="color:#aaa">Verificando...</span>';
+    // Feedback visual de carregamento
+    feedback.innerHTML = "<span style='color: #ccc;'>Verificando...</span>";
 
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('documento', doc);
-
-      fetch('../actions/validar_indicacao_api.php', { method: 'POST', body: formData })
-      .then(res => res.json())
-      .then(data => {
-          if(data.valid) {
-              msg.innerHTML = `<span class='valid-msg'><i class='fas fa-check'></i> Indicação confirmada: ${data.nome}.</span>`;
-              inEmail.classList.add('input-valid'); inEmail.classList.remove('input-invalid');
-              inDoc.classList.add('input-valid'); inDoc.classList.remove('input-invalid');
-          } else {
-              msg.innerHTML = `<span class='invalid-msg'><i class='fas fa-times'></i> Conta não encontrada.</span>`;
-              inEmail.classList.add('input-invalid');
-              inDoc.classList.add('input-invalid');
-          }
-      });
+    // Chamada AJAX para a API ajustada
+    fetch('../actions/validar_indicacao_api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'codigo_indicacao=' + encodeURIComponent(codigo)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.valid) {
+            feedback.innerHTML = "<span class='text-success fw-bold'>" + data.message + "</span>";
+            hiddenId.value = data.id_indicador;
+            btnConfirmar.classList.remove('d-none'); // Mostra botão de confirmar
+            input.classList.add('input-valid');
+            input.classList.remove('input-invalid');
+        } else {
+            feedback.innerHTML = "<span class='text-danger'>" + data.message + "</span>";
+            btnConfirmar.classList.add('d-none');
+            hiddenId.value = "";
+            input.classList.add('input-invalid');
+            input.classList.remove('input-valid');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        feedback.innerHTML = "<span class='text-danger'>Erro ao validar.</span>";
+    });
   }
 
   // --- JQUERY & MASK ---
@@ -285,12 +317,6 @@ unset($_SESSION['erro_registro']);
           input.mask("00.000.000/0000-00");
           $("#labelDocumento").text("CNPJ:");
         }
-        
-        // Aplica máscara também no campo de indicação
-        $("#ind_doc").unmask(); 
-        // Como não sabemos se quem indicou é PF ou PJ, deixamos uma máscara mista ou genérica no input event,
-        // mas por simplicidade aqui vamos deixar sem máscara rígida no campo indicação ou aplicar uma genérica.
-        $("#ind_doc").mask('000.000.000.000.000', {reverse: true}); 
       }
 
       $("#tipo_pessoa").on("change", function() {

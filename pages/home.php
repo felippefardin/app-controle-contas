@@ -143,6 +143,7 @@ unset($_SESSION['sucesso_mensagem']);
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
+
 include('../includes/header.php');
 ?>
 

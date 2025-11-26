@@ -20,10 +20,9 @@ $documento   = trim($_POST['documento'] ?? '');
 $telefone    = trim($_POST['telefone'] ?? '');
 $plano_post  = trim($_POST['plano'] ?? 'basico');
 
-// Captura Benefícios Opcionais
-$cupom_codigo = isset($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : null;
-$ind_email    = trim($_POST['ind_email'] ?? '');
-$ind_doc      = preg_replace('/[^0-9]/', '', $_POST['ind_doc'] ?? '');
+// Captura Benefícios Opcionais (Não obrigatórios)
+$cupom_codigo = isset($_POST['cupom']) && !empty($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : null;
+$codigo_indicacao_recebido = isset($_POST['codigo_indicacao']) && !empty($_POST['codigo_indicacao']) ? strtoupper(trim($_POST['codigo_indicacao'])) : null;
 
 // Regras de Plano e Teste
 if ($plano_post === 'essencial') {
@@ -54,16 +53,28 @@ if ($stmtCheck->get_result()->num_rows > 0) {
 }
 $stmtCheck->close();
 
+// Gerar Código Único de Indicação para o NOVO usuário
+$codigo_novo_usuario = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+$checkCode = $conn->prepare("SELECT id FROM usuarios WHERE codigo_indicacao = ?");
+$checkCode->bind_param("s", $codigo_novo_usuario);
+$checkCode->execute();
+while ($checkCode->get_result()->num_rows > 0) {
+    $codigo_novo_usuario = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+    $checkCode->bind_param("s", $codigo_novo_usuario);
+    $checkCode->execute();
+}
+$checkCode->close();
+
 $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 $conn->begin_transaction();
 
 try {
     // 1. Insert Master User
     $stmtUser = $conn->prepare("
-        INSERT INTO usuarios (nome, email, senha, tipo_pessoa, documento, telefone, nivel_acesso, perfil, tipo, status, is_master)
-        VALUES (?, ?, ?, ?, ?, ?, 'proprietario', 'admin', 'admin', 'ativo', 1)
+        INSERT INTO usuarios (nome, email, senha, tipo_pessoa, documento, telefone, nivel_acesso, perfil, tipo, status, is_master, codigo_indicacao)
+        VALUES (?, ?, ?, ?, ?, ?, 'proprietario', 'admin', 'admin', 'ativo', 1, ?)
     ");
-    $stmtUser->bind_param("ssssss", $nome, $email, $senha_hash, $tipo_pessoa, $documento, $telefone);
+    $stmtUser->bind_param("sssssss", $nome, $email, $senha_hash, $tipo_pessoa, $documento, $telefone, $codigo_novo_usuario);
     $stmtUser->execute();
     $new_usuario_id = $conn->insert_id;
     $stmtUser->close();
@@ -76,9 +87,6 @@ try {
     $dbPassword = bin2hex(random_bytes(16));
     $nome_empresa = $nome; 
 
-    // Inserir Tenant com benefícios pendentes
-    // 'cupom_registro' armazena o cupom para uso futuro
-    // 'msg_cupom_visto' e 'msg_indicacao_visto' = 0 para exibir o aviso na dashboard
     $stmtTenant = $conn->prepare("
         INSERT INTO tenants (
             tenant_id, usuario_id, nome, nome_empresa, admin_email, senha, 
@@ -88,24 +96,22 @@ try {
         ) VALUES (?, ?, ?, ?, ?, ?, 'trial', NOW(), ?, ?, ?, ?, ?, ?, 0, 0)
     ");
 
-    $cupom_sql = !empty($cupom_codigo) ? $cupom_codigo : NULL;
-
+    // Se não tiver cupom, envia NULL para o banco
     $stmtTenant->bind_param(
         "sissssssssss", 
         $tenantId, $new_usuario_id, $nome, $nome_empresa, $email, $senha_hash,
         $plano_escolhido,
         $dbHost, $dbDatabase, $dbUser, $dbPassword,
-        $cupom_sql
+        $cupom_codigo
     );
     $stmtTenant->execute();
     $stmtTenant->close();
 
-    // 3. Processar Indicação (Se houver dados válidos)
-    if (!empty($ind_email) && !empty($ind_doc)) {
-        // Busca o indicador
-        $sqlInd = "SELECT id FROM usuarios WHERE email = ? AND documento_clean = ? LIMIT 1";
+    // 3. Processar Indicação (Apenas se o código foi enviado e existe)
+    if ($codigo_indicacao_recebido) {
+        $sqlInd = "SELECT id FROM usuarios WHERE codigo_indicacao = ? LIMIT 1";
         $stmtInd = $conn->prepare($sqlInd);
-        $stmtInd->bind_param("ss", $ind_email, $ind_doc);
+        $stmtInd->bind_param("s", $codigo_indicacao_recebido);
         $stmtInd->execute();
         $resInd = $stmtInd->get_result();
         
@@ -113,11 +119,12 @@ try {
             $indicador = $resInd->fetch_assoc();
             $id_indicador = $indicador['id'];
             
-            // Registra na tabela de indicações
-            $stmtInsInd = $conn->prepare("INSERT INTO indicacoes (id_indicador, id_indicado) VALUES (?, ?)");
-            $stmtInsInd->bind_param("ii", $id_indicador, $new_usuario_id);
-            $stmtInsInd->execute();
-            $stmtInsInd->close();
+            if ($id_indicador != $new_usuario_id) {
+                $stmtInsInd = $conn->prepare("INSERT INTO indicacoes (id_indicador, id_indicado) VALUES (?, ?)");
+                $stmtInsInd->bind_param("ii", $id_indicador, $new_usuario_id);
+                $stmtInsInd->execute();
+                $stmtInsInd->close();
+            }
         }
         $stmtInd->close();
     }
@@ -125,7 +132,7 @@ try {
     // 4. Update User Tenant ID
     $conn->query("UPDATE usuarios SET tenant_id = '$tenantId' WHERE id = $new_usuario_id");
 
-    // 5. Create Tenant DB & Schema (Mesmo código de antes)
+    // 5. Create Tenant DB & Schema
     $rootConn = new mysqli($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASSWORD']);
     $safeDbName = $rootConn->real_escape_string($dbDatabase);
     $safeDbUser = $rootConn->real_escape_string($dbUser);
@@ -155,13 +162,13 @@ try {
     $conn->commit();
 
     // Mensagem de Sucesso
-    $_SESSION['registro_sucesso'] = "Cadastro realizado! Teste Grátis ativo por $dias_teste dias.";
+    $_SESSION['registro_sucesso'] = "Cadastro realizado com sucesso! Teste Grátis ativo por $dias_teste dias.";
     header("Location: ../pages/login.php?msg=cadastro_sucesso");
     exit;
 
 } catch (Exception $e) {
     $conn->rollback();
-    $_SESSION['erro_registro'] = "Erro: " . $e->getMessage();
+    $_SESSION['erro_registro'] = "Erro ao registrar: " . $e->getMessage();
     header("Location: ../pages/registro.php");
     exit;
 }

@@ -145,6 +145,11 @@ if (!empty($_SESSION['sucesso_pagamento'])) {
 
 /* -------------------- 5) Incluir header e começar HTML -------------------- */
 include('../includes/header.php');
+
+// Dados disponíveis para JS
+$cupom_registro = $dados_assinatura['cupom_registro'] ?? '';
+$msg_cupom_visto = (isset($dados_assinatura['msg_cupom_visto']) ? (int)$dados_assinatura['msg_cupom_visto'] : 0);
+$msg_indicacao_visto = (isset($dados_assinatura['msg_indicacao_visto']) ? (int)$dados_assinatura['msg_indicacao_visto'] : 0);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -241,7 +246,10 @@ include('../includes/header.php');
         <div class="trial-alert">
             <i class="fa-solid fa-clock fa-lg"></i>
             <div>PERÍODO DE TESTE: Restam <strong><?= (int)$dias_restantes_teste ?> dias</strong> gratuitos.</div>
-            <a href="#planos-disponiveis" class="btn-custom" style="background: #ffc107; color: #000; padding: 6px 15px; font-size: 0.9rem; width: auto;">Assinar Agora</a>
+            <button type="button" class="btn-custom" style="background: #ffc107; color: #000; padding: 6px 15px; font-size: 0.9rem; width: auto;"
+                    onclick="confirmarTrocaPlano('<?= htmlspecialchars($plano_db) ?>', '<?= htmlspecialchars($nome_plano_atual) ?>')">
+                Assinar Agora
+            </button>
         </div>
     <?php endif; ?>
 
@@ -303,9 +311,11 @@ include('../includes/header.php');
 
             <?php if ($status_assinatura === 'inativo' || ($is_trial && $dias_restantes_teste <= 0)): ?>
                 <div class="mt-4">
-                    <form action="checkout_plano.php" method="POST">
+                    <form id="formPlano_<?= htmlspecialchars($plano_db) ?>_reativar" action="checkout_plano.php" method="POST">
                         <input type="hidden" name="plano" value="<?= htmlspecialchars($plano_db) ?>">
-                        <button type="submit" class="btn-custom btn-assinar">
+                        <input type="hidden" name="cupom" value="<?= htmlspecialchars($cupom_registro) ?>">
+                        <input type="hidden" name="codigo_indicacao" value="">
+                        <button type="button" class="btn-custom btn-assinar" onclick="confirmarTrocaPlano('<?= htmlspecialchars($plano_db) ?>', '<?= htmlspecialchars($nome_plano_atual) ?>')">
                             <i class="fa-solid fa-rotate-right"></i> Reativar Meu Plano
                         </button>
                     </form>
@@ -362,7 +372,7 @@ include('../includes/header.php');
         <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Escolha o plano ideal para o seu negócio. A alteração é imediata.</p>
 
         <div class="plans-grid">
-            <?php foreach ($mapa_planos as $slug => $plano): 
+            <?php foreach ($mapa_planos as $slug => $plano):
                 $e_plano_atual = ($slug === $plano_db);
                 $ativo = ($e_plano_atual && $status_assinatura === 'ativo');
 
@@ -387,6 +397,8 @@ include('../includes/header.php');
                     <?php else: ?>
                         <form id="formPlano_<?= htmlspecialchars($slug) ?>" action="checkout_plano.php" method="POST">
                             <input type="hidden" name="plano" value="<?= htmlspecialchars($slug) ?>">
+                            <input type="hidden" name="cupom" value="<?= htmlspecialchars($cupom_registro) ?>">
+                            <input type="hidden" name="codigo_indicacao" value="">
                             <button type="button" class="btn-custom" style="background: #00bfff;" onclick="confirmarTrocaPlano('<?= htmlspecialchars($slug) ?>', '<?= htmlspecialchars($plano['nome']) ?>')">
                                 <?= $e_plano_atual ? 'Reativar Plano' : 'Mudar Plano' ?>
                             </button>
@@ -448,6 +460,37 @@ include('../includes/header.php');
     </div>
 </div>
 
+<!-- Modal: inserir cupom / indicação (quando não houver cupom_registro salvo) -->
+<div class="modal fade" id="modalCupomIndicacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color:#1e1e1e; color:#eee; border:1px solid #333;">
+            <div class="modal-header">
+                <h5 class="modal-title text-info"><i class="fa-solid fa-ticket"></i> Aplicar Cupom / Indicação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p style="color:#aaa;">Você não tem cupom salvo. Se possuir, digite abaixo para aplicar no checkout. Opcional: código de indicação.</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Código do Cupom (opcional)</label>
+                    <input type="text" id="modal_cupom" class="form-control bg-dark text-white" placeholder="Ex: PROMO10" style="text-transform:uppercase;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Código de Indicação (opcional)</label>
+                    <input type="text" id="modal_indicacao" class="form-control bg-dark text-white" placeholder="Ex: A1B2C3" style="text-transform:uppercase;">
+                </div>
+
+                <input type="hidden" id="modal_target_form_id" value="">
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #333;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="aplicarCupomEAvancar()">Ir para checkout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -503,22 +546,63 @@ function confirmarRemocao() {
     });
 }
 
+/* Troca de plano / fluxo de checkout
+   - Cada plano tem um form id="formPlano_{slug}"
+   - Se existir cupom_registro salvo (variável PHP), ele é enviado automaticamente
+   - Se não existir, abre modal para digitar cupom/indicacao e então envia
+*/
+const EXISTE_CUPOM_SALVO = <?= json_encode(!empty($cupom_registro)) ?>;
+const CUPOM_SALVO_VALOR = <?= json_encode($cupom_registro) ?>;
+
 function confirmarTrocaPlano(slug, nomePlano) {
-    Swal.fire({
-        title: 'Mudar para ' + nomePlano + '?',
-        text: "Você será redirecionado para confirmar a alteração/pagamento.",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#00bfff',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sim, ir para checkout',
-        background: '#1e1e1e', color: '#eee'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            var form = document.getElementById('formPlano_' + slug);
-            if (form) form.submit();
-        }
-    });
+    // form id
+    const formId = 'formPlano_' + slug;
+    const form = document.getElementById(formId);
+    if (!form) {
+        // fallback: redirect via generic form for plano atual
+        const fallback = document.getElementById('formPlano_' + slug + '_reativar');
+        if (fallback) fallback.submit();
+        return;
+    }
+
+    // se já existe cupom salvo, submete diretamente (mantendo o cupom no hidden)
+    if (EXISTE_CUPOM_SALVO && CUPOM_SALVO_VALOR) {
+        // garante que o hidden cupom do form receba o valor salvo
+        const cupomInput = form.querySelector('input[name="cupom"]');
+        if (cupomInput) cupomInput.value = CUPOM_SALVO_VALOR;
+        form.submit();
+        return;
+    }
+
+    // senão: abrir modal para digitar cupom/indicacao
+    const modalEl = new bootstrap.Modal(document.getElementById('modalCupomIndicacao'));
+    document.getElementById('modal_target_form_id').value = formId;
+    modalEl.show();
+}
+
+/* Pegar dados do modal e submeter o form alvo */
+function aplicarCupomEAvancar() {
+    const cupom = document.getElementById('modal_cupom').value.trim();
+    const indic = document.getElementById('modal_indicacao').value.trim();
+    const targetId = document.getElementById('modal_target_form_id').value;
+    const form = document.getElementById(targetId);
+    if (!form) {
+        alert('Formulário alvo não encontrado.');
+        return;
+    }
+
+    const cupomInput = form.querySelector('input[name="cupom"]');
+    const indicInput = form.querySelector('input[name="codigo_indicacao"]');
+
+    if (cupomInput) cupomInput.value = cupom.toUpperCase();
+    if (indicInput) indicInput.value = indic.toUpperCase();
+
+    // fechar modal antes do submit
+    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalCupomIndicacao'));
+    if (modalInstance) modalInstance.hide();
+
+    // submeter
+    form.submit();
 }
 </script>
 

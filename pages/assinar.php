@@ -6,6 +6,7 @@ include('../includes/header.php');
 $msg_erro = $_SESSION['erro_assinatura'] ?? '';
 unset($_SESSION['erro_assinatura']);
 
+// Pega o plano selecionado da URL (padrão: basico)
 $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
 ?>
 
@@ -16,7 +17,8 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
         text-align: center; transition: transform 0.3s, border-color 0.3s; position: relative; display: flex; flex-direction: column;
     }
     .plano-card:hover { transform: translateY(-5px); border-color: #00bfff; box-shadow: 0 5px 20px rgba(0, 191, 255, 0.15); }
-    .plano-card.destaque { border: 2px solid #00bfff; background: #222; transform: scale(1.05); z-index: 10; }
+    /* Classe dinâmica para destacar o plano selecionado */
+    .plano-card.destaque-selecionado { border: 2px solid #00bfff; background: #252525; transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px rgba(0,191,255,0.3); }
     
     .plano-header { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 20px; }
     .plano-title { font-size: 1.5rem; font-weight: bold; color: #fff; }
@@ -57,23 +59,25 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
     </div>
 
     <div class="extra-options-container">
+        <!-- Box Cupom -->
         <div class="option-box">
             <div class="option-title" onclick="toggleBox('boxCupom')"><i class="fas fa-ticket-alt"></i> Possui um Cupom?</div>
             <div id="boxCupom" class="option-content">
                 <div class="input-row">
                     <input type="text" id="inputCupom" class="custom-input" placeholder="Digite o código" style="text-transform:uppercase;">
-                    <button type="button" class="btn-check" onclick="validarCupom()">Aplicar</button>
+                    <button type="button" id="btnValidarCupom" class="btn-check" onclick="validarCupom()">Aplicar</button>
                 </div>
                 <div id="msgCupom" class="msg-feedback"></div>
             </div>
         </div>
 
+        <!-- Box Indicação -->
         <div class="option-box">
             <div class="option-title" onclick="toggleBox('boxIndicacao')"><i class="fas fa-user-friends"></i> Foi indicado por alguém?</div>
             <div id="boxIndicacao" class="option-content">
-                <input type="email" id="emailIndicador" class="custom-input" placeholder="E-mail de quem indicou" style="margin-bottom: 10px;">
+                <label style="color:#ccc; display:block; margin-bottom:5px;">Código de Indicação:</label>
                 <div class="input-row">
-                    <input type="text" id="cpfIndicador" class="custom-input" placeholder="CPF/CNPJ (números)">
+                    <input type="text" id="inputCodigoIndicacao" class="custom-input" placeholder="Ex: A1B2C3D4" style="text-transform:uppercase;">
                     <button type="button" id="btnConfInd" class="btn-check" onclick="validarIndicacao()">Conferir</button>
                 </div>
                 <div id="msgIndicacao" class="msg-feedback"></div>
@@ -82,7 +86,8 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
     </div>
 
     <div class="planos-wrapper">
-        <div class="plano-card">
+        <!-- PLANO BÁSICO -->
+        <div class="plano-card <?= $plano_selecionado == 'basico' ? 'destaque-selecionado' : '' ?>">
             <div class="plano-header">
                 <div class="plano-title">Básico</div>
                 <div class="plano-price" data-original="19.90">R$ 19,90<small>/mês</small></div>
@@ -94,14 +99,14 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
             <form action="../actions/checkout_plano.php" method="POST" onsubmit="prepararEnvio(this)">
                 <input type="hidden" name="plano" value="basico">
                 <input type="hidden" name="cupom" class="hidden-cupom">
-                <input type="hidden" name="ind_email" class="hidden-ind-email">
-                <input type="hidden" name="ind_doc" class="hidden-ind-doc">
+                <input type="hidden" name="codigo_indicacao" class="hidden-codigo-indicacao">
                 <button class="btn-plano btn-outline">Assinar Básico</button>
             </form>
         </div>
 
-        <div class="plano-card destaque">
-            <span class="badge-pop">Recomendado</span>
+        <!-- PLANO PLUS -->
+        <div class="plano-card <?= $plano_selecionado == 'plus' ? 'destaque-selecionado' : '' ?>">
+            <?php if($plano_selecionado == 'plus'): ?><span class="badge-pop">Selecionado</span><?php endif; ?>
             <div class="plano-header">
                 <div class="plano-title" style="color:#00bfff">Plus</div>
                 <div class="plano-price" data-original="39.90">R$ 39,90<small>/mês</small></div>
@@ -113,13 +118,14 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
             <form action="../actions/checkout_plano.php" method="POST" onsubmit="prepararEnvio(this)">
                 <input type="hidden" name="plano" value="plus">
                 <input type="hidden" name="cupom" class="hidden-cupom">
-                <input type="hidden" name="ind_email" class="hidden-ind-email">
-                <input type="hidden" name="ind_doc" class="hidden-ind-doc">
+                <input type="hidden" name="codigo_indicacao" class="hidden-codigo-indicacao">
                 <button class="btn-plano btn-primary-custom">Assinar Plus</button>
             </form>
         </div>
 
-        <div class="plano-card">
+        <!-- PLANO ESSENCIAL -->
+        <div class="plano-card <?= $plano_selecionado == 'essencial' ? 'destaque-selecionado' : '' ?>">
+            <?php if($plano_selecionado == 'essencial'): ?><span class="badge-pop">Selecionado</span><?php endif; ?>
             <div class="plano-header">
                 <div class="plano-title">Essencial</div>
                 <div class="plano-price" data-original="59.90">R$ 59,90<small>/mês</small></div>
@@ -131,8 +137,7 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
             <form action="../actions/checkout_plano.php" method="POST" onsubmit="prepararEnvio(this)">
                 <input type="hidden" name="plano" value="essencial">
                 <input type="hidden" name="cupom" class="hidden-cupom">
-                <input type="hidden" name="ind_email" class="hidden-ind-email">
-                <input type="hidden" name="ind_doc" class="hidden-ind-doc">
+                <input type="hidden" name="codigo_indicacao" class="hidden-codigo-indicacao">
                 <button class="btn-plano btn-outline">Assinar Essencial</button>
             </form>
         </div>
@@ -142,6 +147,12 @@ $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
 <script>
 let indicacaoValida = false;
 
+// Função para pegar parâmetros da URL
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
 function toggleBox(id) {
     document.getElementById(id).classList.toggle('active');
 }
@@ -149,8 +160,11 @@ function toggleBox(id) {
 function validarCupom() {
     const codigo = document.getElementById('inputCupom').value;
     const msg = document.getElementById('msgCupom');
+    const btn = document.getElementById('btnValidarCupom');
     if(!codigo) return;
+    
     msg.innerHTML = '<span style="color:#ccc">Verificando...</span>';
+    btn.disabled = true;
 
     const formData = new FormData();
     formData.append('codigo', codigo);
@@ -158,6 +172,7 @@ function validarCupom() {
     fetch('../actions/validar_cupom_api.php', { method:'POST', body:formData })
     .then(r => r.json())
     .then(data => {
+        btn.disabled = false;
         if(data.valid) {
             msg.innerHTML = `<span class="text-success">Cupom aplicado! -${data.valor}${data.tipo=='porcentagem'?'%':''}</span>`;
             document.querySelectorAll('.hidden-cupom').forEach(i => i.value = data.codigo);
@@ -170,43 +185,53 @@ function validarCupom() {
 }
 
 function validarIndicacao() {
-    const email = document.getElementById('emailIndicador').value;
-    const doc = document.getElementById('cpfIndicador').value;
+    const codigo = document.getElementById('inputCodigoIndicacao').value;
     const msg = document.getElementById('msgIndicacao');
     const btn = document.getElementById('btnConfInd');
+    const input = document.getElementById('inputCodigoIndicacao');
 
-    if(!email || !doc) {
-        msg.innerHTML = '<span class="text-error">Preencha ambos.</span>';
+    if(!codigo) {
+        msg.innerHTML = '<span class="text-error">Digite o código de indicação.</span>';
         return;
     }
     
     btn.innerHTML = '...';
+    btn.disabled = true;
 
     const formData = new FormData();
-    formData.append('email', email);
-    formData.append('documento', doc);
+    formData.append('codigo_indicacao', codigo);
 
     fetch('../actions/validar_indicacao_api.php', { method:'POST', body:formData })
     .then(r => r.json())
     .then(data => {
         btn.innerHTML = 'Conferir';
+        btn.disabled = false;
+        
         if(data.valid) {
             indicacaoValida = true;
-            document.getElementById('emailIndicador').classList.add('valid-border');
-            document.getElementById('cpfIndicador').classList.add('valid-border');
+            input.classList.add('valid-border');
+            input.classList.remove('invalid-border');
             
             msg.innerHTML = `
-                <span class="text-success"><i class="fas fa-check-circle"></i> Amigo: ${data.nome}</span>
-                <span class="text-promo">Amigo indicado, ao finalizar ganhe 10% OFF.</span>
+                <span class="text-success"><i class="fas fa-check-circle"></i> Indicado por: ${data.nome_indicador}</span>
+                <span class="text-promo">Desconto de 10% aplicado!</span>
             `;
+            document.querySelectorAll('.hidden-codigo-indicacao').forEach(i => i.value = codigo);
             atualizarPrecos('porcentagem', 10);
         } else {
             indicacaoValida = false;
-            document.getElementById('emailIndicador').classList.add('invalid-border');
-            document.getElementById('cpfIndicador').classList.add('invalid-border');
-            msg.innerHTML = `<span class="text-error">Dados incorretos.</span>`;
+            input.classList.add('invalid-border');
+            input.classList.remove('valid-border');
+            msg.innerHTML = `<span class="text-error">${data.message}</span>`;
+            document.querySelectorAll('.hidden-codigo-indicacao').forEach(i => i.value = '');
             resetarPrecos();
         }
+    })
+    .catch(e => {
+        console.error(e);
+        btn.innerHTML = 'Conferir';
+        btn.disabled = false;
+        msg.innerHTML = '<span class="text-error">Erro ao validar.</span>';
     });
 }
 
@@ -229,10 +254,29 @@ function resetarPrecos() {
 
 function prepararEnvio(form) {
     if(indicacaoValida) {
-        form.querySelector('.hidden-ind-email').value = document.getElementById('emailIndicador').value;
-        form.querySelector('.hidden-ind-doc').value = document.getElementById('cpfIndicador').value;
+        form.querySelector('.hidden-codigo-indicacao').value = document.getElementById('inputCodigoIndicacao').value;
     }
 }
+
+// AUTO-EXECUÇÃO AO CARREGAR A PÁGINA
+window.onload = function() {
+    const urlCupom = getQueryParam('cupom');
+    const urlIndicacao = getQueryParam('codigo_indicacao');
+
+    // Aplica Indicação Automaticamente
+    if (urlIndicacao) {
+        document.getElementById('boxIndicacao').classList.add('active');
+        document.getElementById('inputCodigoIndicacao').value = urlIndicacao;
+        validarIndicacao(); // Dispara validação automática
+    }
+
+    // Aplica Cupom Automaticamente
+    if (urlCupom) {
+        document.getElementById('boxCupom').classList.add('active');
+        document.getElementById('inputCupom').value = urlCupom;
+        validarCupom(); // Dispara validação automática
+    }
+};
 </script>
 
 <?php include('../includes/footer.php'); ?>
