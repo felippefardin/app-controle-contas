@@ -2,11 +2,19 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
-// Verificação de permissão básica
-if (!isset($_SESSION['nivel_acesso']) || ($_SESSION['nivel_acesso'] !== 'admin' && $_SESSION['nivel_acesso'] !== 'master')) {
-    echo json_encode(['status' => 'error', 'msg' => 'Acesso negado']);
+// ---------------------------------------------------------
+// CORREÇÃO DE PERMISSÃO
+// ---------------------------------------------------------
+// Verifica se existe a sessão de Super Admin OU se o nível de acesso é permitido
+$is_super_admin = isset($_SESSION['super_admin']);
+$is_nivel_permitido = isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], ['admin', 'master']);
+
+if (!$is_super_admin && !$is_nivel_permitido) {
+    // Se não for nenhum dos dois, nega
+    echo json_encode(['status' => 'error', 'msg' => 'Acesso negado. Nível insuficiente.']);
     exit;
 }
+// ---------------------------------------------------------
 
 header('Content-Type: application/json');
 $conn = getMasterConnection();

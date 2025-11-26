@@ -162,21 +162,17 @@ $result = $conn->query($query);
     const modalEl = new bootstrap.Modal(document.getElementById('modalDetalhes'));
 
     function abrirModal(id) {
-
         console.log("Abrindo modal ID:", id);
 
-        fetch('../../actions/admin_suporte_action.php', {   // <-- CAMINHO CORRIGIDO
+        // Caminho correto para buscar detalhes
+        fetch('../../actions/admin_suporte_action.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: 'acao=buscar_detalhes&id=' + id
         })
         .then(r => r.json())
         .then(resp => {
-
-            console.log("Resposta do servidor:", resp);
-
             if(resp.status === 'success') {
-
                 const d = resp.dados;
 
                 document.getElementById('modalId').value = d.id;
@@ -191,17 +187,19 @@ $result = $conn->query($query);
                 const histBox = document.getElementById('boxHistorico');
                 histBox.innerHTML = '';
 
-                resp.historico.forEach(h => {
-                    histBox.innerHTML += `
-                        <div class="hist-item">
-                            <div class="hist-meta">
-                                <i class="fas fa-clock"></i> 
-                                ${new Date(h.criado_em).toLocaleString('pt-BR')}
+                if (resp.historico) {
+                    resp.historico.forEach(h => {
+                        histBox.innerHTML += `
+                            <div class="hist-item">
+                                <div class="hist-meta">
+                                    <i class="fas fa-clock"></i> 
+                                    ${new Date(h.criado_em).toLocaleString('pt-BR')}
+                                </div>
+                                <div>${h.mensagem}</div>
                             </div>
-                            <div>${h.mensagem}</div>
-                        </div>
-                    `;
-                });
+                        `;
+                    });
+                }
 
                 modalEl.show();
             } 
@@ -211,10 +209,9 @@ $result = $conn->query($query);
         })
         .catch(err => {
             console.error("ERRO FETCH:", err);
-            alert("Erro ao carregar dados. Veja o console.");
+            alert("Erro ao carregar dados. Verifique o console (F12).");
         });
     }
-
 
     function adicionarHistorico() {
         const id = document.getElementById('modalId').value;
@@ -229,32 +226,36 @@ $result = $conn->query($query);
         })
         .then(() => {
             document.getElementById('inputHistorico').value = '';
-            abrirModal(id);
+            abrirModal(id); // Recarrega o modal para ver a msg nova
         });
     }
 
     function alterarStatus(status) {
-
         if (!confirm('Confirma a alteração de status?')) return;
 
         const id = document.getElementById('modalId').value;
 
-        fetch('actions/admin_suporte_action.php', {
+        // --- CORREÇÃO AQUI: Adicionado ../../ ao caminho ---
+        fetch('../../actions/admin_suporte_action.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: `acao=atualizar_status&id=${id}&status=${status}`
         })
-        .then(() => {
-            alert("Status atualizado!");
-
-            if (status === 'resolvido') {
-                location.reload();
+        .then(r => r.json())
+        .then(resp => {
+            if (resp.status === 'success') {
+                alert("Status atualizado!");
+                if (status === 'resolvido') {
+                    location.reload();
+                } else {
+                    abrirModal(id);
+                }
             } else {
-                abrirModal(id);
+                alert("Erro ao atualizar: " + resp.msg);
             }
-        });
+        })
+        .catch(err => console.error("Erro ao atualizar status:", err));
     }
 </script>
-
 </body>
 </html>

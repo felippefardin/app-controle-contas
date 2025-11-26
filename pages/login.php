@@ -172,8 +172,8 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
         }
         .floating-icon:hover { transform: scale(1.1); }
         
-        #btnSuporte { bottom: 30px; right: 30px; background: #00bfff; color: #fff; }
-        #btnFeedback { bottom: 90px; right: 30px; background: #ffc107; color: #000; }
+        /* REMOVIDO CSS DO BTN SUPORTE DAQUI */
+        #btnFeedback { bottom: 30px; right: 30px; background: #ffc107; color: #000; }
 
         .tooltip-custom {
             position: absolute; right: 60px; background: #333; color: #fff;
@@ -185,11 +185,6 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
     </style>
 </head>
 <body>
-
-<div class="floating-icon" id="btnSuporte" data-bs-toggle="modal" data-bs-target="#modalSuporte">
-    <i class="fa-solid fa-headset"></i>
-    <span class="tooltip-custom">Precisa de ajuda? Chama nosso suporte</span>
-</div>
 
 <div class="floating-icon" id="btnFeedback" data-bs-toggle="modal" data-bs-target="#modalFeedback">
     <i class="fa-solid fa-comment-dots"></i>
@@ -262,34 +257,6 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
             </a>
         </div>
 
-        <div class="modal fade" id="modalSuporte" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content bg-dark text-white">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-info">Suporte Rápido</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="formSuporteLogin">
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="anonimoSuporte" name="anonimo">
-                                <label class="form-check-label" for="anonimoSuporte">Enviar Anonimamente</label>
-                            </div>
-                            <div id="dadosIdentificacao">
-                                <input type="text" name="nome" class="form-control mb-2 bg-secondary text-white border-0" placeholder="Seu Nome">
-                                <input type="text" name="whatsapp" class="form-control mb-2 bg-secondary text-white border-0" placeholder="WhatsApp">
-                                <input type="email" name="email" class="form-control mb-2 bg-secondary text-white border-0" placeholder="E-mail">
-                            </div>
-                            <textarea name="descricao" class="form-control bg-secondary text-white border-0" rows="3" placeholder="Descreva seu problema..." required></textarea>
-                        </form>
-                    </div>
-                    <div class="modal-footer border-secondary">
-                        <button type="button" id="btnEnviarSuporte" class="btn btn-primary w-100" onclick="enviarSuporte()">Enviar Solicitação</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="modal fade" id="modalFeedback" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content bg-dark text-white">
@@ -360,51 +327,11 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Controle de campos anônimos
-    document.getElementById('anonimoSuporte').addEventListener('change', function() {
-        document.getElementById('dadosIdentificacao').style.display = this.checked ? 'none' : 'block';
-    });
     document.getElementById('anonimoFeedback').addEventListener('change', function() {
         document.getElementById('dadosIdentificacaoFeed').style.display = this.checked ? 'none' : 'block';
     });
 
-    function enviarSuporte() {
-        const btn = document.getElementById('btnEnviarSuporte');
-        const originalText = btn.innerText;
-        
-        // Feedback Visual
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
-        const formData = new FormData(document.getElementById('formSuporteLogin'));
-        
-        fetch('../actions/enviar_suporte_login.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            if(data.status === 'success') {
-                alert(data.msg);
-                location.reload();
-            } else {
-                alert(data.msg || 'Erro desconhecido.');
-            }
-        })
-        .then(data => {
-    if(data.status === 'success') {
-        // EXIBE O PROTOCOLO PARA O USUÁRIO
-        alert(data.msg); // A mensagem já contém o protocolo formatado vindo do PHP
-        location.reload();
-    } else {
-        alert(data.msg || 'Erro desconhecido.');
-    }
-})
-        .catch(err => {
-            console.error(err);
-            alert('Erro de conexão ou resposta inválida do servidor. Tente novamente.');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerText = originalText;
-        });
-    }
+    // REMOVIDA FUNÇÃO enviarSuporte() DAQUI
 
     function enviarFeedback() {
         const btn = document.getElementById('btnEnviarFeedback');

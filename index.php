@@ -1,4 +1,3 @@
-
 <?php
 require_once 'database.php';
 require_once 'includes/session_init.php';
@@ -232,6 +231,71 @@ require_once 'includes/session_init.php';
             text-align: center;
         }
 
+        /* --- NOVO: Botão de Suporte Flutuante --- */
+        .btn-support-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #0d6efd;
+            color: #fff;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.4);
+            cursor: pointer;
+            z-index: 9999;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid #fff;
+        }
+        
+        .btn-support-float:hover {
+            transform: scale(1.15) rotate(10deg);
+            background: #0a58ca;
+        }
+
+        .btn-support-float::before {
+            content: '';
+            position: absolute;
+            width: 100%; height: 100%;
+            background: inherit;
+            border-radius: 50%;
+            z-index: -1;
+            animation: pulse 2s infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .support-tooltip {
+            position: absolute;
+            right: 75px;
+            background: #fff;
+            color: #333;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s;
+            transform: translateX(10px);
+        }
+        
+        .btn-support-float:hover .support-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+        }
+
         /* Responsivo */
         @media (max-width: 991px) {
             .hero-section { padding: 120px 0 60px; text-align: center; }
@@ -270,6 +334,11 @@ require_once 'includes/session_init.php';
             </div>
         </div>
     </nav>
+
+    <div class="btn-support-float" data-bs-toggle="modal" data-bs-target="#modalSuporte">
+        <i class="bi bi-headset"></i>
+        <div class="support-tooltip">Precisando de ajuda?</div>
+    </div>
 
     <header class="hero-section">
         <div class="hero-bg-shape"></div>
@@ -573,19 +642,133 @@ require_once 'includes/session_init.php';
         </div>
     </footer>
 
+    <div class="modal fade" id="modalSuporte" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-headset me-2"></i> Suporte Rápido</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formSuporteIndex">
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="anonimoSuporte" name="anonimo">
+                            <label class="form-check-label text-muted" for="anonimoSuporte">Enviar Anonimamente</label>
+                        </div>
+                        
+                        <div id="dadosIdentificacao">
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold">Seu Nome</label>
+                                <input type="text" name="nome" class="form-control bg-light" placeholder="Como devemos te chamar?">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted small fw-bold">WhatsApp</label>
+                                    <input type="text" name="whatsapp" class="form-control bg-light" placeholder="(00) 00000-0000">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted small fw-bold">E-mail</label>
+                                    <input type="email" name="email" class="form-control bg-light" placeholder="seu@email.com">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold">Como podemos ajudar?</label>
+                            <textarea name="descricao" class="form-control bg-light" rows="4" placeholder="Descreva sua dúvida ou problema..." required style="resize: none;"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btnEnviarSuporte" class="btn btn-primary fw-bold px-4" onclick="enviarSuporte()">
+                        Enviar Solicitação <i class="bi bi-send-fill ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script type="text/javascript">
-    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-    (function(){
-    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-    s1.async=true;
-    s1.src='https://embed.tawk.to/692252545a6d17195e8d14ce/1jan136ki';
-    s1.charset='UTF-8';
-    s1.setAttribute('crossorigin','*');
-    s0.parentNode.insertBefore(s1,s0);
-    })();
+    // Tawk.to Script existente
+    // var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    // (function(){
+    // var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    // s1.async=true;
+    // s1.src='https://embed.tawk.to/692252545a6d17195e8d14ce/1jan136ki';
+    // s1.charset='UTF-8';
+    // s1.setAttribute('crossorigin','*');
+    // s0.parentNode.insertBefore(s1,s0);
+    // })();
+
+    // --- LÓGICA DO SUPORTE NO INDEX ---
+    
+    // Toggle Anonimo
+    const checkAnonimo = document.getElementById('anonimoSuporte');
+    const divIdentificacao = document.getElementById('dadosIdentificacao');
+    
+    if(checkAnonimo) {
+        checkAnonimo.addEventListener('change', function() {
+            if (this.checked) {
+                divIdentificacao.style.display = 'none';
+                // Limpa os campos para evitar envio acidental de dados ocultos
+                divIdentificacao.querySelectorAll('input').forEach(i => i.value = '');
+            } else {
+                divIdentificacao.style.display = 'block';
+            }
+        });
+    }
+
+    function enviarSuporte() {
+        const btn = document.getElementById('btnEnviarSuporte');
+        const originalHTML = btn.innerHTML;
+        const form = document.getElementById('formSuporteIndex');
+        
+        // Validação básica HTML5
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        // Estado de Carregamento
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando...';
+
+        const formData = new FormData(form);
+        
+        // IMPORTANTE: Caminho ajustado para a raiz (actions/...)
+        fetch('actions/enviar_suporte_login.php', { 
+            method: 'POST', 
+            body: formData 
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.status === 'success') {
+                // Fecha o modal
+                const modalEl = document.getElementById('modalSuporte');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+
+                // Exibe mensagem bonita ou alert padrão
+                alert(data.msg); 
+                form.reset();
+            } else {
+                alert(data.msg || 'Erro ao processar solicitação.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de conexão. Verifique sua internet e tente novamente.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        });
+    }
     </script>
+    
     <div vw class="enabled">
         <div vw-access-button class="active"></div>
         <div vw-plugin-wrapper>
