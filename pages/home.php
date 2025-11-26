@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (Ajustado para Permissões Granulares)
+// home.php (Ajustado: Bootstrap + Body Dark Corrigido)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -146,7 +146,18 @@ unset($_SESSION['produtos_estoque_baixo']);
 include('../includes/header.php');
 ?>
 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
 <style>
+    /* REFORÇANDO O TEMA DARK (Sobrescreve o padrão branco do Bootstrap) */
+    body {
+        background-color: #121212 !important;
+        color: #eee !important;
+    }
+
+    /* Remove underline dos links do Bootstrap */
+    a { text-decoration: none !important; }
+
     .home-container {
         max-width: 1000px;
         margin: auto;
@@ -186,10 +197,13 @@ include('../includes/header.php');
         justify-content: center;
         gap: 10px;
     }
+    /* Garante a cor correta nos links */
+    a.card-link { color: #fff !important; text-decoration: none; }
+
     .card-link i { font-size: 2rem; margin-bottom: 5px; color: #00bfff; }
     .card-link:hover {
         background: #00bfff;
-        color: #121212;
+        color: #121212 !important;
         transform: translateY(-5px);
         box-shadow: 0 6px 15px rgba(0,191,255,0.4);
     }
@@ -230,7 +244,7 @@ include('../includes/header.php');
         70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
         100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
     }
-    /* CSS DO MODAL CUSTOMIZADO */
+    /* CSS DO MODAL CUSTOMIZADO (Para o Chat) */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
     .custom-modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: #333; }
     .custom-modal-header h5 { margin: 0; font-size: 1.5rem; }

@@ -1,3 +1,8 @@
+
+<?php
+require_once 'database.php';
+require_once 'includes/session_init.php';
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -519,6 +524,45 @@
             </div>
         </div>
     </section>
+
+    <?php
+    require_once 'database.php';
+    $conn = getMasterConnection();
+    $feedbacks = $conn->query("SELECT * FROM feedbacks WHERE aprovado = 1 ORDER BY criado_em DESC LIMIT 6");
+    if ($feedbacks->num_rows > 0):
+    ?>
+    <section id="feedbacks" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h6 class="text-primary fw-bold text-uppercase">Depoimentos</h6>
+                <h2 class="fw-bold display-6">O que dizem nossos usuários</h2>
+            </div>
+            <div class="row g-4">
+                <?php while($f = $feedbacks->fetch_assoc()): ?>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="text-warning mb-3">
+                                <?= str_repeat('<i class="bi bi-star-fill"></i>', $f['pontuacao']) ?>
+                            </div>
+                            <p class="card-text text-muted fst-italic">"<?= htmlspecialchars($f['descricao']) ?>"</p>
+                            <div class="d-flex align-items-center mt-4">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:40px; height:40px; font-weight:bold;">
+                                    <?= strtoupper(substr($f['nome'], 0, 1)) ?>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($f['nome']) ?></h6>
+                                    <small class="text-muted">Usuário do Sistema</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endwhile; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; $conn->close(); ?>
 
     <footer class="bg-dark text-white py-4 text-center">
         <div class="container">

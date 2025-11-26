@@ -9,12 +9,10 @@ if (!isset($_SESSION['super_admin'])) {
 }
 
 $admin = $_SESSION['super_admin'];
-$master_conn = getMasterConnection(); // Conexão MySQLi do database.php
+$master_conn = getMasterConnection();
 
 // --- LÓGICA DE PESQUISA DE TENANTS ---
 $busca = trim($_GET['busca'] ?? '');
-
-// ✅ CORREÇÃO: Adicionado t.usuario_id e u.email na seleção
 $sql = "SELECT t.id, t.usuario_id, t.nome, t.nome_empresa, t.status_assinatura, t.data_criacao, 
                u.documento, u.email 
         FROM tenants t 
@@ -35,6 +33,24 @@ $sql_chamados = "
     WHERE c.status != 'concluido'
     ORDER BY FIELD(c.status, 'aberto', 'em_atendimento') ASC, c.criado_em DESC";
 $result_chamados = $master_conn->query($sql_chamados);
+
+// --- LÓGICA DE RANKING (INDIQUE E GANHE) - COM CORREÇÃO DE COLLATE ---
+$sql_ranking = "
+    SELECT 
+        u_ind.nome AS nome_indicador,
+        u_ind.email AS email_indicador,
+        t.nome_empresa,
+        COUNT(i.id) AS total_indicacoes,
+        FLOOR(COUNT(i.id) / 3) AS premios_ganhos,
+        (3 - (COUNT(i.id) % 3)) AS faltam_para_proximo
+    FROM indicacoes i
+    JOIN usuarios u_ind ON i.id_indicador = u_ind.id
+    LEFT JOIN tenants t ON u_ind.tenant_id COLLATE utf8mb4_unicode_ci = t.tenant_id COLLATE utf8mb4_unicode_ci
+    GROUP BY i.id_indicador
+    ORDER BY total_indicacoes DESC
+    LIMIT 10
+";
+$res_ranking = $master_conn->query($sql_ranking);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -279,17 +295,16 @@ $result_chamados = $master_conn->query($sql_chamados);
         </table>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 30px; flex-wrap: wrap; gap: 10px;">
-    <h2 style="margin: 0; border: none; padding: 0; color: #ff9f43;"><i class="fas fa-headset"></i> Fila de Suporte</h2>
-    <div>
-        <a href="cupom_desconto.php" class="btn-gerenciar" style="background: #d35400;"><i class="fas fa-ticket-alt"></i> Cupons</a>
-        
-        <a href="email_marketing.php" class="btn-gerenciar" style="background: #8e44ad;"><i class="fas fa-bullhorn"></i> Email Marketing</a>
-        <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
-        <a href="arquivos_suportes.php" class="btn-gerenciar" style="background: #34495e;"><i class="fas fa-file-pdf"></i> Logs de Chat</a>
-    </div>
-</div>
-
-        
+            <h2 style="margin: 0; border: none; padding: 0; color: #ff9f43;"><i class="fas fa-headset"></i> Fila de Suporte</h2>
+            <div>
+                <a href="cupom_desconto.php" class="btn-gerenciar" style="background: #d35400;"><i class="fas fa-ticket-alt"></i> Cupons</a>
+                <a href="email_marketing.php" class="btn-gerenciar" style="background: #8e44ad;"><i class="fas fa-bullhorn"></i> Email Marketing</a>
+                <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
+                <a href="arquivos_suportes.php" class="btn-gerenciar" style="background: #34495e;"><i class="fas fa-file-pdf"></i> Logs de Chat</a>
+                <a href="suporte_via_login.php" class="btn-gerenciar" style="background: #356985;"><i class="fa-solid fa-headset"></i></i> Suporte via login</a>
+                <a href="feedback.php" class="btn-gerenciar" style="background: #258966;"><i class="fa-solid fa-comment-dots"></i></i></i> Feedback</a>
+            </div>
+        </div>
 
         <?php if(isset($_SESSION['msg_suporte'])): ?>
             <div style="padding: 15px; background: rgba(40,167,69,0.2); color: #2ecc71; border: 1px solid #2ecc71; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
@@ -399,6 +414,55 @@ $result_chamados = $master_conn->query($sql_chamados);
             <?php endif; ?>
             </tbody>
         </table>
+
+        <h2 style="color: #2ecc71; margin-top: 40px; border-top: 1px solid #333; padding-top: 30px;">
+            <i class="fas fa-gift"></i> Ranking Indique e Ganhe
+        </h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Indicador</th>
+                    <th>Empresa</th>
+                    <th style="text-align: center;">Total Indicações</th>
+                    <th style="text-align: center;">Prêmios (Meses Grátis)</th>
+                    <th style="text-align: center;">Meta Próximo</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if ($res_ranking && $res_ranking->num_rows > 0): ?>
+                <?php while ($rank = $res_ranking->fetch_assoc()): ?>
+                    <tr>
+                        <td data-label="Indicador">
+                            <div style="font-weight:bold; color:#fff;"><?= htmlspecialchars($rank['nome_indicador']) ?></div>
+                            <div style="font-size:0.8rem; color:#aaa;"><?= htmlspecialchars($rank['email_indicador']) ?></div>
+                        </td>
+                        <td data-label="Empresa"><?= htmlspecialchars($rank['nome_empresa'] ?? '-') ?></td>
+                        <td data-label="Total" style="text-align: center;">
+                            <span style="background:#3498db; padding:4px 12px; border-radius:15px; font-weight:bold; color:#fff;">
+                                <?= $rank['total_indicacoes'] ?>
+                            </span>
+                        </td>
+                        <td data-label="Ganhos" style="text-align: center;">
+                            <span style="color: #2ecc71; font-weight:bold; font-size: 1.1rem;">
+                                <?= $rank['premios_ganhos'] ?>x <small style="color:#aaa; font-size:0.8rem;">(+<?= $rank['premios_ganhos'] * 30 ?> dias)</small>
+                            </span>
+                        </td>
+                        <td data-label="Meta" style="text-align: center;">
+                            <?php if($rank['faltam_para_proximo'] == 3): ?>
+                                <span style="color: #f1c40f; font-weight:bold;">Acabou de Ganhar!</span>
+                            <?php else: ?>
+                                <span style="color: #aaa;">Faltam <strong><?= $rank['faltam_para_proximo'] ?></strong> indicações</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <tr><td colspan="5" style="text-align:center; color: #777; padding: 20px;">Nenhuma indicação registrada ainda.</td></tr>
+            <?php endif; ?>
+            </tbody>
+        </table>
+
     </div>
 
     <div id="modalAtendimento" class="modal">
@@ -453,7 +517,7 @@ $result_chamados = $master_conn->query($sql_chamados);
             }
         }
 
-        // --- LÓGICA DO CHAT ONLINE (AJUSTADA COM EMAIL) ---
+        // --- LÓGICA DO CHAT ONLINE ---
         function iniciarSuporte(userId, userEmail) {
             if(!confirm("Deseja iniciar um Chat Online com o email: " + userEmail + "? Ele receberá um convite na Home.")) return;
 
