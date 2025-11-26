@@ -43,13 +43,21 @@ if ($chat) {
         if (isset($chat['usuario_id']) && (int)$chat['usuario_id'] === (int)$userId) {
             $acessoPermitido = true;
         } elseif ($tenantId > 0) {
-            // Verificação multi-tenant opcional
-            $stmtT = $conn->prepare("SELECT usuario_id FROM tenants WHERE id = ? OR tenant_id = ? LIMIT 1");
-            $stmtT->bind_param("ii", $tenantId, $tenantId);
-            $stmtT->execute();
-            $resT = $stmtT->get_result();
-            $tenantData = $resT->fetch_assoc();
-            $stmtT->close();
+            // CORREÇÃO: Usa a função nativa do sistema para buscar o tenant
+            // Isso evita erros de SQL se a coluna 'tenant_id' não existir
+            if (function_exists('getTenantById')) {
+                $tenantData = getTenantById($tenantId, $conn);
+            } else {
+                // Fallback de segurança: busca apenas pelo ID primário
+                $stmtT = $conn->prepare("SELECT usuario_id FROM tenants WHERE id = ? LIMIT 1");
+                $stmtT->bind_param("i", $tenantId);
+                $stmtT->execute();
+                $resT = $stmtT->get_result();
+                $tenantData = $resT->fetch_assoc();
+                $stmtT->close();
+            }
+
+            // Verifica se o Chat pertence ao Dono deste Tenant
             if ($tenantData && isset($tenantData['usuario_id']) && (int)$chat['usuario_id'] === (int)$tenantData['usuario_id']) {
                 $acessoPermitido = true;
             }
