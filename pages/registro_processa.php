@@ -3,6 +3,7 @@
 session_start();
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../database.php'; 
+require_once __DIR__ . '/../includes/utils.php'; // Importa sistema Flash Message
 
 use Dotenv\Dotenv;
 
@@ -20,11 +21,10 @@ $documento   = trim($_POST['documento'] ?? '');
 $telefone    = trim($_POST['telefone'] ?? '');
 $plano_post  = trim($_POST['plano'] ?? 'basico');
 
-// Captura Benefícios Opcionais (Não obrigatórios)
 $cupom_codigo = isset($_POST['cupom']) && !empty($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : null;
 $codigo_indicacao_recebido = isset($_POST['codigo_indicacao']) && !empty($_POST['codigo_indicacao']) ? strtoupper(trim($_POST['codigo_indicacao'])) : null;
 
-// Regras de Plano e Teste
+// Regras de Plano
 if ($plano_post === 'essencial') {
     $dias_teste = 30;
     $plano_escolhido = 'essencial';
@@ -37,7 +37,7 @@ if ($plano_post === 'essencial') {
 }
 
 if (!$nome || !$email || !$senha || !$documento) {
-    $_SESSION['erro_registro'] = "Preencha os campos obrigatórios.";
+    set_flash_message('warning', "Preencha todos os campos obrigatórios.");
     header("Location: ../pages/registro.php");
     exit;
 }
@@ -47,13 +47,13 @@ $stmtCheck = $conn->prepare("SELECT id FROM usuarios WHERE email = ? LIMIT 1");
 $stmtCheck->bind_param("s", $email);
 $stmtCheck->execute();
 if ($stmtCheck->get_result()->num_rows > 0) {
-    $_SESSION['erro_registro'] = "Este e-mail já está cadastrado.";
+    set_flash_message('danger', "Este e-mail já está cadastrado. Tente fazer login.");
     header("Location: ../pages/registro.php");
     exit;
 }
 $stmtCheck->close();
 
-// Gerar Código Único de Indicação para o NOVO usuário
+// Gerar Código Único de Indicação
 $codigo_novo_usuario = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
 $checkCode = $conn->prepare("SELECT id FROM usuarios WHERE codigo_indicacao = ?");
 $checkCode->bind_param("s", $codigo_novo_usuario);
@@ -96,7 +96,6 @@ try {
         ) VALUES (?, ?, ?, ?, ?, ?, 'trial', NOW(), ?, ?, ?, ?, ?, ?, 0, 0)
     ");
 
-    // Se não tiver cupom, envia NULL para o banco
     $stmtTenant->bind_param(
         "sissssssssss", 
         $tenantId, $new_usuario_id, $nome, $nome_empresa, $email, $senha_hash,
@@ -107,7 +106,7 @@ try {
     $stmtTenant->execute();
     $stmtTenant->close();
 
-    // 3. Processar Indicação (Apenas se o código foi enviado e existe)
+    // 3. Processar Indicação
     if ($codigo_indicacao_recebido) {
         $sqlInd = "SELECT id FROM usuarios WHERE codigo_indicacao = ? LIMIT 1";
         $stmtInd = $conn->prepare($sqlInd);
@@ -161,14 +160,14 @@ try {
 
     $conn->commit();
 
-    // Mensagem de Sucesso
-    $_SESSION['registro_sucesso'] = "Cadastro realizado com sucesso! Teste Grátis ativo por $dias_teste dias.";
-    header("Location: ../pages/login.php?msg=cadastro_sucesso");
+    // MENSAGEM DE SUCESSO E REDIRECIONA PARA LOGIN
+    set_flash_message('success', "Cadastro realizado com sucesso!<br>Teste Grátis de $dias_teste dias ativado.");
+    header("Location: ../pages/login.php");
     exit;
 
 } catch (Exception $e) {
     $conn->rollback();
-    $_SESSION['erro_registro'] = "Erro ao registrar: " . $e->getMessage();
+    set_flash_message('danger', "Erro ao registrar: " . $e->getMessage());
     header("Location: ../pages/registro.php");
     exit;
 }

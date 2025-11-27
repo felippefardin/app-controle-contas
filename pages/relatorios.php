@@ -1,8 +1,9 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+// 1. VERIFICA LOGIN
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
@@ -13,17 +14,18 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
 $usuarioId = $_SESSION['usuario_id'];
 $perfil = $_SESSION['nivel_acesso'];
 
 require_once '../includes/header.php';
 
-// ✅ 3. SIMPLIFICA OS FILTROS PARA O MODELO SAAS
+// EXIBE O POP-UP CENTRALIZADO
+display_flash_message();
+
+// 3. FILTROS
 $userFilter = "usuario_id = " . intval($usuarioId);
 $userFilterCategorias = "id_usuario = " . intval($usuarioId);
 
-// Função para reduzir repetições nas consultas
 function getTotais($conn, $tabela, $status, $userFilter) {
     $stmt = $conn->prepare("SELECT COUNT(id) AS total_contas, SUM(valor) AS valor_total FROM $tabela WHERE status = ? AND $userFilter");
     $stmt->bind_param("s", $status);
@@ -33,7 +35,7 @@ function getTotais($conn, $tabela, $status, $userFilter) {
     return $result;
 }
 
-// Totais principais
+// Totais
 $totaisPagarPendentes = getTotais($conn, 'contas_pagar', 'pendente', $userFilter);
 $totaisPagarBaixadas = getTotais($conn, 'contas_pagar', 'baixada', $userFilter);
 $totaisReceberPendentes = getTotais($conn, 'contas_receber', 'pendente', $userFilter);
@@ -49,14 +51,14 @@ $stmtCaixa->close();
 $saldoPrevisto = ($totaisReceberPendentes['valor_total'] ?? 0) - ($totaisPagarPendentes['valor_total'] ?? 0);
 $saldoRealizado = (($totaisReceberBaixadas['valor_total'] ?? 0) + $totalCaixa) - ($totaisPagarBaixadas['valor_total'] ?? 0);
 
-// --- DADOS GRÁFICO ---
+// Gráfico 12 meses
 $labels = $entradasPendentes = $saidasPendentes = $entradasBaixadas = $saidasBaixadas = [];
 
 for ($i = 11; $i >= 0; $i--) {
     $mes = date('Y-m', strtotime("-$i month"));
     $labels[] = date('M/Y', strtotime($mes . '-01'));
 
-    // Entradas previstas
+    // Entradas
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status=? AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
     $status = 'pendente';
     $stmt->bind_param("ss", $status, $mes);
@@ -64,14 +66,12 @@ for ($i = 11; $i >= 0; $i--) {
     $entradasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    // Entradas realizadas
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
     $stmt->bind_param("s", $mes);
     $stmt->execute();
     $total_receber = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    // Caixa do mês
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE $userFilter AND DATE_FORMAT(data,'%Y-%m')=?");
     $stmt->bind_param("s", $mes);
     $stmt->execute();
@@ -80,7 +80,7 @@ for ($i = 11; $i >= 0; $i--) {
 
     $entradasBaixadas[] = $total_receber + $total_caixa;
 
-    // Saídas previstas
+    // Saídas
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status=? AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
     $status = 'pendente';
     $stmt->bind_param("ss", $status, $mes);
@@ -88,7 +88,6 @@ for ($i = 11; $i >= 0; $i--) {
     $saidasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    // Saídas realizadas
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
     $stmt->bind_param("s", $mes);
     $stmt->execute();
@@ -131,209 +130,51 @@ foreach ($categorias as $c) {
     <title>Relatórios Financeiros</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        /* CSS identado corretamente */
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #121212;
-            color: #eee;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1300px;
-            margin: auto;
-            background: #1e1e1e;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #000;
-        }
-        h2 {
-            text-align: center;
-            color: #00bfff;
-            font-weight: 600;
-            margin-bottom: 25px;
-        }
-        .section-title {
-            border-bottom: 1px solid #333;
-            color: #ccc;
-            padding-bottom: 8px;
-            margin-top: 30px;
-            margin-bottom: 20px;
-            font-size: 1.3rem;
-        }
-        .row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .summary-card {
-            background: #242424;
-            border-left: 5px solid #00bfff33;
-            padding: 20px;
-            border-radius: 10px;
-            transition: .3s;
-        }
-        .summary-card:hover {
-            transform: translateY(-3px);
-            background: #2b2b2b;
-        }
-        .summary-card i {
-            font-size: 1.8rem;
-            color: #00bfff;
-            margin-bottom: 8px;
-        }
-        .summary-card h5 {
-            font-size: 1rem;
-            margin: 0;
-            color: #bbb;
-        }
-        .summary-card p {
-            font-size: 1.6rem;
-            margin: 5px 0;
-            font-weight: 600;
-            color: #fff;
-        }
-        .summary-card span {
-            font-size: .9rem;
-            color: #999;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; margin: 0; padding: 20px; }
+        .container { max-width: 1300px; margin: auto; background: #1e1e1e; padding: 25px; border-radius: 10px; box-shadow: 0 0 10px #000; }
+        h2 { text-align: center; color: #00bfff; font-weight: 600; margin-bottom: 25px; }
+        .section-title { border-bottom: 1px solid #333; color: #ccc; padding-bottom: 8px; margin-top: 30px; margin-bottom: 20px; font-size: 1.3rem; }
+        .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .summary-card { background: #242424; border-left: 5px solid #00bfff33; padding: 20px; border-radius: 10px; transition: .3s; }
+        .summary-card:hover { transform: translateY(-3px); background: #2b2b2b; }
+        .summary-card i { font-size: 1.8rem; color: #00bfff; margin-bottom: 8px; }
+        .summary-card h5 { font-size: 1rem; margin: 0; color: #bbb; }
+        .summary-card p { font-size: 1.6rem; margin: 5px 0; font-weight: 600; color: #fff; }
+        .summary-card span { font-size: .9rem; color: #999; }
         .card-positive { border-left-color: #2ecc71; }
         .card-negative { border-left-color: #e74c3c; }
-        .table-container {
-            background: #242424;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 30px;
-            overflow-x: auto;
-        }
+        .table-container { background: #242424; border-radius: 10px; padding: 20px; margin-top: 30px; overflow-x: auto; }
         .table-container table { width: 100%; }
         .table-container th, .table-container td { padding: 12px; border-bottom: 1px solid #333; }
         .table-container th { background: #2a2a2a; color: #00bfff; }
         .table-container td.currency { text-align: center; }
         .table-container .total-recebido { color: #2ecc71; }
         .table-container .total-pago { color: #e74c3c; }
-        .chart-container {
-            background: #242424;
-            border-radius: 10px;
-            padding: 25px;
-            margin-top: 30px;
-        }
+        .chart-container { background: #242424; border-radius: 10px; padding: 25px; margin-top: 30px; }
         .chart-container canvas { width: 100%; height: 400px !important; }
         .chart-container h4 { color: #eee; margin-bottom: 15px; }
-        #exportOptions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            justify-content: center;
-        }
-        button.export-btn {
-            background: #00bfff;
-            border: none;
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 15px;
-        }
+        #exportOptions { display: flex; gap: 10px; margin-top: 15px; justify-content: center; }
+        button.export-btn { background: #00bfff; border: none; color: #fff; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 15px; }
         button.export-btn:hover { background: #0099cc; }
-        @media (max-width: 768px) {
-            body { padding: 10px; }
-            h2 { font-size: 1.5rem; }
-            .summary-card p { font-size: 1.3rem; }
-        }
+        
         /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #1f1f1f;
-            padding: 25px 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 191, 255, 0.5);
-            width: 90%;
-            max-width: 800px;
-            position: relative;
-        }
-        .modal-content .close-btn {
-            color: #aaa;
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+        .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
+        .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
         .modal-content .close-btn:hover { color: #00bfff; }
         .modal-content form { display: flex; flex-direction: column; gap: 15px; }
-        .modal-content form input, .modal-content form select {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background-color: #333;
-            color: #eee;
-        }
-        .modal-content form button {
-            flex: 1 1 100%;
-            background-color: #00bfff;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .modal-content form button:hover { background-color: #0099cc; }
-        .modal-content label { margin-top: 10px; color: #eee; font-weight: bold; }
+        .modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
         .export-buttons-group { text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
-        .btn-export {
-            background-color: #28a745;
-            color: white;
-            padding: 10px 14px;
-            border: none;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+        .btn-export { background-color: #28a745; color: white; padding: 10px 14px; border: none; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
         .btn-export:hover { background-color: #218838; }
-
-        .section-export {
-            border: 1px solid #333;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-        }
-        .section-export h4 {
-            color: #00bfff;
-            margin-top: 0;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
+        .section-export { border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+        .section-export h4 { color: #00bfff; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
     </style>
-</head>
-<body>
-
 </head>
 <body>
 <div class="container" id="pdf-content">
     <h2>Dashboard Financeiro</h2>
 
-    <!-- Balanço Previsto -->
     <h3 class="section-title">Balanço Previsto</h3>
     <div class="row">
         <div class="summary-card">
@@ -356,7 +197,6 @@ foreach ($categorias as $c) {
         </div>
     </div>
 
-    <!-- Balanço Realizado -->
     <h3 class="section-title">Balanço Realizado</h3>
     <div class="row">
         <div class="summary-card">
@@ -381,7 +221,6 @@ foreach ($categorias as $c) {
         </div>
     </div>
 
-    <!-- Totais por Categoria -->
     <h3 class="section-title"><i class="fa-solid fa-list-check"></i> Totais por Categoria</h3>
     <div class="table-container">
         <table>
@@ -410,7 +249,6 @@ foreach ($categorias as $c) {
         </table>
     </div>
 
-    <!-- Gráfico de Fluxo -->
     <div class="chart-container">
         <h4>Fluxo de Caixa (Últimos 12 meses)</h4>
         <canvas id="fluxoChart"></canvas>
@@ -425,13 +263,11 @@ foreach ($categorias as $c) {
     </div>
 </div>
 
-<!-- Modal de Exportação -->
 <div id="exportarDadosModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('exportarDadosModal').style.display='none'">&times;</span>
         <h3>Exportar Dados Financeiros e Cadastrais</h3>
 
-        <!-- Formulário Contas -->
         <div class="section-export">
             <h4>Contas a Pagar / Receber</h4>
             <form id="formExportarContas" action="" method="GET" target="_blank">
@@ -460,7 +296,6 @@ foreach ($categorias as $c) {
             </form>
         </div>
 
-        <!-- Formulário Pessoas -->
         <div class="section-export">
             <h4>Clientes / Fornecedores</h4>
             <form id="formExportarPessoas" action="../actions/exportar_pessoas_fornecedores.php" method="GET" target="_blank">
@@ -481,12 +316,10 @@ foreach ($categorias as $c) {
     </div>
 </div>
 
-<!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-    // Chart.js
     const labels = <?= json_encode($labels) ?>;
     const entradasPendentes = <?= json_encode($entradasPendentes) ?>;
     const entradasBaixadas = <?= json_encode($entradasBaixadas) ?>;
@@ -507,7 +340,6 @@ foreach ($categorias as $c) {
         options: { responsive:true, scales:{ y:{ beginAtZero:true } } }
     });
 
-    // Exportar PDF Dashboard
     document.getElementById('savePdf').addEventListener('click', ()=>{
         const { jsPDF } = window.jspdf;
         html2canvas(document.getElementById('pdf-content'), { scale:2 }).then(canvas=>{
@@ -520,14 +352,12 @@ foreach ($categorias as $c) {
         });
     });
 
-    // Exportação Contas
     document.getElementById('formExportarContas').addEventListener('submit', function(e){
         const tipoConta = document.getElementById('tipo_conta').value;
         const formato = e.submitter.value;
         this.action = `../actions/exportar_contas_${tipoConta}.php?formato=${formato}`;
     });
 
-    // Fechar modal ao clicar fora
     window.addEventListener('click', e => {
         const modal = document.getElementById('exportarDadosModal');
         if(e.target === modal) modal.style.display='none';

@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils para o Flash Message e CSS
 
 // ----------------------------
 // 1. VERIFICA SE USUÁRIO ESTÁ LOGADO
@@ -68,6 +69,9 @@ if (isset($_GET['action'])) {
 // 4. INCLUDES DE CABEÇALHO
 // ----------------------------
 include('../includes/header.php');
+
+// ✅ EXIBE O FLASH MESSAGE DO PHP (Se houver msg na sessão)
+display_flash_message();
 ?>
 
 <!DOCTYPE html>
@@ -345,9 +349,6 @@ label {
 </style>
 <div class="container">
 
-    <!-- =========================
-         HEADER
-    ========================== -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><i class="fas fa-cash-register"></i> Caixa de Vendas (PDV)</h1>
         <a href="fechamento_caixa.php" class="btn btn-info">
@@ -355,9 +356,6 @@ label {
         </a>
     </div>
 
-    <!-- =========================
-         META DE VENDAS
-    ========================== -->
     <div class="meta-widget">
         <div class="meta-header">
             <span class="meta-header-titulo"><i class="fas fa-bullseye"></i> Meta de Vendas (Mês)</span>
@@ -375,21 +373,15 @@ label {
         </div>
     </div>
 
-    <!-- ALERTA -->
     <div id="alert-container"></div>
 
-    <!-- =========================
-         FORMULÁRIO DE VENDA
-    ========================== -->
     <form id="form-venda">
 
-        <!-- CLIENTE -->
         <div class="form-group">
             <label for="cliente_id">Cliente</label>
             <select id="cliente_id" name="cliente_id" class="form-control" required></select>
         </div>
 
-        <!-- ADICIONAR PRODUTOS -->
         <div class="card bg-dark text-white mb-4">
             <div class="card-header"><h2>Adicionar Produtos</h2></div>
             <div class="card-body">
@@ -407,7 +399,6 @@ label {
             </div>
         </div>
 
-        <!-- ITENS DA VENDA -->
         <h2><i class="fas fa-shopping-cart"></i> Itens da Venda</h2>
         <div class="table-responsive">
             <table class="table table-bordered">
@@ -424,12 +415,10 @@ label {
             </table>
         </div>
 
-        <!-- TOTAL -->
         <div class="text-right mt-3">
             <h3 class="total-venda">Total: R$ <span id="total-geral">0.00</span></h3>
         </div>
 
-        <!-- FORMA DE PAGAMENTO E DESCONTO -->
         <div class="form-row mt-4">
             <div class="form-group col-md-4">
                 <label for="forma_pagamento">Forma de Pagamento</label>
@@ -447,12 +436,10 @@ label {
             </div>
         </div>
 
-        <!-- BOTÕES FINALIZAR -->
         <div class="mt-4">
             <button type="button" id="btn-recibo" class="btn btn-primary btn-lg mr-2">
                 <i class="fas fa-receipt"></i> Finalizar e Gerar Recibo
             </button>
-            <!-- ALTERADO: BOTÃO COM CLASSE DIFERENCIADA PARA INDICAR TESTE -->
             <button type="button" id="btn-nfe" class="btn btn-warning btn-lg">
                 <i class="fas fa-vial"></i> Finalizar e Testar NFC-e (Local)
             </button>
@@ -461,9 +448,6 @@ label {
     </form>
 </div>
 
-<!-- =========================
-     MODAL META DE VENDAS (ADMIN)
-========================== -->
 <?php if ($perfil === 'admin' || $perfil === 'proprietario'): ?>
 <div class="modal fade" id="modalMetaVendas" tabindex="-1" role="dialog" aria-labelledby="modalMetaLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -493,9 +477,6 @@ label {
 
 <?php include('../includes/footer.php'); ?>
 
-<!-- =========================
-     SCRIPTS
-========================== -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
@@ -505,6 +486,52 @@ $(document).ready(function() {
 
     let tipoFinalizacao = 'recibo';
     const userPerfil = '<?= htmlspecialchars($perfil, ENT_QUOTES, 'UTF-8') ?>';
+
+    // =======================================================
+    // ✅ FUNÇÃO DE ALERTA FLUENTE VIA JAVASCRIPT
+    // Essa função simula o HTML gerado pelo PHP em utils.php
+    // =======================================================
+    function showAlert(message, type) {
+        // Mapeia cores e ícones baseado no estilo do utils.php
+        let cssClass = 'alert-info';
+        let icon = '';
+
+        if (type === 'success') {
+            cssClass = 'alert-success';
+            icon = '<i class="fa fa-check-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>';
+        } else if (type === 'danger' || type === 'error') {
+            cssClass = 'alert-danger';
+            icon = '<i class="fa fa-times-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>';
+        } else if (type === 'warning') {
+            cssClass = 'alert-warning';
+            icon = '<i class="fa fa-exclamation-triangle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>';
+        }
+
+        // Remove overlays existentes
+        $('.alert-overlay').remove();
+
+        const html = `
+            <div class='alert-overlay' id='flash-overlay'>
+                <div class='alert-box ${cssClass}'>
+                    ${icon}
+                    <div class='alert-msg'>${message}</div>
+                    <button onclick="document.getElementById('flash-overlay').remove()" class='btn-fechar-alert'>OK</button>
+                </div>
+            </div>
+        `;
+
+        $('body').append(html);
+
+        // Fecha automaticamente após 4 segundos
+        setTimeout(() => {
+            const overlay = document.getElementById('flash-overlay');
+            if(overlay) {
+                overlay.style.transition = 'opacity 0.5s';
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 500);
+            }
+        }, 4000);
+    }
 
     /* ================================
        CARREGAR META DE VENDAS
@@ -794,9 +821,6 @@ $(document).ready(function() {
        ================================== */
     function emitirNFe(vendaId) {
 
-        // ⚠️ ATENÇÃO: URL APONTANDO PARA O SCRIPT DE TESTE (MOCK)
-        // Para voltar para produção/homologação real com certificado,
-        // altere para: '../actions/emitir_nfce.php'
         const urlEmissao = '../actions/testar_emissao_mock.php';
 
         showAlert('⏳ Gerando NFC-e de Simulação...', 'info');
@@ -808,14 +832,10 @@ $(document).ready(function() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // Mensagem ajustada para deixar claro que é um teste
                 showAlert('✅ SIMULAÇÃO: NFC-e gerada com sucesso! Chave Fictícia: ' + data.chave, 'success');
-                
-                // **MODIFICAÇÃO AQUI**: Abrir recibo/danfe em nova aba automaticamente
                 setTimeout(() => {
                     window.open('../actions/gerar_danfe.php?chave=' + data.chave, '_blank');
-                }, 1500); // Pequeno delay para usuário ler a mensagem de sucesso
-                
+                }, 1500);
             } else
                 showAlert('❌ Erro na simulação da NFC-e: ' + data.message, 'danger');
         })
@@ -833,21 +853,6 @@ $(document).ready(function() {
         $('#cliente_id').val(null).trigger('change');
         $('#venda-items').empty();
         atualizarTotal();
-    }
-
-    /* ================================
-       ALERTA DINÂMICO
-       ================================== */
-    function showAlert(message, type) {
-
-        $('#alert-container .alert').alert('close');
-
-        $('#alert-container').html(`
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                ${message}
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-            </div>
-        `);
     }
 
 });

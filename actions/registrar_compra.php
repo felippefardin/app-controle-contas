@@ -1,10 +1,10 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa o sistema de Flash Message
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+// 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO
 if (!isset($_SESSION['usuario_logado'])) {
-    // Se não estiver logado, redireciona para o login
     header('Location: login.php');
     exit;
 }
@@ -14,7 +14,6 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ CORREÇÃO: Define a variável $id_usuario vinda da sessão
 $id_usuario = $_SESSION['usuario_id'];
 
 // 3. PROCESSA O POST
@@ -23,11 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_fornecedor = (int)$_POST['id_fornecedor'];
     $valor_total = (float)$_POST['valor_total'];
     $observacao = trim($_POST['observacao']);
-    $produtos = $_POST['produtos'];
+    $produtos = $_POST['produtos'] ?? [];
 
     // VALIDAÇÕES
     if (empty($id_fornecedor) || empty($produtos) || $valor_total <= 0) {
-        $_SESSION['error_message'] = "Fornecedor ou produtos inválidos.";
+        set_flash_message('danger', "Fornecedor ou produtos inválidos.");
         header('Location: ../pages/compras.php');
         exit;
     }
@@ -89,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 6. GERA CONTA A PAGAR
-        // ✅ CORREÇÃO: Alterado de 'numero' para 'descricao' para bater com o schema.sql
         $data_vencimento = date('Y-m-d');
 
         $stmt_pagar = $conn->prepare("
@@ -103,13 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Finaliza transação
         $conn->commit();
 
-        $_SESSION['success_message'] = "Compra #$id_compra registrada com sucesso!";
+        set_flash_message('success', "Compra #$id_compra registrada com sucesso!");
         header('Location: ../pages/compras.php');
         exit;
 
     } catch (Exception $e) {
         $conn->rollback();
-        $_SESSION['error_message'] = "Erro ao registrar compra: " . $e->getMessage();
+        set_flash_message('danger', "Erro ao registrar compra: " . $e->getMessage());
         header('Location: ../pages/compras.php');
         exit;
     }

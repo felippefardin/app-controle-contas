@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa o sistema de Flash Messages
 
 // 1. Verifica Login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -26,11 +27,10 @@ $nome = '';
 $cpf = '';
 $telefone = '';
 $email = '';
-$codigo_indicacao = ''; // Variável para o código
+$codigo_indicacao = ''; 
 $foto_atual = 'default-profile.png';
 
 // 2. Busca dados atuais do usuário no Banco do Tenant
-// REMOVIDO 'codigo_indicacao' daqui para evitar o erro "Unknown column"
 $stmt = $conn->prepare("SELECT nome, cpf, telefone, email, foto FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 if ($stmt->execute()) {
@@ -43,10 +43,9 @@ if ($stmt->execute()) {
 }
 $stmt->close();
 
-// 2.1 Busca o Código de Indicação no Banco Master (onde ele realmente existe)
+// 2.1 Busca o Código de Indicação no Banco Master
 $connMaster = getMasterConnection();
 if ($connMaster) {
-    // Busca pelo e-mail, que é único e compartilhado entre os bancos
     $stmtM = $connMaster->prepare("SELECT codigo_indicacao FROM usuarios WHERE email = ? LIMIT 1");
     $stmtM->bind_param("s", $email);
     if ($stmtM->execute()) {
@@ -61,12 +60,12 @@ if ($connMaster) {
 $uploadDir = '../img/usuarios/';
 $erro = '';
 
-// Verifica mensagens via GET
+// Verifica mensagens via GET e converte para Flash Message
 if (isset($_GET['mensagem'])) {
-    $_SESSION['perfil_msg'] = $_GET['mensagem'];
+    set_flash_message('success', $_GET['mensagem']);
 }
 if (isset($_GET['erro'])) {
-    $_SESSION['perfil_erro'] = $_GET['erro'];
+    set_flash_message('danger', $_GET['erro']);
 }
 
 // 3. Processa o formulário de atualização de perfil
@@ -125,7 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stmt_update->execute()) {
                         $_SESSION['usuario_nome'] = $nome_novo;
                         $_SESSION['usuario_foto'] = $novoNomeFoto;
-                        $_SESSION['perfil_msg'] = "Dados atualizados com sucesso!";
+                        
+                        // Define mensagem de sucesso
+                        set_flash_message('success', "Dados atualizados com sucesso!");
                         header("Location: perfil.php");
                         exit;
                     } else $erro = "Erro ao atualizar os dados no banco.";
@@ -133,11 +134,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_check->close();
             }
         }
-        if ($erro) $_SESSION['perfil_erro'] = $erro;
+        
+        // Se houver erro no POST
+        if ($erro) {
+            set_flash_message('danger', $erro);
+        }
     }
 }
 
 include('../includes/header.php');
+
+// EXIBE O FLASH CARD CENTRALIZADO
+display_flash_message();
 ?>
 
 <!DOCTYPE html>
@@ -302,18 +310,6 @@ include('../includes/header.php');
             box-shadow: 0 6px 20px rgba(102, 16, 242, 0.5);
         }
 
-        /* Alertas */
-        .alert-custom {
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .alert-success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; color: #2ecc71; }
-        .alert-error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff6b6b; }
-
         /* Input Group para Copiar */
         .input-group {
             display: flex;
@@ -349,20 +345,6 @@ include('../includes/header.php');
 <div class="page-container">
     <h2><i class="fa-solid fa-user-pen"></i> Editar Perfil</h2>
 
-    <?php if (!empty($_SESSION['perfil_msg'])): ?>
-        <div class="alert-custom alert-success">
-            <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_SESSION['perfil_msg']) ?>
-        </div>
-        <?php unset($_SESSION['perfil_msg']); ?>
-    <?php endif; ?>
-
-    <?php if (!empty($_SESSION['perfil_erro'])): ?>
-        <div class="alert-custom alert-error">
-            <i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($_SESSION['perfil_erro']) ?>
-        </div>
-        <?php unset($_SESSION['perfil_erro']); ?>
-    <?php endif; ?>
-
     <form method="POST" enctype="multipart/form-data">
         
         <div class="profile-photo-container">
@@ -391,7 +373,6 @@ include('../includes/header.php');
         <div class="form-group">
             <label for="codigo_indicacao" class="fw-bold">Seu Código de Indicação (Exclusivo)</label>
             <div class="input-group">
-                <!-- Agora exibe o código buscado do banco Master -->
                 <input type="text" class="form-control text-center fw-bold text-primary" id="codigo_indicacao" value="<?= htmlspecialchars($codigo_indicacao ?: 'Não disponível') ?>" readonly>
                 <button class="btn-outline-secondary" type="button" onclick="copiarCodigo()">
                     <i class="fa-regular fa-copy"></i> Copiar
@@ -477,11 +458,6 @@ include('../includes/header.php');
             icon.classList.add("fa-eye");
         }
     }
-
-    // Fade out alerts
-    setTimeout(function() {
-        $('.alert-custom').fadeOut('slow');
-    }, 5000);
 </script>
 
 </body>

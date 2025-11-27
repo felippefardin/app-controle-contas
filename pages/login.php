@@ -1,9 +1,10 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../includes/utils.php'; // Importa Flash Messages
 
-// Se já estiver logado E não for redirecionamento de sucesso recente
-if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true && !isset($_GET['sucesso'])) {
-    header('Location: selecionar_usuario.php');
+// Se já estiver logado, vai pra Home
+if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true) {
+    header('Location: home.php');
     exit;
 }
 ?>
@@ -45,136 +46,41 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        h2 {
-            color: #00bfff;
-            margin-bottom: 25px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        label {
-            color: #bbb;
-            margin-bottom: 6px;
-            font-size: 0.95rem;
-        }
+        h2 { color: #00bfff; margin-bottom: 25px; text-align: center; font-weight: 600; }
+        label { color: #bbb; margin-bottom: 6px; font-size: 0.95rem; }
 
         input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            background-color: #262626;
-            color: #fff;
-            font-size: 1rem;
-            transition: 0.3s;
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333;
+            background-color: #262626; color: #fff; font-size: 1rem; transition: 0.3s;
         }
-
-        input:focus {
-            outline: none;
-            border-color: #00bfff;
-            box-shadow: 0 0 5px rgba(0,191,255,0.4);
-        }
+        input:focus { outline: none; border-color: #00bfff; box-shadow: 0 0 5px rgba(0,191,255,0.4); }
 
         button {
-            width: 100%;
-            padding: 13px;
-            border: none;
-            border-radius: 8px;
+            width: 100%; padding: 13px; border: none; border-radius: 8px;
             background: linear-gradient(135deg, #007bff, #00bfff);
-            color: white;
-            font-weight: bold;
-            font-size: 1.05rem;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-top: 10px;
+            color: white; font-weight: bold; font-size: 1.05rem;
+            cursor: pointer; transition: 0.2s; margin-top: 10px;
         }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 18px rgba(0,191,255,0.45); }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 18px rgba(0,191,255,0.45);
-        }
+        .links { text-align: center; margin-top: 18px; font-size: 0.9rem; }
+        .links a { color: #8aa4b1; margin: 0 10px; text-decoration: none; transition: 0.2s; }
+        .links a:hover { color: #00bfff; text-decoration: underline; }
 
-        .links {
-            text-align: center;
-            margin-top: 18px;
-            font-size: 0.9rem;
-        }
+        .reactivate-link { text-align: center; margin-top: 20px; }
+        .reactivate-link a { color: #00bfff; font-size: 0.95rem; text-decoration: none; }
+        .reactivate-link a:hover { color: #4dd3ff; }
 
-        .links a {
-            color: #8aa4b1;
-            margin: 0 10px;
-            text-decoration: none;
-            transition: 0.2s;
-        }
-
-        .links a:hover {
-            color: #00bfff;
-            text-decoration: underline;
-        }
-
-        /* Alertas */
-        .alert {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-
-        .alert-danger {
-            background-color: rgba(220,53,69,0.15);
-            color: #ff6b6b;
-            border: 1px solid #dc3545;
-        }
-
-        .alert-success {
-            background-color: rgba(40,167,69,0.15);
-            color: #2ecc71;
-            border: 1px solid #28a745;
-        }
-
-        .loading-spinner {
-            margin: 20px auto;
-            width: 32px;
-            height: 32px;
-            border: 4px solid rgba(255,255,255,0.25);
-            border-top: 4px solid #2ecc71;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
-        }
-
-        /* Link reativação */
-        .reactivate-link {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .reactivate-link a {
-            color: #00bfff;
-            font-size: 0.95rem;
-            text-decoration: none;
-        }
-
-        .reactivate-link a:hover {
-            color: #4dd3ff;
-        }
-        /* Ícones Flutuantes */
         .floating-icon {
-            position: fixed;
+            position: fixed; bottom: 30px; right: 30px;
             width: 50px; height: 50px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 20px; cursor: pointer; z-index: 1000;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             transition: all 0.3s;
+            background: #ffc107; color: #000;
         }
         .floating-icon:hover { transform: scale(1.1); }
-        
-        /* REMOVIDO CSS DO BTN SUPORTE DAQUI */
-        #btnFeedback { bottom: 30px; right: 30px; background: #ffc107; color: #000; }
-
         .tooltip-custom {
             position: absolute; right: 60px; background: #333; color: #fff;
             padding: 5px 10px; border-radius: 5px; font-size: 0.8rem;
@@ -186,158 +92,109 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
 </head>
 <body>
 
+<?php
+// EXIBE O POP-UP CENTRALIZADO SE HOUVER MENSAGEM (Sucesso no cadastro ou Erro login)
+display_flash_message();
+?>
+
 <div class="floating-icon" id="btnFeedback" data-bs-toggle="modal" data-bs-target="#modalFeedback">
     <i class="fa-solid fa-comment-dots"></i>
     <span class="tooltip-custom">Deixe seu feedback</span>
 </div>
 
 <div class="login-container">
-
     <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
 
-    <?php if (isset($_SESSION['login_erro'])): ?>
-        <div class="alert alert-danger">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <?= htmlspecialchars($_SESSION['login_erro']) ?>
-        </div>
-        <?php unset($_SESSION['login_erro']); ?>
-    <?php endif; ?>
+    <form action="../actions/login.php" method="POST">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" required autofocus>
 
-    <?php if (isset($_SESSION['erro'])): ?>
-        <div class="alert alert-danger">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <?= htmlspecialchars($_SESSION['erro']) ?>
-        </div>
-        <?php unset($_SESSION['erro']); ?>
-    <?php endif; ?>
+        <br><br>
 
-    <?php if (isset($_SESSION['sucesso'])): ?>
-        <div class="alert alert-success">
-            <i class="fa-solid fa-check-circle"></i>
-            <?= htmlspecialchars($_SESSION['sucesso']) ?>
-        </div>
-        <?php unset($_SESSION['sucesso']); ?>
-    <?php endif; ?>
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" required>
 
-    <?php if (isset($_GET['sucesso']) && $_GET['sucesso'] == '1'): ?>
-        <div class="alert alert-success">
-            <i class="fa-solid fa-check-circle"></i>
-            Login registrado com sucesso
-        </div>
+        <button type="submit">Entrar</button>
+    </form>
 
-        <p style="text-align:center; color:#aaa;">Acessando sistema...</p>
-        <div class="loading-spinner"></div>
+    <div class="links">
+        <a href="esqueci_senha_login.php">Esqueci minha senha</a> |
+        <a href="registro.php">Criar conta</a>
+    </div>
 
-        <script>
-            setTimeout(() => { window.location.href = 'selecionar_usuario.php'; }, 2000);
-        </script>
+    <div class="reactivate-link">
+        <a href="#" data-bs-toggle="modal" data-bs-target="#modalReativarConta">
+            <i class="fas fa-sync-alt"></i> Reativar Minha Assinatura
+        </a>
+    </div>
+</div>
 
-    <?php else: ?>
-
-        <form action="../actions/login.php" method="POST">
-            <label for="email">E-mail</label>
-            <input type="email" id="email" name="email" required autofocus>
-
-            <br><br>
-
-            <label for="senha">Senha</label>
-            <input type="password" id="senha" name="senha" required>
-
-            <button type="submit">Entrar</button>
-        </form>
-
-        <div class="links">
-            <a href="esqueci_senha_login.php">Esqueci minha senha</a> |
-            <a href="registro.php">Criar conta</a>
-        </div>
-
-        <div class="reactivate-link">
-            <a href="#" data-bs-toggle="modal" data-bs-target="#modalReativarConta">
-                <i class="fas fa-sync-alt"></i> Reativar Minha Assinatura
-            </a>
-        </div>
-
-        <div class="modal fade" id="modalFeedback" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content bg-dark text-white">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning">Seu Feedback</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="modalFeedback" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-warning">Seu Feedback</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFeedbackLogin">
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="anonimoFeedback" name="anonimo">
+                        <label class="form-check-label" for="anonimoFeedback">Enviar Anonimamente</label>
                     </div>
-                    <div class="modal-body">
-                        <form id="formFeedbackLogin">
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="anonimoFeedback" name="anonimo">
-                                <label class="form-check-label" for="anonimoFeedback">Enviar Anonimamente</label>
-                            </div>
-                            <div id="dadosIdentificacaoFeed">
-                                <input type="text" name="nome" class="form-control mb-2 bg-secondary text-white border-0" placeholder="Seu Nome">
-                                <input type="email" name="email" class="form-control mb-2 bg-secondary text-white border-0" placeholder="E-mail">
-                                <input type="text" name="whatsapp" class="form-control mb-2 bg-secondary text-white border-0" placeholder="WhatsApp">
-                            </div>
-                            <div class="mb-3">
-                                <label>Pontuação:</label>
-                                <select name="pontuacao" class="form-select bg-secondary text-white border-0">
-                                    <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
-                                    <option value="4">⭐⭐⭐⭐ Muito Bom</option>
-                                    <option value="3">⭐⭐⭐ Bom</option>
-                                    <option value="2">⭐⭐ Regular</option>
-                                    <option value="1">⭐ Ruim</option>
-                                </select>
-                            </div>
-                            <textarea name="descricao" class="form-control bg-secondary text-white border-0" rows="3" placeholder="Deixe sua opinião..." required></textarea>
-                        </form>
+                    <div id="dadosIdentificacaoFeed">
+                        <input type="text" name="nome" class="form-control mb-2 bg-secondary text-white border-0" placeholder="Seu Nome">
+                        <input type="email" name="email" class="form-control mb-2 bg-secondary text-white border-0" placeholder="E-mail">
+                        <input type="text" name="whatsapp" class="form-control mb-2 bg-secondary text-white border-0" placeholder="WhatsApp">
                     </div>
-                    <div class="modal-footer border-secondary">
-                        <button type="button" id="btnEnviarFeedback" class="btn btn-warning text-dark w-100" onclick="enviarFeedback()">Enviar Feedback</button>
+                    <div class="mb-3">
+                        <label>Pontuação:</label>
+                        <select name="pontuacao" class="form-select bg-secondary text-white border-0">
+                            <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
+                            <option value="4">⭐⭐⭐⭐ Muito Bom</option>
+                            <option value="3">⭐⭐⭐ Bom</option>
+                            <option value="2">⭐⭐ Regular</option>
+                            <option value="1">⭐ Ruim</option>
+                        </select>
                     </div>
-                </div>
+                    <textarea name="descricao" class="form-control bg-secondary text-white border-0" rows="3" placeholder="Deixe sua opinião..." required></textarea>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" id="btnEnviarFeedback" class="btn btn-warning text-dark w-100" onclick="enviarFeedback()">Enviar Feedback</button>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="modal fade" id="modalReativarConta" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content" style="background:#1d1d1d; color:#eee; border-radius:12px;">
-                    <div class="modal-header" style="border-bottom:1px solid #333;">
-                        <h5 class="modal-title">Reativar Conta Suspensa</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-
-                    <div class="modal-body">
-                        <p class="mb-3">Informe seu e-mail para receber o link de reativação.</p>
-
-                        <form action="../actions/solicitar_reativacao.php" method="POST">
-                            <label>E-mail</label>
-                            <input type="email" name="email_reativacao" class="form-control" required>
-
-                            <button type="submit" class="btn btn-primary w-100 mt-3">
-                                Enviar Link de Reativação
-                            </button>
-                        </form>
-                    </div>
-
-                </div>
+<div class="modal fade" id="modalReativarConta" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:#1d1d1d; color:#eee; border-radius:12px;">
+            <div class="modal-header" style="border-bottom:1px solid #333;">
+                <h5 class="modal-title">Reativar Conta Suspensa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Informe seu e-mail para receber o link de reativação.</p>
+                <form action="../actions/solicitar_reativacao.php" method="POST">
+                    <label>E-mail</label>
+                    <input type="email" name="email_reativacao" class="form-control" required>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">Enviar Link de Reativação</button>
+                </form>
             </div>
         </div>
-
-    <?php endif; ?>
-
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Controle de campos anônimos
     document.getElementById('anonimoFeedback').addEventListener('change', function() {
         document.getElementById('dadosIdentificacaoFeed').style.display = this.checked ? 'none' : 'block';
     });
 
-    // REMOVIDA FUNÇÃO enviarSuporte() DAQUI
-
     function enviarFeedback() {
         const btn = document.getElementById('btnEnviarFeedback');
         const originalText = btn.innerText;
-        
-        // Feedback Visual
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
@@ -355,7 +212,7 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
         })
         .catch(err => {
             console.error(err);
-            alert('Erro ao enviar feedback. Tente novamente.');
+            alert('Erro ao enviar feedback.');
         })
         .finally(() => {
             btn.disabled = false;
@@ -363,6 +220,5 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true &
         });
     }
 </script>
-
 </body>
 </html>

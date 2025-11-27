@@ -1,52 +1,56 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php';
 
-// 1. VERIFICA O LOGIN
-// Verifica se a sessão está ativa (true)
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
-    header('Location: ../pages/login.php?error=not_logged_in');
+    header('Location: ../pages/login.php');
     exit;
 }
 
-if (isset($_GET['id'])) {
+// POST Check
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    set_flash_message('danger', 'Método inválido.');
+    header('Location: ../pages/banco_cadastro.php');
+    exit;
+}
+
+// CSRF Check
+if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    set_flash_message('danger', 'Token inválido.');
+    header('Location: ../pages/banco_cadastro.php');
+    exit;
+}
+
+$id_registro = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+$id_usuario = $_SESSION['usuario_id'];
+
+if ($id_registro) {
     $conn = getTenantConnection();
     if ($conn === null) {
-        header('Location: ../pages/banco_cadastro.php?erro_exclusao=db_connection');
+        set_flash_message('danger', 'Erro de conexão.');
+        header('Location: ../pages/banco_cadastro.php');
         exit;
     }
 
-    // --- CORREÇÃO AQUI ---
-    // O ID do usuário agora está em $_SESSION['usuario_id']
-    $id_usuario = $_SESSION['usuario_id'];
-    $id_registro = (int)$_GET['id'];
-
-    // Validação extra
-    if (empty($id_usuario)) {
-         header('Location: ../pages/login.php?error=session_error');
-         exit;
-    }
-
-    // 2. EXCLUI O REGISTRO COM SEGURANÇA
     $stmt = $conn->prepare("DELETE FROM contas_bancarias WHERE id = ? AND id_usuario = ?");
     $stmt->bind_param("ii", $id_registro, $id_usuario);
     
     if ($stmt->execute()) {
-        // Verifica se alguma linha foi realmente afetada (excluída)
         if ($stmt->affected_rows > 0) {
-            header('Location: ../pages/banco_cadastro.php?sucesso_exclusao=1');
+            set_flash_message('success', 'Conta bancária excluída!');
         } else {
-            // Se não afetou linhas, o ID não existe ou não pertence ao usuário
-            header('Location: ../pages/banco_cadastro.php?erro_exclusao=not_found');
+            set_flash_message('danger', 'Conta não encontrada ou sem permissão.');
         }
     } else {
-        header('Location: ../pages/banco_cadastro.php?erro_exclusao=1');
+        set_flash_message('danger', 'Erro ao excluir.');
     }
     $stmt->close();
     $conn->close();
-    exit;
 } else {
-    header('Location: ../pages/banco_cadastro.php');
-    exit;
+    set_flash_message('danger', 'ID inválido.');
 }
+
+header('Location: ../pages/banco_cadastro.php');
+exit;
 ?>

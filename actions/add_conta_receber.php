@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Certifique-se de ter criado este arquivo no passo anterior
 
 // 1. VERIFICA O LOGIN
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -8,49 +9,50 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
     exit;
 }
 
-// 2. VERIFICA SE O MÉTODO É POST
+// 2. VERIFICA SE O MÉTODO É POST E O TOKEN
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $conn = getTenantConnection();
-    if ($conn === null) {
-        $_SESSION['error_message'] = "Falha na conexão com o banco de dados.";
+    
+    // Verifica CSRF (Segurança)
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        set_flash_message('danger', 'Token de segurança inválido. Tente novamente.');
         header('Location: ../pages/contas_receber.php');
         exit;
     }
 
-    // Pega o ID do usuário da sessão
+    $conn = getTenantConnection();
+    if ($conn === null) {
+        set_flash_message('danger', 'Falha na conexão com o banco de dados.');
+        header('Location: ../pages/contas_receber.php');
+        exit;
+    }
+
     $usuario_id = $_SESSION['usuario_id'] ?? null;
 
     if (!$usuario_id) {
-        $_SESSION['error_message'] = "Sessão expirada. Faça login novamente.";
+        set_flash_message('danger', 'Sessão expirada. Faça login novamente.');
         header('Location: ../pages/login.php');
         exit;
     }
 
     // Pega dados do formulário
-    // OBS: O input hidden no modal contas_receber.php se chama 'pessoa_id'
     $id_pessoa_fornecedor = !empty($_POST['pessoa_id']) ? (int)$_POST['pessoa_id'] : null;
-    
     $numero = trim($_POST['numero'] ?? '');
     $descricao = trim($_POST['descricao'] ?? '');
     
-    // Tratamento do valor (R$ 1.000,00 -> 1000.00)
-    $valorStr = $_POST['valor'] ?? '0';
-    $valor = str_replace('.', '', $valorStr);
-    $valor = str_replace(',', '.', $valor);
-    $valor = floatval($valor);
-
-    $data_vencimento = $_POST['data_vencimento'] ?? '';
+    // --- Validação e Tratamento de Dados ---
+    // Usa funções do utils.php para garantir que R$ 1.000,00 vire 1000.00 e datas fiquem certas
+    $valor = brl_to_float($_POST['valor']); 
+    $data_vencimento = data_para_iso($_POST['data_vencimento']); 
     $id_categoria = !empty($_POST['id_categoria']) ? (int)$_POST['id_categoria'] : null;
 
     // Validação básica
-    if ($valor <= 0 || empty($data_vencimento) || empty($id_categoria)) {
-        $_SESSION['error_message'] = "Preencha: Valor, Vencimento e Categoria.";
+    if ($valor <= 0 || empty($data_vencimento) || empty($id_categoria) || empty($descricao)) {
+        set_flash_message('danger', 'Preencha a descrição, categoria, data e um valor válido.');
         header('Location: ../pages/contas_receber.php');
         exit;
     }
 
     // 3. INSERE OS DADOS
-    // Status padrão é 'pendente'
     $sql = "INSERT INTO contas_receber (
                 id_pessoa_fornecedor, 
                 numero,
@@ -65,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare($sql);
     
     if ($stmt) {
-        // Tipos: i=int, s=string, s=string, d=double, s=string, i=int, i=int
         $stmt->bind_param("issdsii", 
             $id_pessoa_fornecedor, 
             $numero,
@@ -77,13 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Receita adicionada com sucesso!";
+            set_flash_message('success', 'Receita adicionada com sucesso!');
         } else {
-            $_SESSION['error_message'] = "Erro SQL: " . $stmt->error;
+            set_flash_message('danger', 'Erro ao salvar no banco: ' . $stmt->error);
         }
         $stmt->close();
     } else {
-        $_SESSION['error_message'] = "Erro ao preparar query: " . $conn->error;
+        set_flash_message('danger', 'Erro técnico ao preparar consulta.');
     }
 
     header('Location: ../pages/contas_receber.php');

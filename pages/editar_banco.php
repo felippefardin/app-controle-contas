@@ -1,41 +1,30 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php';
 
-// 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
-// Verifica se a sessão está ativa (true)
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
 }
 
 $conn = getTenantConnection();
-if ($conn === null) {
-    die("Falha ao obter a conexão com o banco de dados do cliente.");
-}
-
-// --- CORREÇÃO AQUI ---
-// O ID do usuário agora está em $_SESSION['usuario_id']
 $id_usuario = $_SESSION['usuario_id'];
 $id_registro = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-include('../includes/header.php');
-
-if ($id_registro === 0) {
-    echo "<div class='container'><h1>ID de registro inválido.</h1></div>";
-    include('../includes/footer.php');
-    exit;
-}
-
-// 2. BUSCA OS DADOS DA CONTA COM SEGURANÇA
 $stmt = $conn->prepare("SELECT * FROM contas_bancarias WHERE id = ? AND id_usuario = ?");
 $stmt->bind_param("ii", $id_registro, $id_usuario);
 $stmt->execute();
 $result = $stmt->get_result();
 $registro = $result->fetch_assoc();
 
+include('../includes/header.php');
+
+// POP-UP
+display_flash_message();
+
 if (!$registro) {
-    echo "<div class='container'><h1>Conta bancária não encontrada ou você não tem permissão para editá-la.</h1></div>";
+    echo "<div class='container'><h1>Conta não encontrada ou acesso negado.</h1></div>";
     include('../includes/footer.php');
     exit;
 }
@@ -62,6 +51,7 @@ if (!$registro) {
     <h1><i class="fa-solid fa-pen-to-square"></i> Editar Conta Bancária</h1>
     
     <form action="../actions/editar_banco_action.php" method="POST">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <input type="hidden" name="id" value="<?= htmlspecialchars($registro['id']) ?>">
         
         <div class="form-row">

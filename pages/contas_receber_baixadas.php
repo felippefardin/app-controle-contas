@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils para Flash Messages
 
 if (!isset($_SESSION['usuario_logado'])) {
     header("Location: ../pages/login.php");
@@ -10,6 +11,9 @@ $conn = getTenantConnection();
 $usuarioId = $_SESSION['usuario_id'];
 
 include('../includes/header.php');
+
+// Exibe a mensagem centralizada
+display_flash_message();
 
 $where = ["cr.status='baixada'", "cr.usuario_id = " . intval($usuarioId)];
 
@@ -38,10 +42,8 @@ $result = $conn->query($sql);
   <title>Contas Recebidas</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    /* Mesmos estilos de contas_receber.php */
     body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
     h2 { text-align: center; color: #00bfff; }
-    .success-message { background-color: #27ae60; color: white; padding: 15px; margin-bottom: 20px; border-radius: 5px; text-align: center; }
     
     form.search-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 25px; }
     input { padding: 10px; background: #333; border: 1px solid #444; color: #eee; border-radius: 5px; }
@@ -63,12 +65,6 @@ $result = $conn->query($sql);
   </style>
 </head>
 <body>
-
-<?php
-if (isset($_SESSION['success_message'])) echo "<div class='success-message'>{$_SESSION['success_message']}</div>";
-if (isset($_SESSION['error_message'])) echo "<div class='success-message' style='background-color:#cc3333;'>{$_SESSION['error_message']}</div>";
-unset($_SESSION['success_message'], $_SESSION['error_message']);
-?>
 
 <h2>Contas Recebidas (Baixadas)</h2>
 
@@ -112,7 +108,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <div style='display:flex; gap:5px;'>
                     <a href='#' onclick="openEstornarModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['nome_pessoa'])) ?>'); return false;" class='btn-action btn-estornar'><i class='fa-solid fa-undo'></i> Estornar</a>
                     
-                    <a href='#' onclick="openDeleteModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['nome_pessoa'])) ?>'); return false;" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+                    <button 
+                        class='btn-action btn-excluir' 
+                        data-id="<?= $row['id'] ?>" 
+                        data-nome="<?= htmlspecialchars($row['nome_pessoa']) ?>"
+                        onclick="openDeleteModal(this)">
+                        <i class='fa-solid fa-trash'></i> Excluir
+                    </button>
                 </div>
             </td>
         </tr>
@@ -128,10 +130,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       <h3>Confirmar Exclusão</h3>
       <p>Deseja excluir este registro de recebimento?</p>
       <p><strong>Cliente:</strong> <span id="delete-nome"></span></p>
-      <div style="margin-top: 20px;">
-        <a id="btn-confirm-delete" href="#" class='btn-action btn-excluir' style='padding: 10px 20px; font-size:16px;'>Sim, Excluir</a>
-        <button onclick="document.getElementById('deleteModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
-      </div>
+      
+      <form action="../actions/excluir_conta_receber.php" method="POST">
+          <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+          <input type="hidden" name="id" id="delete-id">
+          <input type="hidden" name="redirect" value="baixadas">
+          
+          <div style="margin-top: 20px;">
+            <button type="submit" class='btn-action btn-excluir' style='padding: 10px 20px; font-size:16px; border:none;'>Sim, Excluir</button>
+            <button type="button" onclick="document.getElementById('deleteModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
+          </div>
+      </form>
     </div>
 </div>
 
@@ -150,20 +159,20 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 </div>
 
 <script>
-function openDeleteModal(id, nome) {
+function openDeleteModal(button) {
+    let id = button.getAttribute('data-id');
+    let nome = button.getAttribute('data-nome');
+    document.getElementById('delete-id').value = id;
     document.getElementById('delete-nome').innerText = nome;
-    document.getElementById('btn-confirm-delete').href = "../actions/excluir_conta_receber.php?id=" + id + "&redirect=baixadas";
     document.getElementById('deleteModal').style.display = 'flex';
 }
 
-// ✅ Função para abrir o modal de estorno
 function openEstornarModal(id, nome) {
     document.getElementById('estornar-nome').innerText = nome;
     document.getElementById('btn-confirm-estorno').href = "../actions/estornar_conta_receber.php?id=" + id;
     document.getElementById('estornarModal').style.display = 'flex';
 }
 
-// Fecha qualquer modal ao clicar fora
 window.onclick = function(e) { 
     if (e.target.classList.contains('modal')) {
         e.target.style.display = 'none';

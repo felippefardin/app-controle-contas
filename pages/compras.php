@@ -1,10 +1,10 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php';
+require_once '../includes/utils.php'; // Importa Utils para Flash Message
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+// 1. VERIFICA LOGIN
 if (!isset($_SESSION['usuario_logado'])) {
-    // Se não estiver logado, redireciona para o login
     header('Location: login.php');
     exit;
 }
@@ -13,16 +13,15 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
-$usuarioId = $_SESSION['usuario_id']; // Linha 17 corrigida
-$perfil = $_SESSION['nivel_acesso']; // Linha 18 corrigida
+// 2. PEGA DADOS
+$usuarioId = $_SESSION['usuario_id'];
+$perfil = $_SESSION['nivel_acesso'];
 
-// --- BLOCO DE PROCESSAMENTO AJAX ---
+// --- BLOCO AJAX ---
 if (isset($_GET['action'])) {
     $term = "%" . ($_GET['term'] ?? '') . "%";
     $response = [];
 
-    // ✅ 3. SIMPLIFICA AS QUERIES AJAX PARA O MODELO SAAS
     // Busca de Fornecedores
     if ($_GET['action'] === 'search_fornecedores') {
         $sql = "SELECT id, nome FROM pessoas_fornecedores WHERE tipo = 'fornecedor' AND nome LIKE ? AND id_usuario = ?";
@@ -56,8 +55,11 @@ if (isset($_GET['action'])) {
     exit;
 }
 
-// --- CARREGAMENTO NORMAL DA PÁGINA ---
+// --- CARREGAMENTO DA PÁGINA ---
 include('../includes/header.php');
+
+// EXIBE O FLASH CARD FLUTUANTE
+display_flash_message();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -83,15 +85,6 @@ include('../includes/header.php');
 <body>
 <div class="container">
     <h1><i class="fas fa-dolly"></i> Registrar Compra</h1>
-
-    <?php if (isset($_SESSION['success_message'])): ?>
-        <div class="alert alert-success"><?= $_SESSION['success_message'] ?></div>
-        <?php unset($_SESSION['success_message']); ?>
-    <?php endif; ?>
-    <?php if (isset($_SESSION['error_message'])): ?>
-        <div class="alert alert-danger"><?= $_SESSION['error_message'] ?></div>
-        <?php unset($_SESSION['error_message']); ?>
-    <?php endif; ?>
 
     <form action="../actions/registrar_compra.php" method="POST" id="form-compra">
         <div class="form-group">

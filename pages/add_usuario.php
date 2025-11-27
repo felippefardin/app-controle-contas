@@ -1,11 +1,13 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Necessário para buscar o plano
+require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
 // Verifica Permissão
 $nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
 if ($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') {
-    header('Location: usuarios.php?erro=1&msg=Acesso negado');
+    set_flash_message('danger', 'Acesso negado.');
+    header('Location: usuarios.php');
     exit;
 }
 
@@ -51,6 +53,9 @@ if ($plano_tenant === 'plus' || $plano_tenant === 'essencial') {
 }
 
 include('../includes/header.php');
+
+// EXIBE O POP-UP CENTRALIZADO
+display_flash_message();
 ?>
 
 <!DOCTYPE html>
@@ -62,7 +67,6 @@ include('../includes/header.php');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Mesmos estilos originais mantidos para consistência */
         body { background-color: #121212; color: #eee; font-family: 'Segoe UI', sans-serif; }
         .page-container { max-width: 600px; margin: 40px auto; background: #1e1e1e; padding: 35px; border-radius: 12px; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #333; }
         .page-container h2 { color: #00bfff; border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
@@ -77,7 +81,6 @@ include('../includes/header.php');
         .btn-back { background: #444; color: #ddd; }
         .btn-submit { background: linear-gradient(135deg, #00bfff, #0099cc); color: #fff; flex-grow: 1; }
         
-        /* Estilo dos Checkboxes */
         .permissoes-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #252525; padding: 15px; border-radius: 6px; border: 1px solid #444; }
         .check-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
         .check-item input { accent-color: #00bfff; width: 16px; height: 16px; }
@@ -88,13 +91,8 @@ include('../includes/header.php');
 <div class="page-container">
     <h2><i class="fa-solid fa-user-plus"></i> Novo Usuário</h2>
 
-    <?php if (isset($_GET['erro'])): ?>
-        <div style="padding: 12px; border-radius: 6px; margin-bottom: 20px; background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff6b6b;">
-            <?= htmlspecialchars($_GET['msg'] ?? 'Erro desconhecido') ?>
-        </div>
-    <?php endif; ?>
-
     <form action="../actions/add_usuario.php" method="POST">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
         <div class="form-group">
             <label>Nome Completo:</label>
@@ -187,7 +185,6 @@ include('../includes/header.php');
             area.style.display = 'block';
         }
     }
-    // Inicializa estado
     togglePermissoes();
 </script>
 

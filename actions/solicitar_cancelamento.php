@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/config/config.php';
 require_once 'enviar_email.php'; 
+require_once '../includes/utils.php'; // Importa Flash Messages
 
 // 1. Verifica se o usuário está logado
 if (!isset($_SESSION['usuario_logado']) || !isset($_POST['opcao_cancelamento'])) {
@@ -11,14 +12,12 @@ if (!isset($_SESSION['usuario_logado']) || !isset($_POST['opcao_cancelamento']))
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? 0;
-$opcao = $_POST['opcao_cancelamento']; // 'desativar' ou 'excluir'
+$opcao = $_POST['opcao_cancelamento']; 
 
 $conn = getMasterConnection();
 
 // 2. Atualiza a intenção de cancelamento
 try {
-    // OBS: Se sua tabela 'tenants' usa a coluna 'id' como chave primária em vez de 'tenant_id', 
-    // ajuste o WHERE abaixo para: WHERE id = ?
     $sql = "UPDATE tenants SET tipo_cancelamento = ? WHERE tenant_id = ?";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -26,12 +25,9 @@ try {
         $stmt->execute();
         $stmt->close();
     }
-} catch (Exception $e) {
-    // Ignora erro silenciosamente para não travar o fluxo caso a coluna não exista ainda
-}
+} catch (Exception $e) { }
 
-// 3. Busca dados para o e-mail (CORREÇÃO DO ERRO DE COLLATION AQUI)
-// Adicionamos 'COLLATE utf8mb4_unicode_ci' para garantir que o MySQL consiga comparar os textos
+// 3. Busca dados para o e-mail
 $sqlInfo = "SELECT t.*, u.nome, u.email 
             FROM tenants t 
             JOIN usuarios u ON (u.email COLLATE utf8mb4_unicode_ci = t.admin_email COLLATE utf8mb4_unicode_ci)
@@ -40,7 +36,6 @@ $sqlInfo = "SELECT t.*, u.nome, u.email
 $stmtInfo = $conn->prepare($sqlInfo);
 
 if (!$stmtInfo) {
-    // Fallback: Se falhar por causa da coluna tenant_id, tenta usar 'id'
     $sqlInfo = "SELECT t.*, u.nome, u.email 
                 FROM tenants t 
                 JOIN usuarios u ON (u.email COLLATE utf8mb4_unicode_ci = t.admin_email COLLATE utf8mb4_unicode_ci)
@@ -55,7 +50,7 @@ if ($stmtInfo) {
     $dados = $resultInfo->fetch_assoc();
     $stmtInfo->close();
 } else {
-    $dados = []; // Evita erro se a query falhar totalmente
+    $dados = []; 
 }
 
 // 4. Lógica de Data
@@ -65,7 +60,6 @@ if (isset($dados['data_renovacao']) && !empty($dados['data_renovacao'])) {
     $data_fim = date('d/m/Y', strtotime('+30 days'));
 }
 
-// Dados para envio do e-mail
 $nome_usuario = $dados['nome'] ?? $_SESSION['nome'] ?? 'Cliente';
 $email_usuario = $dados['email'] ?? $_SESSION['email'] ?? '';
 $nome_empresa = $dados['nome_empresa'] ?? 'Sua Empresa';
@@ -94,7 +88,7 @@ if (!empty($email_usuario)) {
 
 $conn->close();
 
-$_SESSION['sucesso'] = "Solicitação recebida. Seu acesso continua até o fim do ciclo.";
+set_flash_message('warning', "Solicitação recebida. Seu acesso continua até o fim do ciclo.");
 header('Location: ../pages/minha_assinatura.php');
 exit;
 ?>

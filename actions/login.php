@@ -2,12 +2,13 @@
 // actions/login.php
 require_once '../includes/session_init.php';
 require_once __DIR__ . '/../database.php';
+require_once '../includes/utils.php'; // Importa o sistema de Flash Messages
 
 $email = trim($_POST['email'] ?? '');
 $senha = trim($_POST['senha'] ?? '');
 
 if (!$email || !$senha) {
-    $_SESSION['login_erro'] = "Preencha todos os campos.";
+    set_flash_message('warning', 'Preencha o e-mail e a senha para entrar.');
     header("Location: ../pages/login.php");
     exit;
 }
@@ -22,19 +23,20 @@ try {
     $stmt->close();
 
     if (!$userMaster) {
-        $_SESSION['login_erro'] = "Conta não encontrada.";
+        set_flash_message('danger', 'Conta não encontrada. Verifique o e-mail.');
         $connMaster->close();
         header("Location: ../pages/login.php");
         exit;
     }
 
     if (!password_verify($senha, $userMaster['senha'])) {
-        $_SESSION['login_erro'] = "E-mail ou senha inválidos.";
+        set_flash_message('danger', 'Senha incorreta. Tente novamente.');
         $connMaster->close();
         header("Location: ../pages/login.php");
         exit;
     }
 
+    // Super Admin
     $emails_admin = ['contatotech.tecnologia@gmail.com', 'contatotech.tecnologia@gmail.com.br'];
     if (in_array($userMaster['email'], $emails_admin)) {
         $_SESSION['super_admin'] = $userMaster;
@@ -84,7 +86,7 @@ try {
             $_SESSION['email']          = $userMaster['email'];
             $_SESSION['usuario_logado'] = true;
             $_SESSION['nivel_acesso']   = 'proprietario';
-            $_SESSION['erro_assinatura'] = "Seu período gratuito acabou ou sua assinatura está pendente. Escolha um plano.";
+            $_SESSION['erro_assinatura'] = "Seu período gratuito acabou ou sua assinatura está pendente.";
             
             $connMaster->close();
             header("Location: ../pages/assinar.php");
@@ -122,7 +124,7 @@ try {
         }
     }
 
-    unset($_SESSION['login_erro']);
+    // Sucesso!
     $_SESSION['usuario_id']        = $idUsuarioTenant ?? $userMaster['id'];
     $_SESSION['usuario_id_master'] = $userMaster['id'];
     $_SESSION['nome']              = $userMaster['nome'];
@@ -131,11 +133,15 @@ try {
     $_SESSION['nivel_acesso']      = $nivelAcessoTenant;
     $_SESSION['usuario_logado']    = true;
 
-    header("Location: ../pages/selecionar_usuario.php");
+    // Define mensagem de boas-vindas para a Home
+    set_flash_message('success', "Bem-vindo de volta, {$userMaster['nome']}!");
+
+    // REDIRECIONAMENTO DIRETO PARA HOME (Mudança solicitada)
+    header("Location: ../pages/home.php");
     exit;
 
 } catch (Exception $e) {
-    $_SESSION['login_erro'] = "Erro interno. Tente novamente.";
+    set_flash_message('danger', "Erro interno no servidor. Tente novamente mais tarde.");
     header("Location: ../pages/login.php");
     exit;
 }

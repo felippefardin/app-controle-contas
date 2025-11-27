@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa Utils
 
 // Verifica login
 if (!isset($_SESSION['usuario_logado'])) {
@@ -12,16 +13,18 @@ $conn = getTenantConnection();
 if ($conn === null) die("Falha ao obter a conexão com o banco de dados.");
 
 $usuarioId = $_SESSION['usuario_id'];
-$perfil = $_SESSION['nivel_acesso'];
 
 include('../includes/header.php');
 
-// Consulta os registros do usuário logado
+// Consulta
 $sql = "SELECT * FROM pessoas_fornecedores WHERE id_usuario = ? ORDER BY nome ASC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $usuarioId);
 $stmt->execute();
 $result = $stmt->get_result();
+
+// EXIBE O POP-UP CENTRALIZADO
+display_flash_message();
 ?>
 
 <!DOCTYPE html>
@@ -48,27 +51,14 @@ $result = $stmt->get_result();
 <div class="container">
     <h1><i class="fa-solid fa-users"></i> Clientes e Fornecedores</h1>
 
-    <!-- Mensagens de Sucesso/Erro -->
-    <?php if (!empty($_SESSION['mensagem_sucesso'])): ?>
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <?= $_SESSION['mensagem_sucesso']; unset($_SESSION['mensagem_sucesso']); ?>
-        <button type="button" class="close" data-dismiss="alert">&times;</button>
-    </div>
-    <?php endif; ?>
-
-    <?php if (!empty($_SESSION['mensagem_erro'])): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <?= $_SESSION['mensagem_erro']; unset($_SESSION['mensagem_erro']); ?>
-        <button type="button" class="close" data-dismiss="alert">&times;</button>
-    </div>
-    <?php endif; ?>
-
     <div class="card bg-dark text-white mb-4">
         <div class="card-header">
             <h2>Cadastrar Novo</h2>
         </div>
         <div class="card-body">
             <form action="../actions/cadastrar_pessoa_fornecedor_action.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="nome">Nome Completo</label>
@@ -128,6 +118,7 @@ $result = $stmt->get_result();
                 <td>
                     <a href="historico_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-success"><i class="fa-solid fa-history"></i></a>
                     <a href="editar_pessoa_fornecedor.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-info"><i class="fa-solid fa-pen-to-square"></i></a>
+                    
                     <button class="btn btn-sm btn-danger" onclick="confirmDelete(<?= $row['id'] ?>)"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
@@ -137,7 +128,6 @@ $result = $stmt->get_result();
     </div>
 </div>
 
-<!-- Modal de Exclusão -->
 <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content bg-dark text-white">
@@ -149,8 +139,13 @@ $result = $stmt->get_result();
         Tem certeza que deseja excluir este cadastro?
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-        <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Excluir</a>
+        <form action="../actions/excluir_pessoa_fornecedor.php" method="POST">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="id" id="deleteId">
+            
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger">Excluir</button>
+        </form>
       </div>
     </div>
   </div>
@@ -179,7 +174,7 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
 
 // Modal de exclusão
 function confirmDelete(id) {
-    document.getElementById('confirmDeleteBtn').href = '../actions/excluir_pessoa_fornecedor.php?id=' + id;
+    document.getElementById('deleteId').value = id;
     $('#deleteModal').modal('show');
 }
 </script>

@@ -1,28 +1,19 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php';
+require_once '../includes/utils.php';
 
-// 1. VERIFICA O LOGIN E PEGA A CONEXÃO
-if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { // ❗️ Verificação atualizada
+if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
     exit;
 }
 $conn = getTenantConnection();
-if ($conn === null) {
-    die("Falha ao obter a conexão com o banco de dados do cliente.");
-}
 
-// 2. PEGA OS DADOS DO USUÁRIO E O ID DO REGISTRO
-// ❗️❗️ INÍCIO DA CORREÇÃO ❗️❗️
-// $usuario_logado = $_SESSION['usuario_logado']; // Linha 16 (INCORRETA)
-// $id_usuario = $usuario_logado['id'];
-$id_usuario = $_SESSION['usuario_id']; // Linha 16 (CORRIGIDA)
-// ❗️❗️ FIM DA CORREÇÃO ❗️❗️
+$id_usuario = $_SESSION['usuario_id'];
 $id_registro = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// 3. BUSCA O REGISTRO NO BANCO
 $stmt = $conn->prepare("SELECT * FROM pessoas_fornecedores WHERE id = ? AND id_usuario = ?");
-$stmt->bind_param("ii", $id_registro, $id_usuario); // $id_usuario agora está correto
+$stmt->bind_param("ii", $id_registro, $id_usuario);
 $stmt->execute();
 $result = $stmt->get_result();
 $pessoa = $result->fetch_assoc();
@@ -30,9 +21,11 @@ $stmt->close();
 
 include('../includes/header.php');
 
-// Se $pessoa for nulo (não encontrado ou não pertence ao usuário), exibe erro
+// EXIBE O POP-UP
+display_flash_message();
+
 if (!$pessoa) {
-    echo "<div class='container' style='background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; color: #eee;'>Registro não encontrado ou você não tem permissão para editá-lo.</div>";
+    echo "<div class='container' style='background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; color: #eee;'>Registro não encontrado ou você não tem permissão.</div>";
     include('../includes/footer.php');
     exit; 
 }
@@ -65,7 +58,7 @@ if (!$pessoa) {
     <h1><i class="fa-solid fa-pen-to-square"></i> Editar: <?= htmlspecialchars($pessoa['nome']) ?></h1>
     
     <form action="../actions/editar_pessoa_fornecedor_action.php" method="POST">
-        <!-- Envia o ID do registro que está sendo editado -->
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <input type="hidden" name="id" value="<?= $pessoa['id'] ?>">
 
         <div class="form-row">

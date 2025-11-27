@@ -1,8 +1,8 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
-// ✅ 1. VERIFICA LOGIN E PERMISSÃO
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header("Location: ../pages/login.php");
     exit();
@@ -12,13 +12,12 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ 2. DADOS DO USUÁRIO
 $usuarioId = $_SESSION['usuario_id'];
-$perfil = $_SESSION['nivel_acesso'];
-
 include('../includes/header.php');
 
-// ✅ 3. QUERY ATUALIZADA (BAIXADAS)
+// Exibe a mensagem centralizada
+display_flash_message();
+
 $where = ["cp.status='baixada'"];
 $where[] = "cp.usuario_id = " . intval($usuarioId);
 
@@ -51,26 +50,9 @@ $result = $conn->query($sql);
 
   <style>
     * { box-sizing: border-box; }
-    body {
-      background-color: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      margin: 0; padding: 20px;
-    }
+    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
     h2 { text-align: center; color: #00bfff; }
     
-    .success-message {
-      background-color: #27ae60;
-      color: white; padding: 15px; margin-bottom: 20px;
-      border-radius: 5px; text-align: center;
-      position: relative; font-weight: bold;
-    }
-    .close-msg-btn {
-      position: absolute; top: 50%; right: 15px;
-      transform: translateY(-50%); font-size: 22px;
-      cursor: pointer;
-    }
-
     form.search-form {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
       margin-bottom: 25px; max-width: 900px; margin-left:auto; margin-right:auto;
@@ -108,17 +90,6 @@ $result = $conn->query($sql);
 </head>
 <body>
 
-<?php
-if (isset($_SESSION['success_message'])) {
-    echo '<div class="success-message">' . htmlspecialchars($_SESSION['success_message']) . '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
-    unset($_SESSION['success_message']);
-}
-if (isset($_SESSION['error_message'])) {
-    echo '<div class="success-message" style="background-color: #cc3333;">' . htmlspecialchars($_SESSION['error_message']) . '<span class="close-msg-btn" onclick="this.parentElement.style.display=\'none\';">&times;</span></div>';
-    unset($_SESSION['error_message']);
-}
-?>
-
 <h2>Contas a Pagar - Baixadas</h2>
 
 <form class="search-form" method="GET" action="">
@@ -145,23 +116,17 @@ if ($result && $result->num_rows > 0) {
     echo "<tbody>";
     
     while($row = $result->fetch_assoc()){
-        $data_vencimento = $row['data_vencimento'] ?? null;
-        $data_baixa = $row['data_baixa'] ?? null;
-        
-        $data_baixa_formatada = $data_baixa ? date('d/m/Y', strtotime($data_baixa)) : '-';
+        $data_baixa = $row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-';
         $fornecedorDisplay = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : ($row['fornecedor'] ?? 'N/D');
         $quemBaixou = !empty($row['nome_quem_baixou']) ? $row['nome_quem_baixou'] : 'Sistema/N/D';
 
         echo "<tr>";
         echo "<td>".htmlspecialchars($fornecedorDisplay)."</td>";
-        
-        // ✅ Exibição do Número
         echo "<td>".htmlspecialchars($row['numero'] ?? '-')."</td>";
-        
         echo "<td>".htmlspecialchars($row['descricao'] ?? '')."</td>";
         echo "<td>R$ ".number_format($row['valor'], 2, ',', '.')."</td>";
         echo "<td>".htmlspecialchars($quemBaixou)."</td>";
-        echo "<td>".$data_baixa_formatada."</td>";
+        echo "<td>".$data_baixa."</td>";
         echo "<td>".htmlspecialchars($row['nome_categoria'] ?? 'N/A')."</td>";
         
         $linkComprovante = '--';
@@ -173,7 +138,14 @@ if ($result && $result->num_rows > 0) {
         echo "<td>
             <div style='display:flex; gap:5px;'>
                 <a href='../actions/estornar_conta_pagar.php?id={$row['id']}' class='btn-action btn-estornar' onclick=\"return confirm('Tem certeza que deseja estornar esta conta?');\"><i class='fa-solid fa-undo'></i> Estornar</a>
-                <a href='#' onclick=\"openDeleteModal({$row['id']}, '".htmlspecialchars(addslashes($fornecedorDisplay))."'); return false;\" class='btn-action btn-excluir'><i class='fa-solid fa-trash'></i> Excluir</a>
+                
+                <button 
+                    class='btn-action btn-excluir' 
+                    data-id='{$row['id']}' 
+                    data-nome='".htmlspecialchars($fornecedorDisplay, ENT_QUOTES)."' 
+                    onclick='openDeleteModal(this)'>
+                    <i class='fa-solid fa-trash'></i> Excluir
+                </button>
             </div>
         </td>";
         echo "</tr>";
@@ -181,7 +153,7 @@ if ($result && $result->num_rows > 0) {
     echo "</tbody></table>";
 } else {
     if (!$result) {
-        echo "<p style='color: #ff6b6b;'>Erro na consulta: " . htmlspecialchars($conn->error) . "</p>";
+        echo "<p style='color: #ff6b6b;'>Erro na consulta.</p>";
     } else {
         echo "<p style='text-align:center;'>Nenhuma conta baixada encontrada.</p>";
     }
@@ -189,26 +161,33 @@ if ($result && $result->num_rows > 0) {
 ?>
 
 <div id="deleteModal" class="modal">
-    <div class="modal-content"></div>
-</div>
-
-<script>
-function openDeleteModal(id, fornecedor) {
-    const modal = document.getElementById('deleteModal');
-    const modalContent = modal.querySelector('.modal-content');
-
-    modalContent.innerHTML = `
+    <div class="modal-content">
       <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
       <h3>Confirmar Exclusão</h3>
       <p>Tem certeza de que deseja excluir esta conta baixada?</p>
-      <p><strong>Fornecedor:</strong> ${fornecedor}</p>
-      <div style="margin-top: 20px;">
-        <a href="../actions/excluir_conta_pagar.php?id=${id}&redirect=baixadas" class='btn-action btn-excluir' style='padding: 10px 20px; font-size:16px;'>Sim, Excluir</a>
-        <button onclick="document.getElementById('deleteModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
-      </div>
-    `;
+      <p><strong>Fornecedor:</strong> <span id="delete-nome"></span></p>
+      
+      <form action="../actions/excluir_conta_pagar.php" method="POST">
+          <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+          <input type="hidden" name="id" id="delete-id">
+          <input type="hidden" name="redirect" value="baixadas">
+          
+          <div style="margin-top: 20px;">
+            <button type="submit" class='btn-action btn-excluir' style='padding: 10px 20px; font-size:16px; border:none;'>Sim, Excluir</button>
+            <button type="button" onclick="document.getElementById('deleteModal').style.display='none'" class='btn-action' style='background-color: #555; padding: 10px 20px; font-size:16px; border:none;'>Cancelar</button>
+          </div>
+      </form>
+    </div>
+</div>
+
+<script>
+function openDeleteModal(button) {
+    let id = button.getAttribute('data-id');
+    let nome = button.getAttribute('data-nome');
     
-    modal.style.display = 'flex';
+    document.getElementById('delete-id').value = id;
+    document.getElementById('delete-nome').innerText = nome;
+    document.getElementById('deleteModal').style.display = 'flex';
 }
 
 window.onclick = function(event) {

@@ -1,82 +1,86 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+require_once '../includes/utils.php'; // Importa utils
 
-// Verifica login
+// 1. Verifica login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header("Location: ../pages/login.php");
     exit;
 }
 
-$conn = getTenantConnection();
+// 2. Valida POST e CSRF
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-if (!$conn) {
-    die("Erro: Conexão do tenant não encontrada.");
-}
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        set_flash_message('danger', 'Token de segurança inválido.');
+        header("Location: ../pages/controle_estoque.php");
+        exit;
+    }
 
-// Função auxiliar para formatar moeda (BR -> US)
-function formatarMoeda($valor) {
-    if (empty($valor)) return 0;
-    // Remove pontos de milhar (ex: 1.000 -> 1000)
-    $valor = str_replace('.', '', $valor);
-    // Substitui vírgula decimal por ponto (ex: 10,50 -> 10.50)
-    $valor = str_replace(',', '.', $valor);
-    return floatval($valor);
-}
+    $conn = getTenantConnection();
+    if (!$conn) {
+        set_flash_message('danger', 'Erro de conexão com o banco de dados.');
+        header("Location: ../pages/controle_estoque.php");
+        exit;
+    }
 
-// CAPTURA DOS CAMPOS
-$nome               = trim($_POST['nome'] ?? '');
-$descricao          = trim($_POST['descricao'] ?? '');
-$quantidade         = intval($_POST['quantidade_estoque'] ?? 0);
-$quantidade_minima  = intval($_POST['quantidade_minima'] ?? 0);
+    // Função local (ou poderia usar a do utils se existisse)
+    function formatarMoedaLocal($valor) {
+        if (empty($valor)) return 0;
+        $valor = str_replace('.', '', $valor);
+        $valor = str_replace(',', '.', $valor);
+        return floatval($valor);
+    }
 
-// Aplica a formatação correta nos preços
-$preco_compra       = formatarMoeda($_POST['preco_compra'] ?? '0');
-$preco_venda        = formatarMoeda($_POST['preco_venda'] ?? '0');
+    $nome               = trim($_POST['nome'] ?? '');
+    $descricao          = trim($_POST['descricao'] ?? '');
+    $quantidade         = intval($_POST['quantidade_estoque'] ?? 0);
+    $quantidade_minima  = intval($_POST['quantidade_minima'] ?? 0);
+    $preco_compra       = formatarMoedaLocal($_POST['preco_compra'] ?? '0');
+    $preco_venda        = formatarMoedaLocal($_POST['preco_venda'] ?? '0');
+    $ncm                = trim($_POST['ncm'] ?? '');
+    $cfop               = trim($_POST['cfop'] ?? '');
+    $id_usuario         = $_SESSION['usuario_id'] ?? null;
 
-$ncm                = trim($_POST['ncm'] ?? '');
-$cfop               = trim($_POST['cfop'] ?? '');
+    if (!$nome || !$id_usuario) {
+        set_flash_message('warning', 'Preencha o nome do produto.');
+        header("Location: ../pages/controle_estoque.php");
+        exit;
+    }
 
-$id_usuario = $_SESSION['usuario_id'] ?? null;
+    try {
+        $query = "INSERT INTO produtos 
+            (nome, descricao, quantidade_estoque, quantidade_minima, preco_compra, preco_venda, ncm, cfop, id_usuario)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-if (!$nome || !$id_usuario) {
-    $_SESSION['erro'] = "Preencha todos os campos obrigatórios (Nome).";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param(
+            "ssiiddssi",
+            $nome,
+            $descricao,
+            $quantidade,
+            $quantidade_minima,
+            $preco_compra,
+            $preco_venda,
+            $ncm,
+            $cfop,
+            $id_usuario
+        );
+
+        $stmt->execute();
+        $stmt->close();
+
+        set_flash_message('success', 'Produto cadastrado com sucesso!');
+
+    } catch (Exception $e) {
+        set_flash_message('danger', 'Erro ao cadastrar: ' . $e->getMessage());
+    }
+    
     header("Location: ../pages/controle_estoque.php");
     exit;
 }
 
-try {
-    // A coluna no banco é 'quantidade_estoque' conforme o schema
-    $query = "INSERT INTO produtos 
-        (nome, descricao, quantidade_estoque, quantidade_minima, preco_compra, preco_venda, ncm, cfop, id_usuario)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param(
-        "ssiiddssi",
-        $nome,
-        $descricao,
-        $quantidade,
-        $quantidade_minima,
-        $preco_compra,
-        $preco_venda,
-        $ncm,
-        $cfop,
-        $id_usuario
-    );
-
-    $stmt->execute();
-    $stmt->close();
-
-    $_SESSION['sucesso'] = "Produto cadastrado com sucesso!";
-    header("Location: ../pages/controle_estoque.php");
-    exit;
-
-} catch (mysqli_sql_exception $e) {
-    // Captura o erro exato para exibir na tela
-    $_SESSION['erro'] = "Erro ao cadastrar o produto: " . $e->getMessage();
-    header("Location: ../pages/controle_estoque.php");
-    exit;
-}
+header("Location: ../pages/controle_estoque.php");
+exit;
 ?>

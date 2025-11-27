@@ -2,6 +2,7 @@
 // pages/minha_assinatura.php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa Flash Messages
 
 /* -------------------- 1) Verificações iniciais -------------------- */
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -104,20 +105,10 @@ if ($tenant_id) {
 }
 $conn->close();
 
-/* -------------------- 4) SweetAlert Mensagens -------------------- */
-$swal_alert = [];
-if (!empty($_SESSION['sucesso_pagamento'])) {
-    $swal_alert = ['type' => 'success', 'title' => 'Pagamento Confirmado!', 'text' => $_SESSION['sucesso_pagamento']];
-    unset($_SESSION['sucesso_pagamento']);
-} elseif (!empty($_SESSION['sucesso'])) {
-    $swal_alert = ['type' => 'success', 'title' => 'Sucesso!', 'text' => $_SESSION['sucesso']];
-    unset($_SESSION['sucesso']);
-} elseif (!empty($_SESSION['erro'])) {
-    $swal_alert = ['type' => 'error', 'title' => 'Atenção!', 'text' => $_SESSION['erro']];
-    unset($_SESSION['erro']);
-}
-
 include('../includes/header.php');
+
+// ✅ EXIBE O POP-UP CENTRALIZADO
+display_flash_message();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -390,19 +381,6 @@ include('../includes/header.php');
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    <?php if (!empty($swal_alert)): ?>
-        Swal.fire({
-            icon: '<?= $swal_alert['type'] ?>',
-            title: '<?= addslashes($swal_alert['title']) ?>',
-            text: '<?= addslashes($swal_alert['text']) ?>',
-            background: '#1e1e1e',
-            color: '#eee',
-            confirmButtonColor: '#00bfff'
-        });
-    <?php endif; ?>
-});
-
 function abrirModalCancelamento() {
     var myModal = new bootstrap.Modal(document.getElementById('modalCancelarAssinatura'));
     myModal.show();

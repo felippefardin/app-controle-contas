@@ -1,15 +1,14 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
-// 1. Verifica se está logado (Usando o padrão 'usuario' da Home)
+// 1. Verifica login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: ../pages/login.php?erro=nao_logado');
     exit;
 }
 
-
-// 2. Obtém conexão
 $conn = getTenantConnection();
 if (!$conn) {
     die("Falha crítica: Não foi possível conectar ao banco de dados do cliente.");
@@ -18,12 +17,10 @@ if (!$conn) {
 $produto = null;
 $erro = null;
 
-// 3. Busca o produto de forma segura
+// 3. Busca o produto
 if (isset($_GET['id'])) {
     $id_produto = (int)$_GET['id'];
-    
-    // CORREÇÃO AQUI: Usando $_SESSION['usuario']['id']
-     $id_usuario = $_SESSION['usuario_id'];
+    $id_usuario = $_SESSION['usuario_id'];
 
     if ($stmt = $conn->prepare("SELECT * FROM produtos WHERE id = ? AND id_usuario = ?")) {
         $stmt->bind_param("ii", $id_produto, $id_usuario);
@@ -33,20 +30,25 @@ if (isset($_GET['id'])) {
             if ($result->num_rows > 0) {
                 $produto = $result->fetch_assoc();
             } else {
-                $erro = "Produto não encontrado ou você não tem permissão para editá-lo.";
+                set_flash_message('danger', "Produto não encontrado ou você não tem permissão.");
+                header("Location: controle_estoque.php");
+                exit;
             }
         } else {
-            $erro = "Erro ao executar a busca no banco de dados.";
+            $erro = "Erro ao buscar produto.";
         }
         $stmt->close();
-    } else {
-        $erro = "Erro na preparação da consulta: " . $conn->error;
     }
 } else {
-    $erro = "ID do produto não informado.";
+    set_flash_message('danger', "ID não informado.");
+    header("Location: controle_estoque.php");
+    exit;
 }
 
 include('../includes/header.php');
+
+// EXIBE MENSAGEM
+display_flash_message();
 ?>
 
 <!DOCTYPE html>
@@ -65,7 +67,6 @@ include('../includes/header.php');
         .form-control:focus { background-color: #333; color: #eee; border-color: #0af; box-shadow: none; }
         .btn-primary { background-color: #0af; border: none; }
         .btn-secondary { background-color: #555; border: none; }
-        .alert-danger { background-color: #dc3545; color: white; border: none; }
     </style>
 </head>
 <body>
@@ -81,6 +82,7 @@ include('../includes/header.php');
             <h2><i class="fa-solid fa-pen-to-square"></i> Editar Produto</h2>
             
             <form action="../actions/editar_produto_action.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" value="<?= htmlspecialchars($produto['id']) ?>">
                 
                 <div class="form-row">

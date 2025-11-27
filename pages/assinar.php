@@ -2,10 +2,12 @@
 // pages/assinar.php
 require_once '../includes/session_init.php';
 require_once '../database.php'; 
+require_once '../includes/utils.php'; // Importa Utils
+
 include('../includes/header.php');
 
-$msg_erro = $_SESSION['erro_assinatura'] ?? '';
-unset($_SESSION['erro_assinatura']);
+// ✅ EXIBE O POP-UP CENTRALIZADO
+display_flash_message();
 
 // Pega o plano selecionado da URL (padrão: basico)
 $plano_selecionado = $_GET['plano_selecionado'] ?? 'basico';
@@ -20,7 +22,7 @@ $saved_cupom = '';
 $saved_indicacao = '';
 
 if ($tenant_id && $user_id) {
-    // 1. Verifica se já existe Cupom salvo no registro
+    // 1. Verifica se já existe Cupom salvo
     $stmtCupom = $conn->prepare("SELECT cupom_registro FROM tenants WHERE tenant_id = ?");
     if ($stmtCupom) {
         $stmtCupom->bind_param("s", $tenant_id);
@@ -30,7 +32,7 @@ if ($tenant_id && $user_id) {
         $stmtCupom->close();
     }
 
-    // 2. Verifica se já existe Indicação salva no registro
+    // 2. Verifica se já existe Indicação salva
     $stmtInd = $conn->prepare("
         SELECT u.codigo_indicacao 
         FROM indicacoes i 
@@ -90,11 +92,6 @@ if ($tenant_id && $user_id) {
 <div class="container">
     <div class="text-center mt-5 mb-4">
         <h2 style="color: #fff;">Escolha ou Renove seu Plano</h2>
-        <?php if($msg_erro): ?>
-            <div style="background: #e74c3c; color: white; padding: 10px; border-radius: 5px; max-width: 600px; margin: 10px auto;">
-                <?= htmlspecialchars($msg_erro) ?>
-            </div>
-        <?php endif; ?>
     </div>
 
     <div class="extra-options-container">
@@ -303,12 +300,10 @@ function prepararEnvio(form) {
     }
 }
 
-// AUTO-EXECUÇÃO AO CARREGAR A PÁGINA
 window.onload = function() {
     const urlCupom = getQueryParam('cupom');
     const urlIndicacao = getQueryParam('codigo_indicacao');
 
-    // --- LÓGICA DE INDICAÇÃO (Prioridade: Banco de Dados > URL) ---
     if (indicacaoSalvaDB) {
         const box = document.getElementById('boxIndicacao');
         const input = document.getElementById('inputCodigoIndicacao');
@@ -328,7 +323,6 @@ window.onload = function() {
         validarIndicacao();
     }
 
-    // --- LÓGICA DE CUPOM (Prioridade: Banco de Dados > URL) ---
     if (cupomSalvoDB) {
         const box = document.getElementById('boxCupom');
         const input = document.getElementById('inputCupom');

@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
 // Verifica se o usuário está logado
 if (!isset($_SESSION['usuario_logado'])) {
@@ -8,13 +9,11 @@ if (!isset($_SESSION['usuario_logado'])) {
     exit;
 }
 
-// Obtém a conexão com o banco do tenant
 $conn = getTenantConnection();
 if ($conn === null) {
-    die("Erro: Falha ao conectar ao banco de dados do cliente. Verifique sua sessão.");
+    die("Erro: Falha ao conectar ao banco de dados.");
 }
 
-// Inicializa arrays para evitar erros
 $dadosEmpresa = [];
 
 // 1. Busca dados cadastrais
@@ -23,7 +22,7 @@ if ($stmt && $stmt->num_rows > 0) {
     $dadosEmpresa = $stmt->fetch_assoc();
 }
 
-// 2. Busca dados fiscais (config tenant)
+// 2. Busca dados fiscais
 $stmtKv = $conn->query("SELECT chave, valor FROM configuracoes_tenant");
 if ($stmtKv) {
     while ($row = $stmtKv->fetch_assoc()) {
@@ -32,10 +31,12 @@ if ($stmtKv) {
 }
 
 include('../includes/header.php');
+
+// EXIBE MENSAGEM
+display_flash_message();
 ?>
 
 <style>
-/* === ESTILO REESTRUTURADO: FULL DESKTOP + MOBILE === */
 :root {
     --bg-card: #1f1f1f;
     --bg-input: #2a2a2a;
@@ -47,239 +48,35 @@ include('../includes/header.php');
     --primary-hover: #009ed1;
 }
 
-/* === TELA FULL DESKTOP === */
-html, body {
-    height: 100%;
-}
-
-/* Conteúdo ocupar a tela de forma centralizada */
-.fiscal-container {
-    width: 100%;
-    max-width: 1500px; /* Tela larga */
-    margin: 0 auto;
-    padding: 30px;
-    min-height: calc(100vh - 120px);
-    display: flex;
-    flex-direction: column;
-    animation: fadeIn .6s ease;
-}
-
-/* TÍTULO */
-.page-title {
-    font-size: 2.1rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.page-title i {
-    font-size: 2rem;
-}
-
-/* CARDS */
-.card {
-    background: var(--bg-card);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
-    overflow: hidden;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.card-header {
-    padding: 18px 22px;
-    background: rgba(255,255,255,0.04);
-    color: var(--primary-color);
-    font-size: 1.15rem;
-    font-weight: 600;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.card-body {
-    padding: 28px;
-    flex: 1;
-}
-
-/* INPUTS */
-label {
-    color: var(--text-secondary);
-    font-size: .9rem;
-    margin-bottom: 6px;
-    display: block;
-    font-weight: 500;
-}
-
-.form-control {
-    background: var(--bg-input);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: 6px;
-    height: 46px;
-    width: 100%;
-    padding-left: 12px;
-    transition: .2s;
-    box-sizing: border-box;
-}
-
-.form-control:hover {
-    background: var(--bg-hover);
-}
-
-.form-control:focus {
-    border-color: var(--primary-color);
-    background: #303030;
-    box-shadow: 0 0 0 2px rgba(0,191,255,.25);
-    outline: none;
-}
-
-.form-control::placeholder {
-    color: #777;
-}
-
-/* SELECT */
-select.form-control {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%23b0b0b0' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-}
-
-/* GRID MODERNO */
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-/* Helpers de Grid Interno para Inputs */
+html, body { height: 100%; }
+.fiscal-container { width: 100%; max-width: 1500px; margin: 0 auto; padding: 30px; min-height: calc(100vh - 120px); display: flex; flex-direction: column; animation: fadeIn .6s ease; }
+.page-title { font-size: 2.1rem; font-weight: 700; color: var(--primary-color); display: flex; align-items: center; gap: 14px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+.page-title i { font-size: 2rem; }
+.card { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 6px 16px rgba(0,0,0,0.45); overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+.card-header { padding: 18px 22px; background: rgba(255,255,255,0.04); color: var(--primary-color); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; }
+.card-body { padding: 28px; flex: 1; }
+label { color: var(--text-secondary); font-size: .9rem; margin-bottom: 6px; display: block; font-weight: 500; }
+.form-control { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; height: 46px; width: 100%; padding-left: 12px; transition: .2s; box-sizing: border-box; }
+.form-control:hover { background: var(--bg-hover); }
+.form-control:focus { border-color: var(--primary-color); background: #303030; box-shadow: 0 0 0 2px rgba(0,191,255,.25); outline: none; }
+select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%23b0b0b0' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+.row { display: flex; flex-wrap: wrap; gap: 20px; }
 .col-full { width: 100%; }
 .col-half { flex: 1 1 calc(50% - 20px); min-width: 250px; }
 .col-third { flex: 1 1 calc(33.333% - 20px); min-width: 200px; }
 .col-quart { flex: 1 1 calc(25% - 20px); min-width: 150px; }
 .col-small { flex: 0 0 120px; }
 .col-large { flex: 1; }
-
-/* BOTÃO */
-.btn-container {
-    margin-top: 30px;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.btn-primary {
-    background: var(--primary-color);
-    border: none;
-    color: #000;
-    padding: 12px 35px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: .25s;
-}
-
-.btn-primary:hover {
-    background: var(--primary-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(0,191,255,.35);
-}
-
-/* ALERTAS */
-.alert {
-    background: #262626;
-    padding: 14px 18px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    border-left: 4px solid var(--primary-color);
-    color: #fff;
-}
-
-.alert-success { border-left-color: #28a745; }
-.alert-danger { border-left-color: #dc3545; }
+.btn-container { margin-top: 30px; display: flex; justify-content: flex-end; }
+.btn-primary { background: var(--primary-color); border: none; color: #000; padding: 12px 35px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: .25s; }
+.btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,191,255,.35); }
+.alert { background: #262626; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary-color); color: #fff; }
 .alert-info { border-left-color: #17a2b8; }
-
-/* === RESPONSIVIDADE === */
-
-/* TABLET */
-@media (max-width: 1024px) {
-    .fiscal-container {
-        padding: 20px;
-        max-width: 100%;
-    }
-}
-
-/* MOBILE */
-@media (max-width: 768px) {
-    .page-title {
-        font-size: 1.6rem;
-        flex-direction: column;
-        text-align: center;
-        gap: 5px;
-    }
-
-    .row {
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .card-body {
-        padding: 20px;
-    }
-
-    .btn-container {
-        justify-content: center;
-    }
-
-    .btn-primary {
-        width: 100%;
-        font-size: 1rem;
-    }
-    
-    /* Forçar inputs a full width no mobile */
-    .col-half, .col-third, .col-quart, .col-small, .col-large {
-        flex: 1 1 100%;
-        width: 100%;
-    }
-}
-
-/* MOBILE PEQUENO */
-@media (max-width: 480px) {
-    .page-title { font-size: 1.4rem; }
-    .form-control { height: 44px; }
-    .card { border-radius: 10px; }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+@media (max-width: 768px) { .page-title { font-size: 1.6rem; flex-direction: column; text-align: center; gap: 5px; } .row { flex-direction: column; gap: 15px; } .btn-container { justify-content: center; } .btn-primary { width: 100%; font-size: 1rem; } .col-half, .col-third, .col-quart, .col-small, .col-large { flex: 1 1 100%; width: 100%; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
 <div class="fiscal-container">
-
-    <?php if (isset($_GET['success'])): ?>
-        <div class="alert alert-success">
-            <i class="fa-solid fa-check-circle mr-2"></i>
-            Configurações salvas com sucesso.
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['error'])): ?>
-        <div class="alert alert-danger">
-            <i class="fa-solid fa-circle-exclamation mr-2"></i>
-            <?= htmlspecialchars(urldecode($_GET['error'])) ?>
-        </div>
-    <?php endif; ?>
 
     <div class="page-title">
         <i class="fa-solid fa-file-invoice-dollar"></i>

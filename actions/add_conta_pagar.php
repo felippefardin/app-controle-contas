@@ -1,93 +1,86 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // <-- IMPORTANTE: Incluir o novo arquivo
 
-// 1. VERIFICA O LOGIN
+// 1. Validação de Acesso
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
-    header('Location: ../pages/login.php?error=not_logged_in');
+    header('Location: ../pages/login.php');
     exit;
 }
 
-// 2. VERIFICA SE O MÉTODO É POST
+// 2. Recebendo dados do formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $conn = getTenantConnection();
-    if ($conn === null) {
-        $_SESSION['error_message'] = "Falha na conexão com o banco de dados.";
-        header('Location: ../pages/contas_pagar.php');
-        exit;
-    }
-
-    // Pega o ID do usuário da sessão
-    $usuario_id = $_SESSION['usuario_id'] ?? null;
-
-    if (!$usuario_id) {
-        $_SESSION['error_message'] = "Sessão expirada. Faça login novamente.";
-        header('Location: ../pages/login.php');
-        exit;
-    }
-
-    // Pega dados do formulário
-    $fornecedor_nome = trim($_POST['fornecedor_nome'] ?? '');
-    $id_pessoa_fornecedor = !empty($_POST['fornecedor_id']) ? (int)$_POST['fornecedor_id'] : null;
-    $numero = trim($_POST['numero'] ?? '');
+    $usuario_id = $_SESSION['usuario_id'];
     
-    // Tratamento do valor
-    $valorStr = $_POST['valor'] ?? '0';
-    $valor = str_replace('.', '', $valorStr);
-    $valor = str_replace(',', '.', $valor);
-    $valor = floatval($valor);
+    // Dados básicos com sanitização simples
+    $fornecedor_id = !empty($_POST['fornecedor_id']) ? intval($_POST['fornecedor_id']) : null;
+    $nome_fornecedor_novo = trim($_POST['fornecedor_nome'] ?? '');
+    $descricao = trim($_POST['descricao']);
+    $numero_doc = trim($_POST['numero']);
+    $categoria_id = intval($_POST['id_categoria']);
+    
+    // --- CORREÇÃO 1: Tratamento de Valor (BRL -> Float) ---
+    // Agora o usuário pode digitar "1.200,50" ou "1200.50" que vai funcionar
+    $valor = brl_to_float($_POST['valor']);
 
-    $data_vencimento = $_POST['data_vencimento'] ?? '';
-    $id_categoria = !empty($_POST['id_categoria']) ? (int)$_POST['id_categoria'] : null;
-    $enviar_email = isset($_POST['enviar_email']) ? 'S' : 'N';
-    $descricao = trim($_POST['descricao'] ?? '');
+    // --- CORREÇÃO 2: Tratamento de Data ---
+    $vencimento = data_para_iso($_POST['data_vencimento']);
 
-    // Validação
-    if (empty($fornecedor_nome) || empty($numero) || $valor <= 0 || empty($data_vencimento) || empty($id_categoria)) {
-        $_SESSION['error_message'] = "Preencha: Fornecedor, Número, Valor, Vencimento e Categoria.";
+    // Validação Backend
+    if (empty($descricao) || $valor <= 0 || empty($vencimento)) {
+        set_flash_message('danger', 'Preencha a descrição, uma data válida e um valor maior que zero.');
         header('Location: ../pages/contas_pagar.php');
         exit;
     }
 
-    // 3. INSERE OS DADOS
-    $sql = "INSERT INTO contas_pagar (
-                fornecedor, 
-                id_pessoa_fornecedor, 
-                numero, 
-                valor, 
-                data_vencimento, 
-                usuario_id, 
-                enviar_email, 
-                id_categoria, 
-                descricao,
-                status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente')";
+    $conn = getTenantConnection();
+    if (!$conn) {
+        set_flash_message('danger', 'Erro de conexão com o banco.');
+        header('Location: ../pages/contas_pagar.php');
+        exit;
+    }
+
+    // Lógica para Fornecedor (Se não selecionou ID, mas digitou nome, cria um novo)
+    if (!$fornecedor_id && !empty($nome_fornecedor_novo)) {
+        // Verifica se já existe pelo nome
+        $stmtCheck = $conn->prepare("SELECT id FROM pessoas_fornecedores WHERE nome = ? AND usuario_id = ? AND tipo = 'fornecedor'");
+        $stmtCheck->bind_param("si", $nome_fornecedor_novo, $usuario_id);
+        $stmtCheck->execute();
+        $resCheck = $stmtCheck->get_result();
+        
+        if ($row = $resCheck->fetch_assoc()) {
+            $fornecedor_id = $row['id'];
+        } else {
+            // Cadastra novo
+            $stmtNew = $conn->prepare("INSERT INTO pessoas_fornecedores (usuario_id, nome, tipo) VALUES (?, ?, 'fornecedor')");
+            $stmtNew->bind_param("is", $usuario_id, $nome_fornecedor_novo);
+            if ($stmtNew->execute()) {
+                $fornecedor_id = $stmtNew->insert_id;
+            }
+            $stmtNew->close();
+        }
+        $stmtCheck->close();
+    }
+
+    // 3. Inserção no Banco
+    $sql = "INSERT INTO contas_pagar (usuario_id, id_pessoa_fornecedor, id_categoria, numero, descricao, valor, data_vencimento, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente')";
             
     $stmt = $conn->prepare($sql);
-    
-    if ($stmt) {
-        $stmt->bind_param("sisdsisis", 
-            $fornecedor_nome, 
-            $id_pessoa_fornecedor, 
-            $numero, 
-            $valor, 
-            $data_vencimento, 
-            $usuario_id, 
-            $enviar_email, 
-            $id_categoria, 
-            $descricao
-        );
+    // Tipos: i (int), i (int), i (int), s (string), s (string), d (double/float), s (string)
+    $stmt->bind_param("iiissds", $usuario_id, $fornecedor_id, $categoria_id, $numero_doc, $descricao, $valor, $vencimento);
 
-        if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Conta adicionada com sucesso!";
-        } else {
-            $_SESSION['error_message'] = "Erro SQL: " . $stmt->error;
-        }
-        $stmt->close();
+    if ($stmt->execute()) {
+        // --- CORREÇÃO 3: Feedback visual elegante ---
+        set_flash_message('success', "Conta '{$descricao}' adicionada com sucesso!");
     } else {
-        $_SESSION['error_message'] = "Erro ao preparar query: " . $conn->error;
+        set_flash_message('danger', "Erro ao salvar: " . $stmt->error);
     }
 
+    $stmt->close();
+    
+    // Redireciona (o flash message aparecerá na tela de destino)
     header('Location: ../pages/contas_pagar.php');
     exit;
 }

@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
 // 1. VERIFICA O LOGIN
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -12,23 +13,32 @@ $conn = getTenantConnection();
 $id_usuario = $_SESSION['usuario_id'];
 $id_conta = isset($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
 
-if ($id_conta === 0) die("ID da conta não fornecido.");
+if ($id_conta === 0) {
+    set_flash_message('danger', 'ID inválido.');
+    header("Location: contas_receber.php");
+    exit;
+}
 
 // LÓGICA DE ATUALIZAÇÃO (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_pessoa = !empty($_POST['id_pessoa_fornecedor']) ? (int)$_POST['id_pessoa_fornecedor'] : null;
-    $data_vencimento = $_POST['data_vencimento'];
     
-    // Tratamento do valor
-    $valor = str_replace('.', '', $_POST['valor']);
-    $valor = str_replace(',', '.', $valor);
-    $valor = (float)$valor;
+    // CSRF Check
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        set_flash_message('danger', 'Token de segurança inválido.');
+        header("Location: editar_conta_receber.php?id=" . $id_conta);
+        exit;
+    }
+
+    $id_pessoa = !empty($_POST['id_pessoa_fornecedor']) ? (int)$_POST['id_pessoa_fornecedor'] : null;
+    
+    // Tratamento de dados com utils.php
+    $data_vencimento = data_para_iso($_POST['data_vencimento']);
+    $valor = brl_to_float($_POST['valor']);
 
     $id_categoria = (int)$_POST['id_categoria'];
     $numero = trim($_POST['numero'] ?? '');
     $descricao = trim($_POST['descricao'] ?? '');
 
-    // Query atualizada com numero e descricao
     $sql = "UPDATE contas_receber SET 
                 id_pessoa_fornecedor = ?, 
                 numero = ?,
@@ -40,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
     $stmt = $conn->prepare($sql);
     
-    // Tipos: i=int, s=string, s=string, s=string, d=double, i=int, i=int, i=int
     $stmt->bind_param("isssdiii", 
         $id_pessoa, 
         $numero,
@@ -53,10 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
 
     if ($stmt->execute()) {
-        $_SESSION['success_message'] = "Receita atualizada com sucesso!";
+        set_flash_message('success', "Receita atualizada com sucesso!");
         header("Location: ../pages/contas_receber.php");
     } else {
-        $_SESSION['error_message'] = "Erro ao atualizar: " . $stmt->error;
+        set_flash_message('danger', "Erro ao atualizar: " . $stmt->error);
         header("Location: editar_conta_receber.php?id=" . $id_conta);
     }
     $stmt->close();
@@ -65,6 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 include('../includes/header.php');
 
+// Exibe mensagem centralizada se houver
+display_flash_message();
+
 // Busca a conta 
 $stmt = $conn->prepare("SELECT * FROM contas_receber WHERE id = ? AND usuario_id = ?");
 $stmt->bind_param("ii", $id_conta, $id_usuario);
@@ -72,7 +84,7 @@ $stmt->execute();
 $conta = $stmt->get_result()->fetch_assoc();
 
 if (!$conta) {
-    echo "<div class='alert alert-danger'>Conta não encontrada.</div>";
+    echo "<div class='container'><h3 style='color:#c0392b'>Conta não encontrada.</h3></div>";
     include('../includes/footer.php');
     exit;
 }
@@ -107,13 +119,8 @@ $clientes = $conn->query("SELECT id, nome FROM pessoas_fornecedores WHERE id_usu
 <div class="container">
     <h2 style="text-align:center; color:#00bfff;">Editar Conta a Receber</h2>
 
-    <?php if(isset($_SESSION['error_message'])): ?>
-        <div style="background:#cc3333; color:white; padding:10px; border-radius:4px; margin-bottom:15px;">
-            <?= $_SESSION['error_message']; unset($_SESSION['error_message']); ?>
-        </div>
-    <?php endif; ?>
-
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <input type="hidden" name="id" value="<?= htmlspecialchars($id_conta) ?>">
 
         <div class="row">

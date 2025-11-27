@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
 // 1. VERIFICA LOGIN
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -13,32 +14,26 @@ if ($conn === null) {
     die("Falha de conexão com o banco de dados.");
 }
 
-// 2. DADOS DO USUÁRIO LOGADO
 $id_usuario_logado = $_SESSION['usuario_id'];
-$perfil_usuario    = $_SESSION['nivel_acesso']; // 'admin', 'proprietario', 'padrao'
+$perfil_usuario    = $_SESSION['nivel_acesso']; 
 
-// 3. FILTROS DO FORMULÁRIO
-$data_inicio = $_GET['data_inicio'] ?? date('Y-m-01'); // Padrão: início do mês atual
-$data_fim    = $_GET['data_fim'] ?? date('Y-m-t');     // Padrão: fim do mês atual
+$data_inicio = $_GET['data_inicio'] ?? date('Y-m-01'); 
+$data_fim    = $_GET['data_fim'] ?? date('Y-m-t');     
 $porcentagem_comissao = isset($_GET['comissao']) ? floatval($_GET['comissao']) : 0;
 
-// 🔒 LÓGICA DE SEGURANÇA DO FILTRO DE USUÁRIO
-// Passo 1: Define o padrão como o próprio usuário logado
 $usuario_filtro = $id_usuario_logado; 
 
-// Passo 2: Se for ADMIN ou PROPRIETÁRIO, permite ver todos ou escolher outro
 if ($perfil_usuario === 'admin' || $perfil_usuario === 'proprietario') {
     if (isset($_GET['usuario_id'])) {
-        $usuario_filtro = $_GET['usuario_id']; // Pode ser 'todos' ou um ID específico
+        $usuario_filtro = $_GET['usuario_id']; 
     } else {
-        $usuario_filtro = 'todos'; // Admin vê geral por padrão
+        $usuario_filtro = 'todos'; 
     }
 } else {
-    // ⛔ SE FOR PADRÃO, FORÇA O FILTRO PARA O PRÓPRIO ID (Segurança)
     $usuario_filtro = $id_usuario_logado;
 }
 
-// 4. CONSTRUÇÃO DA QUERY
+// QUERY
 $params = [];
 $types = "";
 
@@ -48,12 +43,10 @@ $sql = "SELECT v.id, v.data_venda, v.valor_total, u.nome as nome_vendedor, c.nom
         LEFT JOIN pessoas_fornecedores c ON v.id_cliente = c.id
         WHERE v.data_venda BETWEEN ? AND ? ";
 
-// Adiciona as datas aos parâmetros (com horário completo para pegar o dia todo)
 $params[] = $data_inicio . " 00:00:00";
 $params[] = $data_fim . " 23:59:59";
 $types .= "ss";
 
-// Aplica o filtro de usuário se não for 'todos'
 if ($usuario_filtro !== 'todos') {
     $sql .= " AND v.id_usuario = ? ";
     $params[] = $usuario_filtro;
@@ -69,7 +62,6 @@ if ($params) {
 $stmt->execute();
 $result = $stmt->get_result();
 
-// 5. CÁLCULO DOS TOTAIS
 $total_vendas = 0;
 $vendas = [];
 while ($row = $result->fetch_assoc()) {
@@ -77,10 +69,8 @@ while ($row = $result->fetch_assoc()) {
     $vendas[] = $row;
 }
 
-// Calcula a comissão baseada no total filtrado
 $valor_comissao = ($total_vendas * $porcentagem_comissao) / 100;
 
-// 6. BUSCA LISTA DE USUÁRIOS (SOMENTE PARA O SELECT DO ADMIN)
 $usuarios_lista = [];
 if ($perfil_usuario === 'admin' || $perfil_usuario === 'proprietario') {
     $res_users = $conn->query("SELECT id, nome FROM usuarios ORDER BY nome ASC");
@@ -88,6 +78,9 @@ if ($perfil_usuario === 'admin' || $perfil_usuario === 'proprietario') {
 }
 
 include('../includes/header.php');
+
+// EXIBE MENSAGEM SE HOUVER
+display_flash_message();
 ?>
 
 <!DOCTYPE html>

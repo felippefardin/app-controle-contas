@@ -1,44 +1,52 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa Flash Messages
 
-// 1. VERIFICA O LOGIN E PEGA A CONEXÃO CORRETA
+// 1. VERIFICA O LOGIN
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
-    header('Location: ../pages/login.php?error=not_logged_in');
+    header('Location: ../pages/login.php');
     exit;
 }
 
-// 2. VERIFICA SE O MÉTODO É POST
+// 2. VERIFICA MÉTODO POST E CSRF
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $conn = getTenantConnection();
-    if ($conn === null) {
-        header('Location: ../pages/categorias.php?erro=db_connection');
+    
+    // Verifica Token CSRF
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        set_flash_message('danger', 'Token de segurança inválido. Tente novamente.');
+        header('Location: ../pages/categorias.php');
         exit;
     }
 
-    // ✅ CORREÇÃO: Pega o ID corretamente da sessão
+    $conn = getTenantConnection();
+    if ($conn === null) {
+        set_flash_message('danger', 'Erro de conexão com o banco de dados.');
+        header('Location: ../pages/categorias.php');
+        exit;
+    }
+
     $usuarioId = $_SESSION['usuario_id'];
     
     $nome = trim($_POST['nome']);
     $tipo = $_POST['tipo'];
-    $id = $_POST['id'] ?? ''; // Evita erro se 'id' não for enviado
+    $id = !empty($_POST['id']) ? (int)$_POST['id'] : null;
 
     if (empty($nome) || empty($tipo)) {
-        header('Location: ../pages/categorias.php?erro=empty_fields');
+        set_flash_message('warning', 'Preencha o nome e o tipo da categoria.');
+        header('Location: ../pages/categorias.php');
         exit;
     }
 
-    $stmt = false; 
-    
-    // 3. LÓGICA PARA INSERIR OU ATUALIZAR
+    // 3. INSERIR OU ATUALIZAR
     if (empty($id)) { 
-        // Inserir nova categoria
+        // Nova Categoria
         $stmt = $conn->prepare("INSERT INTO categorias (id_usuario, nome, tipo) VALUES (?, ?, ?)");
         if ($stmt) {
             $stmt->bind_param("iss", $usuarioId, $nome, $tipo);
         }
     } else { 
-        // Atualizar categoria existente (garante que pertence ao usuário)
+        // Atualizar (Garante propriedade do usuário)
         $stmt = $conn->prepare("UPDATE categorias SET nome = ?, tipo = ? WHERE id = ? AND id_usuario = ?");
         if ($stmt) {
             $stmt->bind_param("ssii", $nome, $tipo, $id, $usuarioId);
@@ -47,20 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($stmt) {
         if ($stmt->execute()) {
-             header('Location: ../pages/categorias.php?sucesso=1');
+             set_flash_message('success', 'Categoria salva com sucesso!');
         } else {
-             // Se quiser debugar: echo $stmt->error; exit;
-             header('Location: ../pages/categorias.php?erro=execute_failed');
+             set_flash_message('danger', 'Erro ao salvar: ' . $stmt->error);
         }
         $stmt->close();
     } else {
-        header('Location: ../pages/categorias.php?erro=prepare_failed');
+        set_flash_message('danger', 'Erro na preparação da query.');
     }
     
+    header('Location: ../pages/categorias.php');
     exit;
 }
 
-// Se não for POST, apenas redireciona de volta
 header('Location: ../pages/categorias.php');
 exit;
 ?>

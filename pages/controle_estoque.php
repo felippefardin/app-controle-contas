@@ -1,8 +1,9 @@
 <?php
 require_once '../includes/session_init.php';
-require_once '../database.php'; // Incluído no início
+require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
-// ✅ 1. VERIFICA SE O USUÁRIO ESTÁ LOGADO E PEGA A CONEXÃO CORRETA
+// 1. VERIFICA LOGIN
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) { 
     header('Location: login.php');
     exit;
@@ -13,15 +14,13 @@ if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados do cliente.");
 }
 
-// ✅ 2. PEGA OS DADOS DO USUÁRIO DA SESSÃO CORRETA
 $usuarioId = $_SESSION['usuario_id'];
 $perfil     = $_SESSION['nivel_acesso'];
 
 require_once '../includes/header.php';
 
-// ✅ 3. SIMPLIFICA A QUERY PARA O MODELO SAAS
+// 3. QUERY
 $where = ["id_usuario = " . intval($usuarioId)];
-
 $sql = "SELECT * FROM produtos";
 if (!empty($where)) {
     $sql .= " WHERE " . implode(" AND ", $where);
@@ -29,6 +28,9 @@ if (!empty($where)) {
 $sql .= " ORDER BY nome ASC";
 
 $result = $conn->query($sql);
+
+// EXIBE O POP-UP CENTRALIZADO
+display_flash_message();
 ?>
 
 <!DOCTYPE html>
@@ -60,64 +62,20 @@ $result = $conn->query($sql);
 </head>
 
 <body>
-    <?php if (isset($_GET['success']) && $_GET['success'] === 'produto_atualizado'): ?>
-    <div style="background:#d4edda;color:#155724;padding:10px;border-radius:6px;margin-bottom:15px;">
-        ✔ Produto atualizado com sucesso!
-    </div>
-<?php endif; ?>
-
-    <?php if (isset($_SESSION['success_message'])): ?>
-    <div class="alert alert-success">
-        <?= $_SESSION['success_message']; ?>
-    </div>
-    <?php unset($_SESSION['success_message']); ?>
-<?php endif; ?>
-
-<?php if (isset($_SESSION['error_message'])): ?>
-    <div class="alert alert-danger">
-        <?= $_SESSION['error_message']; ?>
-    </div>
-    <?php unset($_SESSION['error_message']); ?>
-<?php endif; ?>
-
+    
 <div class="container">
     <h1><i class="fa-solid fa-box-open"></i> Controle de Estoque</h1>
-
-    <?php
-    if (isset($_SESSION['erro'])) {
-        echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">
-                ' . htmlspecialchars($_SESSION['erro']) . '
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-              </div>';
-        unset($_SESSION['erro']);
-    }
-
-    if (isset($_SESSION['sucesso'])) {
-        echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
-                ' . htmlspecialchars($_SESSION['sucesso']) . '
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-              </div>';
-        unset($_SESSION['sucesso']);
-    }
-    ?>
 
     <?php
     if (isset($_SESSION['produtos_estoque_baixo']) && !empty($_SESSION['produtos_estoque_baixo'])) {
         echo '<div id="notificacao-estoque-baixo" class="alert alert-danger">';
         echo '<strong>Atenção!</strong> Os seguintes produtos estão com estoque baixo:';
         echo '<ul>';
-
         foreach ($_SESSION['produtos_estoque_baixo'] as $produto) {
             echo '<li>' . htmlspecialchars($produto['nome']) . ' (Estoque: ' . htmlspecialchars($produto['quantidade_estoque']) . ')</li>';
         }
-
         echo '</ul>';
         echo '</div>';
-
         unset($_SESSION['produtos_estoque_baixo']);
     }
     ?>
@@ -129,6 +87,8 @@ $result = $conn->query($sql);
 
         <div class="card-body">
             <form action="../actions/cadastrar_produto_action.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="nome">Nome do Produto</label>
@@ -217,9 +177,7 @@ $result = $conn->query($sql);
 
                         <button type="button"
                                 class="btn btn-sm btn-danger"
-                                data-toggle="modal"
-                                data-target="#excluirProdutoModal"
-                                data-url="../actions/excluir_produto_action.php?id=<?= $produto['id'] ?>"
+                                onclick="abrirModalExcluir(<?= $produto['id'] ?>)"
                                 title="Excluir">
                             <i class="fa-solid fa-trash"></i>
                         </button>
@@ -234,23 +192,24 @@ $result = $conn->query($sql);
 <div class="modal fade" id="excluirProdutoModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-
             <div class="modal-header">
                 <h5 class="modal-title" id="modalLabel">Confirmar Exclusão</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-
             <div class="modal-body">
                 Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.
             </div>
-
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                <a href="#" id="confirmarExclusao" class="btn btn-danger">Excluir</a>
+                <form action="../actions/excluir_produto_action.php" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <input type="hidden" name="id" id="idProdutoExcluir">
+                    
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </form>
             </div>
-
         </div>
     </div>
 </div>
@@ -259,24 +218,15 @@ $result = $conn->query($sql);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    $(document).ready(function () {
+    function abrirModalExcluir(id) {
+        $('#idProdutoExcluir').val(id);
+        $('#excluirProdutoModal').modal('show');
+    }
 
+    $(document).ready(function () {
         setTimeout(function () {
             $('#notificacao-estoque-baixo').fadeOut('slow');
         }, 5000);
-
-        $('#excluirProdutoModal').on('show.bs.modal', function (event) {
-            var button = $(event.relatedTarget);
-            var url = button.data('url');
-            $(this).find('#confirmarExclusao').attr('href', url);
-        });
-
-        // Opcional: Máscara simples via JS puro para substituir vírgula se quiser
-        /*
-        $('.money-mask').on('keyup', function() {
-            // Lógica de máscara frontend se desejar
-        });
-        */
     });
 </script>
 
