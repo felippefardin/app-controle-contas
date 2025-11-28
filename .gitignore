@@ -1,44 +1,36 @@
-# Sistema operacional
+# --- Dependências do Composer (Nunca versionar) ---
+/vendor/
+
+# --- Arquivos de Configuração com Senhas (CRÍTICO) ---
+# Você deve criar um config.example.php sem senhas para o repo
+includes/config/config.php
+includes/config/nfe_config.php
+
+# --- Uploads de Usuários ---
+# Ignora arquivos dentro da pasta, mas mantem a pasta
+assets/uploads/*
+!assets/uploads/.gitkeep
+assets/uploads/chat_files/*
+!assets/uploads/chat_files/.gitkeep
+comprovantes/*
+!comprovantes/.gitkeep
+banco-dados/*
+
+# --- Arquivos de Sistema e IDEs ---
 .DS_Store
 Thumbs.db
-
-# IDEs / Editores
-.vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
+.vscode/
 
-# Arquivos de log e cache
-/logs/
-/tmp/
-/cache/
+# --- Logs e Arquivos Temporários ---
 *.log
-*.tmp
+logs/*.log
+error_log
+pages/webhook_log.txt
 
-# Dependências do Composer
-/vendor/
-composer.lock
-
-# Bibliotecas de terceiros (não gerenciadas pelo Composer)
-/lib/
-
-# Arquivos de configuração sensíveis
-.env
-*.env
-*.env.*
-!.env.example
-
-# Arquivos de banco de dados
-*.sqlite
-*.db
-banco-dados
-
-# Arquivos de backup
-*~
-*.bak
-*.old
-*.orig
-
-# Arquivos gerados pelo usuário
-/comprovantes/
-/img/usuarios/
+# --- Arquivos de Teste e Debug que não devem ir para produção ---
+debug_*.php
+test_*.php
+teste_*.php
+ver_log.php
+info.php
