@@ -53,110 +53,206 @@ $result = $conn->query($sql);
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Contas a Pagar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contas a Pagar</title> 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 0; min-height: 100vh; }
-    .main-content { padding: 20px; margin-top: 80px; }
-    h2 { text-align: center; color: #00bfff; }
+    /* === GERAL === */
+    * { box-sizing: border-box; }
+    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; min-height: 100vh; }
     
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; border: 1px solid #444; position: relative; }
-    .close-btn { position: absolute; top: 10px; right: 15px; font-size: 28px; cursor: pointer; color: #aaa; }
-    
-    form.search-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 25px; align-items: center; }
-    input, select { padding: 8px; background: #333; border: 1px solid #444; color: #eee; border-radius: 5px; }
-    
-    table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
-    th { background-color: #222; color: #00bfff; }
-    tr:nth-child(even) { background-color: #2a2a2a; }
-    tr.vencido { background-color: #622 !important; }
+    /* === CONTAINER RESPONSIVO (FULL DESKTOP) === */
+    .main-container {
+        width: 100%;
+        max-width: 1600px; /* Limite para telas ultrawide */
+        margin: 0 auto;
+        padding-bottom: 50px;
+    }
 
-    .btn { padding: 8px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; color: white; text-decoration: none; display: inline-block; font-size: 14px; }
+    h2 { text-align: center; color: #00bfff; margin-bottom: 20px; }
+    
+    /* === MODAL === */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 10px; }
+    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 100%; max-width: 500px; border: 1px solid #444; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    .close-btn { position: absolute; top: 10px; right: 15px; font-size: 28px; cursor: pointer; color: #aaa; z-index: 10; }
+    
+    /* === FORMULÁRIO DE BUSCA === */
+    form.search-form { 
+        display: flex; 
+        flex-wrap: wrap; 
+        justify-content: center; 
+        gap: 10px; 
+        margin-bottom: 25px; 
+        align-items: center; 
+        width: 100%;
+    }
+    
+    /* Inputs responsivos */
+    input, select { 
+        padding: 10px; 
+        background: #333; 
+        border: 1px solid #444; 
+        color: #eee; 
+        border-radius: 5px; 
+        font-size: 14px;
+        flex: 1; /* Cresce para ocupar espaço */
+        min-width: 150px;
+    }
+    
+    /* === TABELA RESPONSIVA === */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto; /* Scroll horizontal no mobile */
+        border-radius: 8px;
+        border: 1px solid #333;
+        background-color: #1f1f1f;
+    }
+
+    table { 
+        width: 100%; 
+        background-color: #1f1f1f; 
+        border-collapse: collapse; 
+        min-width: 800px; /* Força largura mínima para garantir layout no scroll */
+    }
+    
+    th, td { 
+        padding: 12px 15px; 
+        text-align: left; 
+        border-bottom: 1px solid #333; 
+        white-space: nowrap; /* Evita quebra de texto */
+    }
+    
+    th { background-color: #222; color: #00bfff; font-weight: bold; }
+    tr:nth-child(even) { background-color: #2a2a2a; }
+    tr.vencido { background-color: rgba(220, 53, 69, 0.2) !important; } /* Cor suavizada para ficar melhor no dark mode */
+
+    /* === BOTÕES === */
+    .btn { 
+        padding: 10px 16px; 
+        border-radius: 5px; 
+        border: none; 
+        cursor: pointer; 
+        font-weight: bold; 
+        color: white; 
+        text-decoration: none; 
+        display: inline-flex; 
+        align-items: center; 
+        justify-content: center;
+        gap: 5px;
+        font-size: 14px;
+        transition: opacity 0.2s;
+        min-width: fit-content;
+    }
+    .btn:hover { opacity: 0.9; }
+
     .btn-add { background-color: #00bfff; }
     .btn-search { background-color: #27ae60; }
     .btn-clear { background-color: #c0392b; }
     .btn-export { background-color: #f39c12; }
-    .btn-action { padding: 6px 10px; margin: 2px; font-size: 13px; }
+    
+    /* Botões de Ação na Tabela */
+    .btn-action { padding: 6px 10px; margin: 0 2px; font-size: 13px; }
     .btn-baixar { background: #27ae60; }
     .btn-editar { background: #00bfff; }
     .btn-excluir { background: #c0392b; }
     .btn-repetir { background: #f39c12; }
     
-    .autocomplete-container { position: relative; }
+    /* === AUTOCOMPLETE === */
+    .autocomplete-container { position: relative; width: 100%; }
     .autocomplete-items { position: absolute; border: 1px solid #444; z-index: 99; top: 100%; left: 0; right: 0; background-color: #333; max-height: 150px; overflow-y: auto; }
     .autocomplete-items div { padding: 10px; cursor: pointer; border-bottom: 1px solid #444; }
     .autocomplete-items div:hover { background-color: #555; }
+
+    /* === RESPONSIVIDADE (MOBILE e TABLET) === */
+    @media (max-width: 768px) {
+        body { padding: 10px; }
+        
+        /* Formulário empilhado no mobile */
+        form.search-form { flex-direction: column; align-items: stretch; }
+        form.search-form input, form.search-form button, form.search-form a { width: 100%; margin: 2px 0; }
+        
+        .main-content { margin-top: 20px; }
+        
+        h2 { font-size: 1.5rem; }
+        
+        /* Modal ocupa mais espaço no mobile */
+        .modal-content { width: 95%; margin: 10px; max-height: 90vh; overflow-y: auto; }
+    }
   </style>
 </head>
 <body>
 
-<h2>Contas a Pagar</h2>
+<div class="main-container">
 
-<form class="search-form" method="GET">
-  <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>" title="Data Início">
-  <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>" title="Data Fim">
-  
-  <button type="submit" class="btn btn-search" title="Filtrar"><i class="fa fa-search"></i> Buscar</button>
-  <a href="contas_pagar.php" class="btn btn-clear" title="Limpar Filtros"><i class="fa fa-eraser"></i> Limpar</a>
+    <h2>Contas a Pagar</h2>
 
-  <button type="button" class="btn btn-add" onclick="document.getElementById('addContaModal').style.display='flex'">➕ Nova</button>
-  <button type="button" class="btn btn-export" onclick="document.getElementById('exportModal').style.display='flex'"><i class="fa fa-download"></i> Exportar</button>
-</form>
+    <form class="search-form" method="GET">
+      <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>" title="Data Início">
+      <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>" title="Data Fim">
+      
+      <button type="submit" class="btn btn-search" title="Filtrar"><i class="fa fa-search"></i> Buscar</button>
+      <a href="contas_pagar.php" class="btn btn-clear" title="Limpar Filtros"><i class="fa fa-eraser"></i> Limpar</a>
 
-<?php if ($result && $result->num_rows > 0): ?>
-<table>
-    <thead>
-        <tr>
-            <th>Fornecedor</th>
-            <th>Número</th>
-            <th>Descrição</th>
-            <th>Vencimento</th>
-            <th>Categoria</th>
-            <th>Valor</th>
-            <th>Status</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-    <?php $hoje = date('Y-m-d'); 
-    while($row = $result->fetch_assoc()): 
-        $vencido = ($row['data_vencimento'] < $hoje) ? 'vencido' : '';
-        $nome = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : 'N/D';
-    ?>
-        <tr class="<?= $vencido ?>">
-            <td><?= htmlspecialchars($nome) ?></td>
-            <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
-            <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
-            <td><?= date('d/m/Y', strtotime($row['data_vencimento'])) ?></td>
-            <td><?= htmlspecialchars($row['nome_categoria'] ?? '-') ?></td>
-            <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
-            <td><?= $vencido ? 'Vencido' : 'Em dia' ?></td>
-            <td>
-                <button onclick="abrirModalBaixar(<?= $row['id'] ?>, '<?= addslashes($nome) ?>', '<?= $row['valor'] ?>')" class="btn btn-action btn-baixar" title="Dar Baixa"><i class="fa fa-check"></i></button>
-                <a href="editar_conta_pagar.php?id=<?= $row['id'] ?>" class="btn btn-action btn-editar"><i class="fa fa-pen"></i></a>
-                <button onclick="abrirModalRepetir(<?= $row['id'] ?>)" class="btn btn-action btn-repetir"><i class="fa-solid fa-repeat"></i></button>
-                
-                <button 
-                    type="button"
-                    class="btn btn-action btn-excluir" 
-                    data-id="<?= $row['id'] ?>" 
-                    data-nome="<?= htmlspecialchars($nome) ?>"
-                    onclick="openDeleteModal(this)"
-                    title="Excluir">
-                    <i class="fa fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    <?php endwhile; ?>
-    </tbody>
-</table>
-<?php else: ?>
-    <p style="text-align:center; margin-top:20px;">Nenhuma conta pendente.</p>
-<?php endif; ?>
+      <button type="button" class="btn btn-add" onclick="document.getElementById('addContaModal').style.display='flex'">➕ Nova</button>
+      <button type="button" class="btn btn-export" onclick="document.getElementById('exportModal').style.display='flex'"><i class="fa fa-download"></i> Exportar</button>
+    </form>
 
-<div id="addContaModal" class="modal">
+    <?php if ($result && $result->num_rows > 0): ?>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fornecedor</th>
+                    <th>Número</th>
+                    <th>Descrição</th>
+                    <th>Vencimento</th>
+                    <th>Categoria</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php $hoje = date('Y-m-d'); 
+            while($row = $result->fetch_assoc()): 
+                $vencido = ($row['data_vencimento'] < $hoje) ? 'vencido' : '';
+                $nome = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : 'N/D';
+            ?>
+                <tr class="<?= $vencido ?>">
+                    <td><?= htmlspecialchars($nome) ?></td>
+                    <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
+                    <td><?= date('d/m/Y', strtotime($row['data_vencimento'])) ?></td>
+                    <td><?= htmlspecialchars($row['nome_categoria'] ?? '-') ?></td>
+                    <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
+                    <td><?= $vencido ? 'Vencido' : 'Em dia' ?></td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="abrirModalBaixar(<?= $row['id'] ?>, '<?= addslashes($nome) ?>', '<?= $row['valor'] ?>')" class="btn btn-action btn-baixar" title="Dar Baixa"><i class="fa fa-check"></i></button>
+                            <a href="editar_conta_pagar.php?id=<?= $row['id'] ?>" class="btn btn-action btn-editar"><i class="fa fa-pen"></i></a>
+                            <button onclick="abrirModalRepetir(<?= $row['id'] ?>)" class="btn btn-action btn-repetir"><i class="fa-solid fa-repeat"></i></button>
+                            
+                            <button 
+                                type="button"
+                                class="btn btn-action btn-excluir" 
+                                data-id="<?= $row['id'] ?>" 
+                                data-nome="<?= htmlspecialchars($nome) ?>"
+                                onclick="openDeleteModal(this)"
+                                title="Excluir">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php else: ?>
+        <p style="text-align:center; margin-top:20px; color: #aaa;">Nenhuma conta pendente encontrada.</p>
+    <?php endif; ?>
+
+</div> <div id="addContaModal" class="modal">
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Nova Conta</h3>
@@ -187,7 +283,7 @@ $result = $conn->query($sql);
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Dar Baixa na Conta</h3>
-    <p id="texto-baixa" style="color:#aaa; margin-bottom:15px;"></p>
+    <p id="texto-baixa" style="color:#aaa; margin-bottom:15px; text-align: center;"></p>
     
     <form action="../actions/baixar_conta.php" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:10px;">
         <input type="hidden" name="id_conta" id="id_conta_baixa">

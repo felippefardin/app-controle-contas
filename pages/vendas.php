@@ -78,6 +78,7 @@ display_flash_message();
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caixa de Vendas (PDV)</title>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
@@ -96,13 +97,16 @@ body {
     padding: 0;
 }
 
+/* MODIFICADO PARA FULL DESKTOP E RESPONSIVIDADE */
 .container {
     background-color: #1e1e1e;
     padding: 25px;
     border-radius: 10px;
     margin: 30px auto;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
-    max-width: 1200px;
+    /* Full Desktop: ocupa quase toda a largura, mas mantém margem */
+    max-width: 98%; 
+    width: 100%;
 }
 
 /* TÍTULOS */
@@ -201,6 +205,7 @@ label {
     color: #ddd;
     width: 100%;
     border-collapse: collapse;
+    white-space: nowrap; /* Garante que não quebre em mobile */
 }
 
 .table thead th {
@@ -219,7 +224,10 @@ label {
 
 .table tbody tr:hover {
     background-color: #333;
-    transform: scale(1.01);
+    transform: scale(1.00); /* Retirado scale no mobile para evitar overflow lateral */
+}
+@media (min-width: 992px) {
+    .table tbody tr:hover { transform: scale(1.01); }
 }
 
 .table td {
@@ -236,6 +244,7 @@ label {
     text-align: center;
     padding: 5px;
     border-radius: 5px;
+    min-width: 60px;
 }
 
 /* =========================================
@@ -304,6 +313,7 @@ label {
     align-items: center;
     margin-bottom: 10px;
     font-size: 1.1rem;
+    flex-wrap: wrap; /* Para mobile */
 }
 
 .meta-header-titulo {
@@ -344,6 +354,56 @@ label {
     overflow: visible;
     text-shadow: 0 0 2px #000;
     transition: width 0.6s ease;
+}
+
+/* =========================================
+   MEDIA QUERIES (RESPONSIVIDADE)
+========================================= */
+@media (max-width: 768px) {
+    /* Ajuste do Container no Mobile */
+    .container {
+        padding: 15px;
+        margin: 10px auto;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Cabeçalho flexível */
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        text-align: center;
+    }
+    
+    .d-flex.justify-content-between h1 {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    /* Botão adicionar produto */
+    #add-produto {
+        margin-top: 15px;
+    }
+
+    /* Botões de Ação (Recibo e NFe) */
+    #btn-recibo, #btn-nfe {
+        width: 100%;
+        display: block;
+        margin: 0 0 10px 0 !important;
+    }
+    
+    .text-right {
+        text-align: center !important;
+    }
+    
+    .total-venda {
+        font-size: 1.5rem;
+    }
 }
 
 </style>
@@ -420,7 +480,7 @@ label {
         </div>
 
         <div class="form-row mt-4">
-            <div class="form-group col-md-4">
+            <div class="form-group col-md-4 col-12">
                 <label for="forma_pagamento">Forma de Pagamento</label>
                 <select id="forma_pagamento" name="forma_pagamento" class="form-control" required>
                     <option value="dinheiro" selected>Dinheiro</option>
@@ -430,7 +490,7 @@ label {
                     <option value="receber">A Receber (A Prazo)</option>
                 </select>
             </div>
-            <div class="form-group col-md-3">
+            <div class="form-group col-md-3 col-12">
                 <label for="desconto">Desconto (R$)</label>
                 <input type="text" id="desconto" name="desconto" class="form-control" placeholder="0.00">
             </div>
@@ -857,6 +917,8 @@ $(document).ready(function() {
 
 });
 </script>
+
+<?php include('../includes/footer.php'); ?>
 
 </body>
 </html>

@@ -24,6 +24,28 @@ $plano_post  = trim($_POST['plano'] ?? 'basico');
 $cupom_codigo = isset($_POST['cupom']) && !empty($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : null;
 $codigo_indicacao_recebido = isset($_POST['codigo_indicacao']) && !empty($_POST['codigo_indicacao']) ? strtoupper(trim($_POST['codigo_indicacao'])) : null;
 
+// --- NOVA FUNÇÃO E ARMAZENAMENTO DE DADOS ANTIGOS ---
+$form_data = [
+    'nome' => $nome,
+    'email' => $email,
+    'tipo_pessoa' => $tipo_pessoa,
+    'documento' => $documento,
+    'telefone' => $telefone,
+    'plano' => $plano_post,
+    'cupom' => $_POST['cupom'] ?? '',
+    'codigo_indicacao' => $_POST['codigo_indicacao'] ?? ''
+];
+
+function return_error($msg, $data) {
+    global $conn;
+    if(isset($conn)) $conn->close();
+    $_SESSION['form_data'] = $data; // Salva os dados na sessão
+    set_flash_message('danger', $msg);
+    header("Location: ../pages/registro.php");
+    exit;
+}
+// ----------------------------------------------------
+
 // Regras de Plano
 if ($plano_post === 'essencial') {
     $dias_teste = 30;
@@ -37,9 +59,7 @@ if ($plano_post === 'essencial') {
 }
 
 if (!$nome || !$email || !$senha || !$documento) {
-    set_flash_message('warning', "Preencha todos os campos obrigatórios.");
-    header("Location: ../pages/registro.php");
-    exit;
+    return_error("Preencha todos os campos obrigatórios.", $form_data);
 }
 
 // Verifica E-mail
@@ -47,9 +67,8 @@ $stmtCheck = $conn->prepare("SELECT id FROM usuarios WHERE email = ? LIMIT 1");
 $stmtCheck->bind_param("s", $email);
 $stmtCheck->execute();
 if ($stmtCheck->get_result()->num_rows > 0) {
-    set_flash_message('danger', "Este e-mail já está cadastrado. Tente fazer login.");
-    header("Location: ../pages/registro.php");
-    exit;
+    $stmtCheck->close();
+    return_error("Este e-mail já está cadastrado. Tente fazer login.", $form_data);
 }
 $stmtCheck->close();
 
@@ -160,6 +179,9 @@ try {
 
     $conn->commit();
 
+    // SUCESSO: Limpa os dados salvos pois deu certo
+    unset($_SESSION['form_data']);
+
     // MENSAGEM DE SUCESSO E REDIRECIONA PARA LOGIN
     set_flash_message('success', "Cadastro realizado com sucesso!<br>Teste Grátis de $dias_teste dias ativado.");
     header("Location: ../pages/login.php");
@@ -167,8 +189,6 @@ try {
 
 } catch (Exception $e) {
     $conn->rollback();
-    set_flash_message('danger', "Erro ao registrar: " . $e->getMessage());
-    header("Location: ../pages/registro.php");
-    exit;
+    return_error("Erro ao registrar: " . $e->getMessage(), $form_data);
 }
 ?>

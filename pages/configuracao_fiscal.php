@@ -48,31 +48,190 @@ display_flash_message();
     --primary-hover: #009ed1;
 }
 
-html, body { height: 100%; }
-.fiscal-container { width: 100%; max-width: 1500px; margin: 0 auto; padding: 30px; min-height: calc(100vh - 120px); display: flex; flex-direction: column; animation: fadeIn .6s ease; }
-.page-title { font-size: 2.1rem; font-weight: 700; color: var(--primary-color); display: flex; align-items: center; gap: 14px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+/* Reset básico para garantir responsividade */
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+/* === CONTAINER PRINCIPAL (FULL DESKTOP) === */
+.fiscal-container { 
+    width: 98%; 
+    max-width: 1600px; /* Expandido para aproveitar telas grandes */
+    margin: 0 auto; 
+    padding: 30px; 
+    min-height: calc(100vh - 120px); 
+    display: flex; 
+    flex-direction: column; 
+    animation: fadeIn .6s ease; 
+}
+
+/* === TIPOGRAFIA E TÍTULOS === */
+.page-title { 
+    font-size: 2.1rem; 
+    font-weight: 700; 
+    color: var(--primary-color); 
+    display: flex; 
+    align-items: center; 
+    gap: 14px; 
+    margin-bottom: 30px; 
+    padding-bottom: 15px; 
+    border-bottom: 1px solid var(--border-color); 
+}
 .page-title i { font-size: 2rem; }
-.card { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 6px 16px rgba(0,0,0,0.45); overflow: hidden; height: 100%; display: flex; flex-direction: column; }
-.card-header { padding: 18px 22px; background: rgba(255,255,255,0.04); color: var(--primary-color); font-size: 1.15rem; font-weight: 600; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; }
-.card-body { padding: 28px; flex: 1; }
-label { color: var(--text-secondary); font-size: .9rem; margin-bottom: 6px; display: block; font-weight: 500; }
-.form-control { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; height: 46px; width: 100%; padding-left: 12px; transition: .2s; box-sizing: border-box; }
+
+/* === CARDS === */
+.card { 
+    background: var(--bg-card); 
+    border-radius: 12px; 
+    border: 1px solid var(--border-color); 
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45); 
+    overflow: hidden; 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+.card-header { 
+    padding: 18px 22px; 
+    background: rgba(255,255,255,0.04); 
+    color: var(--primary-color); 
+    font-size: 1.15rem; 
+    font-weight: 600; 
+    border-bottom: 1px solid var(--border-color); 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+}
+
+.card-body { 
+    padding: 28px; 
+    flex: 1; 
+}
+
+/* === FORMULÁRIOS === */
+label { 
+    color: var(--text-secondary); 
+    font-size: .9rem; 
+    margin-bottom: 6px; 
+    display: block; 
+    font-weight: 500; 
+}
+
+.form-control { 
+    background: var(--bg-input); 
+    border: 1px solid var(--border-color); 
+    color: var(--text-primary); 
+    border-radius: 6px; 
+    height: 46px; 
+    width: 100%; 
+    padding-left: 12px; 
+    transition: .2s; 
+}
+
 .form-control:hover { background: var(--bg-hover); }
-.form-control:focus { border-color: var(--primary-color); background: #303030; box-shadow: 0 0 0 2px rgba(0,191,255,.25); outline: none; }
-select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%23b0b0b0' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
-.row { display: flex; flex-wrap: wrap; gap: 20px; }
-.col-full { width: 100%; }
-.col-half { flex: 1 1 calc(50% - 20px); min-width: 250px; }
-.col-third { flex: 1 1 calc(33.333% - 20px); min-width: 200px; }
-.col-quart { flex: 1 1 calc(25% - 20px); min-width: 150px; }
-.col-small { flex: 0 0 120px; }
-.col-large { flex: 1; }
-.btn-container { margin-top: 30px; display: flex; justify-content: flex-end; }
-.btn-primary { background: var(--primary-color); border: none; color: #000; padding: 12px 35px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: .25s; }
-.btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,191,255,.35); }
-.alert { background: #262626; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary-color); color: #fff; }
+.form-control:focus { 
+    border-color: var(--primary-color); 
+    background: #303030; 
+    box-shadow: 0 0 0 2px rgba(0,191,255,.25); 
+    outline: none; 
+}
+
+select.form-control { 
+    appearance: none; 
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%23b0b0b0' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E"); 
+    background-repeat: no-repeat; 
+    background-position: right 14px center; 
+}
+
+/* === SISTEMA DE GRID RESPONSIVO === */
+.row { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 20px; 
+    margin-bottom: 20px;
+}
+.row:last-child { margin-bottom: 0; }
+
+.col-full { flex: 0 0 100%; max-width: 100%; }
+
+/* Calculos ajustados para gap de 20px */
+.col-half { flex: 1 1 calc(50% - 10px); }
+.col-third { flex: 1 1 calc(33.333% - 14px); }
+.col-quart { flex: 1 1 calc(25% - 15px); }
+
+/* Colunas Especiais (Logradouro/Número) */
+.col-large { flex: 1 1 auto; width: 70%; } 
+.col-small { flex: 0 0 140px; }
+
+/* === BOTÕES E ALERTAS === */
+.btn-container { 
+    margin-top: 30px; 
+    display: flex; 
+    justify-content: flex-end; 
+}
+
+.btn-primary { 
+    background: var(--primary-color); 
+    border: none; 
+    color: #000; 
+    padding: 12px 35px; 
+    border-radius: 8px; 
+    font-size: 1rem; 
+    font-weight: 600; 
+    cursor: pointer; 
+    transition: .25s; 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary:hover { 
+    background: var(--primary-hover); 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 14px rgba(0,191,255,.35); 
+}
+
+.alert { 
+    background: #262626; 
+    padding: 14px 18px; 
+    border-radius: 8px; 
+    margin-bottom: 20px; 
+    border-left: 4px solid var(--primary-color); 
+    color: #fff; 
+}
 .alert-info { border-left-color: #17a2b8; }
-@media (max-width: 768px) { .page-title { font-size: 1.6rem; flex-direction: column; text-align: center; gap: 5px; } .row { flex-direction: column; gap: 15px; } .btn-container { justify-content: center; } .btn-primary { width: 100%; font-size: 1rem; } .col-half, .col-third, .col-quart, .col-small, .col-large { flex: 1 1 100%; width: 100%; } }
+
+/* === RESPONSIVIDADE (TABLET) === */
+@media (max-width: 992px) {
+    .col-third { flex: 1 1 calc(50% - 10px); } /* Vira 2 colunas */
+    .col-quart { flex: 1 1 calc(50% - 10px); } /* Vira 2 colunas */
+}
+
+/* === RESPONSIVIDADE (MOBILE) === */
+@media (max-width: 768px) { 
+    .fiscal-container { padding: 15px; width: 100%; }
+    
+    .page-title { 
+        font-size: 1.6rem; 
+        flex-direction: column; 
+        text-align: center; 
+        gap: 10px; 
+    }
+    
+    .row { gap: 15px; } /* Menor gap no mobile */
+    
+    .btn-container { justify-content: center; } 
+    .btn-primary { width: 100%; font-size: 1.1rem; padding: 15px; } 
+    
+    /* Empilha tudo no mobile */
+    .col-half, .col-third, .col-quart, .col-small, .col-large { 
+        flex: 1 1 100%; 
+        width: 100%; 
+    }
+    
+    .card-body { padding: 20px; }
+}
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
@@ -104,7 +263,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
                         </div>
                     </div>
 
-                    <div class="row" style="margin-top: 20px;">
+                    <div class="row">
                         <div class="col-third">
                             <label>CNPJ</label>
                             <input type="text" class="form-control" name="cnpj"
@@ -124,7 +283,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
                         </div>
                     </div>
 
-                    <div class="row" style="margin-top: 20px;">
+                    <div class="row">
                         <div class="col-large">
                             <label>Logradouro</label>
                             <input type="text" class="form-control" name="logradouro" id="logradouro"
@@ -137,7 +296,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
                         </div>
                     </div>
 
-                    <div class="row" style="margin-top: 20px;">
+                    <div class="row">
                         <div class="col-third">
                             <label>Bairro</label>
                             <input type="text" class="form-control" name="bairro" id="bairro"
@@ -148,8 +307,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
                             <input type="text" class="form-control" name="municipio" id="municipio"
                                 value="<?= htmlspecialchars($dadosEmpresa['municipio'] ?? '') ?>">
                         </div>
-                        <div class="col-small">
-                            <label>UF</label>
+                        <div class="col-small"> <label>UF</label>
                             <input type="text" class="form-control" name="uf" id="uf"
                                 value="<?= htmlspecialchars($dadosEmpresa['uf'] ?? '') ?>" maxlength="2">
                         </div>
@@ -193,7 +351,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
                         </div>
                     </div>
 
-                    <div class="row" style="margin-top: 20px;">
+                    <div class="row">
                         <div class="col-half">
                             <label>ID CSC (Token)</label>
                             <input type="text" class="form-control" name="csc_id"
@@ -208,7 +366,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
                         </div>
                     </div>
 
-                    <div class="row" style="margin-top: 20px;">
+                    <div class="row">
                         <div class="col-full">
                             <div class="alert alert-info" style="margin-bottom: 0; font-size: 0.9rem;">
                                 <i class="fa-solid fa-circle-info"></i> O certificado A1 deve ser enviado ao suporte técnico para configuração.
@@ -223,7 +381,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 
         <div class="btn-container">
             <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-check mr-2"></i> Salvar Configurações
+                <i class="fa-solid fa-check mr-2" style="margin-right: 8px;"></i> Salvar Configurações
             </button>
         </div>
 

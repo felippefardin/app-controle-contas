@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
 if (!isset($_SESSION['usuario_logado'])) { header('Location: ../pages/login.php'); exit; }
 
@@ -11,7 +12,7 @@ $repetirVezes = (int)$_POST['repetir_vezes'];
 $repetirIntervalo = (int)$_POST['repetir_intervalo'];
 
 if (!$contaId || $repetirVezes <= 0) {
-    $_SESSION['error_message'] = "Dados inválidos.";
+    set_flash_message('error', "Dados inválidos.");
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -47,7 +48,10 @@ if ($contaOriginal) {
         $stmt_insert->execute();
     }
     $conn->commit();
-    $_SESSION['success_message'] = "Conta repetida com sucesso!";
+    // SUCESSO
+    set_flash_message('success', "Conta repetida com sucesso!");
+} else {
+    set_flash_message('error', "Conta original não encontrada.");
 }
 
 header('Location: ../pages/contas_receber.php');

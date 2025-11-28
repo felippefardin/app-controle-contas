@@ -7,6 +7,15 @@ require_once '../includes/utils.php'; // Importa o sistema de Flash Messages
 $email = trim($_POST['email'] ?? '');
 $senha = trim($_POST['senha'] ?? '');
 
+// --- NOVA FUNÇÃO: Redireciona salvando o input antigo ---
+function redirect_with_error($msg, $email_input) {
+    set_flash_message('danger', $msg);
+    $_SESSION['old_email'] = $email_input; // Salva o e-mail digitado
+    header("Location: ../pages/login.php");
+    exit;
+}
+// --------------------------------------------------------
+
 if (!$email || !$senha) {
     set_flash_message('warning', 'Preencha o e-mail e a senha para entrar.');
     header("Location: ../pages/login.php");
@@ -23,23 +32,23 @@ try {
     $stmt->close();
 
     if (!$userMaster) {
-        set_flash_message('danger', 'Conta não encontrada. Verifique o e-mail.');
         $connMaster->close();
-        header("Location: ../pages/login.php");
-        exit;
+        // Usa a nova função para preservar o e-mail
+        redirect_with_error('Conta não encontrada. Verifique o e-mail.', $email);
     }
 
     if (!password_verify($senha, $userMaster['senha'])) {
-        set_flash_message('danger', 'Senha incorreta. Tente novamente.');
         $connMaster->close();
-        header("Location: ../pages/login.php");
-        exit;
+        // Usa a nova função para preservar o e-mail
+        redirect_with_error('Senha incorreta. Tente novamente.', $email);
     }
 
     // Super Admin
     $emails_admin = ['contatotech.tecnologia@gmail.com', 'contatotech.tecnologia@gmail.com.br'];
     if (in_array($userMaster['email'], $emails_admin)) {
         $_SESSION['super_admin'] = $userMaster;
+        // Limpa old_email se existir, pois deu sucesso
+        unset($_SESSION['old_email']); 
         $connMaster->close();
         header('Location: ../pages/admin/dashboard.php');
         exit;
@@ -88,6 +97,9 @@ try {
             $_SESSION['nivel_acesso']   = 'proprietario';
             $_SESSION['erro_assinatura'] = "Seu período gratuito acabou ou sua assinatura está pendente.";
             
+            // Limpa old_email
+            unset($_SESSION['old_email']);
+            
             $connMaster->close();
             header("Location: ../pages/assinar.php");
             exit;
@@ -132,6 +144,9 @@ try {
     $_SESSION['tenant_id']         = $tenantId;
     $_SESSION['nivel_acesso']      = $nivelAcessoTenant;
     $_SESSION['usuario_logado']    = true;
+
+    // Limpa old_email pois o login foi bem sucedido
+    unset($_SESSION['old_email']);
 
     // Define mensagem de boas-vindas para a Home
     set_flash_message('success', "Bem-vindo de volta, {$userMaster['nome']}!");

@@ -87,40 +87,194 @@ display_flash_message();
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatório de Vendas e Comissão</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: #1e1e1e; padding: 25px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-        h2 { color: #00bfff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        body { 
+            background-color: #121212; 
+            color: #eee; 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+        }
         
-        .filter-box { background: #2a2a2a; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #444; }
-        .form-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
-        .form-group { flex: 1; min-width: 150px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #bbb; font-size: 0.9em; }
-        .form-control { width: 100%; padding: 10px; background: #333; border: 1px solid #555; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        
-        .btn-submit { background-color: #00bfff; color: #121212; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; height: 40px; }
-        .btn-submit:hover { background-color: #0095cc; }
+        /* CONTAINER FULL DESKTOP */
+        .container { 
+            width: 100%;
+            max-width: 98%; /* Ocupa quase toda a tela no desktop */
+            margin: auto; 
+            background: #1e1e1e; 
+            padding: 25px; 
+            border-radius: 10px; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); 
+            box-sizing: border-box;
+        }
 
-        .results-box { display: flex; gap: 20px; margin-bottom: 30px; }
-        .card-result { flex: 1; background: #242424; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #444; }
-        .card-result h3 { margin: 0 0 10px 0; font-size: 1rem; color: #aaa; }
-        .card-result p { margin: 0; font-size: 1.8rem; font-weight: bold; color: #fff; }
+        h2 { 
+            color: #00bfff; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px; 
+        }
+        
+        .filter-box { 
+            background: #2a2a2a; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            border: 1px solid #444; 
+        }
+
+        .form-row { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 15px; 
+            align-items: flex-end; 
+        }
+
+        .form-group { 
+            flex: 1; 
+            min-width: 200px; /* Garante que não fique muito espremido */
+        }
+
+        .form-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            color: #bbb; 
+            font-size: 0.9em; 
+        }
+
+        .form-control { 
+            width: 100%; 
+            padding: 10px; 
+            background: #333; 
+            border: 1px solid #555; 
+            color: #fff; 
+            border-radius: 5px; 
+            box-sizing: border-box; 
+        }
+        
+        .btn-submit { 
+            background-color: #00bfff; 
+            color: #121212; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            height: 40px; 
+            min-width: 120px;
+        }
+        
+        .btn-submit:hover { 
+            background-color: #0095cc; 
+        }
+
+        .results-box { 
+            display: flex; 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+
+        .card-result { 
+            flex: 1; 
+            background: #242424; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            border-left: 5px solid #444; 
+        }
+
+        .card-result h3 { 
+            margin: 0 0 10px 0; 
+            font-size: 1rem; 
+            color: #aaa; 
+        }
+
+        .card-result p { 
+            margin: 0; 
+            font-size: 1.8rem; 
+            font-weight: bold; 
+            color: #fff; 
+        }
         
         .card-total { border-left-color: #28a745; }
         .card-comissao { border-left-color: #ffc107; }
         .card-comissao p { color: #ffc107; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #222; border-radius: 5px; overflow: hidden; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
-        th { background-color: #333; color: #00bfff; }
-        tr:hover { background-color: #2a2a2a; }
-        
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; background: #444; }
+        /* Tabela Responsiva */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
 
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            background: #222; 
+            border-radius: 5px; 
+            min-width: 600px; /* Garante scroll no mobile */
+        }
+
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #333; 
+        }
+
+        th { 
+            background-color: #333; 
+            color: #00bfff; 
+        }
+
+        tr:hover { 
+            background-color: #2a2a2a; 
+        }
+        
+        .badge { 
+            padding: 3px 8px; 
+            border-radius: 4px; 
+            font-size: 0.8em; 
+            background: #444; 
+        }
+
+        /* MEDIA QUERIES PARA MOBILE E TABLET */
         @media (max-width: 768px) {
-            .results-box { flex-direction: column; }
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 15px;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .results-box { 
+                flex-direction: column; 
+            }
+
+            .form-row {
+                flex-direction: column;
+                align-items: stretch; /* Estica os inputs para 100% */
+            }
+
+            .form-group {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .btn-submit {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .card-result p {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
@@ -175,7 +329,7 @@ display_flash_message();
     </div>
 
     <?php if (count($vendas) > 0): ?>
-        <div style="overflow-x:auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>

@@ -47,7 +47,7 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true) 
         }
 
         h2 { color: #00bfff; margin-bottom: 25px; text-align: center; font-weight: 600; }
-        label { color: #bbb; margin-bottom: 6px; font-size: 0.95rem; }
+        label { color: #fff; margin-bottom: 6px; font-size: 0.95rem; }
 
         input {
             width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333;
@@ -88,6 +88,7 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true) 
             pointer-events: none;
         }
         .floating-icon:hover .tooltip-custom { opacity: 1; visibility: visible; right: 60px; }
+        
     </style>
 </head>
 <body>
@@ -138,10 +139,13 @@ display_flash_message();
             </div>
             <div class="modal-body">
                 <form id="formFeedbackLogin">
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="anonimoFeedback" name="anonimo">
-                        <label class="form-check-label" for="anonimoFeedback">Enviar Anonimamente</label>
-                    </div>
+                    <div style="display: flex; align-items: center; margin-top: 15px;">
+    <input type="checkbox" id="anonimo" name="anonimo" style="width: auto; margin: 0; cursor: pointer;">
+    
+    <label for="anonimo" style="margin-left: 10px; margin-top: 0; cursor: pointer; font-weight: normal;">
+        Enviar anonimamente
+    </label>
+</div>
                     <div id="dadosIdentificacaoFeed">
                         <input type="text" name="nome" class="form-control mb-2 bg-secondary text-white border-0" placeholder="Seu Nome">
                         <input type="email" name="email" class="form-control mb-2 bg-secondary text-white border-0" placeholder="E-mail">

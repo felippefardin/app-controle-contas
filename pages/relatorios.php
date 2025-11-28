@@ -127,14 +127,41 @@ foreach ($categorias as $c) {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatórios Financeiros</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; margin: 0; padding: 20px; }
-        .container { max-width: 1300px; margin: auto; background: #1e1e1e; padding: 25px; border-radius: 10px; box-shadow: 0 0 10px #000; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #121212; 
+            color: #eee; 
+            margin: 0; 
+            padding: 20px; 
+            box-sizing: border-box;
+        }
+        
+        /* Layout Full Desktop e Responsivo */
+        .container { 
+            width: 100%;
+            max-width: 98%; /* Full width */
+            margin: auto; 
+            background: #1e1e1e; 
+            padding: 25px; 
+            border-radius: 10px; 
+            box-shadow: 0 0 10px #000; 
+            box-sizing: border-box;
+        }
+
         h2 { text-align: center; color: #00bfff; font-weight: 600; margin-bottom: 25px; }
         .section-title { border-bottom: 1px solid #333; color: #ccc; padding-bottom: 8px; margin-top: 30px; margin-bottom: 20px; font-size: 1.3rem; }
-        .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        
+        /* Grid responsivo para os cards */
+        .row { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 20px; 
+        }
+
         .summary-card { background: #242424; border-left: 5px solid #00bfff33; padding: 20px; border-radius: 10px; transition: .3s; }
         .summary-card:hover { transform: translateY(-3px); background: #2b2b2b; }
         .summary-card i { font-size: 1.8rem; color: #00bfff; margin-bottom: 8px; }
@@ -143,32 +170,56 @@ foreach ($categorias as $c) {
         .summary-card span { font-size: .9rem; color: #999; }
         .card-positive { border-left-color: #2ecc71; }
         .card-negative { border-left-color: #e74c3c; }
+
         .table-container { background: #242424; border-radius: 10px; padding: 20px; margin-top: 30px; overflow-x: auto; }
-        .table-container table { width: 100%; }
-        .table-container th, .table-container td { padding: 12px; border-bottom: 1px solid #333; }
+        .table-container table { width: 100%; border-collapse: collapse; min-width: 500px; /* Garante scroll no mobile */ }
+        .table-container th, .table-container td { padding: 12px; border-bottom: 1px solid #333; text-align: left; }
         .table-container th { background: #2a2a2a; color: #00bfff; }
-        .table-container td.currency { text-align: center; }
+        .table-container td.currency { text-align: right; }
         .table-container .total-recebido { color: #2ecc71; }
         .table-container .total-pago { color: #e74c3c; }
+
         .chart-container { background: #242424; border-radius: 10px; padding: 25px; margin-top: 30px; }
         .chart-container canvas { width: 100%; height: 400px !important; }
         .chart-container h4 { color: #eee; margin-bottom: 15px; }
-        #exportOptions { display: flex; gap: 10px; margin-top: 15px; justify-content: center; }
+        
+        #exportOptions { display: flex; gap: 10px; margin-top: 15px; justify-content: center; flex-wrap: wrap; }
         button.export-btn { background: #00bfff; border: none; color: #fff; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 15px; }
         button.export-btn:hover { background: #0099cc; }
         
         /* Modal */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-        .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; }
+        .modal-content { background-color: #1f1f1f; padding: 25px 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); width: 90%; max-width: 800px; position: relative; max-height: 90vh; overflow-y: auto; }
         .modal-content .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
         .modal-content .close-btn:hover { color: #00bfff; }
         .modal-content form { display: flex; flex-direction: column; gap: 15px; }
-        .modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; }
-        .export-buttons-group { text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .modal-content form input, .modal-content form select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #eee; box-sizing: border-box; }
+        .export-buttons-group { text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
         .btn-export { background-color: #28a745; color: white; padding: 10px 14px; border: none; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
         .btn-export:hover { background-color: #218838; }
         .section-export { border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
         .section-export h4 { color: #00bfff; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+
+        /* Media Queries para Mobile e Tablet */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 15px; max-width: 100%; width: 100%; }
+            h2 { font-size: 1.5rem; }
+            .summary-card p { font-size: 1.3rem; }
+            
+            /* Ajuste do Gráfico no Mobile */
+            .chart-container { padding: 15px; }
+            .chart-container canvas { height: 250px !important; }
+            
+            /* Botões de exportação mobile */
+            button.export-btn { width: 100%; margin-bottom: 5px; }
+            #exportOptions { flex-direction: column; }
+            
+            /* Modal mobile */
+            .modal-content { padding: 20px; width: 95%; }
+            .export-buttons-group { flex-direction: column; }
+            .btn-export { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -227,8 +278,8 @@ foreach ($categorias as $c) {
             <thead>
                 <tr>
                     <th>Categoria</th>
-                    <th>Recebido</th>
-                    <th>Pago</th>
+                    <th style="text-align: right;">Recebido</th>
+                    <th style="text-align: right;">Pago</th>
                 </tr>
             </thead>
             <tbody>
@@ -363,5 +414,7 @@ foreach ($categorias as $c) {
         if(e.target === modal) modal.style.display='none';
     });
 </script>
+
+<?php include('../includes/footer.php'); ?>
 </body>
 </html>

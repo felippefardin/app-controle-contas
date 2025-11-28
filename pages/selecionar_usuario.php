@@ -48,6 +48,7 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Selecionar Usuário - App Controle de Contas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style> 
@@ -60,6 +61,8 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
             color: #eee;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
+            padding: 20px; /* Adicionado padding para evitar colagem nas bordas em telas pequenas */
+            box-sizing: border-box;
         }
         .selection-container {
             padding: 40px;
@@ -67,8 +70,10 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 191, 255, 0.2);
             text-align: center;
+            
+            /* Ajuste para Responsividade e Full Desktop */
             width: 100%;
-            max-width: 400px;
+            max-width: 500px; /* Um pouco mais largo para desktop */
         }
         h2 {
             color: #00bfff;
@@ -133,7 +138,6 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
             margin-bottom: 20px;
             color: white;
         }
-        /* Estilo específico para o alerta de e-mail que some */
         .alert-float-success {
             background-color: #28a745;
             color: white;
@@ -149,7 +153,8 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
             list-style: none;
             padding: 0;
             margin: 0 0 20px 0;
-            max-height: 200px;
+            /* Aproveita melhor a altura em Desktop, rola se necessário */
+            max-height: 50vh; 
             overflow-y: auto;
             border: 1px solid #444;
             border-radius: 5px;
@@ -161,6 +166,10 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
             padding: 10px;
             border-bottom: 1px solid #444;
             cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .user-item:hover {
+            background-color: #444;
         }
         .user-item:last-child {
             border-bottom: none;
@@ -168,6 +177,7 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
         .user-item input[type="radio"] {
             margin-right: 15px;
             width: auto;
+            cursor: pointer;
         }
         .user-item img {
             width: 40px;
@@ -184,6 +194,25 @@ if (isset($_GET['status']) && $_GET['status'] == 'email_enviado') {
             margin: 0;
             font-weight: normal;
             color: #eee;
+            cursor: pointer;
+        }
+        
+        /* Ajustes para Mobile */
+        @media (max-width: 768px) {
+            .selection-container {
+                padding: 25px;
+                max-width: 100%;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            .user-item {
+                padding: 15px 10px; /* Maior área de toque */
+            }
+            button {
+                padding: 15px;
+                font-size: 1rem;
+            }
         }
     </style>
 </head>

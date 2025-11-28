@@ -1,9 +1,12 @@
-/* Estilo geral em modo dark */
+/* =======================================================
+   ESTILO GERAL (DESKTOP / MODO DARK)
+   ======================================================= */
 body {
   background-color: #121212;
   color: #eee;
   font-family: Arial, sans-serif;
-  padding: 40px 20px 20px 20px; /* Aumentei o padding-top de 20px para 40px */
+  /* Padding ajustado para desktop */
+  padding: 40px 20px 20px 20px; 
   transition: background-color 0.3s, color 0.3s;
 }
 
@@ -24,8 +27,8 @@ main {
     margin-left: 20px;
     color: #000;
     font-weight: bold;
-    font-size: 1em; /* Tamanho padronizado */
-    padding: 8px 14px; /* Padding para parecer um botão */
+    font-size: 1em;
+    padding: 8px 14px;
     text-decoration: none;
     border-radius: 5px;
     background-color: #f0ad4e;
@@ -36,10 +39,9 @@ main {
     background-color: #ec971f;
 }
 
-
-/* Caso queira espaçamento adicional somente no header */
+/* Espaçamento extra do header apenas no Desktop */
 header {
-  margin-top: 30px; /* Adiciona 30px extra acima do header */
+  margin-top: 30px; 
 }
 
 /* Containers principais */
@@ -65,7 +67,7 @@ input, select, textarea {
   color: #eee;
 }
 
-/* Botões */
+/* Botões Gerais */
 button, .btn {
   background-color: #0af;
   color: white;
@@ -75,20 +77,23 @@ button, .btn {
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 button:hover, .btn:hover {
   background-color: #08c;
+  opacity: 0.9;
 }
 
-/* Botões do cabeçalho com tamanho padronizado */
+/* Botões do cabeçalho */
 .btn-header {
     padding: 8px 14px;
     font-size: 1em;
     margin: 0 5px;
 }
 
-
-/* Tabelas */
+/* Tabelas (Estilo Padrão) */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -106,13 +111,12 @@ table tr:hover {
   background-color: #1e1e1e;
 }
 
-/* Contas vencidas destacadas */
+/* Utilitários */
 .vencida {
   background-color: #400000 !important;
   color: #fff !important;
 }
 
-/* Mensagens */
 .mensagem {
   background-color: #28a745;
   padding: 10px;
@@ -128,7 +132,6 @@ table tr:hover {
   text-align: center;
 }
 
-/* Links */
 a {
   color: #0af;
   text-decoration: none;
@@ -137,7 +140,6 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Controles de fonte */
 .font-controls {
   text-align: center;
   margin-top: 10px;
@@ -156,107 +158,7 @@ a:hover {
   background-color: #666;
 }
 
-/* Responsividade */
-@media (max-width: 600px) {
-  body {
-    padding: 10px;
-  }
-  main {
-      font-size: 15px;
-  }
-  form, .container, table {
-    width: 100%;
-    padding: 15px;
-  }
-  table, thead, tbody, th, td, tr {
-    display: block;
-  }
-  table tr {
-    margin-bottom: 15px;
-    border: 1px solid #444;
-    border-radius: 5px;
-    padding: 10px;
-  }
-  table td {
-    text-align: right;
-    position: relative;
-    padding-left: 50%;
-  }
-  table td::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 15px;
-    font-weight: bold;
-    text-transform: capitalize;
-  }
-
-  /* Buscar */
-  .filtro-container {
-    background: #f9f9f9;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-
-.filtro-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-}
-
-.filtro-grid input[type="text"],
-.filtro-grid input[type="date"],
-.filtro-grid select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    flex: 1;
-    min-width: 200px;
-}
-
-.botoes-filtro {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-
-.btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    text-decoration: none;
-    color: white;
-    font-weight: bold;
-    transition: background 0.3s;
-}
-
-.btn.buscar {
-    background: #007bff;
-}
-
-.btn.limpar {
-    background: #6c757d;
-}
-
-.btn.adicionar {
-    background: #28a745;
-}
-
-.btn:hover {
-    opacity: 0.9;
-}
-
-
-
-
-}
-/* =================================
-   BOTÕES DE AÇÃO PADRONIZADOS
-==================================== */
+/* Botões de Ação Padronizados */
 .btn-action {
     display: inline-flex;
     align-items: center;
@@ -270,5 +172,144 @@ a:hover {
     cursor: pointer;
     transition: background-color 0.3s ease;
     margin: 2px;
-    border: none; /* Garante que links pareçam botões */
+    border: none;
+}
+
+/* =======================================================
+   RESPONSIVIDADE E ADAPTAÇÃO
+   ======================================================= */
+
+/* --- TABLETS E TELAS MÉDIAS (Max 850px) --- */
+@media (max-width: 850px) {
+    /* Remove o margin-top extra do header para economizar espaço */
+    header {
+        margin-top: 0 !important;
+    }
+
+    /* Reduz o padding do corpo para não ficar com buracos no topo */
+    body {
+        padding: 10px !important;
+    }
+
+    /* Container ocupa quase toda a largura */
+    form, .container, table {
+        width: 98%;
+        max-width: 100%;
+    }
+
+    /* Ajuste do grid de filtros para 2 colunas */
+    .filtro-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+}
+
+/* --- MOBILE E TELAS PEQUENAS (Max 600px) --- */
+@media (max-width: 600px) {
+  
+  /* Fonte um pouco menor para caber mais dados */
+  main {
+      font-size: 15px;
+  }
+
+  /* Containers colam nas bordas */
+  form, .container, table {
+    width: 100%;
+    padding: 15px;
+    margin: 10px auto;
+  }
+
+  /* --- MODO "CARD VIEW" PARA TABELAS EM CELULAR --- */
+  /* Transforma linhas da tabela em blocos separados */
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+  
+  /* Esconde o cabeçalho da tabela (mas mantém acessível para leitores de tela se necessário) */
+  thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  table tr {
+    margin-bottom: 15px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #2a2a2a; /* Fundo levemente diferente para destacar o card */
+  }
+
+  table td {
+    border: none;
+    border-bottom: 1px solid #3a3a3a;
+    position: relative;
+    padding-left: 50%; /* Espaço para o label */
+    text-align: right;
+    min-height: 35px; /* Altura mínima para facilitar toque */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  
+  table td:last-child {
+    border-bottom: none;
+    justify-content: center; /* Centraliza botões de ação na última linha */
+    padding-left: 0;
+    padding-top: 15px;
+  }
+
+  /* Simula o cabeçalho usando o atributo data-label */
+  table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 10px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: bold;
+    color: #0af; /* Destaque na cor do label */
+  }
+
+  /* Filtros em coluna única */
+  .filtro-container {
+    background: #f9f9f9;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+
+  .filtro-grid {
+    display: flex;
+    flex-direction: column; /* Força coluna única */
+    gap: 10px;
+  }
+
+  .filtro-grid input[type="text"],
+  .filtro-grid input[type="date"],
+  .filtro-grid select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .botoes-filtro {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Botões ocupam largura total para facilitar o toque */
+  .btn, button, .btn-action {
+    width: 100%;
+    padding: 12px; /* Área de toque maior */
+    margin-bottom: 5px;
+  }
+
+  .btn.buscar { background: #007bff; }
+  .btn.limpar { background: #6c757d; }
+  .btn.adicionar { background: #28a745; }
 }

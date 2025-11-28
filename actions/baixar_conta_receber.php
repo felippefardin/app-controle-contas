@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // IMPORTANTE: Importar utils para usar set_flash_message
 
 if (!isset($_SESSION['usuario_logado'])) {
     header('Location: ../pages/login.php');
@@ -14,7 +15,7 @@ $data_baixa = $_POST['data_baixa'] ?? date('Y-m-d');
 $forma_pagamento = $_POST['forma_pagamento'] ?? 'outros';
 
 if ($id_conta <= 0) {
-    $_SESSION['error_message'] = "Conta inválida.";
+    set_flash_message('error', "Conta inválida."); // Alterado
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -53,9 +54,11 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param($types, ...$params);
 
 if ($stmt->execute()) {
-    $_SESSION['success_message'] = "Recebimento registrado com sucesso!";
+    // SUCESSO: Usa a função para exibir o card fluente com ícone
+    set_flash_message('success', "Recebimento registrado com sucesso!");
 } else {
-    $_SESSION['error_message'] = "Erro ao registrar: " . $stmt->error;
+    // ERRO
+    set_flash_message('error', "Erro ao registrar: " . $stmt->error);
 }
 
 $stmt->close();

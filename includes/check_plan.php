@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $planoAtual = $_SESSION['plano'] ?? 'basico';
 $paginaAtual = basename($_SERVER['PHP_SELF']);
 
-// Páginas permitidas para o plano Básico
+// Páginas permitidas para o plano Básico (E essencialmente a 'whitelist' para evitar loops)
 $paginasBasico = [
     'contas_pagar.php',
     'contas_receber.php',
@@ -22,7 +22,11 @@ $paginasBasico = [
     'editar_conta_receber.php', // Necessário para editar
     'add_conta_pagar.php',      // Ações
     'add_conta_receber.php',
-    'baixar_conta.php'
+    'baixar_conta.php',
+    // [CORREÇÃO LOOP] Adicionadas páginas de assinatura e pagamento para evitar bloqueio
+    'assinar.php',
+    'checkout_plano.php',
+    'webhook_mercadopago.php'
 ];
 
 if ($planoAtual === 'basico') {

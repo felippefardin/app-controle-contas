@@ -17,11 +17,22 @@ $novo_nivel = $_POST['nivel'] ?? 'padrao';
 
 $conn = getTenantConnection();
 
-// 1. Atualizar Dados Básicos
+// [CORREÇÃO DUPLA PERSONALIDADE] 1. Buscar o email ATUAL antes da atualização
+// Precisamos disso para encontrar o usuário no banco Master e atualizar lá também
+$emailAntigo = '';
+$stmtGetOld = $conn->prepare("SELECT email FROM usuarios WHERE id = ?");
+$stmtGetOld->bind_param("i", $id);
+$stmtGetOld->execute();
+$stmtGetOld->bind_result($emailAntigo);
+$stmtGetOld->fetch();
+$stmtGetOld->close();
+
+// 2. Atualizar Dados Básicos no TENANT
 $sql = "UPDATE usuarios SET nome=?, email=?, cpf=?, nivel_acesso=? WHERE id=?";
 $params = [$nome, $email, $cpf, $novo_nivel, $id];
 $types = "ssssi";
 
+$senha_hash = null;
 if (!empty($senha)) {
     $sql = "UPDATE usuarios SET nome=?, email=?, cpf=?, nivel_acesso=?, senha=? WHERE id=?";
     $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
@@ -33,20 +44,43 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param($types, ...$params);
 
 if ($stmt->execute()) {
-    set_flash_message('success', 'Usuário atualizado com sucesso!');
+    
+    // [CORREÇÃO DUPLA PERSONALIDADE] 3. Sincronizar com o Banco MASTER
+    // Se o usuário foi atualizado no Tenant, atualizamos as credenciais de login no Master
+    try {
+        $connMaster = getMasterConnection();
+        if ($connMaster && !$connMaster->connect_error) {
+            
+            // Prepara query para o Master (usando o email ANTIGO para achar o registro)
+            if (!empty($senha)) {
+                // Atualiza Senha, Email e Nome
+                $sqlMaster = "UPDATE usuarios SET nome=?, email=?, senha=? WHERE email=?";
+                $stmtM = $connMaster->prepare($sqlMaster);
+                $stmtM->bind_param("ssss", $nome, $email, $senha_hash, $emailAntigo);
+            } else {
+                // Atualiza apenas Email e Nome (se mudou)
+                $sqlMaster = "UPDATE usuarios SET nome=?, email=? WHERE email=?";
+                $stmtM = $connMaster->prepare($sqlMaster);
+                $stmtM->bind_param("sss", $nome, $email, $emailAntigo);
+            }
+            
+            $stmtM->execute();
+            $stmtM->close();
+            $connMaster->close();
+        }
+    } catch (Exception $e) {
+        // Log silencioso para não travar o fluxo, já que o Tenant foi atualizado
+        error_log("Erro ao sincronizar Master: " . $e->getMessage());
+    }
+
+    set_flash_message('success', 'Usuário atualizado com sucesso (Sincronizado)!');
 } else {
     set_flash_message('danger', 'Erro ao atualizar usuário: ' . $stmt->error);
 }
 $stmt->close();
 
-// 2. Atualizar Permissões (Apenas Admin)
+// 4. Atualizar Permissões (Apenas Admin)
 if ($is_admin) {
-    // Limpa atuais (na tabela de permissoes se usar JSON é diferente, mas mantendo a lógica original do seu código que usava usuario_permissoes ou JSON)
-    // Nota: Seu código original de add_usuario usava JSON na coluna permissoes, mas o editar estava usando uma tabela auxiliar usuario_permissoes.
-    // Vou manter a lógica que estava no seu arquivo 'editar_usuario.php' original enviado, mas atenção a essa inconsistência no seu banco.
-    // Se o seu sistema usa JSON na tabela usuarios, o código abaixo precisaria ser ajustado. 
-    // Como solicitado, não altero estrutura, apenas a mensagem.
-
     $conn->query("DELETE FROM usuario_permissoes WHERE usuario_id = $id");
 
     if (isset($_POST['permissoes']) && is_array($_POST['permissoes'])) {

@@ -1,6 +1,6 @@
 <div id="calendario-container" style="display:none;">
     <div id="calendario-header">
-        Calendário
+        <i class="fas fa-calendar-alt" style="margin-right: 5px;"></i> Calendário
         <span id="fechar-calendario">×</span>
     </div>
     <div id="calendario-body">
@@ -18,39 +18,53 @@
 </div>
 
 <style>
-    /* Estilo geral no mesmo padrão da calculadora */
+    /* === CALENDÁRIO BASE (DESKTOP) === */
     #calendario-container {
         position: fixed;
-        top: 150px;
-        left: 150px;
+        top: 15%;
+        left: 45%; /* Posicionado ao lado da calculadora (que está em 70%) */
         width: 300px;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        z-index: 999; /* Um pouco abaixo da calculadora */
         background-color: #1e1e1e;
-        color: #fff;
-        font-family: Arial, sans-serif;
-        border: 2px solid #1e1e1e;
+        color: #eee;
+        font-family: "Segoe UI", Arial, sans-serif;
+        border-radius: 10px;
+        border: 1px solid #444;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        z-index: 1201; /* Um nível acima da calculadora */
+        overflow: hidden;
         transition: border-color 0.3s;
     }
 
     #calendario-container.ativa {
-        border-color: #27ae60; /* Verde para diferenciar do azul da calculadora */
+        border-color: #27ae60; /* Verde para diferenciar */
+        box-shadow: 0 0 15px rgba(39, 174, 96, 0.4);
     }
 
     #calendario-header {
-        padding: 10px;
+        background-color: #2a2a2a;
+        color: #27ae60;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 8px 12px;
         cursor: move;
-        background-color: #272727;
-        border-radius: 8px 8px 0 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
         user-select: none;
-        font-weight: bold;
+        border-bottom: 1px solid #333;
     }
 
-    #fechar-calendario { cursor:pointer; font-size:18px; font-weight:bold; }
+    #fechar-calendario {
+        cursor: pointer;
+        color: #aaa;
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 1;
+        transition: 0.2s;
+    }
+    #fechar-calendario:hover {
+        color: #ff5555;
+    }
     
     #calendario-body { padding: 10px; }
 
@@ -62,53 +76,82 @@
     }
     .calendario-nav h3 {
         margin: 0;
-        font-size: 1.1em;
-        color: #fff;
+        font-size: 1em;
+        color: #eee;
+        font-weight: 600;
+        text-transform: capitalize;
     }
     .calendario-nav button {
-        background: #3a3a3a;
-        color: #fff;
-        border: none;
+        background: #333;
+        color: #eee;
+        border: 1px solid #444;
         border-radius: 4px;
         cursor: pointer;
-        padding: 5px 10px;
+        padding: 4px 10px;
+        font-size: 12px;
+        transition: background 0.2s;
     }
-    .calendario-nav button:hover { background-color: #555; }
+    .calendario-nav button:hover { background-color: #444; }
 
     .dias-semana, .dias-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         text-align: center;
-        gap: 5px;
+        gap: 2px;
     }
 
     .dias-semana div {
         font-weight: bold;
-        font-size: 0.9em;
+        font-size: 0.85em;
         color: #888;
+        padding-bottom: 5px;
     }
     
     .dias-grid div {
         padding: 8px 0;
         border-radius: 4px;
         cursor: pointer;
+        font-size: 0.9em;
         transition: background-color 0.2s;
     }
     
     .dias-grid div:not(.outro-mes):hover {
-        background-color: #555;
+        background-color: #444;
     }
     
     .dias-grid .outro-mes {
-        color: #555;
+        color: #444;
     }
 
     .dias-grid .hoje {
         background-color: #27ae60;
         color: #fff;
         font-weight: bold;
+        box-shadow: 0 0 5px rgba(39, 174, 96, 0.5);
     }
 
+    /* === RESPONSIVIDADE (TABLET E MOBILE) === */
+    @media (max-width: 768px) {
+        #calendario-container {
+            width: 260px; /* Tamanho reduzido para mobile */
+            top: 100px;
+            left: 20px;
+        }
+
+        #calendario-header {
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        .dias-grid div {
+            padding: 6px 0;
+            font-size: 0.85em;
+        }
+        
+        .calendario-nav h3 {
+            font-size: 0.95em;
+        }
+    }
 </style>
 
 <script>
@@ -119,9 +162,11 @@
     const prevMonthBtn = document.getElementById('prev-month');
     const nextMonthBtn = document.getElementById('next-month');
 
+    let offsetXCal, offsetYCal;
     let calendarioAtivo = false;
     let dataAtual = new Date();
 
+    // --- FUNÇÕES DO CALENDÁRIO ---
     const renderizarCalendario = () => {
         const mes = dataAtual.getMonth();
         const ano = dataAtual.getFullYear();
@@ -149,9 +194,15 @@
             diasContainer.innerHTML += `<div class="${classe}">${i}</div>`;
         }
         
-        // Preencher o restante com os dias do próximo mês
+        // Preencher dias do próximo mês para completar a grade
         const totalDiasGrid = diasContainer.children.length;
         const diasRestantes = (7 - (totalDiasGrid % 7)) % 7;
+        // Se a grade tiver menos de 6 linhas (42 células), adicione mais uma linha se necessário ou preencha
+        // O padrão geralmente é 6 linhas para cobrir todos os casos
+        const totalCellsTarget = 42; 
+        const currentCells = totalDiasGrid + diasRestantes;
+        
+        // Simplesmente preenche o resto da linha atual
         for (let i = 1; i <= diasRestantes; i++) {
              diasContainer.innerHTML += `<div class="outro-mes">${i}</div>`;
         }
@@ -166,50 +217,84 @@
         dataAtual.setMonth(dataAtual.getMonth() + 1);
         renderizarCalendario();
     });
-    
-    // --- LÓGICA DE ATIVAÇÃO E DESATIVAÇÃO ---
-    calendarioContainer.addEventListener('click', (e) => {
-      if (!calendarioAtivo) {
-        calendarioAtivo = true;
-        calendarioContainer.classList.add('ativa');
-      }
-      e.stopPropagation();
-    });
 
-    document.addEventListener('click', () => {
-      if (calendarioAtivo) {
-        calendarioAtivo = false;
-        calendarioContainer.classList.remove('ativa');
-      }
-    });
+    function garantirAtividadeCalendario() {
+        if (!calendarioAtivo) {
+            calendarioAtivo = true;
+            calendarioContainer.classList.add('ativa');
+        }
+    }
     
-    // --- LÓGICA DE MOVIMENTAÇÃO E FECHAMENTO ---
-    let offsetXCal, offsetYCal;
-    calendarioHeader.addEventListener('mousedown', e => {
-      e.preventDefault();
-      offsetXCal = e.clientX - calendarioContainer.offsetLeft;
-      offsetYCal = e.clientY - calendarioContainer.offsetTop;
-      document.addEventListener('mousemove', moverCalendario);
-      document.addEventListener('mouseup', pararMoverCalendario);
-    });
+    // --- ARRASTAR (MOUSE E TOQUE) ---
+
+    // Iniciar arrasto (Mouse)
+    calendarioHeader.addEventListener('mousedown', iniciarArrastoCal);
+    // Iniciar arrasto (Toque)
+    calendarioHeader.addEventListener('touchstart', iniciarArrastoCal, {passive: false});
+
+    function iniciarArrastoCal(e) {
+        garantirAtividadeCalendario();
+
+        // Identifica coordenadas iniciais
+        const clienteX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+        const clienteY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+
+        offsetXCal = clienteX - calendarioContainer.offsetLeft;
+        offsetYCal = clienteY - calendarioContainer.offsetTop;
+
+        // Adiciona ouvintes
+        if (e.type === 'mousedown') {
+            document.addEventListener('mousemove', moverCalendario);
+            document.addEventListener('mouseup', pararArrastoCal);
+        } else {
+            document.addEventListener('touchmove', moverCalendario, {passive: false});
+            document.addEventListener('touchend', pararArrastoCal);
+        }
+    }
 
     function moverCalendario(e) {
-      calendarioContainer.style.left = (e.clientX - offsetXCal) + 'px';
-      calendarioContainer.style.top = (e.clientY - offsetYCal) + 'px';
+        e.preventDefault(); // Impede scroll da tela no mobile
+
+        const clienteX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+        const clienteY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+
+        calendarioContainer.style.left = (clienteX - offsetXCal) + 'px';
+        calendarioContainer.style.top = (clienteY - offsetYCal) + 'px';
     }
 
-    function pararMoverCalendario() {
-      document.removeEventListener('mousemove', moverCalendario);
-      document.removeEventListener('mouseup', pararMoverCalendario);
+    function pararArrastoCal() {
+        document.removeEventListener('mousemove', moverCalendario);
+        document.removeEventListener('mouseup', pararArrastoCal);
+        document.removeEventListener('touchmove', moverCalendario);
+        document.removeEventListener('touchend', pararArrastoCal);
     }
     
+    // --- ESTADOS E FECHAMENTO ---
+
+    calendarioContainer.addEventListener('click', (e) => {
+        garantirAtividadeCalendario();
+        e.stopPropagation();
+    });
+
+    // Fechar ao clicar fora (opcional, se quiser fechar ao clicar no fundo da página)
+    /*
+    document.addEventListener('click', (e) => {
+        // Verifica se clicou fora e se não foi no botão de abrir (se existir externamente)
+        const botaoAbrir = document.getElementById('abrir-calendario');
+        if (calendarioAtivo && !calendarioContainer.contains(e.target) && (!botaoAbrir || !botaoAbrir.contains(e.target))) {
+            calendarioAtivo = false;
+            calendarioContainer.classList.remove('ativa');
+        }
+    });
+    */
+    
     document.getElementById('fechar-calendario').addEventListener('click', (e) => {
-      calendarioContainer.style.display = 'none';
-      calendarioAtivo = false;
-      calendarioContainer.classList.remove('ativa');
-      e.stopPropagation();
+        calendarioContainer.style.display = 'none';
+        calendarioAtivo = false;
+        calendarioContainer.classList.remove('ativa');
+        e.stopPropagation();
     });
     
-    // Renderiza o calendário ao carregar o script
+    // Renderiza ao carregar
     renderizarCalendario();
 </script>

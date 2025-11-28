@@ -1,7 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
-require_once '../includes/utils.php'; // Importa o sistema de Flash Messages
+require_once '../includes/utils.php'; 
 
 // 1. Verifica Login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -9,7 +9,6 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
     exit;
 }
 
-// Conexão com o Banco do Tenant (para dados do usuário)
 $conn = getTenantConnection();
 if ($conn === null) {
     die("Falha ao obter a conexão com o banco de dados.");
@@ -17,6 +16,7 @@ if ($conn === null) {
 
 $id_usuario = $_SESSION['usuario_id'];
 $nivel_acesso = $_SESSION['nivel_acesso'] ?? 'padrao';
+$email_atual_sessao = $_SESSION['email']; // [CORREÇÃO] Guarda email atual para WHERE no master
 
 $perfil_texto = ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario') 
     ? 'Administrador' 
@@ -60,7 +60,6 @@ if ($connMaster) {
 $uploadDir = '../img/usuarios/';
 $erro = '';
 
-// Verifica mensagens via GET e converte para Flash Message
 if (isset($_GET['mensagem'])) {
     set_flash_message('success', $_GET['mensagem']);
 }
@@ -70,7 +69,6 @@ if (isset($_GET['erro'])) {
 
 // 3. Processa o formulário de atualização de perfil
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Lógica de exclusão é feita via JS + GET, aqui tratamos apenas atualização
     if (!isset($_POST['excluir_conta'])) {
         $nome_novo = trim($_POST['nome'] ?? '');
         $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); 
@@ -104,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             elseif (!filter_var($email_novo, FILTER_VALIDATE_EMAIL)) $erro = "E-mail inválido.";
             elseif (!empty($senha_nova) && $senha_nova !== $senha_confirmar) $erro = "As novas senhas não coincidem.";
             else {
-                // Verifica duplicidade de email
+                // Verifica duplicidade de email no Tenant
                 $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
                 $stmt_check->bind_param("si", $email_novo, $id_usuario);
                 $stmt_check->execute();
@@ -112,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($stmt_check->num_rows > 0) $erro = "Este e-mail já está em uso.";
                 else {
+                    $senha_hash = null;
                     if (!empty($senha_nova)) {
                         $senha_hash = password_hash($senha_nova, PASSWORD_DEFAULT);
                         $stmt_update = $conn->prepare("UPDATE usuarios SET nome=?, cpf=?, telefone=?, email=?, senha=?, foto=? WHERE id=?");
@@ -122,10 +121,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     if ($stmt_update->execute()) {
+                        
+                        // [CORREÇÃO DUPLA PERSONALIDADE] Sincroniza Master
+                        try {
+                            $connMaster = getMasterConnection();
+                            if ($connMaster && !$connMaster->connect_error) {
+                                if ($senha_hash) {
+                                    $sqlM = "UPDATE usuarios SET nome=?, email=?, senha=? WHERE email=?";
+                                    $stmtM = $connMaster->prepare($sqlM);
+                                    $stmtM->bind_param("ssss", $nome_novo, $email_novo, $senha_hash, $email_atual_sessao);
+                                } else {
+                                    $sqlM = "UPDATE usuarios SET nome=?, email=? WHERE email=?";
+                                    $stmtM = $connMaster->prepare($sqlM);
+                                    $stmtM->bind_param("sss", $nome_novo, $email_novo, $email_atual_sessao);
+                                }
+                                $stmtM->execute();
+                                $stmtM->close();
+                                $connMaster->close();
+                            }
+                        } catch (Exception $e) {
+                            // Erro silencioso na sincronização para não impedir o uso
+                        }
+
+                        // Atualiza sessão
                         $_SESSION['usuario_nome'] = $nome_novo;
                         $_SESSION['usuario_foto'] = $novoNomeFoto;
-                        
-                        // Define mensagem de sucesso
+                        $_SESSION['email'] = $email_novo; // Atualiza email na sessão
+
                         set_flash_message('success', "Dados atualizados com sucesso!");
                         header("Location: perfil.php");
                         exit;
@@ -135,7 +157,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Se houver erro no POST
         if ($erro) {
             set_flash_message('danger', $erro);
         }
@@ -143,11 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 include('../includes/header.php');
-
-// EXIBE O FLASH CARD CENTRALIZADO
 display_flash_message();
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

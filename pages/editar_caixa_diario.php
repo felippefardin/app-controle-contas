@@ -1,7 +1,9 @@
 <?php
-require_once '../includes/header.php';
+// 1. Inicia sessão e banco de dados ANTES de qualquer HTML
+require_once '../includes/session_init.php';
 require_once '../database.php';
 
+// 2. Verifica se o ID foi passado. Se não, redireciona.
 if (!isset($_GET['id'])) {
     header('Location: relatorios.php');
     exit;
@@ -11,23 +13,28 @@ $id = intval($_GET['id']);
 $mensagem_sucesso = '';
 $mensagem_erro = '';
 
-// Se o formulário foi enviado
+// 3. Processa o formulário (Update)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = $_POST['data'];
     $valor = $_POST['valor'];
 
-    $stmt = $conn->prepare("UPDATE caixa_diario SET data = ?, valor = ? WHERE id = ?");
-    $stmt->bind_param("sdi", $data, $valor, $id);
+    // É boa prática validar se os dados não estão vazios
+    if(!empty($data) && is_numeric($valor)) {
+        $stmt = $conn->prepare("UPDATE caixa_diario SET data = ?, valor = ? WHERE id = ?");
+        $stmt->bind_param("sdi", $data, $valor, $id);
 
-    if ($stmt->execute()) {
-        $mensagem_sucesso = "Lançamento editado com sucesso!";
+        if ($stmt->execute()) {
+            $mensagem_sucesso = "Lançamento editado com sucesso!";
+        } else {
+            $mensagem_erro = "Erro ao editar o lançamento: " . $stmt->error;
+        }
+        $stmt->close();
     } else {
-        $mensagem_erro = "Erro ao editar o lançamento!";
+        $mensagem_erro = "Por favor, preencha todos os campos corretamente.";
     }
-    $stmt->close();
 }
 
-// Busca o lançamento atual
+// 4. Busca os dados atuais do lançamento
 $stmt = $conn->prepare("SELECT * FROM caixa_diario WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
@@ -35,13 +42,18 @@ $result = $stmt->get_result();
 $lancamento = $result->fetch_assoc();
 $stmt->close();
 
+// 5. Se o lançamento não existir, redireciona
 if (!$lancamento) {
     header('Location: relatorios.php');
     exit;
 }
+
+// 6. AGORA que toda a lógica de redirecionamento passou, carregamos o HTML do header
+require_once '../includes/header.php';
 ?>
 
 <style>
+/* Mantendo seus estilos originais */
 body {
     background-color: #121212;
     color: #eee;
@@ -157,7 +169,7 @@ form .form-group {
             <input type="number" step="0.01" class="form-control" name="valor" value="<?= htmlspecialchars($lancamento['valor']) ?>" required>
         </div>
         <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-        <a href="lancamento_caixa.php" class="btn btn-secondary">Cancelar</a>
+        <a href="relatorios.php" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
 

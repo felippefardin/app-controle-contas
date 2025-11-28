@@ -45,7 +45,8 @@ if (isset($_SESSION['super_admin_original']) && is_array($_SESSION['super_admin_
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" /> 
+
   <title>App Controle de Contas</title>
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -62,13 +63,15 @@ body {
     overflow-x: hidden;
 }
 
+/* Conteúdo principal FULL DESKTOP */
 main {
     flex: 1;
-    padding-top: 90px;   /* Área do header fixo */
+    padding-top: 90px;  
     padding-bottom: 60px;
-    max-width: 1400px; /* largura máxima centralizada */
-    margin: 0 auto;
+    max-width: 1400px;      /* FULL DESKTOP */
     width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
 }
 
 /* ====== HEADER FIXO ====== */
@@ -77,8 +80,7 @@ main {
     padding: 15px 25px;
 
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     width: 100%;
     z-index: 1001;
 
@@ -86,6 +88,7 @@ main {
     justify-content: space-between;
     align-items: center;
     gap: 25px;
+
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     box-sizing: border-box;
 }
@@ -128,33 +131,73 @@ main {
 .btn-home { background-color: #28a745 !important; }
 .btn-exit { background-color: #dc3545 !important; }
 
-/* ====== MOBILE RESPONSIVO ====== */
+/* =====================================
+   RESPONSIVIDADE PARA DESKTOP GRANDE 
+   ===================================== */
+@media (min-width: 1440px) {
+    main {
+        max-width: 1600px;   /* aumenta ainda mais para ultra wide */
+        padding-left: 40px;
+        padding-right: 40px;
+    }
+}
+
+/* =====================================
+   RESPONSIVIDADE PARA TABLET
+   ===================================== */
+@media (max-width: 1024px) {
+
+    main {
+        max-width: 95%;
+        padding-top: 120px;
+        padding-bottom: 70px;
+    }
+
+    .header-controls {
+        padding: 18px 20px;
+        gap: 20px;
+    }
+
+    .header-group {
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .header-controls .btn {
+        font-size: 14px;
+        padding: 12px 18px;
+    }
+}
+
+/* =====================================
+   MOBILE RESPONSIVO
+   ===================================== */
 @media (max-width: 850px) {
 
     main {
-        padding-top: 140px;  /* aumenta espaço pois o header cresce */
+        width: 94%;
+        padding-top: 140px;
         padding-bottom: 80px;
-        width: 95%;
     }
 
-    /* Header organizado em coluna */
     .header-controls {
         flex-direction: column;
-        gap: 15px;
         text-align: center;
-        padding: 18px;
+        padding: 18px 14px;
+        gap: 15px;
     }
 
     .header-group {
         width: 100%;
         justify-content: center;
-        flex-wrap: wrap;
         gap: 10px;
+        flex-wrap: wrap;
     }
 
     .header-controls .btn {
-        width: 100%;
-        max-width: 250px;
+        /* width: 100%; */
+        max-width: 260px;
         font-size: 15px;
         padding: 12px 18px;
     }
@@ -164,6 +207,7 @@ main {
 @media (max-width: 480px) {
     
     main {
+        width: 96%;
         padding-top: 160px;
         padding-bottom: 90px;
     }
@@ -173,11 +217,12 @@ main {
     }
 
     .header-controls .btn {
-        max-width: 100%;
+        /* max-width: 100%; */
         font-size: 16px;
         padding: 14px 20px;
     }
 }
+
   </style>
 </head>
 

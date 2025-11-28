@@ -65,21 +65,80 @@ display_flash_message();
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Registro de Compra</title>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
+        /* === ESTILO GERAL === */
         body { background-color: #121212; color: #eee; }
-        .container { background-color: #222; padding: 25px; border-radius: 8px; margin-top: 30px; }
-        h1, h2 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; }
-        .form-control, .select2-container .select2-selection--single { background-color: #333; color: #eee; border-color: #444; height: calc(1.5em + .75rem + 2px); }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { color: #eee; line-height: 38px; }
+        
+        /* Container Principal - Ajustado para telas grandes */
+        .container { 
+            background-color: #222; 
+            padding: 25px; 
+            border-radius: 8px; 
+            margin-top: 30px;
+            margin-bottom: 30px;
+            max-width: 1200px; /* Mais largo para Desktop Full */
+        }
+
+        h1, h2 { color: #eee; border-bottom: 2px solid #0af; padding-bottom: 10px; margin-bottom: 20px; }
+        
+        /* Form Controls */
+        .form-control, .select2-container .select2-selection--single { 
+            background-color: #333; 
+            color: #eee; 
+            border-color: #444; 
+            height: calc(1.5em + .75rem + 2px); 
+        }
+        
+        .select2-container--default .select2-selection--single .select2-selection__rendered { 
+            color: #eee; 
+            line-height: 38px; 
+        }
+        
         .select2-dropdown { background-color: #333; border-color: #444; }
         .select2-results__option { color: #eee; }
         .select2-results__option--highlighted { background-color: #0af !important; }
+        
+        /* Garante que o Select2 seja responsivo */
+        .select2-container { width: 100% !important; }
+
+        /* Tabelas */
         .table { color: #eee; }
+        .table thead th { border-top: none; border-bottom: 2px solid #0af; }
+        .table-bordered td, .table-bordered th { border: 1px solid #444; }
+        
         .total-compra { font-size: 1.5rem; font-weight: bold; color: #28a745; }
+
+        /* === RESPONSIVIDADE (TABLET E MOBILE) === */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px; /* Menos padding no mobile */
+                margin-top: 15px;
+                width: 95%; /* Ocupa quase toda a largura */
+            }
+
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.3rem; }
+
+            /* Ajuste na tabela para não quebrar */
+            .table th, .table td {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+            
+            /* Botão de ação (Remover) menor no mobile */
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+
+            /* Total um pouco menor no mobile */
+            .total-compra { font-size: 1.2rem; }
+        }
     </style>
 </head>
 <body>
@@ -94,16 +153,15 @@ display_flash_message();
         
         <div class="card bg-dark text-white mb-4">
             <div class="card-header">
-                <h2>Adicionar Produtos</h2>
+                <h2 class="mb-0" style="border:none; padding:0; font-size: 1.25rem;">Adicionar Produtos</h2>
             </div>
             <div class="card-body">
                 <div class="form-row">
-                    <div class="form-group col-md-8">
+                    <div class="form-group col-md-8 col-12">
                         <label>Produto</label>
                         <select id="produto_select" class="form-control"></select>
                     </div>
-                    <div class="form-group col-md-4">
-                        <label>&nbsp;</label>
+                    <div class="form-group col-md-4 col-12 d-flex align-items-end">
                         <button type="button" id="add-produto" class="btn btn-success btn-block">Adicionar à Compra</button>
                     </div>
                 </div>
@@ -112,14 +170,14 @@ display_flash_message();
 
         <h2><i class="fas fa-boxes"></i> Itens da Compra</h2>
         <div class="table-responsive">
-            <table class="table table-bordered">
+            <table class="table table-bordered table-hover">
                 <thead>
                     <tr>
                         <th>Produto</th>
-                        <th>Quantidade</th>
-                        <th>Custo Unitário</th>
+                        <th style="width: 120px;">Qtd</th>
+                        <th style="width: 150px;">Custo Un.</th>
                         <th>Subtotal</th>
-                        <th>Ação</th>
+                        <th style="width: 80px;">Ação</th>
                     </tr>
                 </thead>
                 <tbody id="compra-items">
@@ -133,10 +191,10 @@ display_flash_message();
 
         <div class="form-group mt-4">
             <label for="observacao">Observações</label>
-            <textarea name="observacao" class="form-control"></textarea>
+            <textarea name="observacao" class="form-control" rows="3"></textarea>
         </div>
         
-        <button type="submit" class="btn btn-primary btn-lg mt-3">Finalizar Compra</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block mt-4 mb-3">Finalizar Compra</button>
     </form>
 </div>
 
@@ -144,8 +202,18 @@ display_flash_message();
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
+    // Configuração padrão do Select2 para largura responsiva
+    const select2Config = {
+        width: '100%', // Força 100% de largura no container pai
+        language: {
+            noResults: function() { return "Nenhum resultado encontrado"; },
+            searching: function() { return "Pesquisando..."; }
+        }
+    };
+
     // Inicializar Select2 para Fornecedores
     $('#fornecedor_id').select2({
+        ...select2Config,
         placeholder: 'Selecione um fornecedor',
         ajax: {
             url: 'compras.php?action=search_fornecedores',
@@ -160,6 +228,7 @@ $(document).ready(function() {
 
     // Inicializar Select2 para Produtos
     $('#produto_select').select2({
+        ...select2Config,
         placeholder: 'Pesquisar produto...',
         ajax: {
             url: 'compras.php?action=search_produtos',
@@ -191,14 +260,17 @@ $(document).ready(function() {
         
         var row = `
             <tr data-id="${produtoId}">
-                <td>${produtoNome}<input type="hidden" name="produtos[${produtoId}][id]" value="${produtoId}"></td>
+                <td class="align-middle">${produtoNome}<input type="hidden" name="produtos[${produtoId}][id]" value="${produtoId}"></td>
                 <td><input type="number" name="produtos[${produtoId}][quantidade]" class="form-control quantidade" value="1" min="1" required></td>
                 <td><input type="text" name="produtos[${produtoId}][preco]" class="form-control preco" value="${precoCompra}" required></td>
-                <td class="subtotal">${precoCompra}</td>
-                <td><button type="button" class="btn btn-danger btn-sm remover-item">Remover</button></td>
+                <td class="subtotal align-middle">${precoCompra}</td>
+                <td class="align-middle text-center"><button type="button" class="btn btn-danger btn-sm remover-item"><i class="fas fa-trash"></i></button></td>
             </tr>`;
         $('#compra-items').append(row);
         atualizarTotal();
+        
+        // Limpa a seleção do produto após adicionar
+        $('#produto_select').val(null).trigger('change');
     });
 
     // Remover item da tabela
@@ -211,9 +283,11 @@ $(document).ready(function() {
     $('#compra-items').on('input', '.quantidade, .preco', function() {
         var tr = $(this).closest('tr');
         var quantidade = parseInt(tr.find('.quantidade').val());
+        // Aceita vírgula ou ponto como decimal
         var preco = parseFloat(tr.find('.preco').val().replace(',', '.'));
 
-        if (isNaN(quantidade) || isNaN(preco)) return;
+        if (isNaN(quantidade) || quantidade < 1) quantidade = 0;
+        if (isNaN(preco)) preco = 0;
 
         var subtotal = (quantidade * preco).toFixed(2);
         tr.find('.subtotal').text(subtotal);
@@ -240,5 +314,8 @@ $(document).ready(function() {
     });
 });
 </script>
+
+<?php include('../includes/footer.php'); ?>
+
 </body>
 </html>

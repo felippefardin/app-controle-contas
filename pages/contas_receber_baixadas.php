@@ -39,92 +39,193 @@ $result = $conn->query($sql);
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Contas Recebidas</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    h2 { text-align: center; color: #00bfff; }
-    
-    form.search-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 25px; }
-    input { padding: 10px; background: #333; border: 1px solid #444; color: #eee; border-radius: 5px; }
-    button { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; background-color: #27ae60; color: white; }
-    
-    table { width: 100%; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; margin-top: 10px; }
-    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #333; }
-    th { background-color: #222; color: #00bfff; }
-    tr:nth-child(even) { background-color: #2a2a2a; }
+    /* === RESET E GERAL === */
+    * { box-sizing: border-box; }
+    body { 
+        background-color: #121212; 
+        color: #eee; 
+        font-family: Arial, sans-serif; 
+        margin: 0; 
+        padding: 20px; 
+    }
 
-    .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; margin: 2px; }
+    /* === CONTAINER PRINCIPAL (FULL DESKTOP) === */
+    .main-container {
+        width: 100%;
+        max-width: 1600px; /* Limite para telas muito grandes */
+        margin: 0 auto;
+        padding-bottom: 50px;
+    }
+
+    h2 { text-align: center; color: #00bfff; margin-bottom: 20px; }
+    
+    /* === FORMULÁRIO DE BUSCA === */
+    form.search-form { 
+        display: flex; 
+        flex-wrap: wrap; /* Permite quebrar linha em telas menores */
+        justify-content: center; 
+        gap: 10px; 
+        margin-bottom: 25px; 
+        width: 100%;
+    }
+
+    form.search-form input { 
+        padding: 10px; 
+        background: #333; 
+        border: 1px solid #444; 
+        color: #eee; 
+        border-radius: 5px;
+        flex: 1; /* Cresce para ocupar espaço */
+        min-width: 200px;
+        font-size: 16px; /* Melhor para mobile */
+    }
+
+    form.search-form button { 
+        padding: 10px 20px; 
+        border-radius: 5px; 
+        border: none; 
+        cursor: pointer; 
+        font-weight: bold; 
+        background-color: #27ae60; 
+        color: white; 
+        min-width: 100px;
+    }
+    
+    /* === TABELA RESPONSIVA === */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto; /* Scroll horizontal no mobile */
+        border-radius: 8px;
+        border: 1px solid #333;
+        background-color: #1f1f1f;
+        margin-top: 10px;
+    }
+
+    table { 
+        width: 100%; 
+        background-color: #1f1f1f; 
+        border-collapse: collapse; 
+        min-width: 800px; /* Força largura mínima para layout correto */
+    }
+
+    th, td { 
+        padding: 12px 15px; 
+        text-align: left; 
+        border-bottom: 1px solid #333; 
+        white-space: nowrap; /* Evita quebra de texto indesejada */
+    }
+
+    th { background-color: #222; color: #00bfff; font-weight: bold; }
+    tr:nth-child(even) { background-color: #2a2a2a; }
+    tr:hover { background-color: #333; }
+
+    /* === BOTÕES DE AÇÃO === */
+    .btn-action { 
+        display: inline-flex; 
+        align-items: center; 
+        gap: 6px; 
+        padding: 6px 12px; 
+        border-radius: 4px; 
+        font-size: 13px; 
+        font-weight: bold; 
+        text-decoration: none; 
+        color: white; 
+        cursor: pointer; 
+        margin: 2px;
+        border: none; /* Reset para button */
+    }
     .btn-excluir { background-color: #cc3333; }
     .btn-comprovante { background-color: #f39c12; }
     .btn-estornar { background-color: #3498db; }
     
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; text-align: center; position: relative; }
+    /* === MODAL === */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 10px; }
+    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 100%; max-width: 500px; text-align: center; position: relative; border: 1px solid #444; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     .close-btn { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #aaa; }
+
+    /* === RESPONSIVIDADE MOBILE ESPECÍFICA === */
+    @media (max-width: 768px) {
+        body { padding: 10px; }
+        
+        form.search-form { flex-direction: column; }
+        form.search-form input { width: 100%; min-width: unset; margin: 2px 0; }
+        form.search-form button { width: 100%; margin-top: 5px; }
+
+        h2 { font-size: 1.5rem; }
+    }
   </style>
 </head>
 <body>
 
-<h2>Contas Recebidas (Baixadas)</h2>
+<div class="main-container">
 
-<form class="search-form" method="GET">
-  <input type="text" name="cliente" placeholder="Cliente" value="<?= htmlspecialchars($_GET['cliente'] ?? '') ?>">
-  <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>">
-  <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>">
-  <button type="submit">Buscar</button>
-</form>
+    <h2>Contas Recebidas (Baixadas)</h2>
 
-<table>
-    <thead><tr>
-        <th>Cliente</th>
-        <th>Número</th>
-        <th>Descrição</th>
-        <th>Valor</th>
-        <th>Recebido Por</th>
-        <th>Data Receb.</th>
-        <th>Categoria</th>
-        <th>Comprovante</th>
-        <th>Ações</th>
-    </tr></thead>
-    <tbody>
-    <?php if ($result && $result->num_rows > 0):
-        while($row = $result->fetch_assoc()):
-            $data_baixa = $row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-';
-            $quemBaixou = !empty($row['nome_quem_baixou']) ? $row['nome_quem_baixou'] : 'Sistema/N/D';
-    ?>
-        <tr>
-            <td><?= htmlspecialchars($row['nome_pessoa'] ?? 'N/D') ?></td>
-            <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
-            <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
-            <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
-            <td><?= htmlspecialchars($quemBaixou) ?></td>
-            <td><?= $data_baixa ?></td>
-            <td><?= htmlspecialchars($row['nome_categoria'] ?? '-') ?></td>
-            <td>
-                <?= !empty($row['comprovante']) ? "<a href='../{$row['comprovante']}' target='_blank' class='btn-action btn-comprovante'>Ver</a>" : '--' ?>
-            </td>
-            <td>
-                <div style='display:flex; gap:5px;'>
-                    <a href='#' onclick="openEstornarModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['nome_pessoa'])) ?>'); return false;" class='btn-action btn-estornar'><i class='fa-solid fa-undo'></i> Estornar</a>
-                    
-                    <button 
-                        class='btn-action btn-excluir' 
-                        data-id="<?= $row['id'] ?>" 
-                        data-nome="<?= htmlspecialchars($row['nome_pessoa']) ?>"
-                        onclick="openDeleteModal(this)">
-                        <i class='fa-solid fa-trash'></i> Excluir
-                    </button>
-                </div>
-            </td>
-        </tr>
-    <?php endwhile; else: ?>
-        <tr><td colspan="9" style="text-align:center;">Nenhuma conta recebida.</td></tr>
+    <form class="search-form" method="GET">
+      <input type="text" name="cliente" placeholder="Cliente" value="<?= htmlspecialchars($_GET['cliente'] ?? '') ?>">
+      <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>">
+      <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>">
+      <button type="submit"><i class="fa fa-search"></i> Buscar</button>
+    </form>
+
+    <?php if ($result && $result->num_rows > 0): ?>
+    <div class="table-responsive">
+        <table>
+            <thead><tr>
+                <th>Cliente</th>
+                <th>Número</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Recebido Por</th>
+                <th>Data Receb.</th>
+                <th>Categoria</th>
+                <th>Comprovante</th>
+                <th>Ações</th>
+            </tr></thead>
+            <tbody>
+            <?php 
+                while($row = $result->fetch_assoc()):
+                    $data_baixa = $row['data_baixa'] ? date('d/m/Y', strtotime($row['data_baixa'])) : '-';
+                    $quemBaixou = !empty($row['nome_quem_baixou']) ? $row['nome_quem_baixou'] : 'Sistema/N/D';
+            ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['nome_pessoa'] ?? 'N/D') ?></td>
+                    <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
+                    <td>R$ <?= number_format($row['valor'], 2, ',', '.') ?></td>
+                    <td><?= htmlspecialchars($quemBaixou) ?></td>
+                    <td><?= $data_baixa ?></td>
+                    <td><?= htmlspecialchars($row['nome_categoria'] ?? '-') ?></td>
+                    <td>
+                        <?= !empty($row['comprovante']) ? "<a href='../{$row['comprovante']}' target='_blank' class='btn-action btn-comprovante'><i class='fa fa-file'></i> Ver</a>" : '--' ?>
+                    </td>
+                    <td>
+                        <div style='display:flex; gap:5px;'>
+                            <a href='#' onclick="openEstornarModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['nome_pessoa'])) ?>'); return false;" class='btn-action btn-estornar'><i class='fa-solid fa-undo'></i> Estornar</a>
+                            
+                            <button 
+                                class='btn-action btn-excluir' 
+                                data-id="<?= $row['id'] ?>" 
+                                data-nome="<?= htmlspecialchars($row['nome_pessoa']) ?>"
+                                onclick="openDeleteModal(this)">
+                                <i class='fa-solid fa-trash'></i> Excluir
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php else: ?>
+        <p style="text-align:center; padding: 20px; color: #aaa;">Nenhuma conta recebida encontrada.</p>
     <?php endif; ?>
-    </tbody>
-</table>
 
-<div id="deleteModal" class="modal">
+</div> <div id="deleteModal" class="modal">
     <div class="modal-content">
       <span class="close-btn" onclick="document.getElementById('deleteModal').style.display='none'">&times;</span>
       <h3>Confirmar Exclusão</h3>

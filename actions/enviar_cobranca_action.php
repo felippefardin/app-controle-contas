@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
+require_once '../includes/utils.php'; // Importa utils
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -13,7 +14,7 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
 
 // 2. VERIFICA DADOS VIA POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    $_SESSION['error_message'] = "Método inválido.";
+    set_flash_message('error', "Método inválido.");
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -23,7 +24,7 @@ $chave_pix = $_POST['chave_pix'] ?? '';
 $mensagem_extra = $_POST['mensagem'] ?? '';
 
 if (!$id_conta) {
-    $_SESSION['error_message'] = "Conta não identificada.";
+    set_flash_message('error', "Conta não identificada.");
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -31,7 +32,7 @@ if (!$id_conta) {
 // 3. CONEXÃO
 $conn = getTenantConnection();
 if ($conn === null) {
-    $_SESSION['error_message'] = "Erro de conexão.";
+    set_flash_message('error', "Erro de conexão.");
     header('Location: ../pages/contas_receber.php');
     exit;
 }
@@ -121,10 +122,12 @@ try {
     </div>";
 
     $mail->send();
-    $_SESSION['success_message'] = "Cobrança enviada com sucesso!";
+    // SUCESSO
+    set_flash_message('success', "Cobrança enviada com sucesso!");
 
 } catch (Exception $e) {
-    $_SESSION['error_message'] = "Erro ao enviar: " . $e->getMessage();
+    // ERRO
+    set_flash_message('error', "Erro ao enviar: " . $e->getMessage());
 }
 
 header('Location: ../pages/contas_receber.php');

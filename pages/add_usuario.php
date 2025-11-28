@@ -67,23 +67,182 @@ display_flash_message();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        body { background-color: #121212; color: #eee; font-family: 'Segoe UI', sans-serif; }
-        .page-container { max-width: 600px; margin: 40px auto; background: #1e1e1e; padding: 35px; border-radius: 12px; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #333; }
-        .page-container h2 { color: #00bfff; border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; color: #ccc; }
-        .input-wrapper { position: relative; }
-        .form-control, select { width: 100%; padding: 12px; padding-right: 40px; border-radius: 6px; border: 1px solid #444; background: #252525; color: #fff; font-size: 1rem; box-sizing: border-box; transition: all 0.3s; }
-        .form-control:focus, select:focus { outline: none; border-color: #00bfff; background-color: #2a2a2a; box-shadow: 0 0 15px rgba(0, 191, 255, 0.8); }
-        .toggle-password { position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #aaa; cursor: pointer; }
-        .btn-area { display: flex; justify-content: space-between; margin-top: 30px; gap: 15px; }
-        .btn-custom { padding: 12px 24px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; font-size: 1rem; text-decoration: none; text-align: center; }
-        .btn-back { background: #444; color: #ddd; }
-        .btn-submit { background: linear-gradient(135deg, #00bfff, #0099cc); color: #fff; flex-grow: 1; }
-        
-        .permissoes-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #252525; padding: 15px; border-radius: 6px; border: 1px solid #444; }
-        .check-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
-        .check-item input { accent-color: #00bfff; width: 16px; height: 16px; }
+       body { 
+    background-color: #121212; 
+    color: #eee; 
+    font-family: 'Segoe UI', sans-serif; 
+    margin: 0;
+    padding: 0;
+}
+
+/* FULL DESKTOP */
+.page-container { 
+    width: 100%;
+    max-width: 1200px; /* Maior para desktop */
+    margin: 40px auto; 
+    background: #1e1e1e; 
+    padding: 35px; 
+    border-radius: 12px; 
+    color: #fff; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5); 
+    border: 1px solid #333; 
+}
+
+.page-container h2 { 
+    color: #00bfff; 
+    border-bottom: 1px solid #00bfff; 
+    padding-bottom: 15px; 
+    margin-bottom: 30px; 
+    font-size: 1.8rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+}
+
+.form-group { margin-bottom: 20px; }
+
+label { 
+    display: block; 
+    margin-bottom: 8px; 
+    font-weight: 600; 
+    color: #ccc; 
+}
+
+/* Input */
+.input-wrapper { position: relative; }
+
+.form-control, select { 
+    width: 100%; 
+    padding: 12px; 
+    padding-right: 40px; 
+    border-radius: 6px; 
+    border: 1px solid #444; 
+    background: #252525; 
+    color: #fff; 
+    font-size: 1rem; 
+    box-sizing: border-box; 
+    transition: 0.3s; 
+}
+
+.form-control:focus, select:focus { 
+    outline: none; 
+    border-color: #00bfff; 
+    background-color: #2a2a2a; 
+    box-shadow: 0 0 15px rgba(0, 191, 255, 0.8); 
+}
+
+/* Olho da senha */
+.toggle-password { 
+    position: absolute; 
+    top: 50%; 
+    right: 15px; 
+    transform: translateY(-50%); 
+    color: #aaa; 
+    cursor: pointer; 
+}
+
+.btn-area { 
+    display: flex; 
+    justify-content: space-between; 
+    margin-top: 30px; 
+    gap: 15px; 
+    flex-wrap: wrap; /* Responsivo */
+}
+
+.btn-custom { 
+    padding: 12px 24px; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    border: none; 
+    font-weight: bold; 
+    font-size: 1rem; 
+    text-decoration: none; 
+    text-align: center; 
+}
+
+.btn-back { background: #444; color: #ddd; }
+.btn-submit { 
+    background: linear-gradient(135deg, #00bfff, #0099cc); 
+    color: #fff; 
+    flex-grow: 1; 
+}
+
+/* GRID de permissões */
+.permissoes-container { 
+    display: grid; 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 10px; 
+    background: #252525; 
+    padding: 15px; 
+    border-radius: 6px; 
+    border: 1px solid #444; 
+}
+
+.check-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    font-size: 0.9rem; 
+    cursor: pointer; 
+}
+
+.check-item input { 
+    accent-color: #00bfff; 
+    width: 16px; 
+    height: 16px; 
+}
+
+/* ============================
+   RESPONSIVIDADE
+   ============================ */
+
+/* Tablets */
+@media (max-width: 992px) {
+    .page-container {
+        padding: 25px;
+        max-width: 90%;
+    }
+
+    .page-container h2 {
+        font-size: 1.6rem;
+    }
+
+    .permissoes-container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .page-container {
+        max-width: 95%;
+        padding: 20px;
+        margin: 20px auto;
+    }
+
+    .page-container h2 {
+        font-size: 1.4rem;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .btn-area {
+        flex-direction: column;
+    }
+
+    /* .btn-custom {
+        width: 100%;
+    } */
+
+    .permissoes-container {
+        grid-template-columns: 1fr;
+    }
+
+    .form-control, select {
+        font-size: 1rem;
+    }
+}
+
     </style>
 </head>
 <body>

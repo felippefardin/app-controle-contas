@@ -3,6 +3,11 @@
 require_once __DIR__ . '/../includes/session_init.php';
 require_once __DIR__ . '/../includes/utils.php'; // Flash messages
 
+// --- RECUPERA DADOS ANTIGOS EM CASO DE ERRO ---
+$old = $_SESSION['form_data'] ?? [];
+unset($_SESSION['form_data']); // Limpa para a próxima vez
+// ----------------------------------------------
+
 // Se houver erro vindo do backend, ele será mostrado pelo utils
 display_flash_message();
 ?>
@@ -10,6 +15,7 @@ display_flash_message();
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cadastro - App Controle de Contas</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -17,24 +23,62 @@ display_flash_message();
 
 <style>
   body { background-color: #121212; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-  .form-container { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 120px); padding: 20px; box-sizing: border-box; }
-  form { background-color: #1f1f1f; padding: 25px 35px; border-radius: 12px; max-width: 700px; width: 100%; box-sizing: border-box; border: 1px solid rgba(0, 191, 255, 0.2); box-shadow: 0 0 25px rgba(0, 191, 255, 0.08); }
+  
+  .form-container { 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: calc(100vh - 120px); 
+      padding: 20px; 
+      box-sizing: border-box; 
+      width: 100%;
+  }
+  
+  form { 
+      background-color: #1f1f1f; 
+      padding: 30px 40px; 
+      border-radius: 12px; 
+      /* Modo Full Desktop mais amplo, mas com limite para não ficar ilegível */
+      max-width: 850px; 
+      width: 100%; 
+      box-sizing: border-box; 
+      border: 1px solid rgba(0, 191, 255, 0.2); 
+      box-shadow: 0 0 25px rgba(0, 191, 255, 0.08); 
+  }
+
   h2 { text-align: center; margin-bottom: 20px; color: #00bfff; border-bottom: 2px solid #00bfff; padding-bottom: 10px; }
   label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.95rem; color: #ccc; }
-  select, input { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 6px; border: 1px solid #333; background-color: #222; color: #eee; font-size: 1rem; box-sizing: border-box; }
+  
+  select, input { 
+      width: 100%; 
+      padding: 12px; /* Aumentado levemente para toque mobile */
+      margin-top: 6px; 
+      border-radius: 6px; 
+      border: 1px solid #333; 
+      background-color: #222; 
+      color: #eee; 
+      font-size: 1rem; 
+      box-sizing: border-box; 
+  }
+  
   input:focus, select:focus { outline: 2px solid #00bfff; background-color: #333; color: #fff; }
+  
   .input-group { position: relative; width: 100%; }
   .input-group input { padding-right: 40px; }
-  .toggle-password { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #aaa; cursor: pointer; }
+  .toggle-password { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #aaa; cursor: pointer; padding: 5px; }
+  
   .rules, .error-message { font-size: 0.85rem; margin-top: 5px; }
   .error-message { color: #ff4d4d; }
-  .btn-submit { width: 100%; margin-top: 25px; padding: 12px 16px; border: none; border-radius: 8px; background-color: #28a745; color: #fff; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+  
+  .btn-submit { width: 100%; margin-top: 25px; padding: 12px 16px; border: none; border-radius: 8px; background-color: #28a745; color: #fff; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s; }
+  .btn-submit:hover { background-color: #218838; }
+  
   .login-link { text-align: center; margin-top: 15px; }
   .login-link a { color: #00bfff; text-decoration: none; }
 
   /* CSS DOS PLANOS */
   .planos-container { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-  .plano-card { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.3s; position: relative; min-width: 180px; }
+  .plano-card { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.3s; position: relative; min-width: 200px; }
   .plano-card:hover { border-color: #00bfff; background: #333; }
   .plano-card input[type="radio"] { display: none; }
   .plano-card.selected { border-color: #00bfff; background: #2c3e50; box-shadow: 0 0 10px rgba(0, 191, 255, 0.2); }
@@ -48,8 +92,10 @@ display_flash_message();
   .benefit-toggle { cursor: pointer; color: #ff9f43; font-weight: bold; display: flex; align-items: center; gap: 8px; }
   .benefit-content { display: none; background: #252525; padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid #444; }
   .benefit-content.open { display: block; }
-  .btn-check { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 5px; font-size: 0.9rem; }
+  
+  .btn-check { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 6px; font-size: 0.9rem; height: 46px; /* Alinhado com input */ }
   .btn-check:hover { filter: brightness(1.1); }
+  
   .valid-msg { color: #2ecc71; font-size: 0.85rem; margin-top: 5px; display: block; }
   .invalid-msg { color: #e74c3c; font-size: 0.85rem; margin-top: 5px; display: block; }
   .input-valid { border-color: #2ecc71 !important; }
@@ -59,9 +105,29 @@ display_flash_message();
   .text-success { color: #2ecc71 !important; }
   .fw-bold { font-weight: bold; }
   .d-none { display: none !important; }
-  .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+  .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; height: 46px; margin-top: 6px; }
   .btn-success { background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
-  #formIndicacao .mb-3 div { display: flex; gap: 10px; } 
+
+  /* UTILS PARA RESPONSIVIDADE */
+  .flex-group { display: flex; gap: 10px; align-items: flex-end; }
+  
+  /* RESPONSIVIDADE MOBILE E TABLET */
+  @media (max-width: 768px) {
+      .form-container { padding: 10px; align-items: flex-start; }
+      form { padding: 20px 15px; }
+      
+      .flex-group { flex-direction: column; align-items: stretch; gap: 0; }
+      .flex-group > div, .flex-group > input, .flex-group > button { width: 100%; margin-top: 5px; }
+      
+      .plano-card { min-width: 100%; margin-bottom: 5px; }
+      
+      /* Ajuste nos botões que ficam ao lado de inputs */
+      .btn-check, .btn-primary { margin-top: 10px; width: 100%; }
+      
+      /* Ajuste específico para o grupo Doc/Numero */
+      #div-doc-type { flex: 1; }
+      #div-doc-number { flex: 1; margin-top: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -73,7 +139,7 @@ display_flash_message();
     <label>Escolha seu Plano (Teste Grátis):</label>
     <div class="planos-container">
       <label class="plano-card selected" id="card-basico">
-        <input type="radio" name="plano" value="basico" checked onchange="selectPlan(this)">
+        <input type="radio" name="plano" value="basico" <?php echo (!isset($old['plano']) || $old['plano'] == 'basico') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">15 Dias Grátis</span>
         <span class="plano-titulo">Básico</span>
         <span class="plano-preco">R$ 19,90/mês</span>
@@ -81,7 +147,7 @@ display_flash_message();
       </label>
 
       <label class="plano-card" id="card-plus">
-        <input type="radio" name="plano" value="plus" onchange="selectPlan(this)">
+        <input type="radio" name="plano" value="plus" <?php echo (isset($old['plano']) && $old['plano'] == 'plus') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">15 Dias Grátis</span>
         <span class="plano-titulo">Plus</span>
         <span class="plano-preco">R$ 39,90/mês</span>
@@ -89,7 +155,7 @@ display_flash_message();
       </label>
 
       <label class="plano-card" id="card-essencial">
-        <input type="radio" name="plano" value="essencial" onchange="selectPlan(this)">
+        <input type="radio" name="plano" value="essencial" <?php echo (isset($old['plano']) && $old['plano'] == 'essencial') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">30 Dias Grátis</span>
         <span class="plano-titulo">Essencial</span>
         <span class="plano-preco">R$ 59,90/mês</span>
@@ -99,35 +165,35 @@ display_flash_message();
 
     <label for="tipo_pessoa">Tipo de Pessoa:</label>
     <select id="tipo_pessoa" name="tipo_pessoa" required onchange="saveLocal('tipo_pessoa', this.value)">
-      <option value="fisica" selected>Pessoa Física</option>
-      <option value="juridica">Pessoa Jurídica</option>
+      <option value="fisica" <?php echo (isset($old['tipo_pessoa']) && $old['tipo_pessoa'] == 'fisica') ? 'selected' : ''; ?>>Pessoa Física</option>
+      <option value="juridica" <?php echo (isset($old['tipo_pessoa']) && $old['tipo_pessoa'] == 'juridica') ? 'selected' : ''; ?>>Pessoa Jurídica</option>
     </select>
 
     <label id="labelNome" for="nome">Nome Completo:</label>
-    <input type="text" id="nome" name="nome" required oninput="saveLocal('nome', this.value)">
+    <input type="text" id="nome" name="nome" value="<?php echo htmlspecialchars($old['nome'] ?? ''); ?>" required oninput="saveLocal('nome', this.value)">
 
-    <div style="display: flex; gap: 10px;">
-        <div style="flex: 1;">
+    <div class="flex-group">
+        <div style="flex: 1;" id="div-doc-type">
             <label for="tipo_doc">Doc:</label>
             <select id="tipo_doc" name="tipo_doc" required onchange="saveLocal('tipo_doc', this.value)">
-              <option value="cpf" selected>CPF</option>
-              <option value="cnpj">CNPJ</option>
+              <option value="cpf" <?php echo (isset($old['tipo_doc']) && $old['tipo_doc'] == 'cpf') ? 'selected' : ''; ?>>CPF</option>
+              <option value="cnpj" <?php echo (isset($old['tipo_doc']) && $old['tipo_doc'] == 'cnpj') ? 'selected' : ''; ?>>CNPJ</option>
             </select>
         </div>
-        <div style="flex: 2;">
+        <div style="flex: 2;" id="div-doc-number">
             <label id="labelDocumento" for="documento">Número:</label>
-            <input type="text" id="documento" name="documento" required oninput="saveLocal('documento', this.value)">
+            <input type="text" id="documento" name="documento" value="<?php echo htmlspecialchars($old['documento'] ?? ''); ?>" required oninput="saveLocal('documento', this.value)">
         </div>
     </div>
 
     <label for="telefone">Telefone:</label>
-    <input type="text" id="telefone" name="telefone" required oninput="saveLocal('telefone', this.value)">
+    <input type="text" id="telefone" name="telefone" value="<?php echo htmlspecialchars($old['telefone'] ?? ''); ?>" required oninput="saveLocal('telefone', this.value)">
 
     <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required oninput="saveLocal('email', this.value)">
+    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($old['email'] ?? ''); ?>" required oninput="saveLocal('email', this.value)">
 
     <label for="email2">Repetir Email:</label>
-    <input type="email" id="email2" name="email2" required>
+    <input type="email" id="email2" name="email2" value="<?php echo htmlspecialchars($old['email'] ?? ''); ?>" required>
     <div id="emailError" class="error-message"></div>
 
     <label for="senha">Senha:</label>
@@ -150,8 +216,8 @@ display_flash_message();
         
         <div id="benefitsContent" class="benefit-content">
             <label style="margin-top: 0;">Código do Cupom:</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="cupom" name="cupom" placeholder="Ex: PROMO10" style="text-transform:uppercase;" oninput="saveLocal('cupom', this.value)">
+            <div class="flex-group">
+                <input type="text" id="cupom" name="cupom" value="<?php echo htmlspecialchars($old['cupom'] ?? ''); ?>" placeholder="Ex: PROMO10" style="text-transform:uppercase;" oninput="saveLocal('cupom', this.value)">
                 <button type="button" class="btn-check" onclick="checkCupom()">Validar</button>
             </div>
             <span id="msgCupom"></span>
@@ -161,8 +227,8 @@ display_flash_message();
             <div id="formIndicacao">
                 <div class="mb-3">
                     <label for="inputCodigoIndicacao" class="form-label">Código de Indicação</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" class="form-control" id="inputCodigoIndicacao" name="codigo_indicacao" placeholder="Ex: A1B2C3D4" style="text-transform: uppercase;" oninput="saveLocal('codigo_indicacao', this.value)">
+                    <div class="flex-group">
+                        <input type="text" class="form-control" id="inputCodigoIndicacao" name="codigo_indicacao" value="<?php echo htmlspecialchars($old['codigo_indicacao'] ?? ''); ?>" placeholder="Ex: A1B2C3D4" style="text-transform: uppercase;" oninput="saveLocal('codigo_indicacao', this.value)">
                         <button type="button" class="btn btn-primary" onclick="validarCodigoIndicacao()">Validar Código</button>
                     </div>
                     <div id="feedbackIndicacao" class="form-text mt-2"></div>
@@ -183,10 +249,11 @@ display_flash_message();
   function loadLocal() {
       const fields = ['tipo_pessoa', 'nome', 'tipo_doc', 'documento', 'telefone', 'email', 'cupom', 'inputCodigoIndicacao'];
       fields.forEach(id => {
-          const val = localStorage.getItem('reg_' + id);
-          if (val) {
-              const el = document.getElementById(id);
-              if(el) {
+          const el = document.getElementById(id);
+          // Só carrega do localStorage se o campo estiver VAZIO (ou seja, o PHP não preencheu)
+          if(el && el.value === '') { 
+              const val = localStorage.getItem('reg_' + id);
+              if (val) {
                   el.value = val;
                   if(id === 'tipo_pessoa' || id === 'tipo_doc') $(el).trigger('change');
               }
@@ -301,8 +368,9 @@ display_flash_message();
     if (document.getElementById('email').value !== email2.value) { emailError.textContent = "Emails não coincidem."; valid = false; } 
     else { emailError.textContent = ""; }
 
-    if (!valid) e.preventDefault();
-    else { localStorage.clear(); }
+    if (!valid) {
+        e.preventDefault();
+    }
   });
 </script>
 </body>
