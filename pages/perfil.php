@@ -16,7 +16,61 @@ if ($conn === null) {
 
 $id_usuario = $_SESSION['usuario_id'];
 $nivel_acesso = $_SESSION['nivel_acesso'] ?? 'padrao';
-$email_atual_sessao = $_SESSION['email']; // [CORREÇÃO] Guarda email atual para WHERE no master
+$email_atual_sessao = $_SESSION['email']; 
+
+// --- LÓGICA DE VISIBILIDADE DO BOTÃO DE SUPORTE ---
+$exibir_botao_suporte_inicial = false;
+
+$connMasterPerfil = getMasterConnection();
+if ($connMasterPerfil && !$connMasterPerfil->connect_error) {
+    
+    // 1. Busca o ID do Tenant e o Plano REAL (plano_atual)
+    // Usamos 'plano_atual' para coincidir com a lógica de minha_assinatura.php
+    $sqlT = "SELECT id, plano_atual FROM tenants WHERE admin_email = ? LIMIT 1";
+    $stmtT = $connMasterPerfil->prepare($sqlT);
+    
+    if ($stmtT) {
+        $stmtT->bind_param("s", $email_atual_sessao);
+        $stmtT->execute();
+        $stmtT->bind_result($t_id, $t_plano);
+        
+        if ($stmtT->fetch()) {
+            $stmtT->close(); // Libera para a próxima consulta
+            
+            // Normaliza o texto (remove espaços e põe minusculo)
+            $t_plano_sanitizado = trim(strtolower($t_plano ?? ''));
+            
+            // Verifica se é exatamente 'essencial'
+            if ($t_plano_sanitizado === 'essencial') {
+                
+                // 2. Verifica se JÁ EXISTE uma solicitação para este tenant
+                // Se existir, o botão NÃO deve aparecer
+                $sqlCheck = "SELECT id FROM solicitacoes_suporte_inicial WHERE tenant_id = ? LIMIT 1";
+                
+                try {
+                    $stmtCheck = $connMasterPerfil->prepare($sqlCheck);
+                    if ($stmtCheck) {
+                        $stmtCheck->bind_param("i", $t_id);
+                        $stmtCheck->execute();
+                        $stmtCheck->store_result();
+                        
+                        // Se num_rows for 0, significa que NUNCA solicitou -> Exibe botão
+                        if ($stmtCheck->num_rows === 0) {
+                            $exibir_botao_suporte_inicial = true;
+                        }
+                        $stmtCheck->close();
+                    }
+                } catch (Exception $e) {
+                    // Falha silenciosa para não quebrar a página
+                }
+            }
+        } else {
+            $stmtT->close();
+        }
+    }
+    $connMasterPerfil->close();
+}
+// -----------------------------------------------------
 
 $perfil_texto = ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario') 
     ? 'Administrador' 
@@ -34,8 +88,12 @@ $foto_atual = 'default-profile.png';
 $stmt = $conn->prepare("SELECT nome, cpf, telefone, email, foto FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 if ($stmt->execute()) {
-    $stmt->bind_result($nome, $cpf, $telefone, $email, $foto_db);
+    $stmt->bind_result($nome, $cpf, $telefone, $email_db_tenant, $foto_db);
     if ($stmt->fetch()) {
+        $nome = $nome;
+        $cpf = $cpf;
+        $telefone = $telefone;
+        $email = $email_db_tenant;
         if (!empty($foto_db)) {
             $foto_atual = $foto_db;
         }
@@ -69,7 +127,8 @@ if (isset($_GET['erro'])) {
 
 // 3. Processa o formulário de atualização de perfil
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['excluir_conta'])) {
+    // Ignora se for exclusão ou o botão de suporte (que tem action própria, mas prevenimos)
+    if (!isset($_POST['excluir_conta']) && !isset($_POST['acao_suporte_inicial'])) {
         $nome_novo = trim($_POST['nome'] ?? '');
         $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); 
         $telefone_novo = trim($_POST['telefone'] ?? '');
@@ -102,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             elseif (!filter_var($email_novo, FILTER_VALIDATE_EMAIL)) $erro = "E-mail inválido.";
             elseif (!empty($senha_nova) && $senha_nova !== $senha_confirmar) $erro = "As novas senhas não coincidem.";
             else {
-                // Verifica duplicidade de email no Tenant
+                // Verifica duplicidade
                 $stmt_check = $conn->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
                 $stmt_check->bind_param("si", $email_novo, $id_usuario);
                 $stmt_check->execute();
@@ -122,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if ($stmt_update->execute()) {
                         
-                        // [CORREÇÃO DUPLA PERSONALIDADE] Sincroniza Master
+                        // Sincroniza Master
                         try {
                             $connMaster = getMasterConnection();
                             if ($connMaster && !$connMaster->connect_error) {
@@ -139,14 +198,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $stmtM->close();
                                 $connMaster->close();
                             }
-                        } catch (Exception $e) {
-                            // Erro silencioso na sincronização para não impedir o uso
-                        }
+                        } catch (Exception $e) {}
 
-                        // Atualiza sessão
                         $_SESSION['usuario_nome'] = $nome_novo;
                         $_SESSION['usuario_foto'] = $novoNomeFoto;
-                        $_SESSION['email'] = $email_novo; // Atualiza email na sessão
+                        $_SESSION['email'] = $email_novo;
 
                         set_flash_message('success', "Dados atualizados com sucesso!");
                         header("Location: perfil.php");
@@ -433,18 +489,31 @@ display_flash_message();
                 <i class="fa-solid fa-save"></i> Salvar Alterações
             </button>
         </div>
-
-        <?php if ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario'): ?>
-            <a href="minha_assinatura.php" class="btn-custom btn-secondary">
-                <i class="fa-solid fa-gem"></i> Gerenciar Assinatura
-            </a>
-        <?php endif; ?>
-        
-        <a href="solicitar_meu_suporte.php" class="btn-custom btn-suporte">
-            <i class="fas fa-headset"></i> Solicitar Suporte
-        </a>
-
     </form>
+
+    <?php if ($exibir_botao_suporte_inicial): ?>
+        <div style="width: 100%; margin-top: 15px;">
+            <form action="../actions/solicitar_suporte_inicial.php" method="POST" onsubmit="return confirm('Deseja acionar o suporte inicial dedicado? Nossa equipe receberá seus dados de contato.');">
+                <input type="hidden" name="acao_suporte_inicial" value="1">
+                <button type="submit" class="btn-custom" style="background: linear-gradient(135deg, #20c997, #17a2b8); color: #fff; width: 100%; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); border: none;">
+                    <i class="fas fa-rocket"></i> Acionar Suporte Inicial
+                </button>
+            </form>
+            <small class="text-muted text-center" style="display:block; margin-top:5px;">
+                <i class="fas fa-star" style="color: gold;"></i> Exclusivo Plano Essencial
+            </small>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $nivel_acesso === 'proprietario'): ?>
+        <a href="minha_assinatura.php" class="btn-custom btn-secondary">
+            <i class="fa-solid fa-gem"></i> Gerenciar Assinatura
+        </a>
+    <?php endif; ?>
+    
+    <a href="solicitar_meu_suporte.php" class="btn-custom btn-suporte">
+        <i class="fas fa-headset"></i> Solicitar Suporte
+    </a>
 
 </div> 
 

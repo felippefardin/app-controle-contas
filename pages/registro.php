@@ -6,6 +6,11 @@ require_once __DIR__ . '/../includes/utils.php'; // Flash messages
 // --- RECUPERA DADOS ANTIGOS EM CASO DE ERRO ---
 $old = $_SESSION['form_data'] ?? [];
 unset($_SESSION['form_data']); // Limpa para a próxima vez
+
+// --- AJUSTE: SE VIER PELA URL (DA INDEX), FORÇA A SELEÇÃO DO PLANO ---
+if (isset($_GET['plano'])) {
+    $old['plano'] = $_GET['plano'];
+}
 // ----------------------------------------------
 
 // Se houver erro vindo do backend, ele será mostrado pelo utils
@@ -138,7 +143,7 @@ display_flash_message();
 
     <label>Escolha seu Plano (Teste Grátis):</label>
     <div class="planos-container">
-      <label class="plano-card selected" id="card-basico">
+      <label class="plano-card <?php echo (!isset($old['plano']) || $old['plano'] == 'basico') ? 'selected' : ''; ?>" id="card-basico">
         <input type="radio" name="plano" value="basico" <?php echo (!isset($old['plano']) || $old['plano'] == 'basico') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">15 Dias Grátis</span>
         <span class="plano-titulo">Básico</span>
@@ -146,7 +151,7 @@ display_flash_message();
         <div class="plano-desc">3 Usuários • Gestão Simples</div>
       </label>
 
-      <label class="plano-card" id="card-plus">
+      <label class="plano-card <?php echo (isset($old['plano']) && $old['plano'] == 'plus') ? 'selected' : ''; ?>" id="card-plus">
         <input type="radio" name="plano" value="plus" <?php echo (isset($old['plano']) && $old['plano'] == 'plus') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">15 Dias Grátis</span>
         <span class="plano-titulo">Plus</span>
@@ -154,7 +159,7 @@ display_flash_message();
         <div class="plano-desc">6 Usuários • Intermediário</div>
       </label>
 
-      <label class="plano-card" id="card-essencial">
+      <label class="plano-card <?php echo (isset($old['plano']) && $old['plano'] == 'essencial') ? 'selected' : ''; ?>" id="card-essencial">
         <input type="radio" name="plano" value="essencial" <?php echo (isset($old['plano']) && $old['plano'] == 'essencial') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">30 Dias Grátis</span>
         <span class="plano-titulo">Essencial</span>

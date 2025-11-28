@@ -443,7 +443,9 @@ require_once 'includes/session_init.php';
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Controle de Vencimentos</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte por E-mail</li>
                         </ul>
-                        <a href="pages/registro.php?plano=basico" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold">Selecionar Básico</a>
+                        <button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold" onclick="abrirModalPlano('basico')">
+                            Ver Detalhes e Assinar
+                        </button>
                     </div>
                 </div>
                 
@@ -465,7 +467,9 @@ require_once 'includes/session_init.php';
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Exportação (Excel/PDF)</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Suporte Prioritário</li>
                         </ul>
-                        <a href="pages/registro.php?plano=plus" class="btn btn-primary-custom w-100 py-3">Selecionar Plus</a>
+                        <button type="button" class="btn btn-primary-custom w-100 py-3" onclick="abrirModalPlano('plus')">
+                            Ver Detalhes e Assinar
+                        </button>
                     </div>
                 </div>
 
@@ -487,7 +491,9 @@ require_once 'includes/session_init.php';
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Todas as funcionalidades</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte Dedicado</li>
                         </ul>
-                        <a href="pages/registro.php?plano=essencial" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold">Selecionar Essencial</a>
+                        <button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold" onclick="abrirModalPlano('essencial')">
+                            Ver Detalhes e Assinar
+                        </button>
                     </div>
                 </div>
                 
@@ -688,6 +694,117 @@ require_once 'includes/session_init.php';
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="modalDetalhesPlano" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-dark" id="modalPlanoTitulo">Detalhes do Plano</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold text-primary display-4" id="modalPlanoPreco">R$ 0,00</h2>
+                        <small class="text-muted fw-bold text-uppercase" id="modalPlanoBadge">Período de Teste</small>
+                        <p class="text-muted mt-2" id="modalPlanoDesc">Descrição curta do plano.</p>
+                    </div>
+                    
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Incluso neste plano:</h6>
+                    <ul class="list-unstyled" id="modalPlanoLista">
+                        </ul>
+                </div>
+                <div class="modal-footer border-0 bg-light justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
+                    <a href="#" id="btnAssinarModal" class="btn btn-primary-custom px-4">
+                        Assinar Agora <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos planos centralizados para fácil manutenção
+        const dadosPlanos = {
+            'basico': {
+                titulo: 'Plano Básico',
+                preco: 'R$ 19,90<small class="fs-6 text-muted">/mês</small>',
+                badge: '15 Dias Grátis',
+                desc: 'Ideal para pequenas equipes e profissionais liberais.',
+                features: [
+                    'Até 3 Usuários',
+                    'Gestão de Contas Básica',
+                    'Controle de Vencimentos',
+                    'Suporte por E-mail',
+                    'Acesso via Celular e PC'
+                ]
+            },
+            'plus': {
+                titulo: 'Plano Plus',
+                preco: 'R$ 39,90<small class="fs-6 text-muted">/mês</small>',
+                badge: '15 Dias Grátis - Mais Popular',
+                desc: 'Perfeito para equipes em crescimento que precisam de dados.',
+                features: [
+                    'Todos benefícios do Básico',
+                    'Até 6 Usuários',
+                    'Relatórios Avançados',
+                    'Exportação (Excel/PDF)',
+                    'Suporte Prioritário',
+                    'Controle de Vencimentos',
+                    'Gestão de Anexos',
+                    '01 chamada gratís de treinamento via chat online',
+                    '01 chamada gratís de treinamento via vídeo chamada',
+                ]
+            },
+            'essencial': {
+                titulo: 'Plano Essencial',
+                preco: 'R$ 59,90<small class="fs-6 text-muted">/mês</small>',
+                badge: '30 Dias Grátis',
+                desc: 'Solução completa para grandes operações e auditoria.',
+                features: [
+                    'Até 16 Usuários',
+                    'Gestão de Logs e Auditoria',
+                    'Todas as funcionalidades',
+                    'Suporte Dedicado (WhatsApp)',
+                    'Treinamento Inicial',
+                    'Backup Diário Automático',
+                    '03 chamadas gratís de treinamento via chat online',
+                    '01 chamada gratís de treinamento via vídeo chamada',
+                ]
+            }
+        };
+
+        function abrirModalPlano(planoKey) {
+            const data = dadosPlanos[planoKey];
+            if (!data) return;
+
+            // Preenche os elementos do modal
+            document.getElementById('modalPlanoTitulo').innerText = data.titulo;
+            document.getElementById('modalPlanoPreco').innerHTML = data.preco;
+            document.getElementById('modalPlanoBadge').innerText = data.badge;
+            document.getElementById('modalPlanoDesc').innerText = data.desc;
+
+            // Monta a lista de features com ícones
+            const listaEl = document.getElementById('modalPlanoLista');
+            listaEl.innerHTML = ''; // Limpa anterior
+            data.features.forEach(feat => {
+                const li = document.createElement('li');
+                li.className = 'mb-2 d-flex align-items-center';
+                li.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> ${feat}`;
+                listaEl.appendChild(li);
+            });
+
+            // Atualiza o link do botão de ação
+            const btnAssinar = document.getElementById('btnAssinarModal');
+            // Mantém a estrutura de URL existente: pages/registro.php?plano=xyz
+            btnAssinar.href = `pages/registro.php?plano=${planoKey}`;
+
+            // Abre o modal usando Bootstrap 5
+            const modalEl = document.getElementById('modalDetalhesPlano');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

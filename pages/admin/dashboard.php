@@ -34,7 +34,7 @@ $sql_chamados = "
     ORDER BY FIELD(c.status, 'aberto', 'em_atendimento') ASC, c.criado_em DESC";
 $result_chamados = $master_conn->query($sql_chamados);
 
-// --- LÓGICA DE RANKING (INDIQUE E GANHE) - COM CORREÇÃO DE COLLATE ---
+// --- LÓGICA DE RANKING ---
 $sql_ranking = "
     SELECT 
         u_ind.nome AS nome_indicador,
@@ -51,6 +51,16 @@ $sql_ranking = "
     LIMIT 10
 ";
 $res_ranking = $master_conn->query($sql_ranking);
+
+// --- LÓGICA SUPORTE INICIAL (ONBOARDING) ---
+$sql_suporte_inicial = "
+    SELECT s.*, t.nome_empresa 
+    FROM solicitacoes_suporte_inicial s
+    JOIN tenants t ON s.tenant_id = t.id
+    WHERE s.status = 'pendente'
+    ORDER BY s.data_solicitacao DESC
+";
+$res_suporte_inicial = $master_conn->query($sql_suporte_inicial);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -61,156 +71,52 @@ $res_ranking = $master_conn->query($sql_ranking);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* --- GLOBAL --- */
-        body { 
-            background-color: #0e0e0e; 
-            color: #eee; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding-bottom: 40px;
-            overflow-x: hidden;
-        }
-
+        body { background-color: #0e0e0e; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding-bottom: 40px; overflow-x: hidden; }
         /* --- TOPBAR --- */
-        .topbar { 
-            width: 100%; 
-            background: #1a1a1a; 
-            padding: 15px 25px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
-            box-sizing: border-box;
-        }
+        .topbar { width: 100%; background: #1a1a1a; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); position: sticky; top: 0; z-index: 100; box-sizing: border-box; }
         .topbar-title { font-size: 1.2rem; color: #00bfff; font-weight: bold; }
         .topbar-actions { display: flex; gap: 15px; align-items: center; }
-        .topbar span { font-weight: bold; color: #ccc; display: none; } 
-        .topbar a { 
-            color: #eee; 
-            text-decoration: none; 
-            padding: 8px 14px; 
-            border-radius: 4px; 
-            background-color: #333; 
-            transition: 0.2s; 
-            font-size: 14px; 
-        }
+        .topbar a { color: #eee; text-decoration: none; padding: 8px 14px; border-radius: 4px; background-color: #333; transition: 0.2s; font-size: 14px; }
         .topbar a:hover { background-color: #444; }
         .topbar .logout { background-color: #d13c3c; }
         .topbar .logout:hover { background-color: #ff4a4a; }
-
         /* --- CONTAINER --- */
-        .container { 
-            width: 98%; 
-            max-width: 100%;
-            margin: 20px auto; 
-            background: #121212; 
-            padding: 25px; 
-            border-radius: 8px; 
-            box-shadow: 0 0 15px rgba(0,0,0,0.2); 
-            box-sizing: border-box;
-        }
-
+        .container { width: 98%; max-width: 100%; margin: 20px auto; background: #121212; padding: 25px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.2); box-sizing: border-box; }
         h1, h2 { margin-bottom: 20px; text-align: center; }
         h1 { color: #00bfff; }
         h2 { color: #ff9f43; border-top: 1px solid #333; padding-top: 30px; margin-top: 40px; }
-
         /* --- SEARCH --- */
         .search-container { display: flex; gap: 10px; margin-bottom: 25px; justify-content: center; flex-wrap: wrap; }
-        .search-input { 
-            padding: 12px; 
-            width: 350px; 
-            max-width: 100%;
-            border-radius: 5px; 
-            border: 1px solid #333; 
-            background-color: #1c1c1c; 
-            color: #fff; 
-            font-size: 15px; 
-        }
+        .search-input { padding: 12px; width: 350px; max-width: 100%; border-radius: 5px; border: 1px solid #333; background-color: #1c1c1c; color: #fff; font-size: 15px; }
         .btn-search { padding: 12px 20px; background-color: #28a745; border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-search:hover { background-color: #218838; }
         .btn-clear { color: #aaa; text-decoration: underline; font-size: 14px; align-self: center; }
-
         /* --- TABLE --- */
-        table { 
-            width: 100%; 
-            min-width: 100%; 
-            border-collapse: collapse; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            margin-bottom: 20px; 
-            background: #1a1a1a; 
-            table-layout: auto;
-        }
+        table { width: 100%; min-width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #1a1a1a; table-layout: auto; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2a2a2a; }
         th { background-color: #252525; color: #00bfff; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; white-space: nowrap; }
         td { color: #ddd; vertical-align: middle; }
         tr:hover { background-color: #2a2a2a; }
-
         /* --- BUTTONS --- */
-        .btn-gerenciar { 
-            background-color: #00bfff; 
-            color: #fff; 
-            padding: 6px 12px; 
-            border-radius: 4px; 
-            text-decoration: none; 
-            font-size: 13px; 
-            display: inline-block; 
-            transition: 0.2s;
-            white-space: nowrap;
-            margin-right: 5px;
-        }
+        .btn-gerenciar { background-color: #00bfff; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; display: inline-block; transition: 0.2s; white-space: nowrap; margin-right: 5px; }
         .btn-gerenciar:hover { background-color: #009acd; }
-        
-        /* Botão CHAT */
-        .btn-chat {
-            background-color: #e91e63; 
-            color: #fff; 
-            padding: 6px 12px; 
-            border: none;
-            border-radius: 4px; 
-            text-decoration: none; 
-            font-size: 13px; 
-            cursor: pointer;
-            transition: 0.2s;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
+        .btn-chat { background-color: #e91e63; color: #fff; padding: 6px 12px; border: none; border-radius: 4px; text-decoration: none; font-size: 13px; cursor: pointer; transition: 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
         .btn-chat:hover { background-color: #c2185b; }
-
         .btn-action { border: none; border-radius: 4px; padding: 8px; cursor: pointer; font-size: 14px; color: white; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; margin-right: 5px; transition: 0.2s; }
         .btn-atender { background-color: #e67e22; } .btn-atender:hover { background-color: #d35400; }
         .btn-resolver { background-color: #27ae60; } .btn-resolver:hover { background-color: #219150; }
         .btn-excluir { background-color: #c0392b; } .btn-excluir:hover { background-color: #a93226; }
-
         .status-ball { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
         .status-aberto { background-color: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
         .status-em-atendimento { background-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
         .status-concluido { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
-
         /* --- MODAL --- */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
-        .modal-content { 
-            background-color: #1e1e1e; 
-            margin: 3% auto; 
-            padding: 25px; 
-            border: 1px solid #444; 
-            width: 70%; 
-            max-width: 900px;
-            border-radius: 12px; 
-            color: #eee; 
-            max-height: 90vh; 
-            overflow-y: auto; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
+        .modal-content { background-color: #1e1e1e; margin: 3% auto; padding: 25px; border: 1px solid #444; width: 70%; max-width: 900px; border-radius: 12px; color: #eee; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close:hover { color: #fff; }
         textarea { width: 100%; background: #2c2c2c; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; resize: vertical; box-sizing: border-box; font-family: inherit; }
         textarea:focus { outline: none; border-color: #00bfff; }
-
         .history-container { margin-bottom: 25px; border-left: 2px solid #333; padding-left: 20px; margin-left: 10px; }
         .history-item { margin-bottom: 20px; position: relative; }
         .history-item::before { content: ''; position: absolute; left: -25px; top: 6px; width: 10px; height: 10px; background: #555; border-radius: 50%; border: 2px solid #1e1e1e; }
@@ -218,7 +124,6 @@ $res_ranking = $master_conn->query($sql_ranking);
         .history-msg { background: #252525; padding: 12px 15px; border-radius: 6px; font-size: 0.95rem; color: #ddd; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .admin-msg { border-left: 4px solid #e67e22; }
         .admin-msg::before { background-color: #e67e22; }
-
         @media (min-width: 768px) { .topbar span { display: inline; } }
         @media (max-width: 900px) {
             .container { width: 100%; margin: 0; padding: 15px; border-radius: 0; }
@@ -279,7 +184,6 @@ $res_ranking = $master_conn->query($sql_ranking);
                         <td data-label="Cadastro"><?= !empty($tenant['data_criacao']) ? date('d/m/y', strtotime($tenant['data_criacao'])) : '-'; ?></td>
                         <td data-label="Ação">
                             <a class="btn-gerenciar" href="../../actions/admin_impersonate.php?tenant_id=<?= $tenant['id']; ?>"><i class="fas fa-external-link-alt"></i> Acessar</a>
-                            
                             <?php if(!empty($tenant['usuario_id'])): ?>
                                 <button class="btn-chat" onclick="iniciarSuporte(<?= $tenant['usuario_id']; ?>, '<?= htmlspecialchars($tenant['email'] ?? '') ?>')" title="Iniciar Chat Online com <?= htmlspecialchars($tenant['email']) ?>">
                                     <i class="fas fa-comments"></i> Chat
@@ -301,7 +205,7 @@ $res_ranking = $master_conn->query($sql_ranking);
                 <a href="email_marketing.php" class="btn-gerenciar" style="background: #8e44ad;"><i class="fas fa-bullhorn"></i> Email Marketing</a>
                 <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>
                 <a href="arquivos_suportes.php" class="btn-gerenciar" style="background: #34495e;"><i class="fas fa-file-pdf"></i> Logs de Chat</a>
-                <a href="suporte_via_login.php" class="btn-gerenciar" style="background: #356985;"><i class="fa-solid fa-headset"></i></i> Suporte via login</a>
+                <a href="suporte_via_login.php" class="btn-gerenciar" style="background: #356985;"><i class="fa-solid fa-headset"></i></i> Suporte via index</a>
                 <a href="feedback.php" class="btn-gerenciar" style="background: #258966;"><i class="fa-solid fa-comment-dots"></i></i></i> Feedback</a>
             </div>
         </div>
@@ -463,6 +367,68 @@ $res_ranking = $master_conn->query($sql_ranking);
             </tbody>
         </table>
 
+        <h2 style="color: #20c997; margin-top: 40px; border-top: 1px solid #333; padding-top: 30px;">
+            <i class="fas fa-clipboard-list"></i> Solicitações de Suporte Inicial (Plano Essencial)
+        </h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Status</th>
+                    <th>Data</th>
+                    <th>Empresa</th>
+                    <th>Nome Contato</th>
+                    <th>Email</th>
+                    <th>WhatsApp</th>
+                    <th style="width: 100px;">Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if ($res_suporte_inicial && $res_suporte_inicial->num_rows > 0): ?>
+                <?php while ($s = $res_suporte_inicial->fetch_assoc()): ?>
+                    <tr>
+                        <td data-label="Status">
+                            <div style="display: flex; align-items: center;">
+                                <span class="status-ball" style="background-color: #e74c3c; box-shadow: 0 0 8px #e74c3c;"></span>
+                                <span style="font-size: 0.9rem; color: #e74c3c; font-weight: bold;">Aberto</span>
+                            </div>
+                        </td>
+                        <td data-label="Data"><?= date('d/m H:i', strtotime($s['data_solicitacao'])) ?></td>
+                        <td data-label="Empresa"><?= htmlspecialchars($s['nome_empresa']) ?></td>
+                        <td data-label="Nome"><?= htmlspecialchars($s['nome_usuario']) ?></td>
+                        <td data-label="Email">
+                            <a href="mailto:<?= htmlspecialchars($s['email_usuario']) ?>" style="color:#00bfff;">
+                                <?= htmlspecialchars($s['email_usuario']) ?>
+                            </a>
+                        </td>
+                        <td data-label="WhatsApp">
+                            <a href="https://wa.me/55<?= preg_replace('/[^0-9]/', '', $s['whatsapp_usuario']) ?>" target="_blank" style="color:#2ecc71;">
+                                <i class="fab fa-whatsapp"></i> <?= htmlspecialchars($s['whatsapp_usuario']) ?>
+                            </a>
+                        </td>
+                        <td data-label="Ação" style="white-space: nowrap;">
+                            <form action="../../actions/suporte_inicial_cor.php" method="POST" onsubmit="return confirm('Marcar como contatado? (Ficará verde)');" style="display:inline;">
+                                <input type="hidden" name="id" value="<?= $s['id'] ?>">
+                                <button type="submit" class="btn-action" style="background-color: #c0392b;" title="Marcar como Feito">
+                                    <i class="fas fa-check-double"></i>
+                                </button>
+                            </form>
+                            
+                            <form action="../../actions/excluir_suporte_inicial_dashboard.php" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta solicitação?');" style="display:inline;">
+                                <input type="hidden" name="id" value="<?= $s['id'] ?>">
+                                <button type="submit" class="btn-action btn-excluir" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <tr><td colspan="7" style="text-align:center; padding: 20px; color: #777;">Nenhuma solicitação de onboarding pendente.</td></tr>
+            <?php endif; ?>
+            </tbody>
+        </table>
+
     </div>
 
     <div id="modalAtendimento" class="modal">
@@ -494,7 +460,6 @@ $res_ranking = $master_conn->query($sql_ranking);
     </div>
 
     <script>
-        // Lógica para abrir modal de chamados
         function abrirModal(id, descricao, solicitante, historicoHtml) {
             document.getElementById('modalIdDisplay').innerText = id;
             document.getElementById('modalIdInput').value = id;
@@ -517,7 +482,6 @@ $res_ranking = $master_conn->query($sql_ranking);
             }
         }
 
-        // --- LÓGICA DO CHAT ONLINE ---
         function iniciarSuporte(userId, userEmail) {
             if(!confirm("Deseja iniciar um Chat Online com o email: " + userEmail + "? Ele receberá um convite na Home.")) return;
 
