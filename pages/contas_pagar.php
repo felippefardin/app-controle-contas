@@ -258,9 +258,15 @@ $result = $conn->query($sql);
     <h3>Nova Conta</h3>
     <form action="../actions/add_conta_pagar.php" method="POST" style="display:flex; flex-direction:column; gap:10px;">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-        <div class="autocomplete-container">
-            <input type="text" id="pesquisar_fornecedor" name="fornecedor_nome" placeholder="Fornecedor..." required style="width:100%;">
-            <div id="fornecedor_list" class="autocomplete-items"></div>
+        
+        <div style="display:flex; gap: 5px; align-items: center;">
+            <div class="autocomplete-container" style="flex: 1; margin-bottom:0;">
+                <input type="text" id="pesquisar_fornecedor" name="fornecedor_nome" placeholder="Fornecedor..." required style="width:100%;">
+                <div id="fornecedor_list" class="autocomplete-items"></div>
+            </div>
+            <button type="button" class="btn btn-add" style="padding: 10px 12px;" onclick="document.getElementById('modalNovoFornecedor').style.display='flex'">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
         <input type="hidden" name="fornecedor_id" id="fornecedor_id_hidden">
         
@@ -366,8 +372,47 @@ $result = $conn->query($sql);
     </div>
 </div>
 
+<div id="modalNovoFornecedor" class="modal" style="z-index: 1050;"> <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('modalNovoFornecedor').style.display='none'">&times;</span>
+    <h3>Novo Fornecedor</h3>
+    <form id="form-novo-fornecedor" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+        <input type="hidden" name="tipo" value="fornecedor">
+        
+        <label>Nome Completo:</label>
+        <input type="text" name="nome" required placeholder="Nome do Fornecedor">
+        
+        <label>CPF/CNPJ (Opcional):</label>
+        <input type="text" name="cpf_cnpj" placeholder="Documento">
+        
+        <label>Endereço:</label>
+        <input type="text" name="endereco" placeholder="Endereço Completo">
+        
+        <label>Contato (Telefone):</label>
+        <input type="text" name="contato" placeholder="(00) 00000-0000">
+        
+        <label>E-mail:</label>
+        <input type="email" name="email" placeholder="email@exemplo.com">
+        
+        <button type="submit" class="btn btn-add" style="width:100%; margin-top:10px;">Cadastrar</button>
+    </form>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+// Função Display Flash simplificada para JS
+function showFlash(message, type) {
+    const alertBox = document.createElement('div');
+    alertBox.style.cssText = `
+        position: fixed; top: 20px; right: 20px; background: ${type === 'success' ? '#28a745' : '#dc3545'}; 
+        color: white; padding: 15px; border-radius: 5px; z-index: 9999; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    `;
+    alertBox.innerText = message;
+    document.body.appendChild(alertBox);
+    setTimeout(() => alertBox.remove(), 4000);
+}
+
 function abrirModalBaixar(id, nome, valor) {
     document.getElementById('id_conta_baixa').value = id;
     document.getElementById('texto-baixa').innerText = `${nome} - R$ ${valor}`;
@@ -397,6 +442,35 @@ function selectForn(id, nome) {
     $("#fornecedor_id_hidden").val(id);
     $("#fornecedor_list").empty();
 }
+
+// AJAX Cadastro Fornecedor
+$('#form-novo-fornecedor').on('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append('ajax', true);
+    
+    $.ajax({
+        url: '../actions/cadastrar_pessoa_fornecedor_action.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(resp) {
+            document.getElementById('modalNovoFornecedor').style.display='none';
+            document.getElementById('form-novo-fornecedor').reset();
+            
+            // Pega o nome que foi digitado para preencher o campo anterior
+            const nomeDigitado = formData.get('nome');
+            $("#pesquisar_fornecedor").val(nomeDigitado);
+            
+            showFlash('Fornecedor cadastrado com sucesso!', 'success');
+        },
+        error: function() {
+            showFlash('Erro ao cadastrar fornecedor.', 'danger');
+        }
+    });
+});
+
 window.onclick = e => { if(e.target.className === 'modal') e.target.style.display = 'none'; }
 </script>
 <?php include('../includes/footer.php'); ?>

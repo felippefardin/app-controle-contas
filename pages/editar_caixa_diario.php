@@ -3,6 +3,14 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
+// CORREÇÃO: Inicializa a conexão com o banco do tenant
+$conn = getTenantConnection();
+
+// Verifica se a conexão foi bem-sucedida
+if (!$conn) {
+    die("Erro: Não foi possível conectar ao banco de dados.");
+}
+
 // 2. Verifica se o ID foi passado. Se não, redireciona.
 if (!isset($_GET['id'])) {
     header('Location: relatorios.php');

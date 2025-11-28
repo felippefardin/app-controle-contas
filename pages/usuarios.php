@@ -82,27 +82,95 @@ display_flash_message();
 <title>Gerenciar Usuários</title>
 
 <style>
+/* ========================
+   ESTILOS GERAIS
+   ======================== */
 body { margin: 0; padding: 0; background: #121212; font-family: Arial, sans-serif; color: #ddd; }
-.container-usuarios { max-width: 1200px; margin: 30px auto; padding: 25px; background: #1e1e1e; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-.page-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 25px; }
 
-.btn-novo { background: linear-gradient(135deg, #28a745, #218838); padding: 10px 18px; color: #fff; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
+/* MODO FULL DESKTOP: width 100% e max-width 98% */
+.container-usuarios { 
+    width: 100%;
+    max-width: 98%; 
+    margin: 30px auto; 
+    padding: 25px; 
+    background: #1e1e1e; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+    box-sizing: border-box;
+}
+
+.page-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+
+.btn-novo { background: linear-gradient(135deg, #28a745, #218838); padding: 10px 18px; color: #fff; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(40,167,69,0.3); white-space: nowrap; }
 .btn-novo:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(40,167,69,0.5); }
-.btn-bloqueado { background: #333; color: #aaa; padding: 10px 18px; border: 1px solid #444; border-radius: 6px; }
+.btn-bloqueado { background: #333; color: #aaa; padding: 10px 18px; border: 1px solid #444; border-radius: 6px; white-space: nowrap; }
 
-.custom-table { width: 100%; border-collapse: collapse; background: #252525; border-radius: 6px; overflow: hidden; }
-.custom-table th { background: #2c2c2c; color: #00bfff; padding: 14px; text-transform: uppercase; font-size: 0.85rem; }
-.custom-table td { padding: 14px; border-bottom: 1px solid #333; }
+/* TABELA RESPONSIVA */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+}
 
-.status-badge { padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; }
+.custom-table { width: 100%; border-collapse: collapse; background: #252525; border-radius: 6px; overflow: hidden; min-width: 600px; /* Garante que a tabela não esmague demais no mobile */ }
+.custom-table th { background: #2c2c2c; color: #00bfff; padding: 14px; text-transform: uppercase; font-size: 0.85rem; text-align: left; }
+.custom-table td { padding: 14px; border-bottom: 1px solid #333; vertical-align: middle; }
+
+.status-badge { padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; display: inline-block; }
 .status-ativo { border: 1px solid #2ecc71; color: #2ecc71; background: rgba(46,204,113,0.15); }
 .status-inativo { border: 1px solid #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.15); }
 
-.action-btn { width: 32px; height: 32px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; margin-left: 5px; text-decoration: none; border: none; cursor: pointer; }
+.action-btn { width: 32px; height: 32px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; margin-left: 5px; text-decoration: none; border: none; cursor: pointer; transition: opacity 0.2s; }
+.action-btn:hover { opacity: 0.8; }
 .btn-edit { background: #ffc107; color: black; }
 .btn-toggle-on { background: #28a745; }
 .btn-toggle-off { border: 1px solid #dc3545; color: #dc3545; }
 .btn-delete { background: #dc3545; }
+
+/* ========================
+   MEDIA QUERIES (RESPONSIVIDADE)
+   ======================== */
+@media (max-width: 768px) {
+    .container-usuarios {
+        padding: 15px;
+        margin: 10px auto;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    /* Botão Novo ocupa largura total no mobile */
+    .btn-novo, .btn-bloqueado {
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Container de botões no header */
+    .page-header > div {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+
+    /* Ajuste na tabela para texto não quebrar em lugares ruins */
+    .custom-table th, .custom-table td {
+        padding: 10px;
+        white-space: nowrap;
+    }
+}
 </style>
 </head>
 
@@ -122,7 +190,7 @@ body { margin: 0; padding: 0; background: #121212; font-family: Arial, sans-seri
             <?php else: ?>
                 <div>
                     <button class="btn-bloqueado" disabled><i class="fas fa-lock"></i> Limite Atingido (<?= $total_ativos ?>/<?= $limite_total ?>)</button>
-                    <a href="minha_assinatura.php" style="color:#ffc107;font-weight:bold;margin-left:10px;">Aumentar Limite</a>
+                    <a href="minha_assinatura.php" style="color:#ffc107;font-weight:bold;margin-left:10px; text-align:center; display:block; margin-top:5px;">Aumentar Limite</a>
                 </div>
             <?php endif; ?>
         <?php endif; ?>

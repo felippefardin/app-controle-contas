@@ -72,15 +72,61 @@ try {
         throw new Exception("Falha grave ao criar o usuário mestre (ID não retornado).");
     }
 
-    // --- 2) Gera tenant_id + banco + usuário MySQL ---
+    // --- 2) Gera tenant_id + Escolha Inteligente do Servidor (Sharding) ---
     $tenantId = md5(uniqid('', true));
-    $dbHost = $_ENV['DB_HOST'] ?? 'localhost';
+    
+    // 🛠️ CONFIGURAÇÃO DE SHARDING
+    // Lista de IPs dos seus servidores de banco de dados.
+    // Comece com 'localhost'. Quando crescer, adicione o IP do novo servidor aqui.
+    $servidoresDisponiveis = [
+        'localhost',       // Servidor Principal
+        // '192.168.1.50', // Exemplo: Servidor Secundário (Futuro)
+    ];
+
+    $dbHost = 'localhost'; // Fallback padrão
+    
+    try {
+        // Busca qual servidor tem MENOS tenants cadastrados para balancear a carga
+        // Cria uma string de placeholders (?,?,?) baseada no tamanho do array
+        $placeholders = implode(',', array_fill(0, count($servidoresDisponiveis), '?'));
+        $types = str_repeat('s', count($servidoresDisponiveis));
+        
+        $sqlBalanceamento = "
+            SELECT db_host, COUNT(*) as total 
+            FROM tenants 
+            WHERE db_host IN ($placeholders) 
+            GROUP BY db_host 
+            ORDER BY total ASC 
+            LIMIT 1
+        ";
+        
+        $stmtBal = $conn->prepare($sqlBalanceamento);
+        if ($stmtBal) {
+            $stmtBal->bind_param($types, ...$servidoresDisponiveis);
+            $stmtBal->execute();
+            $resBal = $stmtBal->get_result()->fetch_assoc();
+            $stmtBal->close();
+
+            // Se encontrou algum resultado (servidor com menos carga), usa ele. 
+            if ($resBal && !empty($resBal['db_host'])) {
+                $dbHost = $resBal['db_host'];
+            } else {
+                // Se for o primeiro cadastro de todos, pega o primeiro da lista
+                $dbHost = $servidoresDisponiveis[0];
+            }
+        }
+    } catch (Exception $e) {
+        // Se der erro na lógica de balanceamento, mantém o padrão silenciosamente
+        error_log("Aviso: Falha no balanceamento de carga (usando localhost): " . $e->getMessage());
+        $dbHost = 'localhost';
+    }
+
+    // Define nome do banco e usuário
     $dbName = 'tenant_db_' . $tenantId;
     $tenantUser = 'dbu_' . substr($tenantId, 0, 12);
     $tenantPass = bin2hex(random_bytes(16)); // 32 chars
 
     // --- 3) Registra tenant no master (TABELA ATUAL) ---
-    // Removemos plano_atual e definimos status_assinatura como 'ativo'
     $stmtTenant = $conn->prepare("
         INSERT INTO tenants (
             tenant_id, usuario_id, nome, nome_empresa, admin_email,
@@ -91,13 +137,13 @@ try {
 
     $nome_empresa = $nome;
     $stmtTenant->bind_param(
-        "sisssssssss", // 11 's' -> 10 's' (removido plano_atual)
+        "sisssssssss", // 11 's' -> 10 's'
         $tenantId,
         $usuarioMasterId, // ID do passo 1
         $nome,
         $nome_empresa,
         $email,
-        $dbHost,
+        $dbHost, // Aqui entra o host escolhido dinamicamente
         $dbName,
         $tenantUser,
         $tenantPass,
@@ -110,17 +156,21 @@ try {
     }
     $stmtTenant->close();
 
-    // --- 4) Cria banco do tenant ---
+    // --- 4) Cria banco do tenant (No host escolhido) ---
+    // Nota: Se dbHost for remoto, precisaria conectar lá. Como é localhost ou 
+    // um IP acessível pelo mesmo usuário root/admin do app, mantemos a lógica simples.
+    // Em arquiteturas complexas, você abriria uma nova conexão $connRemota aqui.
+    
     if (!$conn->query("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")) {
         throw new Exception("Erro ao criar o banco de dados do tenant: " . $conn->error);
     }
 
     // --- 5) Cria usuário MySQL do tenant ---
-    $conn->query("DROP USER IF EXISTS '$tenantUser'@'localhost'");
-    if (!$conn->query("CREATE USER '$tenantUser'@'localhost' IDENTIFIED BY '$tenantPass'")) {
+    $conn->query("DROP USER IF EXISTS '$tenantUser'@'%'"); // '%' permite acesso de qualquer IP se necessário
+    if (!$conn->query("CREATE USER '$tenantUser'@'%' IDENTIFIED BY '$tenantPass'")) {
          throw new Exception("Erro ao criar o usuário MySQL para o tenant: " . $conn->error);
     }
-    if (!$conn->query("GRANT ALL PRIVILEGES ON `$dbName`.* TO '$tenantUser'@'localhost'")) {
+    if (!$conn->query("GRANT ALL PRIVILEGES ON `$dbName`.* TO '$tenantUser'@'%'")) {
          throw new Exception("Erro ao conceder privilégios ao usuário do tenant: " . $conn->error);
     }
     $conn->query("FLUSH PRIVILEGES");
@@ -170,17 +220,16 @@ try {
 
 } catch (Exception $e) {
 
-    // --- ESTA É A PARTE MAIS IMPORTANTE DA CORREÇÃO ---
+    // --- ROLLBACK MANUAL DE SEGURANÇA ---
     
     error_log("⛔ ERRO NO REGISTO: " . $e->getMessage());
     $_SESSION['erro_registro'] = "Erro ao criar sua conta. Por favor, tente novamente.";
 
     // 1. Limpa a infraestrutura (DROP DATABASE e DROP USER) se eles chegaram a ser criados
     if (isset($dbName)) $conn->query("DROP DATABASE IF EXISTS `$dbName`");
-    if (isset($tenantUser)) $conn->query("DROP USER IF EXISTS '$tenantUser'@'localhost'");
+    if (isset($tenantUser)) $conn->query("DROP USER IF EXISTS '$tenantUser'@'%'");
     
     // 2. Limpa os registros órfãos no banco de dados mestre (usuarios e tenants)
-    // Usamos uma transação aqui para garantir que ambos sejam removidos
     if ($usuarioMasterId !== null) {
         $conn->begin_transaction();
         try {

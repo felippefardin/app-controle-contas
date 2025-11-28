@@ -292,11 +292,18 @@ $result = $conn->query($sql);
     <h3>Nova Receita</h3>
     <form action="../actions/add_conta_receber.php" method="POST">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-        <div class="autocomplete-container">
-            <input type="text" id="pesquisar_pessoa" name="pessoa_nome" placeholder="Cliente/Pagador..." required>
-            <div id="pessoa_list" class="autocomplete-items"></div>
+        
+        <div style="display:flex; gap: 5px; align-items: center; margin-bottom: 10px;">
+            <div class="autocomplete-container" style="flex: 1; margin-bottom:0;">
+                <input type="text" id="pesquisar_pessoa" name="pessoa_nome" placeholder="Cliente/Pagador..." required style="width:100%;">
+                <div id="pessoa_list" class="autocomplete-items"></div>
+            </div>
+            <button type="button" class="btn btn-add" style="padding: 10px 12px;" onclick="document.getElementById('modalNovaPessoa').style.display='flex'">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
         <input type="hidden" name="pessoa_id" id="pessoa_id_hidden">
+        
         <input type="text" name="numero" placeholder="Número do Documento">
         <input type="text" name="descricao" placeholder="Descrição" required>
         <input type="text" name="valor" placeholder="Valor (Ex: 1.000,00)" required>
@@ -400,8 +407,48 @@ $result = $conn->query($sql);
     </div>
 </div>
 
+<div id="modalNovaPessoa" class="modal" style="z-index: 1050;">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('modalNovaPessoa').style.display='none'">&times;</span>
+    <h3>Novo Cliente</h3>
+    <form id="form-nova-pessoa" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+        <input type="hidden" name="tipo" value="pessoa">
+        
+        <label>Nome Completo:</label>
+        <input type="text" name="nome" required placeholder="Nome do Cliente">
+        
+        <label>CPF/CNPJ (Opcional):</label>
+        <input type="text" name="cpf_cnpj" placeholder="Documento">
+        
+        <label>Endereço:</label>
+        <input type="text" name="endereco" placeholder="Endereço Completo">
+        
+        <label>Contato (Telefone):</label>
+        <input type="text" name="contato" placeholder="(00) 00000-0000">
+        
+        <label>E-mail:</label>
+        <input type="email" name="email" placeholder="email@exemplo.com">
+        
+        <button type="submit" class="btn btn-add" style="width:100%; margin-top:10px;">Cadastrar</button>
+    </form>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+// Função Display Flash simplificada para JS
+function showFlash(message, type) {
+    const alertBox = document.createElement('div');
+    alertBox.style.cssText = `
+        position: fixed; top: 20px; right: 20px; background: ${type === 'success' ? '#28a745' : '#dc3545'}; 
+        color: white; padding: 15px; border-radius: 5px; z-index: 9999; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    `;
+    alertBox.innerText = message;
+    document.body.appendChild(alertBox);
+    setTimeout(() => alertBox.remove(), 4000);
+}
+
 function abrirModalCobranca(id, nome, valor) {
     document.getElementById('cobranca_id_conta').value = id;
     document.getElementById('txt-cobranca').innerText = `Enviar cobrança para: ${nome} (R$ ${valor})`;
@@ -436,6 +483,34 @@ function selectPessoa(id, nome) {
     $("#pessoa_id_hidden").val(id);
     $("#pessoa_list").empty();
 }
+
+// AJAX Cadastro Cliente
+$('#form-nova-pessoa').on('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append('ajax', true);
+    
+    $.ajax({
+        url: '../actions/cadastrar_pessoa_fornecedor_action.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(resp) {
+            document.getElementById('modalNovaPessoa').style.display='none';
+            document.getElementById('form-nova-pessoa').reset();
+            
+            const nomeDigitado = formData.get('nome');
+            $("#pesquisar_pessoa").val(nomeDigitado);
+            
+            showFlash('Cliente cadastrado com sucesso!', 'success');
+        },
+        error: function() {
+            showFlash('Erro ao cadastrar cliente.', 'danger');
+        }
+    });
+});
+
 window.onclick = e => { if(e.target.className === 'modal') e.target.style.display = 'none'; }
 </script>
 <?php include('../includes/footer.php'); ?>

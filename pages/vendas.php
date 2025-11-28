@@ -258,13 +258,55 @@ label {
 }
 
 /* =========================================
-   ALERTAS
+   ALERTAS E NOTIFICAÇÕES (CORREÇÃO)
 ========================================= */
 .alert {
     border-radius: 6px;
     font-weight: 500;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
+
+/* CSS para o Flash Message JS (Correção) */
+.alert-overlay {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999; /* Z-Index alto para ficar acima de modals */
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.alert-box {
+    background-color: #333;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    min-width: 300px;
+    border-left: 5px solid #007bff;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.alert-box.alert-success { border-left-color: #28a745; }
+.alert-box.alert-danger, .alert-box.alert-error { border-left-color: #dc3545; }
+.alert-box.alert-warning { border-left-color: #ffc107; }
+.alert-box.alert-info { border-left-color: #17a2b8; }
+
+.alert-msg { flex-grow: 1; margin-left: 15px; font-size: 14px; margin-top: 2px; }
+.alert-box i { font-size: 24px !important; margin: 0 !important; display: inline-block !important; }
+.btn-fechar-alert { background: none; border: none; color: #aaa; cursor: pointer; font-weight: bold; margin-left: 10px; font-size: 16px; }
+.btn-fechar-alert:hover { color: white; }
+
 
 /* =========================================
    CARDS
@@ -439,7 +481,14 @@ label {
 
         <div class="form-group">
             <label for="cliente_id">Cliente</label>
-            <select id="cliente_id" name="cliente_id" class="form-control" required></select>
+            <div class="input-group">
+                <select id="cliente_id" name="cliente_id" class="form-control" required></select>
+                <div class="input-group-append">
+                    <button class="btn btn-success" type="button" data-toggle="modal" data-target="#modalNovoCliente" title="Novo Cliente">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="card bg-dark text-white mb-4">
@@ -535,6 +584,45 @@ label {
 </div>
 <?php endif; ?>
 
+<div class="modal fade" id="modalNovoCliente" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1050;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="background-color: #222; color: #eee;">
+            <div class="modal-header" style="border-bottom: 1px solid #444;">
+                <h5 class="modal-title">Cadastrar Novo Cliente</h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:white;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-novo-cliente">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="tipo" value="pessoa">
+                    
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" name="nome" class="form-control" required style="background:#333; color:#fff; border:1px solid #555;">
+                    </div>
+                    <div class="form-group">
+                        <label>CPF ou CNPJ</label>
+                        <input type="text" name="cpf_cnpj" class="form-control" style="background:#333; color:#fff; border:1px solid #555;">
+                    </div>
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" name="endereco" class="form-control" style="background:#333; color:#fff; border:1px solid #555;">
+                    </div>
+                    <div class="form-group">
+                        <label>Contato (Telefone)</label>
+                        <input type="text" name="contato" class="form-control" style="background:#333; color:#fff; border:1px solid #555;">
+                    </div>
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" name="email" class="form-control" style="background:#333; color:#fff; border:1px solid #555;">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Salvar Cliente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include('../includes/footer.php'); ?>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -548,47 +636,49 @@ $(document).ready(function() {
     const userPerfil = '<?= htmlspecialchars($perfil, ENT_QUOTES, 'UTF-8') ?>';
 
     // =======================================================
-    // ✅ FUNÇÃO DE ALERTA FLUENTE VIA JAVASCRIPT
-    // Essa função simula o HTML gerado pelo PHP em utils.php
+    // ✅ FUNÇÃO DE ALERTA FLUENTE VIA JAVASCRIPT (CORRIGIDA)
     // =======================================================
     function showAlert(message, type) {
-        // Mapeia cores e ícones baseado no estilo do utils.php
         let cssClass = 'alert-info';
-        let icon = '';
+        let icon = '<i class="fas fa-info-circle"></i>';
 
         if (type === 'success') {
             cssClass = 'alert-success';
-            icon = '<i class="fa fa-check-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>';
+            icon = '<i class="fas fa-check-circle" style="color:#28a745"></i>';
         } else if (type === 'danger' || type === 'error') {
             cssClass = 'alert-danger';
-            icon = '<i class="fa fa-times-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>';
+            icon = '<i class="fas fa-times-circle" style="color:#dc3545"></i>';
         } else if (type === 'warning') {
             cssClass = 'alert-warning';
-            icon = '<i class="fa fa-exclamation-triangle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>';
+            icon = '<i class="fas fa-exclamation-triangle" style="color:#ffc107"></i>';
         }
 
-        // Remove overlays existentes
-        $('.alert-overlay').remove();
+        // Verifica se overlay já existe
+        let overlay = $('#flash-overlay');
+        if (overlay.length === 0) {
+            $('body').append(`<div class='alert-overlay' id='flash-overlay'></div>`);
+            overlay = $('#flash-overlay');
+        }
 
+        const id = 'alert-' + Date.now();
         const html = `
-            <div class='alert-overlay' id='flash-overlay'>
-                <div class='alert-box ${cssClass}'>
-                    ${icon}
-                    <div class='alert-msg'>${message}</div>
-                    <button onclick="document.getElementById('flash-overlay').remove()" class='btn-fechar-alert'>OK</button>
-                </div>
+            <div class='alert-box ${cssClass}' id='${id}'>
+                ${icon}
+                <div class='alert-msg'>${message}</div>
+                <button onclick="$('#${id}').remove()" class='btn-fechar-alert'>&times;</button>
             </div>
         `;
 
-        $('body').append(html);
+        overlay.append(html);
 
         // Fecha automaticamente após 4 segundos
         setTimeout(() => {
-            const overlay = document.getElementById('flash-overlay');
-            if(overlay) {
-                overlay.style.transition = 'opacity 0.5s';
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.remove(), 500);
+            const el = document.getElementById(id);
+            if(el) {
+                el.style.transition = 'opacity 0.5s, transform 0.5s';
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(20px)';
+                setTimeout(() => el.remove(), 500);
             }
         }, 4000);
     }
@@ -627,7 +717,7 @@ $(document).ready(function() {
         })
         .catch(err => {
             console.error('Erro ao buscar meta:', err);
-            showAlert('Erro de comunicação ao buscar meta de vendas.', 'danger');
+            // Opcional: showAlert('Erro de comunicação ao buscar meta de vendas.', 'danger');
         });
     }
 
@@ -686,6 +776,43 @@ $(document).ready(function() {
             processResults: data => ({ results: data.results }),
             cache: true
         }
+    });
+
+    /* ================================
+       AJAX: CADASTRO RÁPIDO DE CLIENTE
+       ================================== */
+    $('#form-novo-cliente').on('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        // Flag para indicar que é via AJAX
+        formData.append('ajax', true); 
+
+        $.ajax({
+            url: '../actions/cadastrar_pessoa_fornecedor_action.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // Como o backend redireciona, o 'success' é chamado.
+                // Assumimos sucesso pois se houvesse erro de script seria 'error'.
+                // Fechamos o modal e mostramos o alerta.
+                $('#modalNovoCliente').modal('hide');
+                $('#form-novo-cliente')[0].reset();
+                
+                showAlert('Cliente cadastrado com sucesso!', 'success');
+                
+                // Limpa o select para o usuário buscar o novo cliente
+                $('#cliente_id').val(null).trigger('change');
+                
+                // Se quiser pré-selecionar o cliente recém criado:
+                const nome = formData.get('nome');
+                // Mas não temos o ID, então apenas forçamos o usuário a buscar.
+            },
+            error: function() {
+                showAlert('Erro ao comunicar com o servidor.', 'danger');
+            }
+        });
     });
 
     /* ================================
@@ -858,7 +985,6 @@ $(document).ready(function() {
                 if (tipoFinalizacao === 'recibo') {
                     window.open('recibo_venda.php?id=' + data.venda_id, '_blank');
                 } else {
-                    // Chama a função de emissão (agora ajustada para Mock)
                     emitirNFe(data.venda_id);
                 }
 

@@ -26,8 +26,16 @@ display_flash_message();
 $userFilter = "usuario_id = " . intval($usuarioId);
 $userFilterCategorias = "id_usuario = " . intval($usuarioId);
 
-function getTotais($conn, $tabela, $status, $userFilter) {
-    $stmt = $conn->prepare("SELECT COUNT(id) AS total_contas, SUM(valor) AS valor_total FROM $tabela WHERE status = ? AND $userFilter");
+// --- FUNÇÃO GET TOTAIS MELHORADA (Com Filtro de Mês e Coluna de Data Dinâmica) ---
+function getTotais($conn, $tabela, $status, $userFilter, $mes = null, $colunaData = 'data_vencimento') {
+    $sql = "SELECT COUNT(id) AS total_contas, SUM(valor) AS valor_total FROM $tabela WHERE status = ? AND $userFilter";
+    
+    // Se passar o mês, filtra pela data correta (vencimento ou pagamento)
+    if ($mes) {
+        $sql .= " AND DATE_FORMAT($colunaData, '%Y-%m') = '$mes'";
+    }
+    
+    $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $status);
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
@@ -35,30 +43,56 @@ function getTotais($conn, $tabela, $status, $userFilter) {
     return $result;
 }
 
-// Totais
-$totaisPagarPendentes = getTotais($conn, 'contas_pagar', 'pendente', $userFilter);
-$totaisPagarBaixadas = getTotais($conn, 'contas_pagar', 'baixada', $userFilter);
-$totaisReceberPendentes = getTotais($conn, 'contas_receber', 'pendente', $userFilter);
-$totaisReceberBaixadas = getTotais($conn, 'contas_receber', 'baixada', $userFilter);
+// Data atual para filtros
+$mesAtual = date('Y-m');
 
-// Caixa diário
+// --- 1. DADOS ACUMULADOS (PARA O SALDO EM CAIXA HOJE) ---
+// Busca tudo o que já foi baixado na história para saber quanto dinheiro tem na conta real
+$historicoPagar = getTotais($conn, 'contas_pagar', 'baixada', $userFilter); 
+$historicoReceber = getTotais($conn, 'contas_receber', 'baixada', $userFilter);
+
+// Caixa diário (Acumulado)
 $stmtCaixa = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE $userFilter");
 $stmtCaixa->execute();
 $totalCaixa = $stmtCaixa->get_result()->fetch_assoc()['total'] ?? 0;
 $stmtCaixa->close();
 
-// Saldos
-$saldoPrevisto = ($totaisReceberPendentes['valor_total'] ?? 0) - ($totaisPagarPendentes['valor_total'] ?? 0);
-$saldoRealizado = (($totaisReceberBaixadas['valor_total'] ?? 0) + $totalCaixa) - ($totaisPagarBaixadas['valor_total'] ?? 0);
+// CALCULO DO SALDO REALIZADO (Dinheiro em Mãos Hoje)
+// Recebidos + Lançamentos de Caixa - Pagos
+$saldoRealizado = (($historicoReceber['valor_total'] ?? 0) + $totalCaixa) - ($historicoPagar['valor_total'] ?? 0);
 
-// Gráfico 12 meses
+
+// --- 2. DADOS DO MÊS ATUAL (PARA OS CARDS DE GESTÃO) ---
+// O que tenho que pagar/receber ESTE MÊS?
+$pendentePagarMes = getTotais($conn, 'contas_pagar', 'pendente', $userFilter, $mesAtual, 'data_vencimento');
+$pendenteReceberMes = getTotais($conn, 'contas_receber', 'pendente', $userFilter, $mesAtual, 'data_vencimento');
+
+// O que já paguei/recebi ESTE MÊS? (Para os cards de baixo)
+// CORREÇÃO: Usando 'data_baixa' para ambos, conforme schema.sql
+$baixadoPagarMes = getTotais($conn, 'contas_pagar', 'baixada', $userFilter, $mesAtual, 'data_baixa');
+$baixadoReceberMes = getTotais($conn, 'contas_receber', 'baixada', $userFilter, $mesAtual, 'data_baixa');
+
+// Caixa Diário (Somente do Mês)
+$stmtCaixaMes = $conn->prepare("SELECT SUM(valor) AS total FROM caixa_diario WHERE $userFilter AND DATE_FORMAT(data, '%Y-%m') = ?");
+$stmtCaixaMes->bind_param("s", $mesAtual);
+$stmtCaixaMes->execute();
+$caixaMes = $stmtCaixaMes->get_result()->fetch_assoc()['total'] ?? 0;
+$stmtCaixaMes->close();
+
+
+// --- 3. SALDO PREVISTO INTELIGENTE ---
+// Fórmula: (Dinheiro que tenho HOJE + O que vai entrar este mês) - O que falta sair este mês
+$saldoPrevisto = ($saldoRealizado + ($pendenteReceberMes['valor_total'] ?? 0)) - ($pendentePagarMes['valor_total'] ?? 0);
+
+
+// --- 4. GRÁFICO 12 MESES (CORRIGIDO DATA DE CAIXA) ---
 $labels = $entradasPendentes = $saidasPendentes = $entradasBaixadas = $saidasBaixadas = [];
 
 for ($i = 11; $i >= 0; $i--) {
     $mes = date('Y-m', strtotime("-$i month"));
     $labels[] = date('M/Y', strtotime($mes . '-01'));
 
-    // Entradas
+    // Entradas Pendentes (Previsão usa Vencimento)
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status=? AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
     $status = 'pendente';
     $stmt->bind_param("ss", $status, $mes);
@@ -66,7 +100,8 @@ for ($i = 11; $i >= 0; $i--) {
     $entradasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
+    // Entradas Baixadas (Realidade usa Data de Baixa) - CORREÇÃO: data_baixa
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_receber WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
     $stmt->bind_param("s", $mes);
     $stmt->execute();
     $total_receber = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
@@ -80,7 +115,7 @@ for ($i = 11; $i >= 0; $i--) {
 
     $entradasBaixadas[] = $total_receber + $total_caixa;
 
-    // Saídas
+    // Saídas Pendentes (Previsão usa Vencimento)
     $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status=? AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
     $status = 'pendente';
     $stmt->bind_param("ss", $status, $mes);
@@ -88,7 +123,8 @@ for ($i = 11; $i >= 0; $i--) {
     $saidasPendentes[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
     $stmt->close();
 
-    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_vencimento,'%Y-%m')=?");
+    // Saídas Baixadas (Realidade usa Data de Baixa) - CORREÇÃO: data_baixa
+    $stmt = $conn->prepare("SELECT SUM(valor) AS total FROM contas_pagar WHERE $userFilter AND status='baixada' AND DATE_FORMAT(data_baixa,'%Y-%m')=?");
     $stmt->bind_param("s", $mes);
     $stmt->execute();
     $saidasBaixadas[] = floatval($stmt->get_result()->fetch_assoc()['total'] ?? 0);
@@ -226,49 +262,50 @@ foreach ($categorias as $c) {
 <div class="container" id="pdf-content">
     <h2>Dashboard Financeiro</h2>
 
-    <h3 class="section-title">Balanço Previsto</h3>
+    <h3 class="section-title">Balanço Previsto (Mês Atual)</h3>
     <div class="row">
         <div class="summary-card">
             <i class="fa-solid fa-arrow-down"></i>
-            <h5>A Receber (Previsto)</h5>
-            <p>R$ <?= number_format($totaisReceberPendentes['valor_total'] ?? 0, 2, ',', '.') ?></p>
-            <span><?= $totaisReceberPendentes['total_contas'] ?? 0 ?> contas</span>
+            <h5>A Receber (Mês)</h5>
+            <p>R$ <?= number_format($pendenteReceberMes['valor_total'] ?? 0, 2, ',', '.') ?></p>
+            <span><?= $pendenteReceberMes['total_contas'] ?? 0 ?> contas pendentes</span>
         </div>
         <div class="summary-card">
             <i class="fa-solid fa-arrow-up"></i>
-            <h5>A Pagar (Previsto)</h5>
-            <p>R$ <?= number_format($totaisPagarPendentes['valor_total'] ?? 0, 2, ',', '.') ?></p>
-            <span><?= $totaisPagarPendentes['total_contas'] ?? 0 ?> contas</span>
+            <h5>A Pagar (Mês)</h5>
+            <p>R$ <?= number_format($pendentePagarMes['valor_total'] ?? 0, 2, ',', '.') ?></p>
+            <span><?= $pendentePagarMes['total_contas'] ?? 0 ?> contas pendentes</span>
         </div>
         <div class="summary-card <?= $saldoPrevisto >= 0 ? 'card-positive' : 'card-negative' ?>">
             <i class="fa-solid fa-scale-balanced"></i>
-            <h5>Saldo Previsto</h5>
+            <h5>Saldo Projetado (Final do Mês)</h5>
             <p>R$ <?= number_format($saldoPrevisto, 2, ',', '.') ?></p>
-            <span>Balanço Futuro</span>
+            <span>Caixa Hoje + Receitas - Despesas</span>
         </div>
     </div>
 
-    <h3 class="section-title">Balanço Realizado</h3>
+    <h3 class="section-title">Balanço Realizado (Caixa e Mês)</h3>
     <div class="row">
         <div class="summary-card">
             <i class="fa-solid fa-money-bill-wave"></i>
-            <h5>Recebido</h5>
-            <p>R$ <?= number_format($totaisReceberBaixadas['valor_total'] ?? 0, 2, ',', '.') ?></p>
+            <h5>Recebido (Mês)</h5>
+            <p>R$ <?= number_format($baixadoReceberMes['valor_total'] ?? 0, 2, ',', '.') ?></p>
         </div>
         <div class="summary-card">
             <i class="fa-solid fa-cash-register"></i>
-            <h5>Caixa Diário</h5>
-            <p>R$ <?= number_format($totalCaixa, 2, ',', '.') ?></p>
+            <h5>Caixa Diário (Mês)</h5>
+            <p>R$ <?= number_format($caixaMes, 2, ',', '.') ?></p>
         </div>
         <div class="summary-card">
             <i class="fa-solid fa-wallet"></i>
-            <h5>Pago</h5>
-            <p>R$ <?= number_format($totaisPagarBaixadas['valor_total'] ?? 0, 2, ',', '.') ?></p>
+            <h5>Pago (Mês)</h5>
+            <p>R$ <?= number_format($baixadoPagarMes['valor_total'] ?? 0, 2, ',', '.') ?></p>
         </div>
         <div class="summary-card <?= $saldoRealizado >= 0 ? 'card-positive' : 'card-negative' ?>">
             <i class="fa-solid fa-chart-line"></i>
-            <h5>Balanço Realizado</h5>
+            <h5>Saldo em Caixa (Atual)</h5>
             <p>R$ <?= number_format($saldoRealizado, 2, ',', '.') ?></p>
+            <span>Dinheiro Acumulado</span>
         </div>
     </div>
 
