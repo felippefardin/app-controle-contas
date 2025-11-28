@@ -7,7 +7,7 @@ require_once 'includes/session_init.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Controle de Contas - Gestão Financeira em PHP</title>
+    <title>App Controle de Contas - Seu Parceiro de Negócios</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
@@ -318,16 +318,16 @@ require_once 'includes/session_init.php';
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a class="nav-link" href="#funcionalidades">Recursos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#planos">Planos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#funcionalidades">Por que nós?</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#planos">Parceria</a></li>
                     <li class="nav-item ms-lg-3">
                         <a class="btn btn-outline-primary px-4 rounded-pill" href="pages/login.php">
-                            Acessar Sistema
+                            Área do Cliente
                         </a>
                     </li>
                     <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
                         <a class="btn btn-primary px-4 rounded-pill shadow-sm" href="pages/registro.php">
-                            Criar Conta
+                            Cadastrar Grátis
                         </a>
                     </li>
                 </ul>
@@ -337,7 +337,7 @@ require_once 'includes/session_init.php';
 
     <div class="btn-support-float" data-bs-toggle="modal" data-bs-target="#modalSuporte">
         <i class="bi bi-headset"></i>
-        <div class="support-tooltip">Precisando de ajuda?</div>
+        <div class="support-tooltip">Fale com seu parceiro</div>
     </div>
 
     <header class="hero-section">
@@ -345,21 +345,21 @@ require_once 'includes/session_init.php';
         <div class="container hero-content">
             <div class="row align-items-center">
                 <div class="col-lg-6">
-                    <h1 class="hero-title">Controle Financeiro Simples e <span class="text-highlight">Eficaz.</span></h1>
+                    <h1 class="hero-title">Não somos um simples produto, somos <span class="text-highlight">parceiros do seu negócio.</span></h1>
                     <p class="hero-lead">
-                        Sistema desenvolvido em PHP e MySQL para gestão completa de contas a pagar e receber. Controle múltiplos usuários, exporte relatórios e organize suas finanças.
+                        Nosso intuito é ver você crescer de forma descomplicada, organizada e intuitiva. Fecha com a gente que, além de um parceiro, você leva um produto de qualidade e seguro.
                     </p>
                     <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-start">
                         <a href="pages/registro.php" class="btn btn-primary-custom">
-                            Começar Agora
+                            Fechar Parceria Agora
                         </a>
                         <a href="#funcionalidades" class="btn btn-outline-custom">
-                            Ver Funcionalidades
+                            Conhecer Solução
                         </a>
                     </div>
                     <div class="mt-4 text-muted small">
-                        <i class="bi bi-lock-fill text-primary me-2"></i> Acesso Seguro
-                        <i class="bi bi-check-circle-fill text-success ms-3 me-2"></i> Multi-usuário
+                        <i class="bi bi-shield-check text-primary me-2"></i> Segurança Garantida
+                        <i class="bi bi-graph-up-arrow text-success ms-3 me-2"></i> Foco no Crescimento
                     </div>
                 </div>
                 
@@ -367,7 +367,7 @@ require_once 'includes/session_init.php';
                     <div class="project-screenshot-wrapper">
                         <div class="project-screenshot p-0">
                             <img src="img/imgrelatorios.png" 
-                                 alt="Dashboard Financeiro" 
+                                 alt="Dashboard Financeiro do Parceiro" 
                                  class="img-fluid w-100 h-100" 
                                  style="object-fit: cover; border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.1);">
                         </div>
@@ -380,8 +380,8 @@ require_once 'includes/session_init.php';
     <section id="funcionalidades" class="py-5">
         <div class="container py-5">
             <div class="text-center mb-5">
-                <h6 class="text-primary fw-bold text-uppercase">O que o sistema oferece</h6>
-                <h2 class="fw-bold display-6">Tudo para sua gestão financeira</h2>
+                <h6 class="text-primary fw-bold text-uppercase">Ferramentas para Crescer</h6>
+                <h2 class="fw-bold display-6">Gestão descomplicada e intuitiva</h2>
             </div>
             <div class="row g-4">
                 <div class="col-lg-4 col-md-6">
@@ -389,8 +389,8 @@ require_once 'includes/session_init.php';
                         <div class="feature-icon-box">
                             <i class="bi bi-arrow-down-up"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Contas a Pagar e Receber</h4>
-                        <p class="text-muted">Cadastre lançamentos, marque como pagos ou pendentes e visualize o status de vencimento com alertas visuais claros.</p>
+                        <h4 class="fw-bold mb-3">Controle Total do Fluxo</h4>
+                        <p class="text-muted">Organize suas contas a pagar e receber com clareza. Tenha a tranquilidade de um sistema que trabalha pelo seu equilíbrio financeiro.</p>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
@@ -398,8 +398,8 @@ require_once 'includes/session_init.php';
                         <div class="feature-icon-box">
                             <i class="bi bi-people"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Gestão de Usuários</h4>
-                        <p class="text-muted">Controle total sobre quem acessa o sistema. Perfis de Administrador e Usuário Padrão com permissões diferenciadas.</p>
+                        <h4 class="fw-bold mb-3">Cresça em Equipe</h4>
+                        <p class="text-muted">Nossa plataforma escala com você. Adicione colaboradores e defina permissões de forma segura à medida que seu negócio expande.</p>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
@@ -407,8 +407,116 @@ require_once 'includes/session_init.php';
                         <div class="feature-icon-box">
                             <i class="bi bi-file-earmark-spreadsheet"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Relatórios e Exportação</h4>
-                        <p class="text-muted">Gere relatórios detalhados de movimentações e exporte seus dados para Excel ou PDF para análises externas.</p>
+                        <h4 class="fw-bold mb-3">Decisões Estratégicas</h4>
+                        <p class="text-muted">Transforme dados em ações. Nossos relatórios e exportações fornecem a visão intuitiva que você precisa para alavancar resultados.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="recursos-detalhados" class="py-5 bg-white">
+        <div class="container py-5">
+            <div class="text-center mb-5">
+                <h6 class="text-primary fw-bold text-uppercase">Explore o Sistema</h6>
+                <h2 class="fw-bold display-6">Funcionalidades para cada setor</h2>
+                <p class="lead text-muted">Uma plataforma completa com ferramentas essenciais integradas.</p>
+            </div>
+            <div class="row g-4 text-start">
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Gestão Financeira</h5>
+                            <p class="small text-muted mb-0">Contas a pagar, receber, fluxo de caixa diário e conciliação bancária.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Emissão Fiscal</h5>
+                            <p class="small text-muted mb-0">Emissão de NFC-e, DANFE, XML e configurações fiscais simplificadas.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Controle de Estoque</h5>
+                            <p class="small text-muted mb-0">Gestão de produtos, baixa automática e inventário em tempo real.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-cart-check"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Vendas e PDV</h5>
+                            <p class="small text-muted mb-0">Frente de caixa ágil (PDV), histórico de vendas e gestão de compras.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-bar-chart-line"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Relatórios Avançados</h5>
+                            <p class="small text-muted mb-0">DRE, performance de vendas e exportação para PDF e Excel.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Gestão de Equipe</h5>
+                            <p class="small text-muted mb-0">Controle de acesso granular e auditoria de ações dos usuários.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Agenda e Lembretes</h5>
+                            <p class="small text-muted mb-0">Calendário integrado com alertas de vencimentos e compromissos.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-start h-100 p-3 rounded hover-effect">
+                        <div class="flex-shrink-0 text-primary fs-3">
+                            <i class="bi bi-headset"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="fw-bold h6">Suporte Humanizado</h5>
+                            <p class="small text-muted mb-0">Chat online integrado e abertura de chamados de suporte.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -418,9 +526,9 @@ require_once 'includes/session_init.php';
     <section id="planos" class="pricing-section py-5">
         <div class="container py-5">
             <div class="text-center mb-5">
-                <h6 class="text-primary fw-bold text-uppercase">Planos de Acesso</h6>
-                <h2 class="fw-bold display-6">Escale conforme sua necessidade</h2>
-                <p class="lead text-muted">Gerencie permissões e quantidade de usuários.</p>
+                <h6 class="text-primary fw-bold text-uppercase">Vamos crescer juntos?</h6>
+                <h2 class="fw-bold display-6">Escolha sua parceria ideal</h2>
+                <p class="lead text-muted">Soluções flexíveis que acompanham o momento do seu negócio.</p>
             </div>
             
             <div class="row g-4 justify-content-center">
@@ -428,23 +536,23 @@ require_once 'includes/session_init.php';
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card">
                         <div class="text-center mb-3">
-                            <span class="trial-badge">Inicial</span>
+                            <span class="trial-badge">Start</span>
                             <h3 class="pricing-title">Básico</h3>
                             <div class="pricing-price">R$19,90<small>/mês</small></div>
                         </div>
                         <ul class="list-unstyled mb-4 flex-grow-1">
                             <li class="mb-3 d-flex align-items-center">
                                 <i class="bi bi-person text-primary me-2 fs-5"></i> 
-                                <strong>Ideal para pequenas equipes</strong>
+                                <strong>Para quem está começando</strong>
                             </li>
                             <li class="mb-2 ms-4 text-muted small"><i class="bi bi-dot"></i> Até 3 Usuários</li>
-                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Gestão de Contas Básica</li>
+                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Organização Essencial</li>
                             <hr>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Controle de Vencimentos</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte por E-mail</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte Parceiro</li>
                         </ul>
                         <button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold" onclick="abrirModalPlano('basico')">
-                            Ver Detalhes e Assinar
+                            Quero este Parceiro
                         </button>
                     </div>
                 </div>
@@ -452,23 +560,23 @@ require_once 'includes/session_init.php';
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card featured">
                         <div class="text-center mb-3">
-                            <span class="trial-badge">Mais Popular</span>
+                            <span class="trial-badge">Melhor Escolha</span>
                             <h3 class="pricing-title text-primary">Plus</h3>
                             <div class="pricing-price">R$39,90<small>/mês</small></div>
                         </div>
                         <ul class="list-unstyled mb-4 flex-grow-1">
                             <li class="mb-3 d-flex align-items-center">
                                 <i class="bi bi-people-fill text-primary me-2 fs-5"></i> 
-                                <strong>Equipes em crescimento</strong>
+                                <strong>Para acelerar seu negócio</strong>
                             </li>
                             <li class="mb-2 ms-4 text-muted small"><i class="bi bi-dot"></i> Até 6 Usuários</li>
-                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Relatórios Avançados</li>
+                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Visão Completa (Relatórios)</li>
                             <hr>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Exportação (Excel/PDF)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Treinamento via Chat</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Suporte Prioritário</li>
                         </ul>
                         <button type="button" class="btn btn-primary-custom w-100 py-3" onclick="abrirModalPlano('plus')">
-                            Ver Detalhes e Assinar
+                            Fechar com o Plus
                         </button>
                     </div>
                 </div>
@@ -476,23 +584,23 @@ require_once 'includes/session_init.php';
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card">
                         <div class="text-center mb-3">
-                            <span class="trial-badge bg-success text-white">Completo</span>
+                            <span class="trial-badge bg-success text-white">Full Service</span>
                             <h3 class="pricing-title">Essencial</h3>
                             <div class="pricing-price">R$59,90<small>/mês</small></div>
                         </div>
                         <ul class="list-unstyled mb-4 flex-grow-1">
                             <li class="mb-3 d-flex align-items-center">
                                 <i class="bi bi-buildings-fill text-primary me-2 fs-5"></i> 
-                                <strong>Para grandes operações</strong>
+                                <strong>Gestão corporativa e segura</strong>
                             </li>
                             <li class="mb-2 ms-4 text-muted small"><i class="bi bi-dot"></i> Até 16 Usuários</li>
-                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Gestão de Logs e Auditoria</li>
+                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Auditoria e Segurança Total</li>
                             <hr>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Todas as funcionalidades</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte Dedicado</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Consultoria via Vídeo</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte Dedicado VIP</li>
                         </ul>
                         <button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold" onclick="abrirModalPlano('essencial')">
-                            Ver Detalhes e Assinar
+                            Quero o Essencial
                         </button>
                     </div>
                 </div>
@@ -505,19 +613,19 @@ require_once 'includes/session_init.php';
         <div class="container py-5">
             <div class="row align-items-center">
                 <div class="col-md-6 mb-4 mb-md-0">
-                    <img src="img/ChatGPT Image 10 de nov. de 2025, 12_38_54.png" alt="Dashboard Financeiro" class="img-fluid rounded-4 shadow-lg">
+                    <img src="img/ChatGPT Image 10 de nov. de 2025, 12_38_54.png" alt="Crescimento Organizado" class="img-fluid rounded-4 shadow-lg">
                 </div>
                 <div class="col-md-6 ps-md-5">
-                    <h2 class="fw-bold mb-4 display-6">Organização para todos os perfis</h2>
-                    <p class="lead mb-4">Seja você um profissional autônomo ou uma empresa com equipe financeira.</p>
+                    <h2 class="fw-bold mb-4 display-6">Intuindo seu Sucesso</h2>
+                    <p class="lead mb-4">Nosso foco não é apenas entregar um software, mas ver você prosperar com organização.</p>
                     
                     <div class="d-flex mb-4">
                         <div class="me-3">
                             <i class="bi bi-laptop fs-2 text-primary"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold">Acesso em qualquer lugar</h5>
-                            <p class="text-muted mb-0">Sistema web responsivo. Acesse suas contas a pagar e receber pelo computador ou celular.</p>
+                            <h5 class="fw-bold">Acessibilidade que facilita</h5>
+                            <p class="text-muted mb-0">Seu negócio não para, e nós também não. Acesse de onde estiver, de forma simples e responsiva.</p>
                         </div>
                     </div>
                     
@@ -526,8 +634,8 @@ require_once 'includes/session_init.php';
                             <i class="bi bi-shield-lock fs-2 text-primary"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold">Segurança de Dados</h5>
-                            <p class="text-muted mb-0">Login seguro, níveis de permissão (Admin/User) e banco de dados protegido.</p>
+                            <h5 class="fw-bold">Parceria Segura</h5>
+                            <p class="text-muted mb-0">Garantimos a proteção dos seus dados para que você foque apenas no que importa: crescer.</p>
                         </div>
                     </div>
                 </div>
@@ -538,10 +646,10 @@ require_once 'includes/session_init.php';
     <section id="cta" class="cta-section">
         <div class="container">
             <div class="col-lg-8 mx-auto">
-                <h2 class="fw-bold mb-3 display-5">Pronto para organizar suas finanças?</h2>
-                <p class="lead mb-5 opacity-75">Crie sua conta agora mesmo e tenha controle total sobre o fluxo de caixa.</p>
+                <h2 class="fw-bold mb-3 display-5">Pronto para ter um parceiro de verdade?</h2>
+                <p class="lead mb-5 opacity-75">Fecha com a gente e leve organização, simplicidade e qualidade para o dia a dia da sua empresa.</p>
                 <a href="pages/registro.php" class="btn btn-light btn-lg fw-bold px-5 py-3 rounded-pill shadow text-primary">
-                    Criar Minha Conta
+                    QUERO SER PARCEIRO
                 </a>
             </div>
         </div>
@@ -550,7 +658,7 @@ require_once 'includes/session_init.php';
     <section id="faq" class="py-5 bg-white">
         <div class="container">
             <div class="text-center mb-5">
-                <h2 class="fw-bold">Dúvidas Frequentes</h2>
+                <h2 class="fw-bold">Dúvidas sobre nossa parceria?</h2>
             </div>
             
             <div class="row justify-content-center">
@@ -559,12 +667,12 @@ require_once 'includes/session_init.php';
                         <div class="accordion-item border-0 mb-3 shadow-sm rounded">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
-                                    Preciso instalar algum software?
+                                    É complicado começar?
                                 </button>
                             </h2>
                             <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
                                 <div class="accordion-body text-muted">
-                                    Não. O App Controle de Contas é 100% online. Você só precisa de um navegador e acesso à internet.
+                                    De jeito nenhum! Nosso sistema é intuitivo e feito para descomplicar. Você acessa pelo navegador e já começa a organizar.
                                 </div>
                             </div>
                         </div>
@@ -572,12 +680,12 @@ require_once 'includes/session_init.php';
                         <div class="accordion-item border-0 mb-3 shadow-sm rounded">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
-                                    Posso adicionar outros usuários?
+                                    Minha equipe pode acessar?
                                 </button>
                             </h2>
                             <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
                                 <div class="accordion-body text-muted">
-                                    Sim! Dependendo do plano escolhido, você pode adicionar múltiplos usuários e definir se eles terão acesso administrativo ou padrão.
+                                    Com certeza. Queremos que seu time cresça junto. Nossos planos permitem múltiplos usuários para uma gestão colaborativa.
                                 </div>
                             </div>
                         </div>
@@ -585,12 +693,12 @@ require_once 'includes/session_init.php';
                         <div class="accordion-item border-0 mb-3 shadow-sm rounded">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-                                    Como faço para exportar meus dados?
+                                    Tenho suporte se precisar?
                                 </button>
                             </h2>
                             <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
                                 <div class="accordion-body text-muted">
-                                    O sistema possui um módulo de relatórios onde é possível filtrar por período e exportar as informações para Excel ou PDF.
+                                    Sempre! Somos parceiros. Oferecemos suporte humanizado para garantir que você tire o máximo proveito da ferramenta.
                                 </div>
                             </div>
                         </div>
@@ -609,8 +717,8 @@ require_once 'includes/session_init.php';
     <section id="feedbacks" class="py-5 bg-light">
         <div class="container">
             <div class="text-center mb-5">
-                <h6 class="text-primary fw-bold text-uppercase">Depoimentos</h6>
-                <h2 class="fw-bold display-6">O que dizem nossos usuários</h2>
+                <h6 class="text-primary fw-bold text-uppercase">Resultados Reais</h6>
+                <h2 class="fw-bold display-6">Quem fechou com a gente aprova</h2>
             </div>
             <div class="row g-4">
                 <?php while($f = $feedbacks->fetch_assoc()): ?>
@@ -627,7 +735,7 @@ require_once 'includes/session_init.php';
                                 </div>
                                 <div class="ms-3">
                                     <h6 class="fw-bold mb-0"><?= htmlspecialchars($f['nome']) ?></h6>
-                                    <small class="text-muted">Usuário do Sistema</small>
+                                    <small class="text-muted">Parceiro</small>
                                 </div>
                             </div>
                         </div>
@@ -652,7 +760,7 @@ require_once 'includes/session_init.php';
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-headset me-2"></i> Suporte Rápido</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-headset me-2"></i> Fale com seu Parceiro</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -680,7 +788,7 @@ require_once 'includes/session_init.php';
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">Como podemos ajudar?</label>
+                            <label class="form-label text-muted small fw-bold">Como podemos ajudar seu negócio?</label>
                             <textarea name="descricao" class="form-control bg-light" rows="4" placeholder="Descreva sua dúvida ou problema..." required style="resize: none;"></textarea>
                         </div>
                     </form>
@@ -699,7 +807,7 @@ require_once 'includes/session_init.php';
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-light">
-                    <h5 class="modal-title fw-bold text-dark" id="modalPlanoTitulo">Detalhes do Plano</h5>
+                    <h5 class="modal-title fw-bold text-dark" id="modalPlanoTitulo">Detalhes da Parceria</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -709,14 +817,14 @@ require_once 'includes/session_init.php';
                         <p class="text-muted mt-2" id="modalPlanoDesc">Descrição curta do plano.</p>
                     </div>
                     
-                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Incluso neste plano:</h6>
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">O que você leva:</h6>
                     <ul class="list-unstyled" id="modalPlanoLista">
                         </ul>
                 </div>
                 <div class="modal-footer border-0 bg-light justify-content-between">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
                     <a href="#" id="btnAssinarModal" class="btn btn-primary-custom px-4">
-                        Assinar Agora <i class="bi bi-arrow-right ms-2"></i>
+                        Fechar Parceria <i class="bi bi-arrow-right ms-2"></i>
                     </a>
                 </div>
             </div>
@@ -730,46 +838,46 @@ require_once 'includes/session_init.php';
                 titulo: 'Plano Básico',
                 preco: 'R$ 19,90<small class="fs-6 text-muted">/mês</small>',
                 badge: '15 Dias Grátis',
-                desc: 'Ideal para pequenas equipes e profissionais liberais.',
+                desc: 'Ideal para quem busca organização inicial e descomplicada.',
                 features: [
                     'Até 3 Usuários',
-                    'Gestão de Contas Básica',
+                    'Gestão de Contas Essencial',
                     'Controle de Vencimentos',
-                    'Suporte por E-mail',
+                    'Suporte Parceiro por E-mail',
                     'Acesso via Celular e PC'
                 ]
             },
             'plus': {
                 titulo: 'Plano Plus',
                 preco: 'R$ 39,90<small class="fs-6 text-muted">/mês</small>',
-                badge: '15 Dias Grátis - Mais Popular',
-                desc: 'Perfeito para equipes em crescimento que precisam de dados.',
+                badge: '15 Dias Grátis - Mais Escolhido',
+                desc: 'Para quem quer crescer com inteligência e apoio.',
                 features: [
                     'Todos benefícios do Básico',
                     'Até 6 Usuários',
-                    'Relatórios Avançados',
+                    'Relatórios de Crescimento',
                     'Exportação (Excel/PDF)',
                     'Suporte Prioritário',
                     'Controle de Vencimentos',
                     'Gestão de Anexos',
-                    '01 chamada gratís de treinamento via chat online',
-                    '01 chamada gratís de treinamento via vídeo chamada',
+                    '01 chamada grátis de consultoria via chat online',
+                    '01 chamada grátis de consultoria via vídeo',
                 ]
             },
             'essencial': {
                 titulo: 'Plano Essencial',
                 preco: 'R$ 59,90<small class="fs-6 text-muted">/mês</small>',
                 badge: '30 Dias Grátis',
-                desc: 'Solução completa para grandes operações e auditoria.',
+                desc: 'A parceria completa para segurança e escala total.',
                 features: [
                     'Até 16 Usuários',
-                    'Gestão de Logs e Auditoria',
+                    'Auditoria e Segurança Total',
                     'Todas as funcionalidades',
-                    'Suporte Dedicado (WhatsApp)',
-                    'Treinamento Inicial',
+                    'Suporte Dedicado VIP (WhatsApp)',
+                    'Treinamento Inicial Completo',
                     'Backup Diário Automático',
-                    '03 chamadas gratís de treinamento via chat online',
-                    '01 chamada gratís de treinamento via vídeo chamada',
+                    '03 chamadas grátis de consultoria via chat online',
+                    '01 chamada grátis de consultoria via vídeo',
                 ]
             }
         };
