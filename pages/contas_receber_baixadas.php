@@ -94,6 +94,21 @@ $result = $conn->query($sql);
         color: white; 
         min-width: 100px;
     }
+
+    /* Botão Bulk Action */
+    #btnBulkExcluir {
+        background-color: #cc3333;
+        color: white;
+        border: none;
+        padding: 10px 22px;
+        font-weight: bold;
+        border-radius: 5px;
+        cursor: pointer;
+        display: none; /* Oculto por padrão */
+        align-items: center;
+        gap: 5px;
+        min-width: 100px;
+    }
     
     /* === TABELA RESPONSIVA === */
     .table-responsive {
@@ -153,7 +168,7 @@ $result = $conn->query($sql);
         
         form.search-form { flex-direction: column; }
         form.search-form input { width: 100%; min-width: unset; margin: 2px 0; }
-        form.search-form button { width: 100%; margin-top: 5px; }
+        form.search-form button, #btnBulkExcluir { width: 100%; margin-top: 5px; }
 
         h2 { font-size: 1.5rem; }
     }
@@ -170,12 +185,19 @@ $result = $conn->query($sql);
       <input type="date" name="data_inicio" value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>">
       <input type="date" name="data_fim" value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>">
       <button type="submit"><i class="fa fa-search"></i> Buscar</button>
+      
+      <button type="button" id="btnBulkExcluir" onclick="submitBulkExcluir()">
+         <i class="fa fa-trash"></i> Excluir Selecionados
+      </button>
     </form>
 
     <?php if ($result && $result->num_rows > 0): ?>
     <div class="table-responsive">
         <table>
             <thead><tr>
+                <th style='width: 40px; text-align:center;'>
+                    <input type='checkbox' id='checkAll' onclick='toggleAll(this)'>
+                </th>
                 <th>Cliente</th>
                 <th>Número</th>
                 <th>Descrição</th>
@@ -193,6 +215,9 @@ $result = $conn->query($sql);
                     $quemBaixou = !empty($row['nome_quem_baixou']) ? $row['nome_quem_baixou'] : 'Sistema/N/D';
             ?>
                 <tr>
+                    <td style='text-align:center;'>
+                        <input type='checkbox' class='check-item' value='<?= $row['id'] ?>' onclick='checkBtnState()'>
+                    </td>
                     <td><?= htmlspecialchars($row['nome_pessoa'] ?? 'N/D') ?></td>
                     <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
                     <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
@@ -272,6 +297,50 @@ function openEstornarModal(id, nome) {
     document.getElementById('estornar-nome').innerText = nome;
     document.getElementById('btn-confirm-estorno').href = "../actions/estornar_conta_receber.php?id=" + id;
     document.getElementById('estornarModal').style.display = 'flex';
+}
+
+// === LÓGICA DE AÇÃO EM MASSA (BULK) ===
+function toggleAll(source) {
+    const checkboxes = document.querySelectorAll('.check-item');
+    checkboxes.forEach(cb => cb.checked = source.checked);
+    checkBtnState();
+}
+
+function checkBtnState() {
+    const count = document.querySelectorAll('.check-item:checked').length;
+    const btn = document.getElementById('btnBulkExcluir');
+    if (count > 0) {
+        btn.style.display = 'inline-flex';
+        btn.innerHTML = `<i class="fa fa-trash"></i> Excluir (${count})`;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+function submitBulkExcluir() {
+    const selected = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => cb.value);
+    if (selected.length === 0) return;
+    
+    if (!confirm(`Tem certeza que deseja excluir ${selected.length} registros permanentemente?`)) return;
+
+    fetch('../actions/bulk_action.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            ids: selected,
+            tipo: 'receber', 
+            acao: 'excluir'
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Erro: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(err => alert('Erro na requisição'));
 }
 
 window.onclick = function(e) { 

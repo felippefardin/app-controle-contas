@@ -195,6 +195,8 @@ $result = $conn->query($sql);
 
       <button type="button" class="btn btn-add" onclick="document.getElementById('addContaModal').style.display='flex'">➕ Nova</button>
       <button type="button" class="btn btn-export" onclick="document.getElementById('exportModal').style.display='flex'"><i class="fa fa-download"></i> Exportar</button>
+
+      <button type="button" class="btn btn-search" id="btnBulkBaixar" style="display:none; background-color: #27ae60;" onclick="abrirModalBulk()"><i class="fa fa-check-double"></i> Baixar Selecionados</button>
     </form>
 
     <?php if ($result && $result->num_rows > 0): ?>
@@ -202,6 +204,9 @@ $result = $conn->query($sql);
         <table>
             <thead>
                 <tr>
+        <th style="width: 40px; text-align:center;">
+            <input type="checkbox" id="checkAll" onclick="toggleAll(this)">
+        </th>
                     <th>Fornecedor</th>
                     <th>Número</th>
                     <th>Descrição</th>
@@ -219,6 +224,9 @@ $result = $conn->query($sql);
                 $nome = !empty($row['nome_pessoa_fornecedor']) ? $row['nome_pessoa_fornecedor'] : 'N/D';
             ?>
                 <tr class="<?= $vencido ?>">
+    <td style="text-align:center;">
+        <input type="checkbox" class="check-item" value="<?= $row['id'] ?>" onclick="checkBtnState()">
+    </td>
                     <td><?= htmlspecialchars($nome) ?></td>
                     <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
                     <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
@@ -251,6 +259,26 @@ $result = $conn->query($sql);
     <?php else: ?>
         <p style="text-align:center; margin-top:20px; color: #aaa;">Nenhuma conta pendente encontrada.</p>
     <?php endif; ?>
+
+<div id="modalBulk" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('modalBulk').style.display='none'">&times;</span>
+    <h3>Baixar Múltiplas Contas</h3>
+    <p>Selecione os dados para baixar as contas marcadas:</p>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+        <label>Data do Pagamento:</label>
+        <input type="date" id="bulk_data" value="<?= date('Y-m-d') ?>">
+        <label>Forma de Pagamento:</label>
+        <select id="bulk_forma">
+            <option value="dinheiro">Dinheiro</option>
+            <option value="pix">Pix</option>
+            <option value="boleto">Boleto</option>
+            <option value="transferencia">Transferência</option>
+        </select>
+        <button onclick="submitBulk()" class="btn btn-baixar" style="margin-top:10px;">Confirmar Baixa em Massa</button>
+    </div>
+  </div>
+</div>
 
 </div> <div id="addContaModal" class="modal">
   <div class="modal-content">
@@ -472,6 +500,61 @@ $('#form-novo-fornecedor').on('submit', function(e) {
 });
 
 window.onclick = e => { if(e.target.className === 'modal') e.target.style.display = 'none'; }
+
+// Lógica dos Checkboxes
+function toggleAll(source) {
+    checkboxes = document.getElementsByClassName('check-item');
+    for(var i=0, n=checkboxes.length;i<n;i++) {
+        checkboxes[i].checked = source.checked;
+    }
+    checkBtnState();
+}
+
+function checkBtnState() {
+    const checkboxes = document.querySelectorAll('.check-item:checked');
+    const btn = document.getElementById('btnBulkBaixar');
+    if(checkboxes.length > 0) {
+        btn.style.display = 'inline-flex';
+        btn.innerHTML = `<i class="fa fa-check-double"></i> Baixar (${checkboxes.length})`;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+function abrirModalBulk() {
+    document.getElementById('modalBulk').style.display = 'flex';
+}
+
+function submitBulk() {
+    const ids = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => cb.value);
+    const data_baixa = document.getElementById('bulk_data').value;
+    const forma = document.getElementById('bulk_forma').value;
+
+    if (ids.length === 0) return;
+
+    if(!confirm(`Confirma a baixa de ${ids.length} contas?`)) return;
+
+    fetch('../actions/bulk_action.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            ids: ids,
+            tipo: 'pagar', // Mude para 'receber' na pagina de contas_receber
+            acao: 'baixar',
+            data_baixa: data_baixa,
+            forma_pagamento: forma
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    });
+}
 </script>
 <?php include('../includes/footer.php'); ?>
 </body>
