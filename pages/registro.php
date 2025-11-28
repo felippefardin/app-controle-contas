@@ -22,7 +22,10 @@ display_flash_message();
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cadastro - App Controle de Contas</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
@@ -43,7 +46,6 @@ display_flash_message();
       background-color: #1f1f1f; 
       padding: 30px 40px; 
       border-radius: 12px; 
-      /* Modo Full Desktop mais amplo, mas com limite para não ficar ilegível */
       max-width: 850px; 
       width: 100%; 
       box-sizing: border-box; 
@@ -54,9 +56,9 @@ display_flash_message();
   h2 { text-align: center; margin-bottom: 20px; color: #00bfff; border-bottom: 2px solid #00bfff; padding-bottom: 10px; }
   label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.95rem; color: #ccc; }
   
-  select, input { 
+  select, input:not([type="radio"]):not([type="checkbox"]) { 
       width: 100%; 
-      padding: 12px; /* Aumentado levemente para toque mobile */
+      padding: 12px; 
       margin-top: 6px; 
       border-radius: 6px; 
       border: 1px solid #333; 
@@ -98,7 +100,7 @@ display_flash_message();
   .benefit-content { display: none; background: #252525; padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid #444; }
   .benefit-content.open { display: block; }
   
-  .btn-check { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 6px; font-size: 0.9rem; height: 46px; /* Alinhado com input */ }
+  .btn-check { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 6px; font-size: 0.9rem; height: 46px; }
   .btn-check:hover { filter: brightness(1.1); }
   
   .valid-msg { color: #2ecc71; font-size: 0.85rem; margin-top: 5px; display: block; }
@@ -113,23 +115,22 @@ display_flash_message();
   .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; height: 46px; margin-top: 6px; }
   .btn-success { background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
 
+  /* MODAL DARK THEME */
+  .modal-content { background-color: #1f1f1f; color: #eee; border: 1px solid #444; }
+  .modal-header { border-bottom: 1px solid #333; }
+  .modal-footer { border-top: 1px solid #333; }
+  .modal-title { color: #00bfff; }
+
   /* UTILS PARA RESPONSIVIDADE */
   .flex-group { display: flex; gap: 10px; align-items: flex-end; }
   
-  /* RESPONSIVIDADE MOBILE E TABLET */
   @media (max-width: 768px) {
       .form-container { padding: 10px; align-items: flex-start; }
       form { padding: 20px 15px; }
-      
       .flex-group { flex-direction: column; align-items: stretch; gap: 0; }
       .flex-group > div, .flex-group > input, .flex-group > button { width: 100%; margin-top: 5px; }
-      
       .plano-card { min-width: 100%; margin-bottom: 5px; }
-      
-      /* Ajuste nos botões que ficam ao lado de inputs */
       .btn-check, .btn-primary { margin-top: 10px; width: 100%; }
-      
-      /* Ajuste específico para o grupo Doc/Numero */
       #div-doc-type { flex: 1; }
       #div-doc-number { flex: 1; margin-top: 10px; }
   }
@@ -249,13 +250,42 @@ display_flash_message();
   </form>
 </div>
 
+<div class="modal fade" id="modalLGPD" tabindex="-1" aria-labelledby="modalLGPDLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalLGPDLabel">Termos de Uso e Política de Privacidade (LGPD)</h5>
+      </div>
+      <div class="modal-body">
+        <h4>Seus Direitos e o Tratamento de Dados</h4>
+        <p>Em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), informamos que:</p>
+        <ul>
+            <li>Seus dados (nome, e-mail, telefone, CPF/CNPJ) são coletados apenas para o funcionamento deste sistema de controle financeiro.</li>
+            <li>Nós não compartilhamos seus dados com terceiros sem seu consentimento explícito.</li>
+            <li>Você tem o direito de solicitar, a qualquer momento via suporte, a exportação ou exclusão dos seus dados.</li>
+            <li>Este documento de aceite será gerado em PDF e armazenado para fins legais de comprovação de consentimento.</li>
+            <li>Em caso de exclusão da conta, este documento será mantido por um período legal de 5 anos para fins de auditoria e defesa legal, sendo posteriormente destruído.</li>
+        </ul>
+        <hr>
+        <p>Ao clicar em "Aceitar e Finalizar", você concorda expressamente com o tratamento dos seus dados conforme descrito acima.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Recusar</button>
+        <button type="button" class="btn btn-success" id="btnAceitarLGPD">Li, Aceito e Finalizar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+  // Funções Utilitárias e LocalStorage
   function saveLocal(key, value) { localStorage.setItem('reg_' + key, value); }
   function loadLocal() {
       const fields = ['tipo_pessoa', 'nome', 'tipo_doc', 'documento', 'telefone', 'email', 'cupom', 'inputCodigoIndicacao'];
       fields.forEach(id => {
           const el = document.getElementById(id);
-          // Só carrega do localStorage se o campo estiver VAZIO (ou seja, o PHP não preencheu)
           if(el && el.value === '') { 
               const val = localStorage.getItem('reg_' + id);
               if (val) {
@@ -284,6 +314,7 @@ display_flash_message();
     toggleSenha.classList.toggle('fa-eye-slash');
   });
 
+  // Validação de Cupom
   function checkCupom() {
       const codigo = document.getElementById('cupom').value;
       const msg = document.getElementById('msgCupom');
@@ -305,6 +336,7 @@ display_flash_message();
       });
   }
 
+  // Validação de Indicação
   function validarCodigoIndicacao() {
     let codigo = document.getElementById('inputCodigoIndicacao').value;
     let feedback = document.getElementById('feedbackIndicacao');
@@ -340,6 +372,7 @@ display_flash_message();
     });
   }
 
+  // Máscaras e Init jQuery
   $(document).ready(function() {
       function aplicarMascaraDocumento(tipo) {
         const input = $("#documento");
@@ -357,26 +390,65 @@ display_flash_message();
       aplicarMascaraDocumento($("#tipo_doc").val() || "cpf");
   });
 
-  const form = document.getElementById('cadastroForm');
-  const senha2 = document.getElementById('senha2');
-  const email2 = document.getElementById('email2');
-  const senhaError = document.getElementById('senhaError');
-  const emailError = document.getElementById('emailError');
+  // LOGICA DO FORMULÁRIO + LGPD
+  document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('cadastroForm');
+      const senha2 = document.getElementById('senha2');
+      const email2 = document.getElementById('email2');
+      const senhaError = document.getElementById('senhaError');
+      const emailError = document.getElementById('emailError');
+      const btnAceitarLGPD = document.getElementById('btnAceitarLGPD');
 
-  form.addEventListener('submit', (e) => {
-    let valid = true;
-    const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
-    if (!senhaRegex.test(inputSenha.value)) { senhaError.textContent = "Senha fraca."; valid = false; } 
-    else if (inputSenha.value !== senha2.value) { senhaError.textContent = "Senhas não coincidem."; valid = false; } 
-    else { senhaError.textContent = ""; }
+      // Intercepta envio para validar e mostrar modal
+      form.addEventListener('submit', (e) => {
+        let valid = true;
+        
+        // 1. Validação de Senha
+        const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+        if (!senhaRegex.test(inputSenha.value)) { senhaError.textContent = "Senha fraca."; valid = false; } 
+        else if (inputSenha.value !== senha2.value) { senhaError.textContent = "Senhas não coincidem."; valid = false; } 
+        else { senhaError.textContent = ""; }
 
-    if (document.getElementById('email').value !== email2.value) { emailError.textContent = "Emails não coincidem."; valid = false; } 
-    else { emailError.textContent = ""; }
+        // 2. Validação de Email
+        if (document.getElementById('email').value !== email2.value) { emailError.textContent = "Emails não coincidem."; valid = false; } 
+        else { emailError.textContent = ""; }
 
-    if (!valid) {
-        e.preventDefault();
-    }
+        // Se houver erro de validação básica, para aqui
+        if (!valid) {
+            e.preventDefault();
+            return; 
+        }
+
+        // 3. Validação LGPD
+        // Se já tem o input hidden 'aceite_lgpd', deixa enviar normalmente
+        if (!form.querySelector('input[name="aceite_lgpd"]')) {
+            e.preventDefault(); // Impede envio imediato
+            
+            // Abre o Modal
+            const modalElement = document.getElementById('modalLGPD');
+            const modalLGPD = new bootstrap.Modal(modalElement);
+            modalLGPD.show();
+        }
+      });
+
+      // Clique em "Aceitar" no Modal
+      btnAceitarLGPD.addEventListener('click', function() {
+          // Cria o input hidden confirmando o aceite
+          let inputAceite = document.createElement("input");
+          inputAceite.type = "hidden";
+          inputAceite.name = "aceite_lgpd";
+          inputAceite.value = "1";
+          form.appendChild(inputAceite);
+
+          // Fecha modal e envia formulário
+          const modalElement = document.getElementById('modalLGPD');
+          const modalInstance = bootstrap.Modal.getInstance(modalElement);
+          modalInstance.hide();
+          
+          form.submit();
+      });
   });
 </script>
+
 </body>
 </html>

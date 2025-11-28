@@ -6,6 +6,7 @@ require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../includes/utils.php'; // Importa sistema Flash Message
 
 use Dotenv\Dotenv;
+use Dompdf\Dompdf; // Importando Dompdf
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
@@ -20,11 +21,12 @@ $tipo_pessoa = trim($_POST['tipo_pessoa'] ?? 'fisica');
 $documento   = trim($_POST['documento'] ?? '');
 $telefone    = trim($_POST['telefone'] ?? '');
 $plano_post  = trim($_POST['plano'] ?? 'basico');
+$aceite_lgpd = isset($_POST['aceite_lgpd']) ? trim($_POST['aceite_lgpd']) : '0';
 
 $cupom_codigo = isset($_POST['cupom']) && !empty($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : null;
 $codigo_indicacao_recebido = isset($_POST['codigo_indicacao']) && !empty($_POST['codigo_indicacao']) ? strtoupper(trim($_POST['codigo_indicacao'])) : null;
 
-// --- NOVA FUNÇÃO E ARMAZENAMENTO DE DADOS ANTIGOS ---
+// --- ARMAZENAMENTO DE DADOS ANTIGOS EM CASO DE ERRO ---
 $form_data = [
     'nome' => $nome,
     'email' => $email,
@@ -45,6 +47,11 @@ function return_error($msg, $data) {
     exit;
 }
 // ----------------------------------------------------
+
+// Validação do Aceite LGPD
+if ($aceite_lgpd !== '1') {
+    return_error("É obrigatório aceitar os Termos de Uso e Política de Privacidade (LGPD) para se registrar.", $form_data);
+}
 
 // Regras de Plano
 if ($plano_post === 'essencial') {
@@ -97,6 +104,64 @@ try {
     $stmtUser->execute();
     $new_usuario_id = $conn->insert_id;
     $stmtUser->close();
+
+    // ---------------------------------------------------------
+    // GERAÇÃO DO PDF DE CONSENTIMENTO LGPD
+    // ---------------------------------------------------------
+    if ($new_usuario_id) {
+        $ipUsuario = $_SERVER['REMOTE_ADDR'];
+        $dataAceite = date('d/m/Y H:i:s');
+        
+        $htmlContrato = "
+        <div style='font-family: Arial, sans-serif; font-size: 12px;'>
+            <h1 style='text-align:center;'>Termo de Consentimento e Privacidade (LGPD)</h1>
+            <p>Este documento certifica que o usuário abaixo identificado leu e aceitou os termos de uso e a política de privacidade da plataforma <strong>App Controle Contas</strong>.</p>
+            
+            <table style='width: 100%; border: 1px solid #ddd; border-collapse: collapse; margin-top: 20px;'>
+                <tr><td style='padding: 8px; background: #f9f9f9;'><strong>Nome do Titular:</strong></td><td style='padding: 8px;'>$nome</td></tr>
+                <tr><td style='padding: 8px; background: #f9f9f9;'><strong>CPF/CNPJ:</strong></td><td style='padding: 8px;'>$documento</td></tr>
+                <tr><td style='padding: 8px; background: #f9f9f9;'><strong>E-mail:</strong></td><td style='padding: 8px;'>$email</td></tr>
+                <tr><td style='padding: 8px; background: #f9f9f9;'><strong>Data do Aceite:</strong></td><td style='padding: 8px;'>$dataAceite</td></tr>
+                <tr><td style='padding: 8px; background: #f9f9f9;'><strong>IP de Origem:</strong></td><td style='padding: 8px;'>$ipUsuario</td></tr>
+            </table>
+
+            <br>
+            <h3>Direitos e Tratamento de Dados (Lei nº 13.709/2018)</h3>
+            <p>1. O Titular autoriza o tratamento dos dados pessoais inseridos na plataforma para fins exclusivos de gestão financeira e operacionalização do sistema.</p>
+            <p>2. A plataforma se compromete a manter a confidencialidade e segurança dos dados, não os compartilhando com terceiros não autorizados.</p>
+            <p>3. O Titular pode solicitar a qualquer momento a exclusão ou portabilidade de seus dados através do suporte.</p>
+            <p>4. Em caso de exclusão da conta, este documento de comprovação de consentimento será mantido em arquivo seguro por um período de 5 (cinco) anos para fins de auditoria legal, sendo excluído automaticamente após este prazo.</p>
+            
+            <br><br><br>
+            <p style='text-align: center; color: #888;'>Assinado digitalmente via aceite eletrônico.</p>
+        </div>
+        ";
+
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml($htmlContrato);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        $outputPdf = $dompdf->output();
+
+        // Criar diretório se não existir
+        $dirDestino = __DIR__ . '/../assets/uploads/contratos_lgpd/';
+        if (!is_dir($dirDestino)) {
+            mkdir($dirDestino, 0755, true);
+        }
+
+        $nomeArquivoPdf = 'lgpd_' . $new_usuario_id . '_' . time() . '.pdf';
+        $caminhoCompletoPdf = $dirDestino . $nomeArquivoPdf;
+        $caminhoRelativoPdf = 'assets/uploads/contratos_lgpd/' . $nomeArquivoPdf;
+
+        file_put_contents($caminhoCompletoPdf, $outputPdf);
+
+        // Salvar registro na tabela de termos
+        $stmtLgpd = $conn->prepare("INSERT INTO termos_consentimento (usuario_id, caminho_arquivo, ip_usuario) VALUES (?, ?, ?)");
+        $stmtLgpd->bind_param("iss", $new_usuario_id, $caminhoRelativoPdf, $ipUsuario);
+        $stmtLgpd->execute();
+        $stmtLgpd->close();
+    }
+    // ---------------------------------------------------------
 
     // 2. Tenant Setup
     $tenantId = 'T' . substr(md5(uniqid($email, true)), 0, 32);
@@ -183,7 +248,7 @@ try {
     unset($_SESSION['form_data']);
 
     // MENSAGEM DE SUCESSO E REDIRECIONA PARA LOGIN
-    set_flash_message('success', "Cadastro realizado com sucesso!<br>Teste Grátis de $dias_teste dias ativado.");
+    set_flash_message('success', "Cadastro realizado com sucesso!<br>Termo LGPD gerado.<br>Teste Grátis de $dias_teste dias ativado.");
     header("Location: ../pages/login.php");
     exit;
 
