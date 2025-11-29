@@ -190,6 +190,58 @@ require_once 'includes/session_init.php';
             color: #000;
         }
 
+        /* --- Promoção Indique e Ganhe --- */
+        .promo-referral {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+            border-radius: 20px;
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            color: white;
+            box-shadow: 0 15px 30px rgba(13, 110, 253, 0.25);
+            border: 2px solid var(--accent-color);
+            margin-bottom: 4rem;
+        }
+
+        .promo-referral::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            animation: rotateBg 10s linear infinite;
+        }
+
+        @keyframes rotateBg {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .promo-icon-animate {
+            animation: bounce 2s infinite;
+            display: inline-block;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-10px);}
+            60% {transform: translateY(-5px);}
+        }
+
+        .promo-badge {
+            background-color: var(--accent-color);
+            color: #000;
+            font-weight: 800;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
         /* --- Botões --- */
         .btn-primary-custom {
             background-color: var(--primary-color);
@@ -415,6 +467,40 @@ require_once 'includes/session_init.php';
         </div>
     </section>
 
+    <section id="pfpj" class="py-5" style="background-color: #f1f5f9;">
+        <div class="container py-5">
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-4 mb-md-0">
+                    <img src="img/ChatGPT Image 10 de nov. de 2025, 12_38_54.png" alt="Crescimento Organizado" class="img-fluid rounded-4 shadow-lg">
+                </div>
+                <div class="col-md-6 ps-md-5">
+                    <h2 class="fw-bold mb-4 display-6">Intuindo seu Sucesso</h2>
+                    <p class="lead mb-4">Nosso foco não é apenas entregar um software, mas ver você prosperar com organização.</p>
+                    
+                    <div class="d-flex mb-4">
+                        <div class="me-3">
+                            <i class="bi bi-laptop fs-2 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold">Acessibilidade que facilita</h5>
+                            <p class="text-muted mb-0">Seu negócio não para, e nós também não. Acesse de onde estiver, de forma simples e responsiva.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <i class="bi bi-shield-lock fs-2 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold">Parceria Segura</h5>
+                            <p class="text-muted mb-0">Garantimos a proteção dos seus dados para que você foque apenas no que importa: crescer.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section id="recursos-detalhados" class="py-5 bg-white">
         <div class="container py-5">
             <div class="text-center mb-5">
@@ -523,8 +609,72 @@ require_once 'includes/session_init.php';
         </div>
     </section>
 
+    <?php
+    require_once 'database.php';
+    $conn = getMasterConnection();
+    $feedbacks = $conn->query("SELECT * FROM feedbacks WHERE aprovado = 1 ORDER BY criado_em DESC LIMIT 6");
+    if ($feedbacks->num_rows > 0):
+    ?>
+    <section id="feedbacks" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h6 class="text-primary fw-bold text-uppercase">Resultados Reais</h6>
+                <h2 class="fw-bold display-6">Quem fechou com a gente aprova</h2>
+            </div>
+            <div class="row g-4">
+                <?php while($f = $feedbacks->fetch_assoc()): ?>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="text-warning mb-3">
+                                <?= str_repeat('<i class="bi bi-star-fill"></i>', $f['pontuacao']) ?>
+                            </div>
+                            <p class="card-text text-muted fst-italic">"<?= htmlspecialchars($f['descricao']) ?>"</p>
+                            <div class="d-flex align-items-center mt-4">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:40px; height:40px; font-weight:bold;">
+                                    <?= strtoupper(substr($f['nome'], 0, 1)) ?>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($f['nome']) ?></h6>
+                                    <small class="text-muted">Parceiro</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endwhile; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; $conn->close(); ?>
+
     <section id="planos" class="pricing-section py-5">
         <div class="container py-5">
+            
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="promo-referral text-center">
+                        <div class="position-relative" style="z-index: 2;">
+                            <span class="promo-badge">
+                                <i class="bi bi-megaphone-fill promo-icon-animate me-2"></i> Super Novidade
+                            </span>
+                            <h2 class="fw-bold display-5 mb-3">
+                                Quer sua mensalidade <span style="color: var(--accent-color);">100% GRÁTIS?</span>
+                            </h2>
+                            <p class="fs-4 opacity-90 mb-4">
+                                É muito simples: <strong>Indique 3 amigos</strong> e ganhe <strong>1 MÊS OFF</strong>. 
+                                <br>
+                                <span class="fw-bold text-warning">E O MELHOR: É ACUMULATIVO!</span>
+                                <br>
+                                <span class="fs-6 mt-2 d-block opacity-75">(Ex: 6 amigos indicados = 2 meses grátis para você)</span>
+                            </p>
+                            <a href="pages/registro.php" class="btn btn-light text-primary fw-bold rounded-pill px-5 py-3 shadow-lg">
+                                COMEÇAR A INDICAR AGORA <i class="bi bi-arrow-right-short fs-4 align-middle"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="text-center mb-5">
                 <h6 class="text-primary fw-bold text-uppercase">Vamos crescer juntos?</h6>
                 <h2 class="fw-bold display-6">Escolha sua parceria ideal</h2>
@@ -538,7 +688,7 @@ require_once 'includes/session_init.php';
                         <div class="text-center mb-3">
                             <span class="trial-badge">Start</span>
                             <h3 class="pricing-title">Básico</h3>
-                            <div class="pricing-price">R$19,90<small>/mês</small></div>
+                            <div class="pricing-price">R$19,00<small>/mês</small></div>
                         </div>
                         <ul class="list-unstyled mb-4 flex-grow-1">
                             <li class="mb-3 d-flex align-items-center">
@@ -562,7 +712,7 @@ require_once 'includes/session_init.php';
                         <div class="text-center mb-3">
                             <span class="trial-badge">Melhor Escolha</span>
                             <h3 class="pricing-title text-primary">Plus</h3>
-                            <div class="pricing-price">R$39,90<small>/mês</small></div>
+                            <div class="pricing-price">R$39,00<small>/mês</small></div>
                         </div>
                         <ul class="list-unstyled mb-4 flex-grow-1">
                             <li class="mb-3 d-flex align-items-center">
@@ -586,7 +736,7 @@ require_once 'includes/session_init.php';
                         <div class="text-center mb-3">
                             <span class="trial-badge bg-success text-white">Full Service</span>
                             <h3 class="pricing-title">Essencial</h3>
-                            <div class="pricing-price">R$59,90<small>/mês</small></div>
+                            <div class="pricing-price">R$59,00<small>/mês</small></div>
                         </div>
                         <ul class="list-unstyled mb-4 flex-grow-1">
                             <li class="mb-3 d-flex align-items-center">
@@ -605,52 +755,6 @@ require_once 'includes/session_init.php';
                     </div>
                 </div>
                 
-            </div>
-        </div>
-    </section>
-    
-    <section id="pfpj" class="py-5" style="background-color: #f1f5f9;">
-        <div class="container py-5">
-            <div class="row align-items-center">
-                <div class="col-md-6 mb-4 mb-md-0">
-                    <img src="img/ChatGPT Image 10 de nov. de 2025, 12_38_54.png" alt="Crescimento Organizado" class="img-fluid rounded-4 shadow-lg">
-                </div>
-                <div class="col-md-6 ps-md-5">
-                    <h2 class="fw-bold mb-4 display-6">Intuindo seu Sucesso</h2>
-                    <p class="lead mb-4">Nosso foco não é apenas entregar um software, mas ver você prosperar com organização.</p>
-                    
-                    <div class="d-flex mb-4">
-                        <div class="me-3">
-                            <i class="bi bi-laptop fs-2 text-primary"></i>
-                        </div>
-                        <div>
-                            <h5 class="fw-bold">Acessibilidade que facilita</h5>
-                            <p class="text-muted mb-0">Seu negócio não para, e nós também não. Acesse de onde estiver, de forma simples e responsiva.</p>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex">
-                        <div class="me-3">
-                            <i class="bi bi-shield-lock fs-2 text-primary"></i>
-                        </div>
-                        <div>
-                            <h5 class="fw-bold">Parceria Segura</h5>
-                            <p class="text-muted mb-0">Garantimos a proteção dos seus dados para que você foque apenas no que importa: crescer.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="cta" class="cta-section">
-        <div class="container">
-            <div class="col-lg-8 mx-auto">
-                <h2 class="fw-bold mb-3 display-5">Pronto para ter um parceiro de verdade?</h2>
-                <p class="lead mb-5 opacity-75">Fecha com a gente e leve organização, simplicidade e qualidade para o dia a dia da sua empresa.</p>
-                <a href="pages/registro.php" class="btn btn-light btn-lg fw-bold px-5 py-3 rounded-pill shadow text-primary">
-                    QUERO SER PARCEIRO
-                </a>
             </div>
         </div>
     </section>
@@ -708,44 +812,17 @@ require_once 'includes/session_init.php';
         </div>
     </section>
 
-    <?php
-    require_once 'database.php';
-    $conn = getMasterConnection();
-    $feedbacks = $conn->query("SELECT * FROM feedbacks WHERE aprovado = 1 ORDER BY criado_em DESC LIMIT 6");
-    if ($feedbacks->num_rows > 0):
-    ?>
-    <section id="feedbacks" class="py-5 bg-light">
+    <section id="cta" class="cta-section">
         <div class="container">
-            <div class="text-center mb-5">
-                <h6 class="text-primary fw-bold text-uppercase">Resultados Reais</h6>
-                <h2 class="fw-bold display-6">Quem fechou com a gente aprova</h2>
-            </div>
-            <div class="row g-4">
-                <?php while($f = $feedbacks->fetch_assoc()): ?>
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="text-warning mb-3">
-                                <?= str_repeat('<i class="bi bi-star-fill"></i>', $f['pontuacao']) ?>
-                            </div>
-                            <p class="card-text text-muted fst-italic">"<?= htmlspecialchars($f['descricao']) ?>"</p>
-                            <div class="d-flex align-items-center mt-4">
-                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:40px; height:40px; font-weight:bold;">
-                                    <?= strtoupper(substr($f['nome'], 0, 1)) ?>
-                                </div>
-                                <div class="ms-3">
-                                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($f['nome']) ?></h6>
-                                    <small class="text-muted">Parceiro</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endwhile; ?>
+            <div class="col-lg-8 mx-auto">
+                <h2 class="fw-bold mb-3 display-5">Pronto para ter um parceiro de verdade?</h2>
+                <p class="lead mb-5 opacity-75">Fecha com a gente e leve organização, simplicidade e qualidade para o dia a dia da sua empresa.</p>
+                <a href="pages/registro.php" class="btn btn-light btn-lg fw-bold px-5 py-3 rounded-pill shadow text-primary">
+                    QUERO SER PARCEIRO
+                </a>
             </div>
         </div>
     </section>
-    <?php endif; $conn->close(); ?>
 
     <footer class="bg-dark text-white py-4 text-center">
         <div class="container">
@@ -836,7 +913,7 @@ require_once 'includes/session_init.php';
         const dadosPlanos = {
             'basico': {
                 titulo: 'Plano Básico',
-                preco: 'R$ 19,90<small class="fs-6 text-muted">/mês</small>',
+                preco: 'R$ 19,00<small class="fs-6 text-muted">/mês</small>',
                 badge: '15 Dias Grátis',
                 desc: 'Ideal para quem busca organização inicial e descomplicada.',
                 features: [
@@ -849,7 +926,7 @@ require_once 'includes/session_init.php';
             },
             'plus': {
                 titulo: 'Plano Plus',
-                preco: 'R$ 39,90<small class="fs-6 text-muted">/mês</small>',
+                preco: 'R$ 39,00<small class="fs-6 text-muted">/mês</small>',
                 badge: '15 Dias Grátis - Mais Escolhido',
                 desc: 'Para quem quer crescer com inteligência e apoio.',
                 features: [
@@ -866,7 +943,7 @@ require_once 'includes/session_init.php';
             },
             'essencial': {
                 titulo: 'Plano Essencial',
-                preco: 'R$ 59,90<small class="fs-6 text-muted">/mês</small>',
+                preco: 'R$ 59,00<small class="fs-6 text-muted">/mês</small>',
                 badge: '30 Dias Grátis',
                 desc: 'A parceria completa para segurança e escala total.',
                 features: [

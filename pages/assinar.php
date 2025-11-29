@@ -123,7 +123,7 @@ if ($tenant_id && $user_id) {
         <div class="plano-card <?= $plano_selecionado == 'basico' ? 'destaque-selecionado' : '' ?>">
             <div class="plano-header">
                 <div class="plano-title">Básico</div>
-                <div class="plano-price" data-original="19.90">R$ 19,90<small>/mês</small></div>
+                <div class="plano-price" data-original="19.00">R$ 19,00<small>/mês</small></div>
             </div>
             <ul class="plano-features">
                 <li><i class="fa-solid fa-check"></i> 3 Usuários Totais</li>
@@ -141,7 +141,7 @@ if ($tenant_id && $user_id) {
             <?php if($plano_selecionado == 'plus'): ?><span class="badge-pop">Selecionado</span><?php endif; ?>
             <div class="plano-header">
                 <div class="plano-title" style="color:#00bfff">Plus</div>
-                <div class="plano-price" data-original="39.90">R$ 39,90<small>/mês</small></div>
+                <div class="plano-price" data-original="39.90">R$ 39,00<small>/mês</small></div>
             </div>
             <ul class="plano-features">
                 <li><i class="fa-solid fa-check"></i> 6 Usuários Totais</li>
@@ -159,7 +159,7 @@ if ($tenant_id && $user_id) {
             <?php if($plano_selecionado == 'essencial'): ?><span class="badge-pop">Selecionado</span><?php endif; ?>
             <div class="plano-header">
                 <div class="plano-title">Essencial</div>
-                <div class="plano-price" data-original="59.90">R$ 59,90<small>/mês</small></div>
+                <div class="plano-price" data-original="59.90">R$ 59,00<small>/mês</small></div>
             </div>
             <ul class="plano-features">
                 <li><i class="fa-solid fa-check"></i> 16 Usuários Totais</li>

@@ -148,7 +148,7 @@ display_flash_message();
         <input type="radio" name="plano" value="basico" <?php echo (!isset($old['plano']) || $old['plano'] == 'basico') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">15 Dias Grátis</span>
         <span class="plano-titulo">Básico</span>
-        <span class="plano-preco">R$ 19,90/mês</span>
+        <span class="plano-preco">R$ 19,00/mês</span>
         <div class="plano-desc">3 Usuários • Gestão Simples</div>
       </label>
 
@@ -156,7 +156,7 @@ display_flash_message();
         <input type="radio" name="plano" value="plus" <?php echo (isset($old['plano']) && $old['plano'] == 'plus') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">15 Dias Grátis</span>
         <span class="plano-titulo">Plus</span>
-        <span class="plano-preco">R$ 39,90/mês</span>
+        <span class="plano-preco">R$ 39,00/mês</span>
         <div class="plano-desc">6 Usuários • Intermediário</div>
       </label>
 
@@ -164,7 +164,7 @@ display_flash_message();
         <input type="radio" name="plano" value="essencial" <?php echo (isset($old['plano']) && $old['plano'] == 'essencial') ? 'checked' : ''; ?> onchange="selectPlan(this)">
         <span class="trial-badge">30 Dias Grátis</span>
         <span class="plano-titulo">Essencial</span>
-        <span class="plano-preco">R$ 59,90/mês</span>
+        <span class="plano-preco">R$ 59,00/mês</span>
         <div class="plano-desc">16 Usuários • Completo</div>
       </label>
     </div>
