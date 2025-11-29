@@ -2,7 +2,7 @@
 // pages/minha_assinatura.php
 require_once '../includes/session_init.php';
 require_once '../database.php';
-require_once '../includes/utils.php'; // Importa Flash Messages
+require_once '../includes/utils.php';
 
 /* -------------------- 1) Verificações iniciais -------------------- */
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -10,7 +10,6 @@ if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true)
     exit;
 }
 
-/* Usuário e tenant vindo da sessão */
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $usuario_nome_sess = $_SESSION['usuario_nome'] ?? $_SESSION['nome'] ?? 'Cliente';
 
@@ -38,6 +37,7 @@ $preco_plano_base = 0.00;
 $preco_final_atual = 0.00;
 $tem_desconto = false;
 $data_fim_promocao = null;
+$nome_cupom_ativo = null;
 
 /* Mapa de planos */
 $mapa_planos = [
@@ -48,6 +48,7 @@ $mapa_planos = [
 
 /* -------------------- 3) Buscar dados do tenant -------------------- */
 if ($tenant_id) {
+    // Busca dados principais do Tenant
     $stmt = $conn->prepare("SELECT * FROM tenants WHERE tenant_id = ?");
     if ($stmt) {
         $stmt->bind_param("s", $tenant_id);
@@ -73,45 +74,75 @@ if ($tenant_id) {
             
             $limite_base = (int)($info_plano['base'] ?? 3);
             $nome_plano_atual = $info_plano['nome'] ?? 'Plano Básico';
-            $preco_plano_base = (float)($info_plano['preco'] ?? 0.00); // Preço base do plano
+            $preco_plano_base = (float)($info_plano['preco'] ?? 0.00); 
             
             $limite_total = $limite_base + $extras_comprados;
             $status_assinatura = $dados_assinatura['status_assinatura'] ?? 'padrao';
             $tipo_cancelamento = $dados_assinatura['tipo_cancelamento'] ?? null;
 
-            // --- Lógica de Desconto / Promoção ---
-            // Verifica se existe valor promocional definido no banco para este tenant
-            $valor_promocional = isset($dados_assinatura['valor_promocional']) ? (float)$dados_assinatura['valor_promocional'] : null;
-            $fim_promo_db = $dados_assinatura['data_fim_promocao'] ?? null;
+            // --- Lógica de Desconto (Corrigida para ler tabela de promoções) ---
+            
+            // 1. Preço base inicial
+            $preco_final_atual = $preco_plano_base;
 
-            // Define o preço final
-            if ($valor_promocional !== null && $valor_promocional < $preco_plano_base) {
-                // Verifica validade se houver data
-                if ($fim_promo_db) {
-                    $dt_fim_promo = new DateTime($fim_promo_db);
-                    $dt_hoje_promo = new DateTime('now');
-                    if ($dt_hoje_promo <= $dt_fim_promo) {
-                        $tem_desconto = true;
-                        $preco_final_atual = $valor_promocional;
-                        $data_fim_promocao = $dt_fim_promo->format('d/m/Y');
-                    } else {
-                        // Promoção venceu
-                        $preco_final_atual = $preco_plano_base;
-                    }
+            // 2. Verifica se há promoção ativa vinda do Admin (Modal)
+            // Prioridade para tabela tenant_promocoes pois é onde o admin/cupom_desconto.php salva
+            $stmtPromo = $conn->prepare("
+                SELECT tp.data_fim, c.tipo_desconto, c.valor, c.codigo 
+                FROM tenant_promocoes tp 
+                JOIN cupons_desconto c ON tp.cupom_id = c.id 
+                WHERE tp.tenant_id = ? 
+                AND tp.ativo = 1 
+                AND tp.data_inicio <= CURDATE() 
+                AND tp.data_fim >= CURDATE() 
+                ORDER BY tp.id DESC LIMIT 1
+            ");
+            
+            // Precisamos do ID numérico do tenant para a tabela de promoções, não o UUID string
+            $tenant_id_int = $dados_assinatura['id']; 
+            
+            $stmtPromo->bind_param("i", $tenant_id_int);
+            $stmtPromo->execute();
+            $resPromo = $stmtPromo->get_result();
+
+            if ($resPromo && $resPromo->num_rows > 0) {
+                $promo = $resPromo->fetch_assoc();
+                $tem_desconto = true;
+                $data_fim_promocao = date('d/m/Y', strtotime($promo['data_fim']));
+                $nome_cupom_ativo = $promo['codigo'];
+
+                if ($promo['tipo_desconto'] === 'porcentagem') {
+                    $desconto_valor = $preco_plano_base * ($promo['valor'] / 100);
+                    $preco_final_atual = $preco_plano_base - $desconto_valor;
                 } else {
-                    // Sem data de fim (desconto fixo/permanente)
-                    $tem_desconto = true;
-                    $preco_final_atual = $valor_promocional;
+                    // Desconto Fixo
+                    $preco_final_atual = $preco_plano_base - $promo['valor'];
                 }
             } else {
-                $preco_final_atual = $preco_plano_base;
-            }
-            
-            // Adiciona custo de extras se houver (R$ 4,00 por extra, exemplo)
-            // Se quiser somar no valor exibido: $preco_final_atual += ($extras_comprados * 4);
-            // Por enquanto mantemos separado para clareza visual.
+                // 3. Fallback: Verifica se tem valor promocional direto na tabela tenants (legado ou manual)
+                $valor_promocional = isset($dados_assinatura['valor_promocional']) ? (float)$dados_assinatura['valor_promocional'] : null;
+                $fim_promo_db = $dados_assinatura['data_fim_promocao'] ?? null;
 
-            // Data renovação
+                if ($valor_promocional !== null && $valor_promocional < $preco_plano_base) {
+                    if ($fim_promo_db) {
+                        $dt_fim_promo = new DateTime($fim_promo_db);
+                        $dt_hoje_promo = new DateTime('now');
+                        if ($dt_hoje_promo <= $dt_fim_promo) {
+                            $tem_desconto = true;
+                            $preco_final_atual = $valor_promocional;
+                            $data_fim_promocao = $dt_fim_promo->format('d/m/Y');
+                        }
+                    } else {
+                        $tem_desconto = true;
+                        $preco_final_atual = $valor_promocional;
+                    }
+                }
+            }
+
+            // Garante que não fique negativo
+            if ($preco_final_atual < 0) $preco_final_atual = 0;
+
+            // Data renovação e Trial (Lógica mantida)
             $data_renovacao_str = $dados_assinatura['data_renovacao'] ?? null;
             if (!empty($data_renovacao_str)) {
                 try {
@@ -123,7 +154,6 @@ if ($tenant_id) {
                 } catch (Exception $e) { $dias_ate_renovacao = 0; }
             }
 
-            // Trial
             if (($dados_assinatura['status_assinatura'] ?? '') === 'trial') {
                 $is_trial = true;
                 $dias_teste = ($plano_db === 'essencial') ? 30 : 15;
@@ -147,8 +177,6 @@ if ($tenant_id) {
 $conn->close();
 
 include('../includes/header.php');
-
-// ✅ EXIBE O POP-UP CENTRALIZADO
 display_flash_message();
 ?>
 <!DOCTYPE html>
@@ -205,10 +233,10 @@ display_flash_message();
         .footer-link { color: #666; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.3s; }
         .footer-link:hover { color: #fff; }
         
-        /* Classes novas para preços */
-        .preco-original { text-decoration: line-through; color: #888; font-size: 0.9rem; margin-right: 5px; }
-        .preco-promocional { color: #2ecc71; font-weight: bold; font-size: 1.1rem; }
-        .aviso-validade { font-size: 0.8rem; color: #ffc107; margin-top: 3px; display:block; }
+        /* Ajuste Visual de Preços */
+        .preco-original { text-decoration: line-through; color: #777; font-size: 0.95rem; margin-right: 8px; font-weight: normal; }
+        .preco-promocional { color: #2ecc71; font-weight: bold; font-size: 1.2rem; }
+        .aviso-validade { font-size: 0.8rem; color: #ffc107; margin-top: 3px; display:block; text-align: right;}
     </style>
 </head>
 <body>
