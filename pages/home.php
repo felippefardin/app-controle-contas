@@ -504,4 +504,5 @@ function fecharGift(promoId) {
 </script>
 <?php endif; ?>
 
+<?php include('../includes/mensagem_home_display.php'); ?>
 <?php include('../includes/footer.php'); ?>

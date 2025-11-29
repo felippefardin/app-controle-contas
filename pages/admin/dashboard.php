@@ -207,7 +207,9 @@ $res_suporte_inicial = $master_conn->query($sql_suporte_inicial);
                 <a href="arquivos_suportes.php" class="btn-gerenciar" style="background: #34495e;"><i class="fas fa-file-pdf"></i> Logs de Chat</a>
                 <a href="suporte_via_login.php" class="btn-gerenciar" style="background: #356985;"><i class="fa-solid fa-headset"></i></i> Suporte via index</a>
                 <a href="feedback.php" class="btn-gerenciar" style="background: #258966;"><i class="fa-solid fa-comment-dots"></i></i></i> Feedback</a>
-                <a href="documento_de_registro_no_sistema.php" class="btn-gerenciar" style="background: #3258;"><i class="fa-solid fa-shield-halved"></i></i></i> LGPD de usuários</a>
+                <a href="documento_de_registro_no_sistema.php" class="btn-gerenciar" style="background: #3258;"><i class="fa-solid fa-user-shield"></i> LGPD de usuários</a>
+                <a href="controle_financeiro_sistema.php" class="btn-gerenciar" style="background: #125896;"><i class="fa-solid fa-coins"></i> Controle Financeiro</a>      
+                <a href="mensagens_home_criadas.php" class="btn-gerenciar" style="background: #102589;"><i class="fa-solid fa-envelope-open-text"></i> Mensagens Personaliza</a>
             </div>
         </div>
 
