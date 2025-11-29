@@ -350,7 +350,7 @@ require_once 'includes/session_init.php';
 
         /* Responsivo */
         @media (max-width: 991px) {
-            .hero-section { padding: 120px 0 60px; text-align: center; }
+            /* .hero-section { padding: 40px 0 60px; text-align: center; } */
             .hero-title { font-size: 2.5rem; }
             .project-screenshot-wrapper { margin-top: 60px; }
             .hero-bg-shape { display: none; }

@@ -5,15 +5,13 @@ require_once __DIR__ . '/../includes/utils.php'; // Flash messages
 
 // --- RECUPERA DADOS ANTIGOS EM CASO DE ERRO ---
 $old = $_SESSION['form_data'] ?? [];
-unset($_SESSION['form_data']); // Limpa para a próxima vez
+unset($_SESSION['form_data']); 
 
-// --- AJUSTE: SE VIER PELA URL (DA INDEX), FORÇA A SELEÇÃO DO PLANO ---
+// --- AJUSTE: SE VIER PELA URL (DA INDEX) ---
 if (isset($_GET['plano'])) {
     $old['plano'] = $_GET['plano'];
 }
-// ----------------------------------------------
 
-// Se houver erro vindo do backend, ele será mostrado pelo utils
 display_flash_message();
 ?>
 <!DOCTYPE html>
@@ -25,6 +23,8 @@ display_flash_message();
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
@@ -121,6 +121,32 @@ display_flash_message();
   .modal-footer { border-top: 1px solid #333; }
   .modal-title { color: #00bfff; }
 
+  /* FLASH CARD FLUTUANTE (VERMELHO) */
+  #custom-flash-card {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #dc3545; /* Vermelho Bootstrap */
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 10000;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.4s ease-in-out;
+      pointer-events: none;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+  }
+  #custom-flash-card.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+  }
+
   /* UTILS PARA RESPONSIVIDADE */
   .flex-group { display: flex; gap: 10px; align-items: flex-end; }
   
@@ -133,10 +159,15 @@ display_flash_message();
       .btn-check, .btn-primary { margin-top: 10px; width: 100%; }
       #div-doc-type { flex: 1; }
       #div-doc-number { flex: 1; margin-top: 10px; }
+      #custom-flash-card { top: 10px; right: 10px; left: 10px; text-align: center; justify-content: center; }
   }
 </style>
 </head>
 <body>
+
+<div id="custom-flash-card">
+    <i class="fas fa-exclamation-circle"></i> <span id="flash-card-msg">Mensagem de Erro</span>
+</div>
 
 <div class="form-container">
   <form id="cadastroForm" action="registro_processa.php" method="post" novalidate>
@@ -221,7 +252,6 @@ display_flash_message();
         </div>
         
         <div id="benefitsContent" class="benefit-content">
-            
             <div style="margin-bottom: 20px;">
                 <label style="margin-top: 0; color: #00bfff;">Cupom de Desconto:</label>
                 <div class="input-group mt-2">
@@ -238,9 +268,7 @@ display_flash_message();
                 </div>
                 <span id="msgCupom" style="display:block; margin-top:5px;"></span>
             </div>
-
             <hr style="border-color: #444; margin: 15px 0;">
-
             <div id="formIndicacao">
                 <label for="inputCodigoIndicacao" style="color: #00bfff;">Código de Indicação:</label>
                 <div class="input-group mt-2">
@@ -256,14 +284,16 @@ display_flash_message();
                     </button>
                 </div>
                 <div id="feedbackIndicacao" class="form-text mt-2"></div>
-
                 <input type="hidden" id="id_indicador_validado" name="id_indicador">
                 <button type="button" class="btn btn-success d-none" id="btnConfirmarIndicacao" style="width:100%; margin-top:10px; cursor:default;">
                     Indicação Confirmada <i class="fas fa-check"></i>
                 </button>
             </div>
-
         </div>
+    </div>
+
+    <div style="margin-top: 20px; display:flex; justify-content:center;">
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAACDq-KxXYje-dbsU" data-theme="dark"></div>
     </div>
 
     <button class="btn-submit" type="submit">Finalizar Cadastro e Testar Grátis</button>
@@ -284,8 +314,6 @@ display_flash_message();
             <li>Seus dados (nome, e-mail, telefone, CPF/CNPJ) são coletados apenas para o funcionamento deste sistema de controle financeiro.</li>
             <li>Nós não compartilhamos seus dados com terceiros sem seu consentimento explícito.</li>
             <li>Você tem o direito de solicitar, a qualquer momento via suporte, a exportação ou exclusão dos seus dados.</li>
-            <li>Este documento de aceite será gerado em PDF e armazenado para fins legais de comprovação de consentimento.</li>
-            <li>Em caso de exclusão da conta, este documento será mantido por um período legal de 5 anos para fins de auditoria e defesa legal, sendo posteriormente destruído.</li>
         </ul>
         <hr>
         <p>Ao clicar em "Aceitar e Finalizar", você concorda expressamente com o tratamento dos seus dados conforme descrito acima.</p>
@@ -317,6 +345,20 @@ display_flash_message();
       });
   }
 
+  // --- NOVA FUNÇÃO PARA EXIBIR FLASH CARD FLUTUANTE ---
+  function showFloatingError(msg) {
+      const card = document.getElementById('custom-flash-card');
+      const msgSpan = document.getElementById('flash-card-msg');
+      
+      msgSpan.innerText = msg;
+      card.classList.add('show');
+      
+      // Some automaticamente após 5 segundos
+      setTimeout(() => {
+          card.classList.remove('show');
+      }, 5000);
+  }
+
   function selectPlan(radio) {
     document.querySelectorAll('.plano-card').forEach(c => c.classList.remove('selected'));
     radio.closest('.plano-card').classList.add('selected');
@@ -335,7 +377,6 @@ display_flash_message();
     toggleSenha.classList.toggle('fa-eye-slash');
   });
 
-  // Validação de Cupom
   function checkCupom() {
       const codigo = document.getElementById('cupom').value;
       const msg = document.getElementById('msgCupom');
@@ -357,7 +398,6 @@ display_flash_message();
       });
   }
 
-  // Validação de Indicação
   function validarCodigoIndicacao() {
     let codigo = document.getElementById('inputCodigoIndicacao').value;
     let feedback = document.getElementById('feedbackIndicacao');
@@ -393,7 +433,6 @@ display_flash_message();
     });
   }
 
-  // Máscaras e Init jQuery
   $(document).ready(function() {
       function aplicarMascaraDocumento(tipo) {
         const input = $("#documento");
@@ -411,7 +450,6 @@ display_flash_message();
       aplicarMascaraDocumento($("#tipo_doc").val() || "cpf");
   });
 
-  // LOGICA DO FORMULÁRIO + LGPD
   document.addEventListener('DOMContentLoaded', function() {
       const form = document.getElementById('cadastroForm');
       const senha2 = document.getElementById('senha2');
@@ -420,48 +458,81 @@ display_flash_message();
       const emailError = document.getElementById('emailError');
       const btnAceitarLGPD = document.getElementById('btnAceitarLGPD');
 
-      // Intercepta envio para validar e mostrar modal
       form.addEventListener('submit', (e) => {
         let valid = true;
         
-        // 1. Validação de Senha
         const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
         if (!senhaRegex.test(inputSenha.value)) { senhaError.textContent = "Senha fraca."; valid = false; } 
         else if (inputSenha.value !== senha2.value) { senhaError.textContent = "Senhas não coincidem."; valid = false; } 
         else { senhaError.textContent = ""; }
 
-        // 2. Validação de Email
         if (document.getElementById('email').value !== email2.value) { emailError.textContent = "Emails não coincidem."; valid = false; } 
         else { emailError.textContent = ""; }
 
-        // Se houver erro de validação básica, para aqui
         if (!valid) {
             e.preventDefault();
             return; 
         }
 
-        // 3. Validação LGPD
-        // Se já tem o input hidden 'aceite_lgpd', deixa enviar normalmente
+        // Verifica se já houve o aceite. Se não, verifica duplicidade ANTES de mostrar o modal.
         if (!form.querySelector('input[name="aceite_lgpd"]')) {
             e.preventDefault(); // Impede envio imediato
-            
-            // Abre o Modal
-            const modalElement = document.getElementById('modalLGPD');
-            const modalLGPD = new bootstrap.Modal(modalElement);
-            modalLGPD.show();
+
+            // 1. Preparar dados para checagem AJAX
+            const formData = new FormData();
+            formData.append('ajax_check', '1');
+            formData.append('email', document.getElementById('email').value);
+            formData.append('documento', document.getElementById('documento').value);
+
+            // 2. Feedback visual no botão
+            const submitBtn = form.querySelector('.btn-submit');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = 'Verificando...';
+            submitBtn.disabled = true;
+
+            // 3. Chamar registro_processa.php em modo JSON
+            fetch('registro_processa.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+
+                // 4. Se houver duplicidade, mostrar erro no FLASH CARD e PARAR.
+                if (data.email_exists) {
+                    showFloatingError("Este E-mail já está cadastrado no sistema.");
+                    document.getElementById('email').classList.add('input-invalid');
+                    return; 
+                }
+                if (data.doc_exists) {
+                    showFloatingError("Este CPF/CNPJ já está cadastrado no sistema.");
+                    document.getElementById('documento').classList.add('input-invalid');
+                    return;
+                }
+
+                // 5. Se for ÚNICO, aí sim abre o Modal LGPD
+                const modalElement = document.getElementById('modalLGPD');
+                const modalLGPD = new bootstrap.Modal(modalElement);
+                modalLGPD.show();
+            })
+            .catch(err => {
+                console.error(err);
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+                showFloatingError("Erro de conexão. Tente novamente.");
+            });
         }
       });
 
-      // Clique em "Aceitar" no Modal
       btnAceitarLGPD.addEventListener('click', function() {
-          // Cria o input hidden confirmando o aceite
           let inputAceite = document.createElement("input");
           inputAceite.type = "hidden";
           inputAceite.name = "aceite_lgpd";
           inputAceite.value = "1";
           form.appendChild(inputAceite);
 
-          // Fecha modal e envia formulário
           const modalElement = document.getElementById('modalLGPD');
           const modalInstance = bootstrap.Modal.getInstance(modalElement);
           modalInstance.hide();

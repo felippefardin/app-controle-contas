@@ -8,12 +8,72 @@ require_once __DIR__ . '/../includes/utils.php'; // Importa sistema Flash Messag
 use Dotenv\Dotenv;
 use Dompdf\Dompdf; // Importando Dompdf
 
+// --- 1. CONFIGURAÇÃO TURNSTILE (CAPTCHA ANTI-ROBÔ) ---
+// Substitua pela sua SECRET KEY do Cloudflare Turnstile
+define('TURNSTILE_SECRET_KEY', '0x4AAAAAACDq-BZPjGJTF8DhHDOEQ6NrWBw');
+
+// --- CONEXÃO COM BANCO (Necessária para validação AJAX e Registro) ---
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
-
 $conn = getMasterConnection();
 
-// Captura dados Pessoais
+// --- [NOVO] VERIFICAÇÃO AJAX DE DUPLICIDADE (CHAMADO PELO JS DO REGISTRO.PHP) ---
+if (isset($_POST['ajax_check']) && $_POST['ajax_check'] === '1') {
+    // Limpa qualquer buffer de saída para garantir que apenas o JSON seja retornado
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $email_check = trim($_POST['email'] ?? '');
+    $doc_check = trim($_POST['documento'] ?? '');
+    
+    // Verifica E-mail
+    $stmt = $conn->prepare("SELECT id FROM usuarios WHERE email = ? LIMIT 1");
+    $stmt->bind_param("s", $email_check);
+    $stmt->execute();
+    $email_exists = $stmt->get_result()->num_rows > 0;
+    $stmt->close();
+
+    // Verifica Documento
+    $stmt = $conn->prepare("SELECT id FROM usuarios WHERE documento = ? LIMIT 1");
+    $stmt->bind_param("s", $doc_check);
+    $stmt->execute();
+    $doc_exists = $stmt->get_result()->num_rows > 0;
+    $stmt->close();
+
+    echo json_encode([
+        'status' => 'success',
+        'email_exists' => $email_exists,
+        'doc_exists' => $doc_exists
+    ]);
+    exit; // Encerra execução aqui para não rodar o resto do script
+}
+// -----------------------------------------------------------------------------
+
+function verificarTurnstile($token) {
+    if (!$token) return false;
+    
+    $url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+    $data = [
+        'secret' => TURNSTILE_SECRET_KEY,
+        'response' => $token,
+        'remoteip' => $_SERVER['REMOTE_ADDR']
+    ];
+
+    $options = [
+        'http' => [
+            'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+            'method'  => 'POST',
+            'content' => http_build_query($data)
+        ]
+    ];
+    $context  = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+    $response = json_decode($result);
+
+    return $response->success;
+}
+
+// Captura dados Pessoais do POST normal
 $nome        = trim($_POST['nome'] ?? '');
 $email       = trim($_POST['email'] ?? '');
 $senha       = trim($_POST['senha'] ?? '');
@@ -22,6 +82,7 @@ $documento   = trim($_POST['documento'] ?? '');
 $telefone    = trim($_POST['telefone'] ?? '');
 $plano_post  = trim($_POST['plano'] ?? 'basico');
 $aceite_lgpd = isset($_POST['aceite_lgpd']) ? trim($_POST['aceite_lgpd']) : '0';
+$turnstileToken = $_POST['cf-turnstile-response'] ?? ''; 
 
 $cupom_codigo = isset($_POST['cupom']) && !empty($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : null;
 $codigo_indicacao_recebido = isset($_POST['codigo_indicacao']) && !empty($_POST['codigo_indicacao']) ? strtoupper(trim($_POST['codigo_indicacao'])) : null;
@@ -41,12 +102,16 @@ $form_data = [
 function return_error($msg, $data) {
     global $conn;
     if(isset($conn)) $conn->close();
-    $_SESSION['form_data'] = $data; // Salva os dados na sessão
+    $_SESSION['form_data'] = $data; 
     set_flash_message('danger', $msg);
     header("Location: ../pages/registro.php");
     exit;
 }
-// ----------------------------------------------------
+
+// 2. Validação Anti-Robô (Turnstile)
+if (!verificarTurnstile($turnstileToken)) {
+    return_error("Verificação de segurança falhou (Captcha). Por favor, tente novamente.", $form_data);
+}
 
 // Validação do Aceite LGPD
 if ($aceite_lgpd !== '1') {
@@ -69,13 +134,13 @@ if (!$nome || !$email || !$senha || !$documento) {
     return_error("Preencha todos os campos obrigatórios.", $form_data);
 }
 
-// Verifica E-mail
-$stmtCheck = $conn->prepare("SELECT id FROM usuarios WHERE email = ? LIMIT 1");
-$stmtCheck->bind_param("s", $email);
+// 3. Validação de Duplicidade (Server-side final check)
+$stmtCheck = $conn->prepare("SELECT id FROM usuarios WHERE email = ? OR documento = ? LIMIT 1");
+$stmtCheck->bind_param("ss", $email, $documento);
 $stmtCheck->execute();
 if ($stmtCheck->get_result()->num_rows > 0) {
     $stmtCheck->close();
-    return_error("Este e-mail já está cadastrado. Tente fazer login.", $form_data);
+    return_error("Este E-mail ou CPF/CNPJ já está cadastrado no sistema.", $form_data);
 }
 $stmtCheck->close();
 
@@ -143,7 +208,6 @@ try {
         $dompdf->render();
         $outputPdf = $dompdf->output();
 
-        // Criar diretório se não existir
         $dirDestino = __DIR__ . '/../assets/uploads/contratos_lgpd/';
         if (!is_dir($dirDestino)) {
             mkdir($dirDestino, 0755, true);
@@ -155,13 +219,11 @@ try {
 
         file_put_contents($caminhoCompletoPdf, $outputPdf);
 
-        // Salvar registro na tabela de termos
         $stmtLgpd = $conn->prepare("INSERT INTO termos_consentimento (usuario_id, caminho_arquivo, ip_usuario) VALUES (?, ?, ?)");
         $stmtLgpd->bind_param("iss", $new_usuario_id, $caminhoRelativoPdf, $ipUsuario);
         $stmtLgpd->execute();
         $stmtLgpd->close();
     }
-    // ---------------------------------------------------------
 
     // 2. Tenant Setup
     $tenantId = 'T' . substr(md5(uniqid($email, true)), 0, 32);
@@ -244,10 +306,8 @@ try {
 
     $conn->commit();
 
-    // SUCESSO: Limpa os dados salvos pois deu certo
     unset($_SESSION['form_data']);
 
-    // MENSAGEM DE SUCESSO E REDIRECIONA PARA LOGIN
     set_flash_message('success', "Cadastro realizado com sucesso!<br>Termo LGPD gerado.<br>Teste Grátis de $dias_teste dias ativado.");
     header("Location: ../pages/login.php");
     exit;

@@ -109,7 +109,7 @@
 </style>
 
 <h2>Cadastro</h2>
-<form action="../actions/register_user.php" method="POST" autocomplete="off">
+<form action="../pages/register_processa.php" method="POST" autocomplete="off">
   <input type="text" name="nome" placeholder="Nome completo" required>
   <input type="text" name="cpf" placeholder="CPF" required>
   <input type="text" name="telefone" placeholder="Telefone" required>

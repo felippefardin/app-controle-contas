@@ -5,6 +5,33 @@ session_start();
 require_once '../includes/config/config.php';
 require_once '../database.php'; // getMasterConnection()
 
+// --- CONFIGURAÇÃO TURNSTILE (CAPTCHA) ---
+// Coloque aqui sua SECRET KEY do Cloudflare Turnstile
+define('TURNSTILE_SECRET_KEY', 'SUA_SECRET_KEY_AQUI');
+
+function verificarTurnstile($token) {
+    if (!$token) return false;
+    
+    $url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+    $data = [
+        'secret' => TURNSTILE_SECRET_KEY,
+        'response' => $token,
+        'remoteip' => $_SERVER['REMOTE_ADDR']
+    ];
+
+    $options = [
+        'http' => [
+            'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+            'method'  => 'POST',
+            'content' => http_build_query($data)
+        ]
+    ];
+    $context  = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+    $response = json_decode($result);
+
+    return $response->success;
+}
 
 // --- Captura segura dos dados enviados ---
 $dados = $_POST ?? [];
@@ -15,10 +42,20 @@ $senha       = trim($dados['senha'] ?? '');
 $tipo_pessoa = trim($dados['tipo_pessoa'] ?? '');
 $documento   = trim($dados['documento'] ?? '');
 $telefone    = trim($dados['telefone'] ?? '');
+$turnstileToken = $dados['cf-turnstile-response'] ?? '';
 
-// --- Validação ---
+// --- Validação Básica ---
 if (!$nome || !$email || !$senha) {
     $_SESSION['erro_registro'] = "Preencha todos os campos obrigatórios.";
+    $_SESSION['form_data'] = $_POST; // Guarda dados para não perder
+    header("Location: ../pages/registro.php");
+    exit;
+}
+
+// --- Validação Anti-Robô ---
+if (!verificarTurnstile($turnstileToken)) {
+    $_SESSION['erro_registro'] = "Verificação de segurança falhou. Por favor, tente novamente.";
+    $_SESSION['form_data'] = $_POST;
     header("Location: ../pages/registro.php");
     exit;
 }
@@ -35,18 +72,21 @@ if ($conn->connect_error) {
     exit;
 }
 
-// --- Verifica duplicidade ---
-$stmtCheck = $conn->prepare("SELECT COUNT(*) AS total FROM tenants WHERE admin_email = ?");
-$stmtCheck->bind_param("s", $email);
+// --- VERIFICAÇÃO RIGOROSA DE DUPLICIDADE (CPF/CNPJ E EMAIL) ---
+// Verifica na tabela de usuarios se já existe o email OU o documento
+$stmtCheck = $conn->prepare("SELECT id FROM usuarios WHERE email = ? OR documento = ? LIMIT 1");
+$stmtCheck->bind_param("ss", $email, $documento);
 $stmtCheck->execute();
-$row = $stmtCheck->get_result()->fetch_assoc();
-$stmtCheck->close();
+$stmtCheck->store_result();
 
-if ($row['total'] > 0) {
-    $_SESSION['erro_registro'] = "Este e-mail já está cadastrado.";
-    header("Location: ../pages/registro.php?msg=email_duplicado");
+if ($stmtCheck->num_rows > 0) {
+    $stmtCheck->close();
+    $_SESSION['erro_registro'] = "Este E-mail ou CPF/CNPJ já está cadastrado no sistema.";
+    $_SESSION['form_data'] = $_POST;
+    header("Location: ../pages/registro.php?msg=dados_duplicados");
     exit;
 }
+$stmtCheck->close();
 
 // Variáveis para o try/catch
 $usuarioMasterId = null;
@@ -56,14 +96,12 @@ $tenantUser = null;
 
 try {
     // --- 1) Cria usuário no master (tabela usuarios) ---
-    // NOTA: Operações DDL (CREATE DATABASE) mais à frente causam "commit" implícito.
-    // Por isso, a lógica de rollback manual no 'catch' é essencial.
-    
+    // Incluindo o DOCUMENTO aqui para garantir a unicidade futura
     $stmtUserMaster = $conn->prepare("
-        INSERT INTO usuarios (nome, email, senha, nivel_acesso, status)
-        VALUES (?, ?, ?, 'admin', 'ativo')
+        INSERT INTO usuarios (nome, email, senha, documento, telefone, tipo_pessoa, nivel_acesso, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'admin', 'ativo')
     ");
-    $stmtUserMaster->bind_param("sss", $nome, $email, $senha_hash);
+    $stmtUserMaster->bind_param("ssssss", $nome, $email, $senha_hash, $documento, $telefone, $tipo_pessoa);
     $stmtUserMaster->execute();
     $usuarioMasterId = $conn->insert_id;
     $stmtUserMaster->close();
@@ -75,19 +113,13 @@ try {
     // --- 2) Gera tenant_id + Escolha Inteligente do Servidor (Sharding) ---
     $tenantId = md5(uniqid('', true));
     
-    // 🛠️ CONFIGURAÇÃO DE SHARDING
-    // Lista de IPs dos seus servidores de banco de dados.
-    // Comece com 'localhost'. Quando crescer, adicione o IP do novo servidor aqui.
     $servidoresDisponiveis = [
-        'localhost',       // Servidor Principal
-        // '192.168.1.50', // Exemplo: Servidor Secundário (Futuro)
+        'localhost',       
     ];
 
-    $dbHost = 'localhost'; // Fallback padrão
+    $dbHost = 'localhost'; 
     
     try {
-        // Busca qual servidor tem MENOS tenants cadastrados para balancear a carga
-        // Cria uma string de placeholders (?,?,?) baseada no tamanho do array
         $placeholders = implode(',', array_fill(0, count($servidoresDisponiveis), '?'));
         $types = str_repeat('s', count($servidoresDisponiveis));
         
@@ -107,26 +139,22 @@ try {
             $resBal = $stmtBal->get_result()->fetch_assoc();
             $stmtBal->close();
 
-            // Se encontrou algum resultado (servidor com menos carga), usa ele. 
             if ($resBal && !empty($resBal['db_host'])) {
                 $dbHost = $resBal['db_host'];
             } else {
-                // Se for o primeiro cadastro de todos, pega o primeiro da lista
                 $dbHost = $servidoresDisponiveis[0];
             }
         }
     } catch (Exception $e) {
-        // Se der erro na lógica de balanceamento, mantém o padrão silenciosamente
         error_log("Aviso: Falha no balanceamento de carga (usando localhost): " . $e->getMessage());
         $dbHost = 'localhost';
     }
 
-    // Define nome do banco e usuário
     $dbName = 'tenant_db_' . $tenantId;
     $tenantUser = 'dbu_' . substr($tenantId, 0, 12);
-    $tenantPass = bin2hex(random_bytes(16)); // 32 chars
+    $tenantPass = bin2hex(random_bytes(16)); 
 
-    // --- 3) Registra tenant no master (TABELA ATUAL) ---
+    // --- 3) Registra tenant no master ---
     $stmtTenant = $conn->prepare("
         INSERT INTO tenants (
             tenant_id, usuario_id, nome, nome_empresa, admin_email,
@@ -137,13 +165,13 @@ try {
 
     $nome_empresa = $nome;
     $stmtTenant->bind_param(
-        "sisssssssss", // 11 's' -> 10 's'
+        "sisssssssss", 
         $tenantId,
-        $usuarioMasterId, // ID do passo 1
+        $usuarioMasterId, 
         $nome,
         $nome_empresa,
         $email,
-        $dbHost, // Aqui entra o host escolhido dinamicamente
+        $dbHost, 
         $dbName,
         $tenantUser,
         $tenantPass,
@@ -156,17 +184,13 @@ try {
     }
     $stmtTenant->close();
 
-    // --- 4) Cria banco do tenant (No host escolhido) ---
-    // Nota: Se dbHost for remoto, precisaria conectar lá. Como é localhost ou 
-    // um IP acessível pelo mesmo usuário root/admin do app, mantemos a lógica simples.
-    // Em arquiteturas complexas, você abriria uma nova conexão $connRemota aqui.
-    
+    // --- 4) Cria banco do tenant ---
     if (!$conn->query("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")) {
         throw new Exception("Erro ao criar o banco de dados do tenant: " . $conn->error);
     }
 
     // --- 5) Cria usuário MySQL do tenant ---
-    $conn->query("DROP USER IF EXISTS '$tenantUser'@'%'"); // '%' permite acesso de qualquer IP se necessário
+    $conn->query("DROP USER IF EXISTS '$tenantUser'@'%'"); 
     if (!$conn->query("CREATE USER '$tenantUser'@'%' IDENTIFIED BY '$tenantPass'")) {
          throw new Exception("Erro ao criar o usuário MySQL para o tenant: " . $conn->error);
     }
@@ -192,7 +216,6 @@ try {
     if (!$tenantConn->multi_query($schemaSQL)) {
         throw new Exception("Erro ao aplicar o schema no banco do tenant: " . $tenantConn->error);
     }
-    // Limpa resultados pendentes do multi_query
     while ($tenantConn->more_results() && $tenantConn->next_result()) {}
 
     // --- 8) Cria admin dentro do tenant ---
@@ -221,41 +244,31 @@ try {
 } catch (Exception $e) {
 
     // --- ROLLBACK MANUAL DE SEGURANÇA ---
-    
     error_log("⛔ ERRO NO REGISTO: " . $e->getMessage());
     $_SESSION['erro_registro'] = "Erro ao criar sua conta. Por favor, tente novamente.";
 
-    // 1. Limpa a infraestrutura (DROP DATABASE e DROP USER) se eles chegaram a ser criados
     if (isset($dbName)) $conn->query("DROP DATABASE IF EXISTS `$dbName`");
     if (isset($tenantUser)) $conn->query("DROP USER IF EXISTS '$tenantUser'@'%'");
     
-    // 2. Limpa os registros órfãos no banco de dados mestre (usuarios e tenants)
     if ($usuarioMasterId !== null) {
         $conn->begin_transaction();
         try {
-            // Deleta o tenant (usando o usuario_id, que é a FK)
             $stmtDeleteTenant = $conn->prepare("DELETE FROM tenants WHERE usuario_id = ?");
             $stmtDeleteTenant->bind_param("i", $usuarioMasterId);
             $stmtDeleteTenant->execute();
             $stmtDeleteTenant->close();
 
-            // Deleta o usuário mestre
             $stmtDeleteUser = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
             $stmtDeleteUser->bind_param("i", $usuarioMasterId);
             $stmtDeleteUser->execute();
             $stmtDeleteUser->close();
             
-            // Confirma a limpeza
             $conn->commit();
-            error_log("INFO REGISTO: Rollback manual do usuario_id $usuarioMasterId foi bem-sucedido.");
-
         } catch (Exception $rollbackEx) {
-            // Se a limpeza falhar, reverte e loga um erro crítico
             $conn->rollback();
-            error_log("⛔ FALHA CRÍTICA NO ROLLBACK: Não foi possível limpar o usuário órfão $usuarioMasterId. Mensagem: " . $rollbackEx->getMessage());
+            error_log("⛔ FALHA CRÍTICA NO ROLLBACK: " . $rollbackEx->getMessage());
         }
     }
-    // --- FIM DA CORREÇÃO ---
 
     header("Location: ../pages/registro.php?msg=erro_generico");
     exit();
