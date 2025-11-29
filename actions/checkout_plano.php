@@ -73,12 +73,21 @@ $mp_response = json_decode($response, true);
 
 // Verifica sucesso
 if (isset($mp_response['init_point'])) {
-    // IMPORTANTE: Atualizamos o plano no banco ANTES de enviar para garantir
-    // (O status fica 'pendente' até o webhook confirmar)
+    // O Mercado Pago devolve o ID da assinatura aqui no campo 'id'
+    $id_assinatura_nova = $mp_response['id']; 
+
     $conn = getMasterConnection();
-    $stmt = $conn->prepare("UPDATE tenants SET plano_atual = ? WHERE tenant_id = ?");
-    $stmt->bind_param("ss", $plano, $tenant_id);
-    $stmt->execute();
+    
+    // ATUALIZAÇÃO: Agora salvamos também o id_assinatura_mp imediatamente
+    $stmt = $conn->prepare("UPDATE tenants SET plano_atual = ?, id_assinatura_mp = ? WHERE tenant_id = ?");
+    $stmt->bind_param("sss", $plano, $id_assinatura_nova, $tenant_id);
+    
+    if($stmt->execute()) {
+        // Sucesso ao salvar
+    } else {
+        error_log("Erro ao salvar ID assinatura: " . $stmt->error);
+    }
+    
     $stmt->close();
     $conn->close();
 

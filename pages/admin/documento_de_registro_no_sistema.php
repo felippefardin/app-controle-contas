@@ -60,7 +60,11 @@ require_once '../../includes/header.php';
 <style>
     /* Container e Global */
     .admin-container { width: 98%; max-width: 1200px; margin: 20px auto; background: #121212; padding: 25px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
-    h2 { color: #00bfff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+    
+    /* Ajuste para o cabeçalho com botão */
+    .page-header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+    .page-header-flex h2 { margin: 0; padding: 0; border: none; color: #00bfff; }
+    
     p.desc { color: #aaa; margin-bottom: 20px; }
 
     /* Tabela Dark */
@@ -75,12 +79,19 @@ require_once '../../includes/header.php';
     .btn-primary:hover { background-color: #2980b9; }
     .btn-danger { background-color: #e74c3c; }
     .btn-danger:hover { background-color: #c0392b; }
+    
+    /* Botão Voltar */
+    .btn-back { background-color: #444; color: #eee; border: 1px solid #555; }
+    .btn-back:hover { background-color: #555; color: #fff; border-color: #777; }
 
     /* Alerta */
     .alert-success { background: rgba(40,167,69,0.2); color: #2ecc71; border: 1px solid #2ecc71; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
 
     /* Responsivo */
     @media (max-width: 768px) {
+        .page-header-flex { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .btn-back { width: 100%; justify-content: center; }
+        
         table, thead, tbody, th, td, tr { display: block; }
         thead { display: none; }
         tr { margin-bottom: 15px; border: 1px solid #333; padding: 10px; background: #202020; border-radius: 8px; }
@@ -90,7 +101,13 @@ require_once '../../includes/header.php';
 </style>
 
 <div class="admin-container">
-    <h2>Gestão de Termos LGPD</h2>
+    <div class="page-header-flex">
+        <h2>Gestão de Termos LGPD</h2>
+        <a href="dashboard.php" class="btn-sm btn-back">
+            <i class="fas fa-arrow-left"></i> Voltar para Dashboard
+        </a>
+    </div>
+
     <p class="desc">Documentos de consentimento e termos de uso aceitos pelos usuários no momento do cadastro.</p>
     
     <?= $msg_sistema ?>
