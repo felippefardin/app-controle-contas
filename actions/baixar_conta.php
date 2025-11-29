@@ -15,8 +15,8 @@ if (!$conn) {
     exit;
 }
 
-// 2. CAPTURA DADOS DO USUÁRIO E FORMULÁRIO
-$usuario_id = $_SESSION['usuario_id']; // Quem está fazendo a ação
+// 2. CAPTURA DADOS
+$usuario_id = $_SESSION['usuario_id'];
 $id_conta = isset($_POST['id_conta']) ? (int)$_POST['id_conta'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
 $data_baixa = isset($_POST['data_baixa']) ? $_POST['data_baixa'] : date('Y-m-d');
 $forma_pagamento = isset($_POST['forma_pagamento']) ? $_POST['forma_pagamento'] : 'outros';
@@ -27,54 +27,65 @@ if ($id_conta <= 0) {
     exit;
 }
 
-// 3. PROCESSAMENTO DO ARQUIVO (COMPROVANTE)
+// 3. PROCESSAMENTO DO ARQUIVO COM SEGURANÇA REFORÇADA
 $caminho_comprovante = null;
 
 if (isset($_FILES['comprovante']) && $_FILES['comprovante']['error'] === UPLOAD_ERR_OK) {
     $uploadDir = '../comprovantes/';
     
-    // Cria a pasta se não existir
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
     }
 
+    // A) Validação por Extensão
     $extensao = strtolower(pathinfo($_FILES['comprovante']['name'], PATHINFO_EXTENSION));
-    $permitidos = ['jpg', 'jpeg', 'png', 'pdf'];
+    
+    // Lista de tipos permitidos (Extensão => MIME Type)
+    $tiposPermitidos = [
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png'  => 'image/png',
+        'pdf'  => 'application/pdf'
+    ];
 
-    if (in_array($extensao, $permitidos)) {
-        // Nome único para evitar sobrescrita
-        $novoNome = uniqid('comp_') . '_' . $id_conta . '.' . $extensao;
-        $destino = $uploadDir . $novoNome;
+    if (!array_key_exists($extensao, $tiposPermitidos)) {
+        $_SESSION['error_message'] = "Extensão de arquivo inválida.";
+        header('Location: ../pages/contas_pagar_baixadas.php'); 
+        exit;
+    }
 
-        if (move_uploaded_file($_FILES['comprovante']['tmp_name'], $destino)) {
-            // Salva no banco apenas o caminho relativo (ex: comprovantes/arquivo.jpg)
-            $caminho_comprovante = 'comprovantes/' . $novoNome;
-        } else {
-            $_SESSION['error_message'] = "Erro ao mover o arquivo de comprovante.";
-        }
+    // B) Validação por Conteúdo Real (MIME Type) - SEGURANÇA CRÍTICA
+    // Isso impede que alguém renomeie 'virus.php' para 'foto.jpg'
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeReal = $finfo->file($_FILES['comprovante']['tmp_name']);
+
+    // Verifica se o MIME real bate com o esperado para aquela extensão
+    // Nota: jpg e jpeg compartilham o mesmo mime, então verificamos se está na lista de valores válidos
+    if (!in_array($mimeReal, $tiposPermitidos)) {
+        $_SESSION['error_message'] = "O arquivo é inválido ou corrompido (MIME Type incorreto).";
+        header('Location: ../pages/contas_pagar_baixadas.php');
+        exit;
+    }
+
+    // C) Renomear o arquivo (Sanitização)
+    // O uso de uniqid que você já fazia é ótimo. Mantivemos.
+    $novoNome = uniqid('comp_') . '_' . $id_conta . '.' . $extensao;
+    $destino = $uploadDir . $novoNome;
+
+    if (move_uploaded_file($_FILES['comprovante']['tmp_name'], $destino)) {
+        $caminho_comprovante = 'comprovantes/' . $novoNome;
     } else {
-        $_SESSION['error_message'] = "Formato de arquivo inválido. Apenas PDF e Imagens.";
+        $_SESSION['error_message'] = "Erro ao salvar o arquivo no servidor.";
     }
 }
 
-// 4. ATUALIZA A TABELA (Query dinâmica dependendo se tem anexo ou não)
+// 4. ATUALIZA A TABELA
 if ($caminho_comprovante) {
-    $sql = "UPDATE contas_pagar SET 
-            status = 'baixada', 
-            data_baixa = ?, 
-            baixado_por = ?, 
-            forma_pagamento = ?, 
-            comprovante = ? 
-            WHERE id = ?";
+    $sql = "UPDATE contas_pagar SET status='baixada', data_baixa=?, baixado_por=?, forma_pagamento=?, comprovante=? WHERE id=?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("sissi", $data_baixa, $usuario_id, $forma_pagamento, $caminho_comprovante, $id_conta);
 } else {
-    $sql = "UPDATE contas_pagar SET 
-            status = 'baixada', 
-            data_baixa = ?, 
-            baixado_por = ?, 
-            forma_pagamento = ?
-            WHERE id = ?";
+    $sql = "UPDATE contas_pagar SET status='baixada', data_baixa=?, baixado_por=?, forma_pagamento=? WHERE id=?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("sisi", $data_baixa, $usuario_id, $forma_pagamento, $id_conta);
 }
@@ -82,10 +93,10 @@ if ($caminho_comprovante) {
 if ($stmt->execute()) {
     $_SESSION['success_message'] = "Conta baixada com sucesso!";
 } else {
-    $_SESSION['error_message'] = "Erro ao baixar conta: " . $stmt->error;
+    $_SESSION['error_message'] = "Erro no banco: " . $stmt->error;
 }
 
 $stmt->close();
-header('Location: ../pages/contas_pagar_baixadas.php'); // Redireciona para as baixadas para conferência
+header('Location: ../pages/contas_pagar_baixadas.php');
 exit;
 ?>

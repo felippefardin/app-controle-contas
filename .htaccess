@@ -1,0 +1,15 @@
+# .htaccess na raiz do projeto
+
+# Bloquear acesso direto a arquivos sensíveis
+<FilesMatch "^\.env|composer\.(json|lock)|\.git|\.sql$">
+    Require all denied
+</FilesMatch>
+
+# Desabilitar listagem de diretórios (para ninguém ver seus arquivos listados)
+Options -Indexes
+
+# Proteção extra contra execução de PHP na pasta de uploads
+# (Crie um outro .htaccess DENTRO da pasta /comprovantes/ com este conteúdo:)
+# <FilesMatch "\.php$">
+#     Require all denied
+# </FilesMatch>
