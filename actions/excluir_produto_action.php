@@ -34,19 +34,32 @@ $id_usuario = $_SESSION['usuario_id'];
 $id_produto = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
 
 if ($id_produto) {
-    $stmt = $conn->prepare("DELETE FROM produtos WHERE id = ? AND id_usuario = ?");
-    $stmt->bind_param("ii", $id_produto, $id_usuario);
+    try {
+        $stmt = $conn->prepare("DELETE FROM produtos WHERE id = ? AND id_usuario = ?");
+        $stmt->bind_param("ii", $id_produto, $id_usuario);
 
-    if ($stmt->execute()) {
-        if ($stmt->affected_rows > 0) {
-            set_flash_message('success', 'Produto excluído com sucesso.');
+        if ($stmt->execute()) {
+            if ($stmt->affected_rows > 0) {
+                set_flash_message('success', 'Produto excluído com sucesso.');
+            } else {
+                set_flash_message('danger', 'Produto não encontrado ou permissão negada.');
+            }
         } else {
-            set_flash_message('danger', 'Produto não encontrado ou permissão negada.');
+            set_flash_message('danger', 'Falha ao excluir o produto.');
         }
-    } else {
-        set_flash_message('danger', 'Falha ao excluir o produto.');
+        $stmt->close();
+
+    } catch (mysqli_sql_exception $e) {
+        // Código 1451 é erro de chave estrangeira (foreign key constraint)
+        if ($e->getCode() == 1451) {
+            set_flash_message('danger', 'Não é possível excluir este produto pois ele já possui movimentações (compras ou vendas) registradas no histórico.');
+        } else {
+            // Outros erros de banco de dados
+            set_flash_message('danger', 'Erro ao processar exclusão: ' . $e->getMessage());
+        }
+    } catch (Exception $e) {
+        set_flash_message('danger', 'Erro inesperado.');
     }
-    $stmt->close();
 } else {
     set_flash_message('danger', 'ID inválido.');
 }

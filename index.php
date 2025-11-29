@@ -393,41 +393,188 @@ require_once 'includes/session_init.php';
     </div>
 
     <header class="hero-section">
-        <div class="hero-bg-shape"></div>
-        <div class="container hero-content">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h1 class="hero-title">Não somos um simples produto, somos <span class="text-highlight">parceiros do seu negócio.</span></h1>
-                    <p class="hero-lead">
-                        Nosso intuito é ver você crescer de forma descomplicada, organizada e intuitiva. Fecha com a gente que, além de um parceiro, você leva um produto de qualidade e seguro.
-                    </p>
-                    <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-start">
-                        <a href="pages/registro.php" class="btn btn-primary-custom">
-                            Fechar Parceria Agora
-                        </a>
-                        <a href="#funcionalidades" class="btn btn-outline-custom">
-                            Conhecer Solução
-                        </a>
-                    </div>
-                    <div class="mt-4 text-muted small">
-                        <i class="bi bi-shield-check text-primary me-2"></i> Segurança Garantida
-                        <i class="bi bi-graph-up-arrow text-success ms-3 me-2"></i> Foco no Crescimento
-                    </div>
+    <style>
+        .img-container-3d {
+            position: relative;
+            /* 1. Define uma altura fixa para padronizar todos os quadros */
+            height: 200px; 
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1;
+        }
+
+        .img-container-3d img {
+            /* 2. Remove o arredondamento (Sem Borda) */
+            border-radius: 0; 
+            
+            /* Sombra inicial mais sutil */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            transition: box-shadow 0.4s ease;
+            
+            /* 3. Garante que a imagem preencha 100% do container */
+            width: 100%;
+            height: 100%;
+            
+            /* 'cover' faz a imagem preencher tudo sem distorcer (pode cortar as pontas). 
+               Se quiser ver a imagem INTEIRA espremida, mude para 'fill' */
+            object-fit: cover; 
+            object-position: center top; /* Foca no topo da imagem */
+        }
+
+        /* Efeito de Hover (Mouse em cima) */
+        .img-container-3d:hover {
+            transform: scale(1.15) translateY(-5px) translateZ(20px); /* Aumenta e salta */
+            z-index: 10; /* Traz para frente */
+            cursor: pointer;
+        }
+
+        .img-container-3d:hover img {
+            /* Sombra projetada para dar efeito 3D de elevação */
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4); 
+        }
+    </style>
+
+    <header class="hero-section">
+    <style>
+        .img-container-3d {
+            position: relative;
+            /* 1. Aumentei a altura para a imagem ficar maior na tela */
+            height: 260px; 
+            width: 100%;
+            
+            /* Fundo suave para preencher espaços vazios caso a imagem não seja quadrada */
+            background-color: #f8f9fa; 
+            border: 1px solid #eee; /* Borda sutil para delimitar a área */
+            
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .img-container-3d img {
+            border-radius: 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: box-shadow 0.4s ease;
+            
+            /* Garante que a imagem nunca ultrapasse o tamanho do box */
+            max-width: 100%;
+            max-height: 100%;
+            
+            /* 2. 'contain' força a imagem a aparecer inteira, sem cortes */
+            object-fit: contain; 
+        }
+
+        /* Efeito Hover (Mouse em cima) */
+        .img-container-3d:hover {
+            transform: scale(1.15) translateY(-5px);
+            z-index: 10;
+            cursor: pointer;
+            border-color: transparent; /* Remove borda no hover para ficar mais limpo */
+        }
+
+        .img-container-3d:hover img {
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+    </style>
+
+<header class="hero-section">
+    <style>
+        .img-container-3d {
+            position: relative;
+            /* 1. Mantém a altura fixa de 200px para alinhar a grade */
+            height: 200px; 
+            width: 100%;
+            
+            /* Fundo para preencher o espaço caso a imagem não seja da mesma proporção */
+            background-color: #000000; 
+            border-radius: 12px; /* Borda arredondada no container */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); /* Sombra no container */
+            overflow: hidden; /* Garante que nada saia das bordas arredondadas */
+            
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1;
+        }
+
+        .img-container-3d img {
+            /* 2. Força a imagem a ocupar todo o espaço disponível */
+            width: 100%;
+            height: 100%;
+            
+            /* 3. O SEGREDO DO "SEM CORTE": */
+            /* 'contain' garante que a imagem inteira apareça, ajustando o tamanho sem cortar nada */
+            object-fit: contain; 
+            object-position: center;
+            
+            transition: transform 0.4s ease;
+        }
+
+        /* Efeito Hover (Mouse em cima) */
+        .img-container-3d:hover {
+            transform: scale(1.5) translateY(-5px); /* Efeito 3D mais suave */
+            z-index: 10;
+            cursor: pointer;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+    </style>
+
+    <div class="hero-bg-shape"></div>
+    <div class="container hero-content">
+        <div class="row align-items-center">
+            
+            <div class="col-lg-6 mb-5 mb-lg-0">
+                <h1 class="hero-title">Não somos um simples produto, somos <span class="text-highlight">parceiros do seu negócio.</span></h1>
+                <p class="hero-lead">
+                    Nosso intuito é ver você crescer de forma descomplicada, organizada e intuitiva. Fecha com a gente que, além de um parceiro, você leva um produto de qualidade e seguro.
+                </p>
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-start">
+                    <a href="pages/registro.php" class="btn btn-primary-custom">
+                        Fechar Parceria Agora
+                    </a>
+                    <a href="#funcionalidades" class="btn btn-outline-custom">
+                        Conhecer Solução
+                    </a>
                 </div>
-                
-                <div class="col-lg-6">
-                    <div class="project-screenshot-wrapper">
-                        <div class="project-screenshot p-0">
-                            <img src="img/imgrelatorios.png" 
-                                 alt="Dashboard Financeiro do Parceiro" 
-                                 class="img-fluid w-100 h-100" 
-                                 style="object-fit: cover; border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.1);">
-                        </div>
-                    </div>
+                <div class="mt-4 text-muted small">
+                    <i class="bi bi-shield-check text-primary me-2"></i> Segurança Garantida
+                    <i class="bi bi-graph-up-arrow text-success ms-3 me-2"></i> Foco no Crescimento
                 </div>
             </div>
+            
+            <div class="col-lg-6">
+                <div class="row g-3">
+                    
+                    <div class="col-6">
+                        <div class="img-container-3d">
+                            <img src="img/telaestoque.png" alt="Controle de Estoque">
+                        </div>
+                    </div>
+                    
+                    <div class="col-6">
+                        <div class="img-container-3d">
+                            <img src="img/telahome.png" alt="Dashboard Principal">
+                        </div>
+                    </div>
+                    
+                    <div class="col-6">
+                        <div class="img-container-3d">
+                            <img src="img/telapagar.png" alt="Contas a Pagar">
+                        </div>
+                    </div>
+                    
+                    <div class="col-6">
+                        <div class="img-container-3d">
+                            <img src="img/telavendas.png" alt="Gestão de Vendas">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
-    </header>
+    </div>
+</header>
 
     <section id="funcionalidades" class="py-5">
         <div class="container py-5">
