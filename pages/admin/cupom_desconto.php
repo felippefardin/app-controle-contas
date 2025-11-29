@@ -11,7 +11,9 @@ if (!isset($_SESSION['super_admin'])) {
 $master_conn = getMasterConnection();
 $msg = "";
 
-// --- LÓGICA DE ADICIONAR CUPOM ---
+// ==========================================================
+// 1. LÓGICA ORIGINAL (CRIAR CUPOM) - MANTIDA
+// ==========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao']) && $_POST['acao'] === 'criar') {
     $codigo = strtoupper(trim($_POST['codigo']));
     $tipo = $_POST['tipo'];
@@ -29,7 +31,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao']) && $_POST['ac
     }
 }
 
-// --- LÓGICA DE EXCLUIR/TOGGLE ---
+// ==========================================================
+// 2. NOVA LÓGICA (ENVIAR PROMOÇÃO POR PERÍODO) - AJUSTADA
+// ==========================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao']) && $_POST['acao'] === 'enviar_promocao') {
+    $cupom_id = intval($_POST['cupom_id']);
+    $tenants_selecionados = $_POST['tenants'] ?? [];
+    
+    // As datas de aplicação nas faturas (obrigatórias para essa lógica)
+    $data_inicio_promo = $_POST['data_inicio_promo'];
+    $data_fim_promo    = $_POST['data_fim_promo'];
+
+    if (empty($data_inicio_promo) || empty($data_fim_promo)) {
+        $msg = "<div class='alert error'>Você precisa definir a Data de Início e Fim para aplicar o desconto nas faturas.</div>";
+    } elseif (strtotime($data_fim_promo) < strtotime($data_inicio_promo)) {
+        $msg = "<div class='alert error'>A Data Fim não pode ser menor que a Data Início.</div>";
+    } else {
+        $count = 0;
+        if (!empty($tenants_selecionados)) {
+            $stmtProm = $master_conn->prepare("INSERT INTO tenant_promocoes (tenant_id, cupom_id, data_inicio, data_fim, visualizado, ativo) VALUES (?, ?, ?, ?, 0, 1)");
+            
+            foreach ($tenants_selecionados as $t_id) {
+                // Verifica duplicidade para o mesmo período e cupom (opcional, mas recomendado)
+                // Aqui vamos apenas inserir. O script de faturas que deve checar se há promo vigente.
+                $stmtProm->bind_param("iiss", $t_id, $cupom_id, $data_inicio_promo, $data_fim_promo);
+                if ($stmtProm->execute()) {
+                    $count++;
+                }
+            }
+            $msg = "<div class='alert success'>Promoção programada para $count clientes!<br>Válida nas faturas de " . date('d/m/Y', strtotime($data_inicio_promo)) . " até " . date('d/m/Y', strtotime($data_fim_promo)) . ".</div>";
+        } else {
+            $msg = "<div class='alert error'>Nenhum cliente selecionado.</div>";
+        }
+    }
+}
+
+// ==========================================================
+// 3. LÓGICA DE EXCLUIR
+// ==========================================================
 if (isset($_GET['excluir'])) {
     $id = intval($_GET['excluir']);
     $master_conn->query("DELETE FROM cupons_desconto WHERE id = $id");
@@ -37,9 +76,16 @@ if (isset($_GET['excluir'])) {
     exit;
 }
 
-// --- LISTAGEM ---
+// ==========================================================
+// 4. CONSULTAS
+// ==========================================================
 $cupons = $master_conn->query("SELECT * FROM cupons_desconto ORDER BY criado_em DESC");
+
+$clientes_res = $master_conn->query("SELECT id, nome_empresa, admin_email FROM tenants WHERE status_assinatura = 'ativo' ORDER BY nome_empresa ASC");
+$clientes = [];
+while($row = $clientes_res->fetch_assoc()) { $clientes[] = $row; }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -62,6 +108,9 @@ $cupons = $master_conn->query("SELECT * FROM cupons_desconto ORDER BY criado_em 
         .btn-save:hover { background: #218838; }
         .btn-back { background: #555; text-decoration: none; display: inline-block; margin-bottom: 20px; }
         
+        .btn-promo { background: #e67e22; padding: 5px 10px; font-size: 0.8rem; text-decoration: none; border-radius: 4px; color: white; border: none; cursor: pointer; margin-right: 5px; }
+        .btn-promo:hover { background: #d35400; }
+
         /* Table */
         table { width: 100%; border-collapse: collapse; margin-top: 30px; background: #1a1a1a; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
@@ -71,6 +120,16 @@ $cupons = $master_conn->query("SELECT * FROM cupons_desconto ORDER BY criado_em 
         .alert { padding: 10px; border-radius: 4px; margin-bottom: 15px; text-align: center; }
         .success { background: rgba(40, 167, 69, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
         .error { background: rgba(220, 53, 69, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
+        .modal-content { background-color: #1a1a1a; margin: 5% auto; padding: 25px; border: 1px solid #333; width: 50%; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.7); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #fff; }
+        .client-list { max-height: 250px; overflow-y: auto; margin-top: 15px; border: 1px solid #333; padding: 10px; background: #151515; }
+        .client-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #222; }
+        .client-item:hover { background: #222; }
+        .client-item input { width: auto; margin-right: 15px; transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -82,6 +141,7 @@ $cupons = $master_conn->query("SELECT * FROM cupons_desconto ORDER BY criado_em 
 
         <form method="POST" style="background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333;">
             <input type="hidden" name="acao" value="criar">
+            <h3 style="margin-top:0; color:#ccc; font-size:1.1rem; border-bottom:1px solid #333; padding-bottom:10px;">Criar Novo Cupom</h3>
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                 <div style="flex: 1;">
                     <label>Código do Cupom</label>
@@ -99,7 +159,7 @@ $cupons = $master_conn->query("SELECT * FROM cupons_desconto ORDER BY criado_em 
                     <input type="number" name="valor" step="0.01" placeholder="10.00" required>
                 </div>
                 <div style="flex: 1;">
-                    <label>Validade (Opcional)</label>
+                    <label>Validade (Opcional - Uso Passivo)</label>
                     <input type="date" name="data_expiracao">
                 </div>
             </div>
@@ -115,29 +175,122 @@ $cupons = $master_conn->query("SELECT * FROM cupons_desconto ORDER BY criado_em 
                 <tr>
                     <th>Código</th>
                     <th>Desconto</th>
-                    <th>Validade</th>
-                    <th>Descrição</th>
+                    <th>Uso Passivo</th>
                     <th>Ação</th>
                 </tr>
             </thead>
             <tbody>
                 <?php while($c = $cupons->fetch_assoc()): ?>
                 <tr>
-                    <td style="font-weight: bold; color: #fff;"><?= htmlspecialchars($c['codigo']) ?></td>
+                    <td style="font-weight: bold; color: #fff;">
+                        <?= htmlspecialchars($c['codigo']) ?>
+                        <div style="font-size:0.8rem; color:#aaa; font-weight:normal;"><?= htmlspecialchars($c['descricao']) ?></div>
+                    </td>
                     <td>
                         <?= ($c['tipo_desconto'] == 'porcentagem') ? intval($c['valor']) . '%' : 'R$ ' . number_format($c['valor'], 2, ',', '.') ?>
                     </td>
                     <td>
-                        <?= $c['data_expiracao'] ? date('d/m/Y', strtotime($c['data_expiracao'])) : '<span style="color:#2ecc71">Indeterminado</span>' ?>
+                        <?= $c['data_expiracao'] ? 'Até ' . date('d/m/Y', strtotime($c['data_expiracao'])) : 'Indeterminado' ?>
                     </td>
-                    <td style="font-size: 0.9rem; color: #aaa;"><?= htmlspecialchars($c['descricao']) ?></td>
                     <td>
-                        <a href="?excluir=<?= $c['id'] ?>" onclick="return confirm('Excluir este cupom?')" style="color: #e74c3c;"><i class="fas fa-trash"></i></a>
+                        <button type="button" class="btn-promo" onclick="abrirModalPromo(<?= $c['id'] ?>, '<?= $c['codigo'] ?>', '<?= ($c['tipo_desconto']=='porcentagem' ? intval($c['valor']).'%' : 'R$'.$c['valor']) ?>')" title="Enviar Promoção Ativa">
+                            <i class="fas fa-paper-plane"></i> Enviar
+                        </button>
+
+                        <a href="?excluir=<?= $c['id'] ?>" onclick="return confirm('Excluir este cupom?')" style="color: #e74c3c;" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </a>
                     </td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
         </table>
     </div>
+
+    <div id="modalPromo" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalPromo()">&times;</span>
+            <h2 style="margin-bottom: 5px;">Aplicar Promoção Automática</h2>
+            <p style="text-align:center; color:#aaa; margin-top:0;">
+                Cupom: <strong id="modalCupomCodigo" style="color:#00bfff;"></strong> 
+                (<span id="modalCupomValor"></span> de desconto)
+            </p>
+            
+            <form method="POST">
+                <input type="hidden" name="acao" value="enviar_promocao">
+                <input type="hidden" name="cupom_id" id="inputCupomId">
+
+                <div style="background: #252525; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #444;">
+                    <h4 style="margin:0 0 10px 0; color:#e67e22;"><i class="fas fa-calendar-alt"></i> Período de Aplicação nas Faturas</h4>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;">
+                            <label>Aplicar a partir de:</label>
+                            <input type="date" name="data_inicio_promo" required>
+                        </div>
+                        <div style="flex:1;">
+                            <label>Até a data:</label>
+                            <input type="date" name="data_fim_promo" required>
+                        </div>
+                    </div>
+                    <small style="color:#999; display:block; margin-top:5px;">
+                        * Todas as faturas geradas para os clientes selecionados dentro deste período receberão o desconto automaticamente. Após a data final, o valor volta ao normal.
+                    </small>
+                </div>
+
+                <label>Selecione os Clientes:</label>
+                <div class="client-list">
+                    <div class="client-item" style="background: #333; position: sticky; top: 0; z-index: 2;">
+                        <input type="checkbox" id="selectAll" onclick="toggleAll(this)">
+                        <label for="selectAll" style="margin:0; cursor:pointer; color: #fff;"><strong>Selecionar Todos</strong></label>
+                    </div>
+                    <?php if (count($clientes) > 0): ?>
+                        <?php foreach($clientes as $cli): ?>
+                        <div class="client-item">
+                            <input type="checkbox" name="tenants[]" value="<?= $cli['id'] ?>" class="chk-cliente">
+                            <div style="display:flex; flex-direction:column;">
+                                <span style="color:white; font-weight:bold;"><?= htmlspecialchars($cli['nome_empresa']) ?></span>
+                                <span style="font-size:0.8rem; color:#aaa;"><?= $cli['admin_email'] ?></span>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p style="padding:10px; text-align:center;">Nenhum cliente ativo encontrado.</p>
+                    <?php endif; ?>
+                </div>
+
+                <button type="submit" class="btn btn-save" style="margin-top:20px; background: #e67e22;">
+                    <i class="fas fa-check-circle"></i> Confirmar e Aplicar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalPromo(id, codigo, valor) {
+            document.getElementById('inputCupomId').value = id;
+            document.getElementById('modalCupomCodigo').innerText = codigo;
+            document.getElementById('modalCupomValor').innerText = valor;
+            
+            // Define data inicio como hoje automaticamente
+            const hoje = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="data_inicio_promo"]').value = hoje;
+
+            document.getElementById('modalPromo').style.display = "block";
+        }
+        function fecharModalPromo() {
+            document.getElementById('modalPromo').style.display = "none";
+        }
+        function toggleAll(source) {
+            checkboxes = document.getElementsByClassName('chk-cliente');
+            for(var i=0, n=checkboxes.length;i<n;i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('modalPromo')) {
+                fecharModalPromo();
+            }
+        }
+    </script>
 </body>
 </html>

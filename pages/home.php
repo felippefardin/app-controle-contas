@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (Ajustado com Flash Messages)
+// home.php (CORRIGIDO)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -100,7 +100,8 @@ if ($connMaster) {
         }
     } catch (Exception $e) { }
     
-    $connMaster->close();
+    // CORREÇÃO: NÃO fechar a conexão aqui, pois ela será usada mais abaixo para os cupons
+    // $connMaster->close();  <-- LINHA REMOVIDA
 }
 
 // --- LÓGICA DE LEMBRETES ---
@@ -129,6 +130,45 @@ $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
 include('../includes/header.php');
+
+// --- LÓGICA DE PROMOÇÃO ESPECIAL (GIFT) ---
+// Agora a conexão $connMaster ainda está aberta e pode ser usada
+$promo_modal = null;
+if ($tenant_id && $connMaster) {
+    // Busca promoção ativa e não visualizada
+    $sqlPromo = "
+        SELECT tp.id, c.descricao, c.valor, c.tipo_desconto 
+        FROM tenant_promocoes tp
+        JOIN cupons_desconto c ON tp.cupom_id = c.id
+        WHERE tp.tenant_id = ? AND tp.visualizado = 0 AND tp.ativo = 1
+        LIMIT 1
+    ";
+    $stmtP = $connMaster->prepare($sqlPromo);
+    if ($stmtP) {
+        // Tenta pegar o ID numérico da sessão se existir, senão busca no banco
+        $tenant_id_numeric = $_SESSION['tenant_id_master'] ?? null;
+
+        if (!$tenant_id_numeric) {
+             // CORREÇÃO SEGURA: Buscar ID numérico do tenant se não tiver na sessão
+            $t_uuid = $_SESSION['tenant_id'];
+            $qT = $connMaster->query("SELECT id FROM tenants WHERE tenant_id = '$t_uuid' LIMIT 1");
+            if($qT && $rowT = $qT->fetch_assoc()){
+                $tenant_id_numeric = $rowT['id'];
+            }
+        }
+
+        if ($tenant_id_numeric) {
+            $stmtP->bind_param("i", $tenant_id_numeric);
+            $stmtP->execute();
+            $resPromo = $stmtP->get_result();
+            $promo_modal = $resPromo->fetch_assoc();
+        }
+        $stmtP->close();
+    }
+    
+    // Agora sim podemos fechar a conexão Master se quisermos, ou deixar o PHP fechar no fim do script
+    $connMaster->close();
+}
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -220,7 +260,7 @@ include('../includes/header.php');
     }
     /* CSS DO MODAL CUSTOMIZADO */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
-    .custom-modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: #333; }
+    .custom-modal-content { background-color: #0000; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: #333; }
     .custom-modal-header h5 { margin: 0; font-size: 1.5rem; }
     .custom-modal-body { margin: 20px 0; line-height: 1.6; font-size: 1rem; }
     .custom-modal-footer { text-align: right; }
@@ -427,5 +467,41 @@ document.getElementById('btnAceitarChat').addEventListener('click', function() {
     });
 });
 </script>
+
+<?php if ($promo_modal): ?>
+<div id="modalGift" class="custom-modal" style="display:block;">
+    <div class="custom-modal-content" style="text-align:center; border: 1px solid #e67e22; box-shadow: 0 0 20px rgba(230, 126, 34, 0.5);">
+        <div style="font-size: 3rem; color: #e67e22; margin-bottom: 10px;">
+            <i class="fas fa-gift"></i>
+        </div>
+        <h2 style="color: #fff;">Você ganhou um presente!</h2>
+        <p style="font-size: 1.2rem; color: #ccc; margin: 20px 0;">
+            Parabéns! Você recebeu um presente do sistema:<br><br>
+            <strong style="color: #00bfff; font-size: 1.3rem;">
+                <?= htmlspecialchars($promo_modal['descricao']) ?>
+            </strong>
+        </p>
+        <p style="font-size: 0.9rem; color: #888;">O desconto será aplicado automaticamente na sua próxima fatura.</p>
+        <p style="margin-top:20px; font-weight:bold; color: #eee;">Obrigado por ser nosso parceiro!</p>
+        
+        <button class="btn-modal btn-accept" style="background:#e67e22; width:100%; padding: 15px; font-size:1.1rem;" onclick="fecharGift(<?= $promo_modal['id'] ?>)">
+            OK, Obrigado!
+        </button>
+    </div>
+</div>
+
+<script>
+function fecharGift(promoId) {
+    // Ajax para marcar como visualizado
+    fetch('../actions/marcar_promocao_lida.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id=' + promoId
+    }).then(() => {
+        document.getElementById('modalGift').style.display = 'none';
+    });
+}
+</script>
+<?php endif; ?>
 
 <?php include('../includes/footer.php'); ?>

@@ -221,27 +221,48 @@ display_flash_message();
         </div>
         
         <div id="benefitsContent" class="benefit-content">
-            <label style="margin-top: 0;">Código do Cupom:</label>
-            <div class="flex-group">
-                <input type="text" id="cupom" name="cupom" value="<?php echo htmlspecialchars($old['cupom'] ?? ''); ?>" placeholder="Ex: PROMO10" style="text-transform:uppercase;" oninput="saveLocal('cupom', this.value)">
-                <button type="button" class="btn-check" onclick="checkCupom()">Validar</button>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="margin-top: 0; color: #00bfff;">Cupom de Desconto:</label>
+                <div class="input-group mt-2">
+                    <input type="text" id="cupom" name="cupom" 
+                           value="<?php echo htmlspecialchars($old['cupom'] ?? ''); ?>" 
+                           placeholder="DIGITE SEU CUPOM" 
+                           style="text-transform:uppercase; border-top-right-radius: 0; border-bottom-right-radius: 0;" 
+                           oninput="saveLocal('cupom', this.value)">
+                    <button type="button" class="btn btn-secondary" 
+                            style="border-top-left-radius: 0; border-bottom-left-radius: 0; background: #444; color: white; border: 1px solid #333;" 
+                            onclick="checkCupom()">
+                        <i class="fas fa-check"></i> Validar
+                    </button>
+                </div>
+                <span id="msgCupom" style="display:block; margin-top:5px;"></span>
             </div>
-            <span id="msgCupom"></span>
 
             <hr style="border-color: #444; margin: 15px 0;">
 
             <div id="formIndicacao">
-                <div class="mb-3">
-                    <label for="inputCodigoIndicacao" class="form-label">Código de Indicação</label>
-                    <div class="flex-group">
-                        <input type="text" class="form-control" id="inputCodigoIndicacao" name="codigo_indicacao" value="<?php echo htmlspecialchars($old['codigo_indicacao'] ?? ''); ?>" placeholder="Ex: A1B2C3D4" style="text-transform: uppercase;" oninput="saveLocal('codigo_indicacao', this.value)">
-                        <button type="button" class="btn btn-primary" onclick="validarCodigoIndicacao()">Validar Código</button>
-                    </div>
-                    <div id="feedbackIndicacao" class="form-text mt-2"></div>
+                <label for="inputCodigoIndicacao" style="color: #00bfff;">Código de Indicação:</label>
+                <div class="input-group mt-2">
+                    <input type="text" id="inputCodigoIndicacao" name="codigo_indicacao" 
+                           value="<?php echo htmlspecialchars($old['codigo_indicacao'] ?? ''); ?>" 
+                           placeholder="CÓDIGO DO PARCEIRO" 
+                           style="text-transform: uppercase; border-top-right-radius: 0; border-bottom-right-radius: 0;" 
+                           oninput="saveLocal('codigo_indicacao', this.value)">
+                    <button type="button" class="btn btn-primary" 
+                            style="border-top-left-radius: 0; border-bottom-left-radius: 0;" 
+                            onclick="validarCodigoIndicacao()">
+                        <i class="fas fa-user-check"></i> Validar
+                    </button>
                 </div>
+                <div id="feedbackIndicacao" class="form-text mt-2"></div>
+
                 <input type="hidden" id="id_indicador_validado" name="id_indicador">
-                <button type="button" class="btn btn-success d-none" id="btnConfirmarIndicacao" style="width:100%; margin-top:10px; cursor:default;">Indicação Confirmada <i class="fas fa-check"></i></button>
+                <button type="button" class="btn btn-success d-none" id="btnConfirmarIndicacao" style="width:100%; margin-top:10px; cursor:default;">
+                    Indicação Confirmada <i class="fas fa-check"></i>
+                </button>
             </div>
+
         </div>
     </div>
 
