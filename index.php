@@ -53,7 +53,7 @@ require_once 'includes/session_init.php';
         /* --- Hero Section --- */
         .hero-section {
             background: linear-gradient(135deg, #f0f8ff 0%, #ffffff 100%);
-            padding: 160px 0 100px;
+            padding: 40px 0 100px;
             position: relative;
             overflow: hidden;
         }
@@ -350,7 +350,7 @@ require_once 'includes/session_init.php';
 
         /* Responsivo */
         @media (max-width: 991px) {
-            /* .hero-section { padding: 40px 0 60px; text-align: center; } */
+            .hero-section { padding: 40px 0 60px; text-align: center; }
             .hero-title { font-size: 2.5rem; }
             .project-screenshot-wrapper { margin-top: 60px; }
             .hero-bg-shape { display: none; }

@@ -39,6 +39,9 @@ $tem_desconto = false;
 $data_fim_promocao = null;
 $nome_cupom_ativo = null;
 
+// Configuração do preço por usuário extra
+$preco_por_extra = 4.00; 
+
 /* Mapa de planos */
 $mapa_planos = [
     'basico'    => ['nome' => 'Plano Básico', 'base' => 3,  'desc' => 'Ideal para pequenos negócios',       'preco' => 19.00],
@@ -86,7 +89,6 @@ if ($tenant_id) {
             $preco_final_atual = $preco_plano_base;
 
             // 2. Verifica se há promoção ativa vinda do Admin (Modal)
-            // Prioridade para tabela tenant_promocoes pois é onde o admin/cupom_desconto.php salva
             $stmtPromo = $conn->prepare("
                 SELECT tp.data_fim, c.tipo_desconto, c.valor, c.codigo 
                 FROM tenant_promocoes tp 
@@ -98,7 +100,6 @@ if ($tenant_id) {
                 ORDER BY tp.id DESC LIMIT 1
             ");
             
-            // Precisamos do ID numérico do tenant para a tabela de promoções, não o UUID string
             $tenant_id_int = $dados_assinatura['id']; 
             
             $stmtPromo->bind_param("i", $tenant_id_int);
@@ -115,11 +116,10 @@ if ($tenant_id) {
                     $desconto_valor = $preco_plano_base * ($promo['valor'] / 100);
                     $preco_final_atual = $preco_plano_base - $desconto_valor;
                 } else {
-                    // Desconto Fixo
                     $preco_final_atual = $preco_plano_base - $promo['valor'];
                 }
             } else {
-                // 3. Fallback: Verifica se tem valor promocional direto na tabela tenants (legado ou manual)
+                // 3. Fallback: Valor promocional direto na tabela
                 $valor_promocional = isset($dados_assinatura['valor_promocional']) ? (float)$dados_assinatura['valor_promocional'] : null;
                 $fim_promo_db = $dados_assinatura['data_fim_promocao'] ?? null;
 
@@ -142,7 +142,11 @@ if ($tenant_id) {
             // Garante que não fique negativo
             if ($preco_final_atual < 0) $preco_final_atual = 0;
 
-            // Data renovação e Trial (Lógica mantida)
+            // --- CÁLCULO FINAL DA FATURA (Plano + Extras) ---
+            $custo_extras_total = $extras_comprados * $preco_por_extra;
+            $valor_fatura_total = $preco_final_atual + $custo_extras_total;
+
+            // Data renovação e Trial
             $data_renovacao_str = $dados_assinatura['data_renovacao'] ?? null;
             if (!empty($data_renovacao_str)) {
                 try {
@@ -235,8 +239,9 @@ display_flash_message();
         
         /* Ajuste Visual de Preços */
         .preco-original { text-decoration: line-through; color: #777; font-size: 0.95rem; margin-right: 8px; font-weight: normal; }
-        .preco-promocional { color: #2ecc71; font-weight: bold; font-size: 1.2rem; }
+        .preco-promocional { color: #2ecc71; font-weight: bold; font-size: 1.1rem; }
         .aviso-validade { font-size: 0.8rem; color: #ffc107; margin-top: 3px; display:block; text-align: right;}
+        .valor-total-destaque { font-size: 1.3rem; font-weight: 800; color: #2ecc71; display: block; }
     </style>
 </head>
 <body>
@@ -268,21 +273,30 @@ display_flash_message();
                 <span class="value" style="color: #00bfff; font-size: 1.1rem;"><?= htmlspecialchars($nome_plano_atual) ?></span>
             </div>
 
-            <div class="info-row">
-                <span class="label">Valor Mensal:</span>
-                <span class="value">
-                    <?php if ($tem_desconto): ?>
-                        <span class="preco-original">R$ <?= number_format($preco_plano_base, 2, ',', '.') ?></span>
-                        <span class="preco-promocional">R$ <?= number_format($preco_final_atual, 2, ',', '.') ?></span>
-                        <?php if ($data_fim_promocao): ?>
-                            <span class="aviso-validade">Promoção válida até <?= $data_fim_promocao ?></span>
-                        <?php else: ?>
-                            <span class="aviso-validade">Desconto aplicado</span>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        R$ <?= number_format($preco_plano_base, 2, ',', '.') ?>
+            <div class="info-row" style="align-items: flex-start;">
+                <span class="label" style="margin-top: 5px;">Valor Mensal Fatura:</span>
+                <div style="text-align: right;">
+                    <span class="valor-total-destaque">
+                        R$ <?= number_format($valor_fatura_total, 2, ',', '.') ?>
+                    </span>
+                    
+                    <?php if ($extras_comprados > 0): ?>
+                        <div style="font-size: 0.8rem; color: #aaa; margin-top: 3px;">
+                            (Plano: R$ <?= number_format($preco_final_atual, 2, ',', '.') ?> + Extras: R$ <?= number_format($custo_extras_total, 2, ',', '.') ?>)
+                        </div>
                     <?php endif; ?>
-                </span>
+
+                    <?php if ($tem_desconto): ?>
+                        <div style="font-size: 0.8rem; color: #aaa; margin-top: 3px;">
+                            <span class="preco-original" style="font-size: 0.8rem;">Plano Base: R$ <?= number_format($preco_plano_base, 2, ',', '.') ?></span>
+                            <?php if ($data_fim_promocao): ?>
+                                <span class="aviso-validade">Promoção válida até <?= $data_fim_promocao ?></span>
+                            <?php else: ?>
+                                <span class="aviso-validade">Desconto aplicado</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="info-row">
@@ -359,7 +373,7 @@ display_flash_message();
 
             <div class="action-box">
                 <div style="font-size: 0.85rem; color: #ccc; margin-bottom: 10px; text-align: center;">
-                    Gerencie seus slots extras (R$ 4,00/mês cada).
+                    Gerencie seus slots extras (R$ <?= number_format($preco_por_extra, 2, ',', '.') ?>/mês cada).
                 </div>
                 <div class="action-row">
                     <form id="formAddExtra" action="../actions/comprar_extra_action.php" method="POST">
@@ -480,7 +494,7 @@ function abrirModalCancelamento() {
 function confirmarAdicao() {
     Swal.fire({
         title: 'Adicionar Usuário?',
-        text: "Adicional de R$ 4,00/mês na fatura.",
+        text: "Adicional de R$ <?= number_format($preco_por_extra, 2, ',', '.') ?>/mês na fatura.",
         icon: 'info',
         showCancelButton: true,
         confirmButtonColor: '#00bfff',

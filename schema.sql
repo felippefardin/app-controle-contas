@@ -281,28 +281,42 @@ CREATE TABLE IF NOT EXISTS configuracoes_tenant (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Tenants (master)
--- Atualizado com as colunas necessárias para o fluxo de cancelamento
+-- Tabela Tenants (Versão Corrigida para Produção)
 CREATE TABLE IF NOT EXISTS tenants (
   id INT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) DEFAULT NULL,
+  usuario_id INT DEFAULT NULL,
   nome VARCHAR(255) DEFAULT NULL,
   nome_empresa VARCHAR(255) NOT NULL,
   admin_email VARCHAR(255) NOT NULL,
   subdominio VARCHAR(191) DEFAULT NULL,
+  
+  -- Credenciais do Banco do Tenant
   db_host VARCHAR(255) NOT NULL,
   db_database VARCHAR(255) NOT NULL,
   db_user VARCHAR(255) NOT NULL,
   db_password VARCHAR(255) NOT NULL,
-  status_assinatura VARCHAR(50) DEFAULT 'ativo',
-  role VARCHAR(50) NOT NULL DEFAULT 'usuario',
-  data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   
-  -- Colunas adicionadas para controle de renovação e cancelamento
+  -- Controle de Assinatura e Limites
+  plano_atual VARCHAR(50) DEFAULT 'basico',
+  status_assinatura VARCHAR(50) DEFAULT 'trial',
+  id_assinatura_mp VARCHAR(100) DEFAULT NULL, -- Importante para o checkout
+  data_inicio_teste TIMESTAMP NULL DEFAULT NULL,
   data_renovacao DATE DEFAULT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'proprietario',
+  usuarios_extras INT DEFAULT 0, -- Importante para o add user
+  
+  -- Marketing e Cancelamento
+  cupom_registro VARCHAR(50) DEFAULT NULL,
+  msg_cupom_visto TINYINT(1) DEFAULT 0,
+  msg_indicacao_visto TINYINT(1) DEFAULT 0,
   tipo_cancelamento ENUM('desativar', 'excluir') DEFAULT NULL,
+  data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY (id),
   UNIQUE KEY admin_email (admin_email),
-  UNIQUE KEY subdominio (subdominio)
+  UNIQUE KEY subdominio (subdominio),
+  KEY idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS faturas_assinatura (

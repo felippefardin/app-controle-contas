@@ -2,114 +2,99 @@
 // actions/checkout_plano.php
 session_start();
 require_once '../database.php';
+require_once '../includes/utils.php';
+
+use Dotenv\Dotenv;
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->safeLoad();
+
+// ---------------------------------------------------------
+// 🔹 LÓGICA DE SELEÇÃO DE AMBIENTE (FIX PARA SEU .ENV)
+// ---------------------------------------------------------
+$modo = $_ENV['MERCADOPAGO_MODE'] ?? 'sandbox';
+$mp_access_token = ($modo === 'producao') ? $_ENV['MP_ACCESS_TOKEN_PRODUCAO'] : $_ENV['MP_ACCESS_TOKEN_SANDBOX'];
+$mp_back_url     = ($modo === 'producao') ? $_ENV['MP_BACK_URL_PRODUCAO']     : $_ENV['MP_BACK_URL_SANDBOX'];
+
+if (empty($mp_access_token)) {
+    set_flash_message('danger', "Erro de Configuração: Token do Mercado Pago não encontrado no .env");
+    header("Location: ../pages/assinar.php");
+    exit;
+}
+// ---------------------------------------------------------
 
 if (!isset($_SESSION['usuario_logado']) || !$_SESSION['tenant_id']) {
     header("Location: ../pages/login.php");
     exit;
 }
 
-$plano = $_POST['plano'] ?? '';
+$plano = $_POST['plano'] ?? 'basico';
+$email_usuario = $_SESSION['email'];
 $tenant_id = $_SESSION['tenant_id'];
-// Garante que pegamos o ID correto, seja do master ou do usuário redirecionado
-$usuario_atual_id = $_SESSION['usuario_id_master'] ?? $_SESSION['usuario_id']; 
 
-// Captura os dados enviados pelo formulário (inputs hidden)
-$novo_cupom = isset($_POST['cupom']) ? strtoupper(trim($_POST['cupom'])) : '';
-$codigo_indicacao = isset($_POST['codigo_indicacao']) ? strtoupper(trim($_POST['codigo_indicacao'])) : '';
+// Valores dos planos
+$valor_plano = match($plano) {
+    'plus' => 39.00,
+    'essencial' => 59.00,
+    default => 19.00
+};
 
-$planos_validos = ['basico', 'plus', 'essencial'];
-if (!in_array($plano, $planos_validos)) {
-    header("Location: ../pages/assinar.php");
-    exit;
-}
+// URL da API
+$url = "https://api.mercadopago.com/preapproval";
 
-$conn = getMasterConnection();
+$data = [
+    "payer_email" => $email_usuario,
+    "back_url" => $mp_back_url, // Usa a URL do .env
+    "reason" => "Assinatura " . ucfirst($plano) . " - App Controle",
+    "external_reference" => $tenant_id,
+    "auto_recurring" => [
+        "frequency" => 1,
+        "frequency_type" => "months",
+        "transaction_amount" => $valor_plano,
+        "currency_id" => "BRL"
+    ],
+    "status" => "pending"
+];
 
-try {
-    $conn->begin_transaction();
+// Chamada cURL
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "Authorization: Bearer " . $mp_access_token // Usa o token selecionado
+]);
 
-    // 1. Atualiza o Plano e Status do Tenant
-    $data_renovacao = date('Y-m-d', strtotime('+30 days'));
-    
-    $stmt = $conn->prepare("UPDATE tenants SET plano_atual = ?, status_assinatura = 'ativo', data_renovacao = ? WHERE tenant_id = ?");
-    $stmt->bind_param("sss", $plano, $data_renovacao, $tenant_id);
-    
-    if (!$stmt->execute()) {
-        throw new Exception("Erro ao atualizar plano.");
-    }
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+$mp_response = json_decode($response, true);
+
+// Verifica sucesso
+if (isset($mp_response['init_point'])) {
+    // IMPORTANTE: Atualizamos o plano no banco ANTES de enviar para garantir
+    // (O status fica 'pendente' até o webhook confirmar)
+    $conn = getMasterConnection();
+    $stmt = $conn->prepare("UPDATE tenants SET plano_atual = ? WHERE tenant_id = ?");
+    $stmt->bind_param("ss", $plano, $tenant_id);
+    $stmt->execute();
     $stmt->close();
+    $conn->close();
 
-    // 2. Processa Cupom (se houver)
-    if (!empty($novo_cupom)) {
-        $stmtCupom = $conn->prepare("UPDATE tenants SET cupom_registro = ?, msg_cupom_visto = 0 WHERE tenant_id = ?");
-        $stmtCupom->bind_param("ss", $novo_cupom, $tenant_id);
-        $stmtCupom->execute();
-        $stmtCupom->close();
-    }
-
-    // 3. Processa Indicação (via código)
-    if (!empty($codigo_indicacao)) {
-        // Busca o usuário dono do código de indicação
-        $sqlInd = "SELECT id, tenant_id FROM usuarios WHERE codigo_indicacao = ? AND id != ? LIMIT 1";
-        $stmtInd = $conn->prepare($sqlInd);
-        $stmtInd->bind_param("si", $codigo_indicacao, $usuario_atual_id);
-        $stmtInd->execute();
-        $resInd = $stmtInd->get_result();
-        
-        if ($resInd->num_rows > 0) {
-            $indicador = $resInd->fetch_assoc();
-            $id_indicador = $indicador['id'];
-            $tenant_indicador = $indicador['tenant_id'];
-
-            // Verifica se este usuário já foi indicado anteriormente (evita duplicidade)
-            $sqlCheck = "SELECT id FROM indicacoes WHERE id_indicado = ?";
-            $stmtCheck = $conn->prepare($sqlCheck);
-            $stmtCheck->bind_param("i", $usuario_atual_id);
-            $stmtCheck->execute();
-            
-            if ($stmtCheck->get_result()->num_rows == 0) {
-                // Registra a indicação
-                $stmtInsert = $conn->prepare("INSERT INTO indicacoes (id_indicador, id_indicado) VALUES (?, ?)");
-                $stmtInsert->bind_param("ii", $id_indicador, $usuario_atual_id);
-                $stmtInsert->execute();
-                $stmtInsert->close();
-
-                // Reseta flag de mensagem de indicação para exibir no painel depois
-                $conn->query("UPDATE tenants SET msg_indicacao_visto = 0 WHERE tenant_id = '$tenant_id'");
-
-                // --- Lógica de Recompensa para quem indicou ---
-                // Conta quantas indicações esse indicador já fez
-                $sqlCount = "SELECT COUNT(*) as total FROM indicacoes WHERE id_indicador = ?";
-                $stmtCount = $conn->prepare($sqlCount);
-                $stmtCount->bind_param("i", $id_indicador);
-                $stmtCount->execute();
-                $total = $stmtCount->get_result()->fetch_assoc()['total'];
-                $stmtCount->close();
-
-                // Exemplo: A cada 3 indicações, ganha 30 dias
-                if ($total > 0 && $total % 3 == 0) {
-                    if ($tenant_indicador) {
-                        $conn->query("UPDATE tenants SET data_renovacao = DATE_ADD(IF(data_renovacao > CURDATE(), data_renovacao, CURDATE()), INTERVAL 30 DAY) WHERE tenant_id = '$tenant_indicador'");
-                    }
-                }
-            }
-            $stmtCheck->close();
-        }
-        $stmtInd->close();
-    }
-
-    $conn->commit();
-    $_SESSION['sucesso_pagamento'] = "Plano " . ucfirst($plano) . " ativado com sucesso!";
-    
-    header("Location: ../pages/minha_assinatura.php");
+    header("Location: " . $mp_response['init_point']);
     exit;
+} else {
+    // Tratamento de erro detalhado
+    $msg_erro = "Erro Mercado Pago: " . ($mp_response['message'] ?? 'Resposta desconhecida');
+    
+    if(isset($mp_response['error']) && $mp_response['error'] == 'bad_request') {
+        $msg_erro = "Erro: Verifique se o e-mail ($email_usuario) é válido ou se você não está tentando pagar com a mesma conta que criou a aplicação no MP (erro comum em Sandbox).";
+    }
 
-} catch (Exception $e) {
-    $conn->rollback();
-    $_SESSION['erro_assinatura'] = "Erro ao processar: " . $e->getMessage();
+    error_log("Falha Checkout MP: " . $response);
+    set_flash_message('danger', $msg_erro);
     header("Location: ../pages/assinar.php");
     exit;
 }
-
-$conn->close();
 ?>
