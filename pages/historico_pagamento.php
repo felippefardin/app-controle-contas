@@ -13,13 +13,26 @@ $tenant_id = $_SESSION['tenant_id'] ?? null;
 $faturas = [];
 
 // --- LÓGICA DE DADOS ---
-// Tenta buscar do banco de dados real
 try {
-    // Verifica se a tabela existe (para evitar erro fatal se você ainda não criou)
+    // Verifica se a tabela existe
     $checkTable = $conn->query("SHOW TABLES LIKE 'faturas_assinatura'");
     
     if ($checkTable && $checkTable->num_rows > 0) {
-        $stmt = $conn->prepare("SELECT id, data_vencimento, data_pagamento, valor, status, forma_pagamento FROM faturas_assinatura WHERE tenant_id = ? ORDER BY data_vencimento DESC");
+        // Tenta identificar colunas dinamicamente para evitar erro se 'valor_original' ou 'desconto' não existirem
+        $cols = $conn->query("SHOW COLUMNS FROM faturas_assinatura");
+        $colNames = [];
+        while($c = $cols->fetch_assoc()) { $colNames[] = $c['Field']; }
+        
+        $sqlCampos = "id, data_vencimento, data_pagamento, valor, status, forma_pagamento";
+        
+        // Se existir a coluna, usa. Senão, cria um alias padrão
+        if(in_array('valor_original', $colNames)) $sqlCampos .= ", valor_original";
+        else $sqlCampos .= ", valor as valor_original"; 
+        
+        if(in_array('desconto', $colNames)) $sqlCampos .= ", desconto";
+        else $sqlCampos .= ", 0 as desconto";
+
+        $stmt = $conn->prepare("SELECT $sqlCampos FROM faturas_assinatura WHERE tenant_id = ? ORDER BY data_vencimento DESC");
         $stmt->bind_param("s", $tenant_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -28,11 +41,28 @@ try {
         }
         $stmt->close();
     } else {
-        // DADOS DE SIMULAÇÃO (CASO A TABELA NÃO EXISTA)
-        // Isso permite que você visualize a tela antes de criar a tabela no banco
+        // DADOS DE SIMULAÇÃO (ATUALIZADOS)
         $faturas = [
-            ['id' => 999, 'data_vencimento' => date('Y-m-d'), 'data_pagamento' => date('Y-m-d'), 'valor' => 49.90, 'status' => 'pago', 'forma_pagamento' => 'pix'],
-            ['id' => 888, 'data_vencimento' => date('Y-m-d', strtotime('-1 month')), 'data_pagamento' => date('Y-m-d', strtotime('-1 month')), 'valor' => 49.90, 'status' => 'pago', 'forma_pagamento' => 'cartao']
+            [
+                'id' => 999, 
+                'data_vencimento' => date('Y-m-d'), 
+                'data_pagamento' => date('Y-m-d'), 
+                'valor_original' => 59.90, // Preço Cheio
+                'desconto' => 10.00,       // Desconto
+                'valor' => 49.90,          // Pago
+                'status' => 'pago', 
+                'forma_pagamento' => 'pix'
+            ],
+            [
+                'id' => 888, 
+                'data_vencimento' => date('Y-m-d', strtotime('-1 month')), 
+                'data_pagamento' => date('Y-m-d', strtotime('-1 month')), 
+                'valor_original' => 59.90,
+                'desconto' => 0.00,
+                'valor' => 59.90, 
+                'status' => 'pago', 
+                'forma_pagamento' => 'cartao'
+            ]
         ];
     }
 } catch (Exception $e) {
@@ -50,15 +80,15 @@ include('../includes/header.php');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #121212; color: #eee; font-family: 'Segoe UI', sans-serif; }
-        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
         
         .header-page { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px; }
         .header-page h2 { color: #00bfff; margin: 0; }
         
         .table-responsive { background-color: #1e1e1e; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         table { width: 100%; border-collapse: collapse; }
-        th { background-color: #252525; color: #aaa; padding: 15px; text-align: left; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid #333; color: #ddd; vertical-align: middle; }
+        th { background-color: #252525; color: #aaa; padding: 15px; text-align: left; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+        td { padding: 15px; border-bottom: 1px solid #333; color: #ddd; vertical-align: middle; font-size: 0.95rem; }
         tr:last-child td { border-bottom: none; }
         tr:hover { background-color: #2a2a2a; }
 
@@ -72,13 +102,17 @@ include('../includes/header.php');
         
         .btn-voltar { color: #aaa; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
         .btn-voltar:hover { color: #fff; }
+
+        .text-original { text-decoration: line-through; color: #777; font-size: 0.85rem; margin-right: 5px; }
+        .text-final { color: #fff; font-weight: bold; }
+        .discount-tag { font-size: 0.75rem; color: #2ecc71; display: block; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-page">
-        <h2><i class="fa-solid fa-list-ul"></i> Histórico de Pagamentos</h2>
+        <h2><i class="fa-solid fa-list-ul"></i> Histórico de Pagamentos Detalhado</h2>
         <a href="minha_assinatura.php" class="btn-voltar"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
     </div>
 
@@ -94,20 +128,38 @@ include('../includes/header.php');
                     <tr>
                         <th>Data Venc.</th>
                         <th>Data Pagto.</th>
-                        <th>Valor</th>
+                        <th>Valores</th>
                         <th>Forma</th>
                         <th>Status</th>
                         <th style="text-align: right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($faturas as $fat): ?>
+                    <?php foreach ($faturas as $fat): 
+                        // Cálculos visuais
+                        $vlrOriginal = isset($fat['valor_original']) ? (float)$fat['valor_original'] : (float)$fat['valor'];
+                        $vlrFinal = (float)$fat['valor'];
+                        $vlrDesconto = isset($fat['desconto']) ? (float)$fat['desconto'] : ($vlrOriginal - $vlrFinal);
+                        
+                        // Proteção visual
+                        if ($vlrDesconto < 0) $vlrDesconto = 0;
+                    ?>
                     <tr>
                         <td><?= date('d/m/Y', strtotime($fat['data_vencimento'])) ?></td>
                         <td>
                             <?= !empty($fat['data_pagamento']) ? date('d/m/Y', strtotime($fat['data_pagamento'])) : '-' ?>
                         </td>
-                        <td>R$ <?= number_format($fat['valor'], 2, ',', '.') ?></td>
+                        <td>
+                            <?php if ($vlrDesconto > 0.00): ?>
+                                <div>
+                                    <span class="text-original">R$ <?= number_format($vlrOriginal, 2, ',', '.') ?></span>
+                                    <span class="text-final">R$ <?= number_format($vlrFinal, 2, ',', '.') ?></span>
+                                </div>
+                                <span class="discount-tag"><i class="fa-solid fa-tag"></i> Desconto: -R$ <?= number_format($vlrDesconto, 2, ',', '.') ?></span>
+                            <?php else: ?>
+                                <span class="text-final">R$ <?= number_format($vlrFinal, 2, ',', '.') ?></span>
+                            <?php endif; ?>
+                        </td>
                         <td style="text-transform: capitalize;"><?= $fat['forma_pagamento'] ?? '-' ?></td>
                         <td>
                             <?php if ($fat['status'] === 'pago'): ?>

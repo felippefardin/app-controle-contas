@@ -33,6 +33,12 @@ $dias_restantes_teste = 0;
 $dias_ate_renovacao = 0;
 $tipo_cancelamento = null;
 
+// Variáveis de Preço e Desconto
+$preco_plano_base = 0.00;
+$preco_final_atual = 0.00;
+$tem_desconto = false;
+$data_fim_promocao = null;
+
 /* Mapa de planos */
 $mapa_planos = [
     'basico'    => ['nome' => 'Plano Básico', 'base' => 3,  'desc' => 'Ideal para pequenos negócios',       'preco' => 19.00],
@@ -64,11 +70,46 @@ if ($tenant_id) {
 
             $extras_comprados = (int)($dados_assinatura['usuarios_extras'] ?? 0);
             $info_plano = $mapa_planos[$plano_db];
+            
             $limite_base = (int)($info_plano['base'] ?? 3);
             $nome_plano_atual = $info_plano['nome'] ?? 'Plano Básico';
+            $preco_plano_base = (float)($info_plano['preco'] ?? 0.00); // Preço base do plano
+            
             $limite_total = $limite_base + $extras_comprados;
             $status_assinatura = $dados_assinatura['status_assinatura'] ?? 'padrao';
             $tipo_cancelamento = $dados_assinatura['tipo_cancelamento'] ?? null;
+
+            // --- Lógica de Desconto / Promoção ---
+            // Verifica se existe valor promocional definido no banco para este tenant
+            $valor_promocional = isset($dados_assinatura['valor_promocional']) ? (float)$dados_assinatura['valor_promocional'] : null;
+            $fim_promo_db = $dados_assinatura['data_fim_promocao'] ?? null;
+
+            // Define o preço final
+            if ($valor_promocional !== null && $valor_promocional < $preco_plano_base) {
+                // Verifica validade se houver data
+                if ($fim_promo_db) {
+                    $dt_fim_promo = new DateTime($fim_promo_db);
+                    $dt_hoje_promo = new DateTime('now');
+                    if ($dt_hoje_promo <= $dt_fim_promo) {
+                        $tem_desconto = true;
+                        $preco_final_atual = $valor_promocional;
+                        $data_fim_promocao = $dt_fim_promo->format('d/m/Y');
+                    } else {
+                        // Promoção venceu
+                        $preco_final_atual = $preco_plano_base;
+                    }
+                } else {
+                    // Sem data de fim (desconto fixo/permanente)
+                    $tem_desconto = true;
+                    $preco_final_atual = $valor_promocional;
+                }
+            } else {
+                $preco_final_atual = $preco_plano_base;
+            }
+            
+            // Adiciona custo de extras se houver (R$ 4,00 por extra, exemplo)
+            // Se quiser somar no valor exibido: $preco_final_atual += ($extras_comprados * 4);
+            // Por enquanto mantemos separado para clareza visual.
 
             // Data renovação
             $data_renovacao_str = $dados_assinatura['data_renovacao'] ?? null;
@@ -163,6 +204,11 @@ display_flash_message();
         .footer-links { text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 25px; }
         .footer-link { color: #666; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: color 0.3s; }
         .footer-link:hover { color: #fff; }
+        
+        /* Classes novas para preços */
+        .preco-original { text-decoration: line-through; color: #888; font-size: 0.9rem; margin-right: 5px; }
+        .preco-promocional { color: #2ecc71; font-weight: bold; font-size: 1.1rem; }
+        .aviso-validade { font-size: 0.8rem; color: #ffc107; margin-top: 3px; display:block; }
     </style>
 </head>
 <body>
@@ -192,6 +238,23 @@ display_flash_message();
             <div class="info-row">
                 <span class="label">Plano Atual:</span>
                 <span class="value" style="color: #00bfff; font-size: 1.1rem;"><?= htmlspecialchars($nome_plano_atual) ?></span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Valor Mensal:</span>
+                <span class="value">
+                    <?php if ($tem_desconto): ?>
+                        <span class="preco-original">R$ <?= number_format($preco_plano_base, 2, ',', '.') ?></span>
+                        <span class="preco-promocional">R$ <?= number_format($preco_final_atual, 2, ',', '.') ?></span>
+                        <?php if ($data_fim_promocao): ?>
+                            <span class="aviso-validade">Promoção válida até <?= $data_fim_promocao ?></span>
+                        <?php else: ?>
+                            <span class="aviso-validade">Desconto aplicado</span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        R$ <?= number_format($preco_plano_base, 2, ',', '.') ?>
+                    <?php endif; ?>
+                </span>
             </div>
 
             <div class="info-row">
