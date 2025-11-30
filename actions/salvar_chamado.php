@@ -23,16 +23,12 @@ $plano = strtolower($_SESSION['plano'] ?? 'basico');
 $mes_atual = date('Y-m');
 
 // 1. Regras Atualizadas conforme solicitação
-// Basico: Online 5.99, Ao Vivo 15.99 (0 cotas)
-// Plus: Cota 1/1. Excesso Online: 8.99, Excesso Ao Vivo: 15.99
-// Essencial: Cota 2/1. Excesso Online: 8.99, Excesso Ao Vivo: 15.99
 $regras = [
     'basico' =>    ['cota_online' => 0, 'cota_aovivo' => 0, 'preco_online' => 5.99, 'preco_aovivo' => 15.99],
     'plus' =>      ['cota_online' => 1, 'cota_aovivo' => 1, 'preco_online' => 8.99, 'preco_aovivo' => 15.99],
     'essencial' => ['cota_online' => 2, 'cota_aovivo' => 1, 'preco_online' => 8.99, 'preco_aovivo' => 15.99]
 ];
 
-// Fallback para básico caso plano não exista
 $regra_atual = $regras[$plano] ?? $regras['basico'];
 
 // 2. Verifica uso atual
@@ -70,12 +66,15 @@ if ($stmt->execute()) {
     $stmt_up->bind_param("ss", $tenant_id, $mes_atual);
     $stmt_up->execute();
     
-    // Mensagem específica solicitada
-    $_SESSION['perfil_msg'] = "Chamado aberto com sucesso! Custo: R$ " . number_format($custo, 2, ',', '.') . ". Fique de olho, a resposta chegará no seu e-mail (contatotech.tecnologia@gmail.com).";
+    // --- ALTERAÇÃO AQUI: Mensagem personalizada e tipo 'sucesso' ---
+    $_SESSION['flash_msg'] = "Seu suporte foi solicitado. Aguarde, retornaremos em seu e-mail cadastrado no sistema. Caso seja um suporte pago, primeiro é enviada a solicitação de pagamento; após a confirmação, é feito o agendamento.";
+    $_SESSION['flash_type'] = 'success';
 } else {
-    $_SESSION['perfil_erro'] = "Erro ao abrir chamado.";
+    $_SESSION['flash_msg'] = "Erro ao abrir chamado. Tente novamente.";
+    $_SESSION['flash_type'] = 'error';
 }
 
-header("Location: ../pages/perfil.php");
+// --- ALTERAÇÃO AQUI: Redireciona de volta para a página de solicitação ---
+header("Location: ../pages/solicitar_meu_suporte.php");
 exit;
 ?>

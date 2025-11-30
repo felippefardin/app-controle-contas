@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (CORRIGIDO)
+// home.php (COMPACTO / AJUSTADO)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -99,9 +99,6 @@ if ($connMaster) {
             $stmtChat->close();
         }
     } catch (Exception $e) { }
-    
-    // CORREÇÃO: NÃO fechar a conexão aqui, pois ela será usada mais abaixo para os cupons
-    // $connMaster->close();  <-- LINHA REMOVIDA
 }
 
 // --- LÓGICA DE LEMBRETES ---
@@ -132,7 +129,6 @@ unset($_SESSION['produtos_estoque_baixo']);
 include('../includes/header.php');
 
 // --- LÓGICA DE PROMOÇÃO ESPECIAL (GIFT) ---
-// Agora a conexão $connMaster ainda está aberta e pode ser usada
 $promo_modal = null;
 if ($tenant_id && $connMaster) {
     // Busca promoção ativa e não visualizada
@@ -145,11 +141,9 @@ if ($tenant_id && $connMaster) {
     ";
     $stmtP = $connMaster->prepare($sqlPromo);
     if ($stmtP) {
-        // Tenta pegar o ID numérico da sessão se existir, senão busca no banco
         $tenant_id_numeric = $_SESSION['tenant_id_master'] ?? null;
 
         if (!$tenant_id_numeric) {
-             // CORREÇÃO SEGURA: Buscar ID numérico do tenant se não tiver na sessão
             $t_uuid = $_SESSION['tenant_id'];
             $qT = $connMaster->query("SELECT id FROM tenants WHERE tenant_id = '$t_uuid' LIMIT 1");
             if($qT && $rowT = $qT->fetch_assoc()){
@@ -166,7 +160,6 @@ if ($tenant_id && $connMaster) {
         $stmtP->close();
     }
     
-    // Agora sim podemos fechar a conexão Master se quisermos, ou deixar o PHP fechar no fim do script
     $connMaster->close();
 }
 ?>
@@ -184,32 +177,50 @@ if ($tenant_id && $connMaster) {
     .home-container {
         max-width: 1000px;
         margin: auto;
-        padding: 20px;
+        padding: 10px; /* Reduzido de 20px */
         animation: fadeIn 0.8s ease;
     }
-    h1 { text-align: center; color: #00bfff; margin-bottom: 5px; }
-    h3 { text-align: center; color: #ccc; font-weight: 400; margin-bottom: 20px; }
-    .saudacao { text-align: center; margin-bottom: 25px; color: #ddd; font-size: 1.1rem; }
+    h1 { 
+        text-align: center; 
+        color: #00bfff; 
+        margin-bottom: 2px; 
+        font-size: 1.5rem; /* Fonte menor */
+    }
+    h3 { 
+        text-align: center; 
+        color: #ccc; 
+        font-weight: 400; 
+        margin-bottom: 10px; /* Reduzido de 20px */
+        font-size: 1rem; /* Fonte menor */
+    }
+    .saudacao { 
+        text-align: center; 
+        margin-bottom: 15px; 
+        color: #ddd; 
+        font-size: 0.9rem; /* Fonte menor */
+    }
     .section-title {
         width: 100%;
         color: #00bfff;
         font-weight: bold;
-        margin-top: 30px;
-        margin-bottom: 10px;
+        margin-top: 15px; /* Reduzido de 30px */
+        margin-bottom: 8px; /* Reduzido de 10px */
         border-bottom: 1px solid #333;
-        padding-bottom: 5px;
+        padding-bottom: 2px;
+        font-size: 0.95rem; /* Fonte menor */
     }
     .dashboard {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 18px;
-        margin-bottom: 30px;
+        /* AJUSTADO: minmax reduzido para 125px para caber mais itens lado a lado no mobile */
+        grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+        gap: 10px; /* Reduzido de 18px */
+        margin-bottom: 15px; /* Reduzido de 30px */
     }
     .card-link {
         background: #1e1e1e;
-        padding: 25px 15px;
+        padding: 12px 5px; /* AJUSTADO: Reduzido de 25px 15px */
         text-align: center;
-        border-radius: 10px;
+        border-radius: 8px;
         text-decoration: none;
         color: #fff;
         transition: 0.3s;
@@ -218,39 +229,46 @@ if ($tenant_id && $connMaster) {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 6px; /* Reduzido de 10px */
+        font-size: 0.85rem; /* Fonte do texto menor */
     }
     a.card-link { color: #fff !important; text-decoration: none; }
 
-    .card-link i { font-size: 2rem; margin-bottom: 5px; color: #00bfff; }
+    .card-link i { 
+        font-size: 1.4rem; /* AJUSTADO: Reduzido de 2rem */
+        margin-bottom: 2px; 
+        color: #00bfff; 
+    }
     .card-link:hover {
         background: #00bfff;
         color: #121212 !important;
-        transform: translateY(-5px);
-        box-shadow: 0 6px 15px rgba(0,191,255,0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 4px 10px rgba(0,191,255,0.4);
     }
     .card-link:hover i { color: #121212; }
     
     .alert-estoque {
         background: #dc3545;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 25px;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 15px;
         color: #fff;
+        font-size: 0.9rem;
     }
     .chat-alert {
         background-color: #ff4444;
         color: white;
-        padding: 15px;
+        padding: 10px; /* Reduzido */
         text-align: center;
         font-weight: bold;
         cursor: pointer;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         border-radius: 5px;
         animation: pulse 2s infinite;
         display: block;
         border: 2px solid #fff;
         text-decoration: none;
+        font-size: 0.9rem;
     }
     .chat-alert:hover { color: #fff; text-decoration: none; }
     @keyframes pulse {
@@ -278,22 +296,22 @@ display_flash_message();
 ?>
 
 <div class="home-container">
-    <h1>App Controle de Contas</h1>
-    <h3>Olá, <?= htmlspecialchars($nome_usuario) ?> — Perfil: <?= htmlspecialchars($perfil) ?></h3>
+    <h1>App Controle</h1>
+    <h3><?= htmlspecialchars($nome_usuario) ?> — <?= htmlspecialchars($perfil) ?></h3>
     <p class="saudacao" id="saudacao"></p>
 
     <?php if ($conviteChat): ?>
         <div class="chat-alert" onclick="abrirModalChat(<?php echo $conviteChat['id']; ?>)">
-            <i class="fas fa-headset"></i> O Suporte solicitou um Chat Online com você. Clique aqui para atender.
+            <i class="fas fa-headset"></i> Suporte Online Solicitado
         </div>
     <?php endif; ?>
 
     <?php if (!empty($produtos_estoque_baixo) && temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
         <div class="alert-estoque">
-            <strong>⚠ Produtos com estoque baixo:</strong>
-            <ul>
+            <strong>⚠ Estoque Baixo:</strong>
+            <ul style="margin-bottom: 0; padding-left: 20px;">
                 <?php foreach ($produtos_estoque_baixo as $p): ?>
-                    <li><?= htmlspecialchars($p['nome']) ?> — Estoque: <?= intval($p['quantidade_estoque']) ?></li>
+                    <li><?= htmlspecialchars($p['nome']) ?> (<?= intval($p['quantidade_estoque']) ?>)</li>
                 <?php endforeach; ?>
             </ul>
         </div>
@@ -308,22 +326,22 @@ display_flash_message();
         <div class="section-title"><i class="fas fa-wallet"></i> Financeiro</div>
         <div class="dashboard">
             <?php if (temPermissao('contas_pagar.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="contas_pagar.php"><i class="fas fa-file-invoice-dollar"></i> Contas a Pagar</a>
+                <a class="card-link" href="contas_pagar.php"><i class="fas fa-file-invoice-dollar"></i> A Pagar</a>
             <?php endif; ?>
             <?php if (temPermissao('contas_pagar_baixadas.php', $permissoes_usuario, $perfil)): ?>
                 <a class="card-link" href="contas_pagar_baixadas.php"><i class="fas fa-check-double"></i> Pagas</a>
             <?php endif; ?>
             <?php if (temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="contas_receber.php"><i class="fas fa-hand-holding-dollar"></i> Contas a Receber</a>
+                <a class="card-link" href="contas_receber.php"><i class="fas fa-hand-holding-dollar"></i> A Receber</a>
             <?php endif; ?>
             <?php if (temPermissao('contas_receber_baixadas.php', $permissoes_usuario, $perfil)): ?>
                 <a class="card-link" href="contas_receber_baixadas.php"><i class="fas fa-clipboard-check"></i> Recebidas</a>
             <?php endif; ?>
             <?php if (temPermissao('lancamento_caixa.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="lancamento_caixa.php"><i class="fas fa-exchange-alt"></i> Fluxo de Caixa</a>
+                <a class="card-link" href="lancamento_caixa.php"><i class="fas fa-exchange-alt"></i> Caixa</a>
             <?php endif; ?>
             <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="vendas_periodo.php"><i class="fas fa-chart-line"></i> Vendas e Comissão</a>
+                <a class="card-link" href="vendas_periodo.php"><i class="fas fa-chart-line"></i> Vendas</a>
             <?php endif; ?>
         </div>
     <?php endif; ?>
@@ -334,13 +352,13 @@ display_flash_message();
     foreach($estoque_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_estoque = true; }
     ?>
     <?php if($show_estoque): ?>
-        <div class="section-title"><i class="fas fa-boxes"></i> Estoque & Vendas</div>
+        <div class="section-title"><i class="fas fa-boxes"></i> Estoque/Vendas</div>
         <div class="dashboard">
             <?php if (temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
                 <a class="card-link" href="controle_estoque.php"><i class="fas fa-boxes-stacked"></i> Estoque</a>
             <?php endif; ?>
             <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="vendas.php"><i class="fas fa-cash-register"></i> Caixa de Vendas</a>
+                <a class="card-link" href="vendas.php"><i class="fas fa-cash-register"></i> PDV</a>
             <?php endif; ?>
             <?php if (temPermissao('compras.php', $permissoes_usuario, $perfil)): ?>
                 <a class="card-link" href="compras.php"><i class="fas fa-shopping-bag"></i> Compras</a>
@@ -357,16 +375,16 @@ display_flash_message();
         <div class="section-title"><i class="fas fa-users"></i> Cadastros</div>
         <div class="dashboard">
             <?php if (temPermissao('cadastrar_pessoa_fornecedor.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-address-book"></i> Clientes/Forn.</a>
+                <a class="card-link" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-address-book"></i> Pessoas</a>
             <?php endif; ?>
             <?php if (temPermissao('perfil.php', $permissoes_usuario, $perfil)): ?>
                 <a class="card-link" href="perfil.php"><i class="fas fa-user-circle"></i> Perfil</a>
             <?php endif; ?>
             <?php if (temPermissao('banco_cadastro.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i> Contas Bancárias</a>
+                <a class="card-link" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i> Bancos</a>
             <?php endif; ?>
             <?php if (temPermissao('categorias.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="../pages/categorias.php"><i class="fas fa-tags"></i> Categorias</a>
+                <a class="card-link" href="../pages/categorias.php"><i class="fas fa-tags"></i> Categ.</a>
             <?php endif; ?>
         </div>
     <?php endif; ?>
@@ -387,14 +405,14 @@ display_flash_message();
             <?php endif; ?>
             
             <?php if (temPermissao('trocar_usuario.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="selecionar_usuario.php"><i class="fas fa-users-cog"></i> Trocar Usuário</a>
+                <a class="card-link" href="selecionar_usuario.php"><i class="fas fa-users-cog"></i> Trocar</a>
             <?php endif; ?>
 
             <?php if (temPermissao('usuarios.php', $permissoes_usuario, $perfil)): ?>
                 <a class="card-link" href="usuarios.php"><i class="fas fa-users"></i> Usuários</a>
             <?php endif; ?>
             <?php if (temPermissao('configuracao_fiscal.php', $permissoes_usuario, $perfil)): ?>
-                <a class="card-link" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i> Config. Fiscal</a>
+                <a class="card-link" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i> Fiscal</a>
             <?php endif; ?>
         </div>
     <?php endif; ?>
@@ -416,7 +434,7 @@ display_flash_message();
 
 <?php if ($popupLembrete): ?>
     <div id="toast-lembrete" onclick="window.location.href='lembrete.php'">
-        <i class="fas fa-bell"></i> Você tem lembretes para hoje!
+        <i class="fas fa-bell"></i> Lembretes hoje!
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -441,7 +459,7 @@ function atualizarSaudacao() {
     else texto = "🌙 Boa noite!";
     const dataFormatada = `${dia}/${mes}/${ano}`;
     const horaFormatada = `${hora}:${minutos}`;
-    document.getElementById("saudacao").innerHTML = `${texto} <br><span style="font-size: 0.9em; color: #aaa;">${dataFormatada} — ${horaFormatada}</span>`;
+    document.getElementById("saudacao").innerHTML = `${texto} <span style="font-size: 0.9em; color: #aaa;">(${horaFormatada})</span>`;
 }
 atualizarSaudacao();
 setInterval(atualizarSaudacao, 60000);

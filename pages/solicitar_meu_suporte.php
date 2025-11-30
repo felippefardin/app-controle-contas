@@ -2,6 +2,13 @@
 require_once '../includes/session_init.php';
 require_once '../database.php';
 
+// --- LÓGICA DO FLASHCARD ---
+$flash_msg = $_SESSION['flash_msg'] ?? '';
+$flash_type = $_SESSION['flash_type'] ?? 'info';
+// Limpa as mensagens da sessão para não aparecerem novamente no refresh
+unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
+// ---------------------------
+
 // 1. Verifica Login
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
     header('Location: login.php');
@@ -24,10 +31,9 @@ if ($connTenant) {
         $stmt->fetch();
         $stmt->close();
     }
-    // Não fechamos a conexão aqui propositalmente: getTenantConnection() gerencia
 }
 
-// Valores Padrão (Inicialização segura)
+// Valores Padrão
 $plano = 'basico';
 $uso_chat_online = 0;
 $uso_chat_aovivo = 0;
@@ -50,7 +56,7 @@ if ($connMaster) {
         $stmt_plano->close();
     }
 
-    // 2. Busca o uso do suporte (se existir)
+    // 2. Busca o uso do suporte
     $stmt_sup = $connMaster->prepare("SELECT uso_chat_online, uso_chat_aovivo FROM suporte_usage WHERE tenant_id = ? AND mes_ano = ? LIMIT 1");
     if ($stmt_sup) {
         $stmt_sup->bind_param("ss", $tenant_id, $mes_atual);
@@ -62,19 +68,13 @@ if ($connMaster) {
         }
         $stmt_sup->close();
     }
-
     $connMaster->close();
 }
 
-// --- CORREÇÃO DOS FALLBACKS (BLINDAGEM CONTRA ERROS) ---
-// Se a variável não estiver definida ou for nula, assume 0. Se for string, converte para int.
 $uso_chat_online = isset($uso_chat_online) ? (int)$uso_chat_online : 0;
 $uso_chat_aovivo = isset($uso_chat_aovivo) ? (int)$uso_chat_aovivo : 0;
 if (empty($plano)) $plano = 'basico';
-// -------------------------------------------------------
 
-// Definição das Regras de Negócio (padronizadas conforme solicitado)
-// NOTE: ESSENCIAL tem 3 atendimentos online gratuitos/mês; PLUS tem 1.
 $regras = [
     'basico'    => ['cota_online' => 0, 'cota_aovivo' => 0, 'preco_online' => 5.99, 'preco_aovivo' => 15.99],
     'plus'      => ['cota_online' => 1, 'cota_aovivo' => 1, 'preco_online' => 8.99, 'preco_aovivo' => 15.99],
@@ -83,11 +83,9 @@ $regras = [
 
 $regraAtual = $regras[$plano] ?? $regras['basico'];
 
-// Cálculos de Restante
 $restante_online = max(0, $regraAtual['cota_online'] - $uso_chat_online);
 $restante_aovivo = max(0, $regraAtual['cota_aovivo'] - $uso_chat_aovivo);
 
-// Detecta se todas as cotas gratuitas foram esgotadas (apenas relevante se houver cotas)
 $todos_esgotados = false;
 if (($regraAtual['cota_online'] > 0 || $regraAtual['cota_aovivo'] > 0)) {
     if ($restante_online === 0 && $restante_aovivo === 0) {
@@ -106,6 +104,7 @@ include('../includes/header.php');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ... Estilos existentes ... */
         body {
             background-color: #121212;
             color: #eee;
@@ -120,188 +119,128 @@ include('../includes/header.php');
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             border: 1px solid #333;
         }
-        h2 {
-            color: #00bfff;
-            border-bottom: 1px solid #00bfff;
-            padding-bottom: 15px;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .plan-badge {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-        }
-        .plan-name {
-            color: #2ecc71;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
+        /* ... outros estilos mantidos ... */
+        h2 { color: #00bfff; border-bottom: 1px solid #00bfff; padding-bottom: 15px; text-align: center; margin-bottom: 30px; }
+        .plan-badge { text-align: center; margin-bottom: 20px; font-size: 1.1rem; }
+        .plan-name { color: #2ecc71; text-transform: uppercase; font-weight: bold; }
+        .table-container { overflow-x: auto; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; background-color: #252525; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #444; }
+        th { background-color: #00bfff; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 0.9rem; }
+        tr:hover { background-color: #2a2a2a; }
+        .price-cell { font-weight: bold; color: #ffc107; }
+        .free-cell { color: #2ecc71; font-weight: bold; }
+        .desc-text { color: #aaa; font-size: 0.9rem; }
+        .btn-custom { padding: 12px 25px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; font-size: 1.1rem; text-decoration: none; text-align: center; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: #00bfff; color: white; box-shadow: 0 4px 15px rgba(0, 191, 255, 0.3); }
+        .btn-custom:hover { background-color: #0099cc; transform: translateY(-2px); }
+        .alert-warning { background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; color: #fff; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; font-weight: 600; }
         
-        /* Tabela de Preços */
-        .table-container {
-            overflow-x: auto;
-            margin-bottom: 30px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #252525;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        th, td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #444;
-        }
-        th {
-            background-color: #00bfff;
-            color: #fff;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-        }
-        tr:hover {
-            background-color: #2a2a2a;
-        }
-        .price-cell {
-            font-weight: bold;
-            color: #ffc107;
-        }
-        .free-cell {
-            color: #2ecc71;
-            font-weight: bold;
-        }
-        .desc-text {
-            color: #aaa;
-            font-size: 0.9rem;
-        }
-
-        /* Botão Ação */
-        .btn-custom {
-            padding: 12px 25px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: none;
-            font-weight: bold;
-            font-size: 1.1rem;
-            text-decoration: none;
-            text-align: center;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            background: #00bfff;
-            color: white;
-            box-shadow: 0 4px 15px rgba(0, 191, 255, 0.3);
-        }
-        .btn-custom:hover {
-            background-color: #0099cc;
-            transform: translateY(-2px);
-        }
-
-        .alert-warning {
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid #ffc107;
-            color: #fff;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        /* MODAL STYLES (Reutilizado) */
-        #modalSuporte {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            height: 100%; 
-            overflow: auto; 
-            background-color: rgba(0,0,0,0.8);
-            animation: fadeIn 0.3s;
-        }
-        
-        .modal-content {
-            background-color: #1e1e1e;
-            margin: 5% auto; 
-            padding: 30px;
-            border: 1px solid #00bfff;
-            width: 90%; 
-            max-width: 500px; 
-            border-radius: 10px; 
-            position: relative; 
-            color: #fff;
-            box-shadow: 0 0 20px rgba(0, 191, 255, 0.3);
-        }
-
-        .close-modal {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+        /* MODAL */
+        #modalSuporte { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); animation: fadeIn 0.3s; }
+        .modal-content { background-color: #1e1e1e; margin: 5% auto; padding: 30px; border: 1px solid #00bfff; width: 90%; max-width: 500px; border-radius: 10px; position: relative; color: #fff; box-shadow: 0 0 20px rgba(0, 191, 255, 0.3); }
+        .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .close-modal:hover { color: #fff; }
-
-        /* Inputs Modal */
         .form-group { margin-bottom: 20px; }
-        .form-control {
-            width: 100%;
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid #444;
-            background: #252525;
-            color: #fff;
-            font-size: 1rem;
-            box-sizing: border-box;
-        }
-        .form-control:focus {
-            outline: none;
-            border-color: #00bfff;
-        }
-        .btn-danger-custom {
-            background: transparent;
-            border: 1px solid #dc3545;
-            color: #ff6b6b;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .btn-submit-modal {
-            background: linear-gradient(135deg, #00bfff, #0099cc);
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .modal-alert {
-            padding: 10px;
-            border-radius: 6px;
-            margin-top: 10px;
-            display: none;
-        }
-
+        .form-control { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #252525; color: #fff; font-size: 1rem; box-sizing: border-box; }
+        .form-control:focus { outline: none; border-color: #00bfff; }
+        .btn-danger-custom { background: transparent; border: 1px solid #dc3545; color: #ff6b6b; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-submit-modal { background: linear-gradient(135deg, #00bfff, #0099cc); color: #fff; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .modal-alert { padding: 10px; border-radius: 6px; margin-top: 10px; display: none; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @media (max-width: 768px) { th, td { padding: 10px; font-size: 0.9rem; } .container-suporte { padding: 15px; margin: 20px auto; } }
 
-        @media (max-width: 768px) {
-            th, td { padding: 10px; font-size: 0.9rem; }
-            .container-suporte { padding: 15px; margin: 20px auto; }
+        /* --- ESTILO DO FLASHCARD FLUTUANTE --- */
+        .flashcard-container {
+            position: fixed;
+            top: 100px; /* Abaixo do header */
+            right: 20px;
+            z-index: 9999;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .flashcard {
+            background-color: #1f1f1f;
+            color: #fff;
+            border-left: 5px solid #28a745; /* Verde Sucesso padrão */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            opacity: 0;
+            transform: translateX(50px);
+            animation: slideInFade 0.6s forwards;
+            position: relative;
+        }
+
+        .flashcard.error {
+            border-left-color: #dc3545;
+        }
+
+        .flashcard i.icon-status {
+            font-size: 1.5rem;
+            margin-top: 2px;
+        }
+        
+        .flashcard-content {
+            flex: 1;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .flashcard-close {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+        }
+        .flashcard-close:hover { color: #fff; }
+
+        @keyframes slideInFade {
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeOutSlide {
+            to { opacity: 0; transform: translateX(50px); }
         }
     </style>
 </head>
 <body>
 
+<?php if (!empty($flash_msg)): ?>
+<div class="flashcard-container">
+    <div class="flashcard <?= $flash_type === 'error' ? 'error' : '' ?>" id="meuFlashcard">
+        <i class="icon-status fas <?= $flash_type === 'error' ? 'fa-times-circle' : 'fa-check-circle' ?>" 
+           style="color: <?= $flash_type === 'error' ? '#dc3545' : '#28a745' ?>;"></i>
+        
+        <div class="flashcard-content">
+            <?= htmlspecialchars($flash_msg) ?>
+        </div>
+        
+        <button class="flashcard-close" onclick="fecharFlashcard()">&times;</button>
+    </div>
+</div>
+
+<script>
+    // Fecha automaticamente após 10 segundos para dar tempo de ler
+    setTimeout(function() {
+        fecharFlashcard();
+    }, 10000);
+
+    function fecharFlashcard() {
+        const card = document.getElementById('meuFlashcard');
+        if (card) {
+            card.style.animation = 'fadeOutSlide 0.5s forwards';
+            setTimeout(() => card.remove(), 500);
+        }
+    }
+</script>
+<?php endif; ?>
 <div class="container-suporte">
     <h2><i class="fas fa-headset"></i> Solicitar Suporte</h2>
     
@@ -319,7 +258,6 @@ include('../includes/header.php');
                 </tr>
             </thead>
             <tbody>
-                <!-- Linha Chat Online -->
                 <tr>
                     <td><i class="fas fa-comments"></i> Chat Online</td>
                     <td class="desc-text">Suporte via chat de texto (conversação orientada, duração ~1 hora).</td>
@@ -332,7 +270,6 @@ include('../includes/header.php');
                         <?php endif; ?>
                     </td>
                 </tr>
-                <!-- Linha Chat Ao Vivo -->
                 <tr>
                     <td><i class="fas fa-video"></i> Chat Ao Vivo</td>
                     <td class="desc-text">Suporte via vídeo/voz (realizado por aplicativo, duração ~1 hora).</td>
@@ -365,7 +302,6 @@ include('../includes/header.php');
     </div>
 </div>
 
-<!-- MODAL DE SOLICITAÇÃO -->
 <div id="modalSuporte">
     <div class="modal-content">
         <span onclick="fecharModalSuporte()" class="close-modal">&times;</span>
@@ -393,7 +329,6 @@ include('../includes/header.php');
                 <textarea name="descricao" class="form-control" rows="4" placeholder="Descreva detalhadamente o que está acontecendo..." required></textarea>
             </div>
 
-            <!-- Campo oculto para informar se será cobrado (será avaliado em salvar_chamado.php) -->
             <input type="hidden" name="plano_atual" value="<?= htmlspecialchars($plano) ?>">
             <input type="hidden" id="custo_estimado_input" name="custo_estimado" value="0">
 
@@ -410,14 +345,12 @@ include('../includes/header.php');
 </div>
 
 <script>
-    // Dados vindos do PHP (seguros)
+    // JS Mantido e Inalterado
     const planoUsuario = "<?= addslashes($plano) ?>";
     const usoAtual = {
         online: <?= (int)$uso_chat_online ?>,
         aovivo: <?= (int)$uso_chat_aovivo ?>
     };
-
-    // Regras vindas do PHP (Json Encode para segurança)
     const regras = <?= json_encode($regras) ?>;
 
     function abrirModalSuporte() {
@@ -445,7 +378,6 @@ include('../includes/header.php');
         }
 
         const regra = regras[planoUsuario] || regras['basico'];
-        
         let custo = 0;
         let ehGratis = false;
         let msgRestante = "";
@@ -487,7 +419,6 @@ include('../includes/header.php');
         aviso.style.display = "block";
     }
 
-    // Fecha modal ao clicar fora
     window.onclick = function(event) {
         const modal = document.getElementById('modalSuporte');
         if (event.target == modal) {
