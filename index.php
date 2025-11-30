@@ -53,7 +53,7 @@ require_once 'includes/session_init.php';
         /* --- Hero Section --- */
         .hero-section {
             background: linear-gradient(135deg, #f0f8ff 0%, #ffffff 100%);
-            padding: 40px 0 100px;
+            padding: 40px 0 10px;
             position: relative;
             overflow: hidden;
         }
@@ -350,7 +350,7 @@ require_once 'includes/session_init.php';
 
         /* Responsivo */
         @media (max-width: 991px) {
-            .hero-section { padding: 40px 0 60px; text-align: center; }
+            .hero-section { padding: 40px 0 10px; text-align: center; }
             .hero-title { font-size: 2.5rem; }
             .project-screenshot-wrapper { margin-top: 60px; }
             .hero-bg-shape { display: none; }
@@ -360,10 +360,11 @@ require_once 'includes/session_init.php';
 </head>
 <body>
 
+
     <nav class="navbar navbar-expand-lg navbar-light fixed-top shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <i class="bi bi-wallet2"></i> App Controle
+                <i class="bi bi-wallet2"></i> App Controle Pro - Seu Parceiro De Negocios
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -1228,5 +1229,6 @@ require_once 'includes/session_init.php';
     <script>
         new window.VLibras.Widget('https://vlibras.gov.br/app');
     </script>
+    <script id="chatway" async="true" src="https://cdn.chatway.app/widget.js?id=UZngkYYwWRrZ"></script>
 </body>
 </html>
