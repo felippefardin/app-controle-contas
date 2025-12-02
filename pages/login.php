@@ -71,6 +71,7 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true) 
         .reactivate-link a { color: #00bfff; font-size: 0.95rem; text-decoration: none; }
         .reactivate-link a:hover { color: #4dd3ff; }
 
+        /* Botão Feedback (Direita) */
         .floating-icon {
             position: fixed; bottom: 30px; right: 30px;
             width: 50px; height: 50px; border-radius: 50%;
@@ -88,6 +89,50 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true) 
             pointer-events: none;
         }
         .floating-icon:hover .tooltip-custom { opacity: 1; visibility: visible; right: 60px; }
+
+        /* Botão Suporte (Esquerda) - Adicionado */
+        .btn-support-login {
+            position: fixed;
+            bottom: 30px;
+            left: 30px; 
+            background: #0d6efd;
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s;
+            border: 2px solid #fff;
+        }
+        .btn-support-login:hover {
+            transform: scale(1.1);
+            background: #0a58ca;
+        }
+        .support-tooltip-login {
+            position: absolute;
+            left: 60px;
+            background: #333;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s;
+            pointer-events: none;
+        }
+        .btn-support-login:hover .support-tooltip-login {
+            opacity: 1;
+            visibility: visible;
+            left: 60px;
+        }
         
     </style>
 </head>
@@ -97,6 +142,11 @@ if (isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true) 
 // EXIBE O POP-UP CENTRALIZADO SE HOUVER MENSAGEM (Sucesso no cadastro ou Erro login)
 display_flash_message();
 ?>
+
+<div class="btn-support-login" data-bs-toggle="modal" data-bs-target="#modalSuporte">
+    <i class="fa-solid fa-headset"></i>
+    <span class="support-tooltip-login">Fale com seu parceiro</span>
+</div>
 
 <div class="floating-icon" id="btnFeedback" data-bs-toggle="modal" data-bs-target="#modalFeedback">
     <i class="fa-solid fa-comment-dots"></i>
@@ -140,12 +190,11 @@ display_flash_message();
             <div class="modal-body">
                 <form id="formFeedbackLogin">
                     <div style="display: flex; align-items: center; margin-top: 15px;">
-    <input type="checkbox" id="anonimo" name="anonimo" style="width: auto; margin: 0; cursor: pointer;">
-    
-    <label for="anonimo" style="margin-left: 10px; margin-top: 0; cursor: pointer; font-weight: normal;">
-        Enviar anonimamente
-    </label>
-</div>
+                        <input type="checkbox" id="anonimo" name="anonimo" style="width: auto; margin: 0; cursor: pointer;">
+                        <label for="anonimo" style="margin-left: 10px; margin-top: 0; cursor: pointer; font-weight: normal;">
+                            Enviar anonimamente
+                        </label>
+                    </div>
                     <div id="dadosIdentificacaoFeed">
                         <input type="text" name="nome" class="form-control mb-2 bg-secondary text-white border-0" placeholder="Seu Nome">
                         <input type="email" name="email" class="form-control mb-2 bg-secondary text-white border-0" placeholder="E-mail">
@@ -166,6 +215,49 @@ display_flash_message();
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" id="btnEnviarFeedback" class="btn btn-warning text-dark w-100" onclick="enviarFeedback()">Enviar Feedback</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSuporte" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-headset me-2"></i> Fale com seu Parceiro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSuporteLogin">
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="anonimoSuporte" name="anonimo">
+                        <label class="form-check-label text-light" for="anonimoSuporte">Enviar Anonimamente</label>
+                    </div>
+                    
+                    <div id="dadosIdentificacaoSuporte">
+                        <div class="mb-2">
+                            <input type="text" name="nome" class="form-control bg-secondary text-white border-0" placeholder="Seu Nome">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <input type="text" name="whatsapp" class="form-control bg-secondary text-white border-0" placeholder="WhatsApp">
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <input type="email" name="email" class="form-control bg-secondary text-white border-0" placeholder="E-mail">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <textarea name="descricao" class="form-control bg-secondary text-white border-0" rows="4" placeholder="Como podemos ajudar?" required style="resize: none;"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btnEnviarSuporte" class="btn btn-primary fw-bold px-4" onclick="enviarSuporte()">
+                    Enviar <i class="fa-solid fa-paper-plane ms-1"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -221,6 +313,63 @@ display_flash_message();
         .finally(() => {
             btn.disabled = false;
             btn.innerText = originalText;
+        });
+    }
+
+    // --- Lógica Suporte (Novo) ---
+    const checkAnonimoSuporte = document.getElementById('anonimoSuporte');
+    const divIdentificacaoSuporte = document.getElementById('dadosIdentificacaoSuporte');
+    
+    if(checkAnonimoSuporte) {
+        checkAnonimoSuporte.addEventListener('change', function() {
+            if (this.checked) {
+                divIdentificacaoSuporte.style.display = 'none';
+                divIdentificacaoSuporte.querySelectorAll('input').forEach(i => i.value = '');
+            } else {
+                divIdentificacaoSuporte.style.display = 'block';
+            }
+        });
+    }
+
+    function enviarSuporte() {
+        const btn = document.getElementById('btnEnviarSuporte');
+        const originalHTML = btn.innerHTML;
+        const form = document.getElementById('formSuporteLogin');
+        
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+        const formData = new FormData(form);
+        
+        // Caminho ajustado para estar dentro de /pages/
+        fetch('../actions/enviar_suporte_login.php', { 
+            method: 'POST', 
+            body: formData 
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.status === 'success') {
+                const modalEl = document.getElementById('modalSuporte');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                alert(data.msg); 
+                form.reset();
+            } else {
+                alert(data.msg || 'Erro ao processar solicitação.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de conexão.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
         });
     }
 </script>

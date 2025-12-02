@@ -111,15 +111,19 @@ function enviarLinkExclusao($emailDestino, $nomeUsuario, $token) {
 
         $mail->isHTML(true);
         $mail->Subject = 'Confirmação de Exclusão de Conta';
+        
+        // CORREÇÃO: Adicionada a mensagem solicitada no corpo do e-mail
         $mail->Body = "
             <p>Olá <strong>{$nomeUsuario}</strong>,</p>
             <p>Recebemos uma solicitação para excluir sua conta. Se você realmente deseja continuar, clique no link abaixo:</p>
             <p><a href='{$link}' style='color: #dc3545;'>Confirmar Exclusão da Conta</a></p>
             <p>Este link é válido por 1 hora.</p>
+            <p>Importante lembrar que após o cancelamento total da conta, nós não guardamos nenhum dado do usuário. Caso seja necessário, onde o sistema permitir, realizar o download em pdf, excel ou csv. Obrigado.</p>
             <br>
             <p>Atenciosamente,<br>Equipe App Controle de Contas</p>
         ";
-        $mail->AltBody = "Acesse o link para excluir: {$link}";
+        
+        $mail->AltBody = "Acesse o link para excluir: {$link}. Importante: após o cancelamento, não guardamos dados.";
 
         $mail->send();
         return true;
