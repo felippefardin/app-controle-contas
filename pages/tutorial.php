@@ -228,7 +228,7 @@ include_once '../includes/header.php';
     <div class="intro-header">
         <h1><i class="fas fa-graduation-cap"></i> Guia do Sistema</h1>
         <p>Olá, <strong><?= htmlspecialchars($nome_usuario) ?></strong>!</p>
-        <p>Este guia foi desenhado para te ajudar a configurar e operar o sistema do zero. Siga os passos na ordem para garantir o funcionamento correto do seu financeiro.</p>
+        <p>Preparamos este tutorial para guiar você desde o cadastro básico até a análise dos relatórios. Siga os passos na ordem para aproveitar todo o potencial do sistema.</p>
         <div style="margin-top: 15px;">
             <span class="badge-role"><?= htmlspecialchars($perfil_exibicao) ?></span>
         </div>
@@ -238,39 +238,39 @@ include_once '../includes/header.php';
     <div class="step-section">
         <div class="step-number">1</div>
         <div class="step-content">
-            <h2>Configurações Iniciais (A base de tudo)</h2>
-            <p>Antes de lançar vendas ou contas, precisamos "ensinar" ao sistema como sua empresa funciona. Faça isso nesta ordem:</p>
+            <h2>Configurações Iniciais (Essencial)</h2>
+            <p>Antes de começar a vender, configure a estrutura da sua empresa para que os relatórios funcionem corretamente.</p>
             
             <div class="feature-grid">
                 <div class="feature-card">
                     <h3><i class="fas fa-tags" style="color: #e83e8c;"></i> 1. Categorias</h3>
-                    <p>Defina de onde vem (Receita) e para onde vai (Despesa) o dinheiro.</p>
+                    <p>Organize suas finanças definindo de onde vem (Receitas) e para onde vai (Despesas) o dinheiro.</p>
                     <ul class="instruction-list">
-                        <li>Crie categorias "Pai" (ex: Despesas Fixas).</li>
-                        <li>Crie subcategorias (ex: Aluguel, Energia).</li>
+                        <li>Crie categorias principais (ex: Custos Fixos).</li>
+                        <li>Crie subcategorias (ex: Aluguel, Água, Luz).</li>
                     </ul>
-                    <div class="tip-box"><i class="fas fa-lightbulb"></i> Sem categorias, seus relatórios ficarão vazios.</div>
+                    <div class="tip-box"><small><i class="fas fa-info-circle"></i> Sem categorias, o DRE não saberá calcular seu lucro real.</small></div>
                     <a href="categorias.php" class="btn-action">Configurar Categorias</a>
                 </div>
 
                 <div class="feature-card">
-                    <h3><i class="fas fa-university" style="color: #28a745;"></i> 2. Contas/Bancos</h3>
-                    <p>Cadastre onde o dinheiro fica fisicamente ou virtualmente.</p>
+                    <h3><i class="fas fa-university" style="color: #28a745;"></i> 2. Contas & Bancos</h3>
+                    <p>Cadastre os locais onde seu dinheiro está guardado.</p>
                     <ul class="instruction-list">
-                        <li><strong>Caixa Físico:</strong> Dinheiro na gaveta.</li>
-                        <li><strong>Banco X:</strong> Conta corrente/poupança.</li>
+                        <li><strong>Caixa Físico:</strong> Para dinheiro em espécie na gaveta.</li>
+                        <li><strong>Bancos:</strong> Para contas correntes e poupança.</li>
                     </ul>
                     <a href="banco_cadastro.php" class="btn-action">Cadastrar Bancos</a>
                 </div>
 
                 <div class="feature-card">
-                    <h3><i class="fas fa-users" style="color: #17a2b8;"></i> 3. Pessoas</h3>
-                    <p>Cadastre Clientes e Fornecedores recorrentes.</p>
+                    <h3><i class="fas fa-users" style="color: #17a2b8;"></i> 3. Clientes & Fornecedores</h3>
+                    <p>Mantenha o cadastro de quem compra e de quem vende para você.</p>
                     <ul class="instruction-list">
-                        <li>Necessário para lançar contas a pagar/receber nominais.</li>
-                        <li>Essencial para emitir notas fiscais depois.</li>
+                        <li>Essencial para contas a pagar/receber nominais.</li>
+                        <li>Necessário para emissão de notas fiscais (NFC-e).</li>
                     </ul>
-                    <a href="cadastrar_pessoa_fornecedor.php" class="btn-action">Gerenciar Parceiros</a>
+                    <a href="cadastrar_pessoa_fornecedor.php" class="btn-action">Gerenciar Cadastros</a>
                 </div>
             </div>
         </div>
@@ -280,26 +280,28 @@ include_once '../includes/header.php';
     <div class="step-section">
         <div class="step-number"><?= $is_admin ? '2' : '1' ?></div>
         <div class="step-content">
-            <h2>Estoque e Produtos</h2>
-            <p>Para vender, você precisa ter o que vender. Configure seu catálogo.</p>
+            <h2>Gestão de Produtos e Estoque</h2>
+            <p>Para realizar vendas, seu catálogo precisa estar alimentado.</p>
             
             <div class="feature-grid">
                 <div class="feature-card">
                     <h3><i class="fas fa-box-open" style="color: #ffc107;"></i> Produtos</h3>
-                    <p>Cadastre seus itens de venda.</p>
+                    <p>Cadastre seus itens de venda individualmente.</p>
                     <ul class="instruction-list">
-                        <li>Defina preço de custo e venda.</li>
-                        <li>Defina estoque mínimo para ser avisado quando acabar.</li>
+                        <li>Defina preço de custo (para cálculo de lucro).</li>
+                        <li>Defina preço de venda.</li>
+                        <li>Configure o estoque mínimo para receber alertas.</li>
                     </ul>
                     <a href="controle_estoque.php" class="btn-action">Ver Estoque</a>
                 </div>
 
                 <div class="feature-card">
-                    <h3><i class="fas fa-truck-loading" style="color: #fd7e14;"></i> Compras (Entrada)</h3>
-                    <p>Registrar entrada de mercadoria.</p>
+                    <h3><i class="fas fa-truck-loading" style="color: #fd7e14;"></i> Compras (Entradas)</h3>
+                    <p>A melhor forma de alimentar o estoque.</p>
                     <ul class="instruction-list">
-                        <li>Aumenta a quantidade no estoque.</li>
+                        <li>Ao registrar uma compra, o estoque aumenta automaticamente.</li>
                         <li>Gera automaticamente uma <strong>Conta a Pagar</strong> no financeiro.</li>
+                        <li>Suporta importação de XML de nota fiscal.</li>
                     </ul>
                     <a href="compras.php" class="btn-action">Nova Compra</a>
                 </div>
@@ -310,39 +312,40 @@ include_once '../includes/header.php';
     <div class="step-section">
         <div class="step-number"><?= $is_admin ? '3' : '2' ?></div>
         <div class="step-content">
-            <h2>Rotina Diária (Vendas e Financeiro)</h2>
-            <p>Como operar o sistema no dia a dia da empresa.</p>
+            <h2>Rotina Diária (Operação)</h2>
+            <p>Os processos que você ou sua equipe farão todos os dias.</p>
 
             <div class="feature-grid">
                 <div class="feature-card">
                     <h3><i class="fas fa-cash-register" style="color: #007bff;"></i> Vendas (PDV)</h3>
-                    <p>Use para registrar saídas de produtos.</p>
+                    <p>A tela principal para registrar saídas.</p>
                     <ul class="instruction-list">
-                        <li><strong>À Vista:</strong> O dinheiro entra direto na conta selecionada.</li>
-                        <li><strong>A Prazo:</strong> Cria uma "Conta a Receber" para o futuro.</li>
+                        <li><strong>À Vista:</strong> O valor entra direto no saldo da conta/caixa.</li>
+                        <li><strong>A Prazo:</strong> Gera uma previsão no "Contas a Receber".</li>
+                        <li>Baixa o estoque do produto automaticamente.</li>
                     </ul>
                     <a href="vendas.php" class="btn-action">Ir para o PDV</a>
                 </div>
 
                 <div class="feature-card">
-                    <h3><i class="fas fa-calendar-alt" style="color: #6f42c1;"></i> Agendamentos</h3>
-                    <p>Contas que vencem no futuro (Boletos, Aluguel, Recebimentos a prazo).</p>
+                    <h3><i class="fas fa-calendar-alt" style="color: #6f42c1;"></i> Financeiro</h3>
+                    <p>Gestão de contas futuras e boletos.</p>
                     <div class="tip-box">
-                        <i class="fas fa-exclamation-circle"></i> <strong>Importante:</strong> O saldo só muda quando você clica no botão <span style="color:#fff; background:green; padding:2px 5px; border-radius:3px; font-size:0.7rem;">BAIXAR</span> dentro dessas telas.
+                        <i class="fas fa-exclamation-circle"></i> <strong>Atenção:</strong> O saldo da empresa só é atualizado quando você clica no botão <span style="color:#fff; background:green; padding:2px 5px; border-radius:3px; font-size:0.7rem;">BAIXAR</span> (ícone de check) na lista de contas.
                     </div>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px; margin-top:10px;">
                         <a href="contas_pagar.php" class="btn-action" style="background:#dc3545;">A Pagar</a>
                         <a href="contas_receber.php" class="btn-action" style="background:#28a745;">A Receber</a>
                     </div>
                 </div>
 
                 <div class="feature-card">
-                    <h3><i class="fas fa-hand-holding-usd" style="color: #20c997;"></i> Movimento de Caixa</h3>
-                    <p>Pequenas movimentações ou ajustes manuais.</p>
+                    <h3><i class="fas fa-hand-holding-usd" style="color: #20c997;"></i> Caixa Diário</h3>
+                    <p>Movimentações rápidas e sem vínculo fiscal.</p>
                     <ul class="instruction-list">
-                        <li>Sangria (Retirada de dinheiro do caixa).</li>
-                        <li>Aporte (Colocar troco no início do dia).</li>
-                        <li>Despesas sem nota fiscal (ex: Café, Material de limpeza rápido).</li>
+                        <li><strong>Sangria:</strong> Retirada de valores do caixa para o cofre/banco.</li>
+                        <li><strong>Suprimento:</strong> Adição de troco no início do dia.</li>
+                        <li>Despesas rápidas (ex: lanche, material de limpeza).</li>
                     </ul>
                     <a href="lancamento_caixa.php" class="btn-action">Lançar no Caixa</a>
                 </div>
@@ -353,17 +356,17 @@ include_once '../includes/header.php';
     <div class="step-section">
         <div class="step-number"><?= $is_admin ? '4' : '3' ?></div>
         <div class="step-content">
-            <h2>Fechamento e Relatórios</h2>
-            <p>Entenda a saúde do seu negócio.</p>
+            <h2>Relatórios e Fechamento</h2>
+            <p>Analise os dados para tomar decisões estratégicas.</p>
             
             <div class="feature-grid">
                 <div class="feature-card">
-                    <h3><i class="fas fa-chart-line" style="color: #e83e8c;"></i> Dashboards</h3>
-                    <p>Visualize:</p>
+                    <h3><i class="fas fa-chart-line" style="color: #e83e8c;"></i> Painel de Relatórios</h3>
+                    <p>Visualize a saúde do negócio:</p>
                     <ul class="instruction-list">
-                        <li><strong>DRE:</strong> Lucro real (Receita - Despesa).</li>
+                        <li><strong>DRE Gerencial:</strong> (Receitas - Despesas) = Lucro Líquido.</li>
                         <li><strong>Fluxo de Caixa:</strong> Entradas e saídas dia a dia.</li>
-                        <li><strong>Curva ABC:</strong> Quais produtos vendem mais?</li>
+                        <li><strong>Curva ABC:</strong> Descubra seus produtos campeões de venda.</li>
                     </ul>
                     <a href="relatorios.php" class="btn-action">Ver Relatórios</a>
                 </div>
@@ -372,10 +375,10 @@ include_once '../includes/header.php';
     </div>
 
     <div style="text-align: center; margin-top: 60px; border-top: 1px solid #333; padding-top: 20px;">
-        <p style="color: #888;">Ainda com dúvidas?</p>
-        <a href="suporte.php" class="btn-action" style="max-width: 200px; background: #666;"><i class="fas fa-headset"></i> Contatar Suporte</a>
+        <p style="color: #888;">Ainda precisa de ajuda?</p>
+        <a href="suporte.php" class="btn-action" style="max-width: 200px; background: #666;"><i class="fas fa-headset"></i> Abrir Chamado</a>
         <br><br>
-        <a href="home.php" style="color: #007bff; text-decoration: none;">&larr; Voltar para a Página Inicial</a>
+        <a href="home.php" style="color: #007bff; text-decoration: none;">&larr; Voltar para a Dashboard</a>
     </div>
 
 </div>
