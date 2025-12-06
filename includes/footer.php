@@ -92,18 +92,31 @@ if (file_exists(__DIR__ . '/../pages/calendario.php')) {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // Funções de ajuste de fonte do header (mantidas)
+    // Funções de ajuste de fonte do header (CORRIGIDO)
     function adjustFontSize(amount) {
-        const body = document.body;
-        let currentSize = parseFloat(window.getComputedStyle(body, null).getPropertyValue('font-size'));
-        body.style.fontSize = (currentSize + amount) + 'px';
+        // Seleciona tanto o elemento raiz (html) quanto o corpo (body)
+        // Isso garante que unidades 'rem' (html) e 'em/px herdados' (body) sejam afetados
+        const elements = [document.documentElement, document.body];
+        
+        elements.forEach(el => {
+            // Pega o tamanho atual computado
+            let currentSize = parseFloat(window.getComputedStyle(el, null).getPropertyValue('font-size'));
+            
+            // Se não conseguir ler (NaN), define um padrão de 16px
+            if (!currentSize) currentSize = 16;
+            
+            // Aplica o novo tamanho
+            el.style.fontSize = (currentSize + amount) + 'px';
+        });
     }
 
     function resetFontSize() {
+        // Remove o estilo inline para voltar ao definido no CSS
+        document.documentElement.style.fontSize = '';
         document.body.style.fontSize = '';
     }
 
-    // Script para os botões flutuantes (Calculadora e Calendário)
+    // Script para os botões flutuantes (Calculadora e Calendário) - MANTIDO IGUAL
     document.addEventListener('DOMContentLoaded', () => {
         const botaoCalc = document.getElementById('abrir-calculadora');
         const botaoCal = document.getElementById('abrir-calendario');
@@ -137,18 +150,6 @@ if (file_exists(__DIR__ . '/../pages/calendario.php')) {
             });
         }
     });
-</script>
-
-<script type="text/javascript">
-// var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-// (function(){
-// var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-// s1.async=true;
-// s1.src='https://embed.tawk.to/692252545a6d17195e8d14ce/1jan1ihtl';
-// s1.charset='UTF-8';
-// s1.setAttribute('crossorigin','*');
-// s0.parentNode.insertBefore(s1,s0);
-// })();
 </script>
 </body>
 </html>
