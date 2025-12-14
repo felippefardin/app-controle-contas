@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (DASHBOARD FULL WIDTH + CORES BOTÕES)
+// home.php (DASHBOARD FULL WIDTH + LISTAS DE HOJE)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -73,7 +73,7 @@ function temPermissao($arquivo_chave, $permissoes_array, $perfil_atual) {
 }
 
 // ==========================================================================
-// 📊 LÓGICA DO DASHBOARD (NOVA)
+// 📊 LÓGICA DO DASHBOARD
 // ==========================================================================
 $mesAtual = date('Y-m');
 $hoje = date('Y-m-d');
@@ -113,24 +113,23 @@ if ($checkNew && $checkNew->num_rows == 0) {
     $novoUsuario = true;
 }
 
-// 4. Dados para o Gráfico (Últimos 6 meses)
-$labelsChart = [];
-$dataReceita = [];
-$dataDespesa = [];
+// 4. Listas de Contas para HOJE (Substituindo Gráfico)
+$listReceberHoje = [];
+$qRH = $conn->prepare("SELECT descricao, valor FROM contas_receber WHERE usuario_id = ? AND status = 'pendente' AND data_vencimento = ? ORDER BY valor DESC");
+$qRH->bind_param("is", $usuario_id, $hoje);
+$qRH->execute();
+$resRH = $qRH->get_result();
+while($row = $resRH->fetch_assoc()) { $listReceberHoje[] = $row; }
+$qRH->close();
 
-for ($i = 5; $i >= 0; $i--) {
-    $m = date('Y-m', strtotime("-$i month"));
-    $labelsChart[] = date('M', strtotime($m . '-01'));
-    
-    // Simplificado para performance: Busca por data de baixa
-    $qChart = "SELECT 
-        (SELECT COALESCE(SUM(valor),0) FROM contas_receber WHERE usuario_id=$usuario_id AND status='baixada' AND DATE_FORMAT(data_baixa, '%Y-%m')='$m') as rec,
-        (SELECT COALESCE(SUM(valor),0) FROM contas_pagar WHERE usuario_id=$usuario_id AND status='baixada' AND DATE_FORMAT(data_baixa, '%Y-%m')='$m') as desp
-    ";
-    $rChart = $conn->query($qChart)->fetch_assoc();
-    $dataReceita[] = $rChart['rec'];
-    $dataDespesa[] = $rChart['desp'];
-}
+$listPagarHoje = [];
+$qPH = $conn->prepare("SELECT descricao, valor FROM contas_pagar WHERE usuario_id = ? AND status = 'pendente' AND data_vencimento = ? ORDER BY valor DESC");
+$qPH->bind_param("is", $usuario_id, $hoje);
+$qPH->execute();
+$resPH = $qPH->get_result();
+while($row = $resPH->fetch_assoc()) { $listPagarHoje[] = $row; }
+$qPH->close();
+
 // ==========================================================================
 
 
@@ -222,14 +221,13 @@ if ($tenant_id && $connMaster) {
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
     /* =========================================
        1. AJUSTES PARA TELA CHEIA (FULL WIDTH)
     ========================================= */
     main {
-        max-width: 100% !important; /* Força a largura total do container main */
+        max-width: 100% !important;
         padding-left: 20px !important;
         padding-right: 20px !important;
         margin: 0 !important;
@@ -245,7 +243,6 @@ if ($tenant_id && $connMaster) {
         overflow-x: hidden;
     }
 
-    /* Container da home ocupa 100% */
     .home-container {
         max-width: 100%; 
         width: 100%;
@@ -254,19 +251,8 @@ if ($tenant_id && $connMaster) {
         animation: fadeIn 0.8s ease;
     }
 
-    /* =========================================
-       2. CORES DOS BOTÕES DO HEADER
-    ========================================= */
-    .btn-home { 
-        background-color: #28a745 !important; /* Verde */
-        border-color: #28a745 !important;
-        color: #fff !important;
-    }
-    .btn-exit { 
-        background-color: #dc3545 !important; /* Vermelho */
-        border-color: #dc3545 !important;
-        color: #fff !important;
-    }
+    .btn-home { background-color: #28a745 !important; border-color: #28a745 !important; color: #fff !important; }
+    .btn-exit { background-color: #dc3545 !important; border-color: #dc3545 !important; color: #fff !important; }
 
     /* =========================================
        ELEMENTOS DA DASHBOARD
@@ -293,14 +279,37 @@ if ($tenant_id && $connMaster) {
     .text-danger-custom { color: #ff4444 !important; }
     .text-success-custom { color: #00C851 !important; }
 
-    .chart-section {
+    /* ESTILOS PARA AS LISTAS DE HOJE */
+    .today-card {
         background: var(--bg-card, #1e1e1e);
-        padding: 20px;
+        color: var(--text-primary, #fff);
         border-radius: 12px;
-        margin-bottom: 25px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        overflow: hidden;
+        height: 100%;
+        margin-bottom: 25px;
     }
-    .chart-section h5 { color: var(--text-primary, #eee); margin-bottom: 15px; }
+    .today-header {
+        padding: 15px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(128,128,128,0.1);
+    }
+    .today-list-container {
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    .today-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(128,128,128,0.1);
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.95rem;
+    }
+    .today-item:last-child { border-bottom: none; }
+    .empty-msg { padding: 20px; text-align: center; font-size: 0.9rem; opacity: 0.7; }
 
     /* Onboarding */
     .onboarding-card {
@@ -317,7 +326,7 @@ if ($tenant_id && $connMaster) {
     .step-btn:hover { background: white; color: #0066cc; transform: scale(1.05); }
     @keyframes slideDown { from {opacity:0; transform:translateY(-20px);} to {opacity:1; transform:translateY(0);} }
 
-    /* Estilos de Texto e Layout */
+    /* Layout */
     h1 { text-align: center; color: var(--highlight-color, #00bfff); margin-bottom: 2px; font-size: 1.5rem; }
     h3 { text-align: center; color: var(--text-secondary, #ccc); font-weight: 400; margin-bottom: 10px; font-size: 1rem; }
     .saudacao { text-align: center; margin-bottom: 15px; color: var(--text-secondary, #ddd); font-size: 0.9rem; }
@@ -421,13 +430,49 @@ if ($tenant_id && $connMaster) {
         </div>
     </div>
 
-    <div class="chart-section">
-        <h5><i class="fas fa-chart-line"></i> Fluxo de Caixa (Últimos 6 meses)</h5>
-        <div style="height: 250px; width: 100%;">
-            <canvas id="homeChart"></canvas>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="today-card">
+                <div class="today-header" style="background: rgba(0, 200, 81, 0.15); color: #00C851;">
+                    <span><i class="fas fa-arrow-down"></i> A Receber Hoje (<?= date('d/m') ?>)</span>
+                    <span class="badge bg-success rounded-pill"><?= count($listReceberHoje) ?></span>
+                </div>
+                <div class="today-list-container">
+                    <?php if (empty($listReceberHoje)): ?>
+                        <div class="empty-msg">Nenhuma conta para receber hoje.</div>
+                    <?php else: ?>
+                        <?php foreach($listReceberHoje as $item): ?>
+                            <div class="today-item">
+                                <span><?= htmlspecialchars($item['descricao']) ?></span>
+                                <strong style="color: #00C851;">R$ <?= number_format($item['valor'], 2, ',', '.') ?></strong>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="today-card">
+                <div class="today-header" style="background: rgba(255, 68, 68, 0.15); color: #ff4444;">
+                    <span><i class="fas fa-arrow-up"></i> A Pagar Hoje (<?= date('d/m') ?>)</span>
+                    <span class="badge bg-danger rounded-pill"><?= count($listPagarHoje) ?></span>
+                </div>
+                <div class="today-list-container">
+                    <?php if (empty($listPagarHoje)): ?>
+                        <div class="empty-msg">Nenhuma conta para pagar hoje.</div>
+                    <?php else: ?>
+                        <?php foreach($listPagarHoje as $item): ?>
+                            <div class="today-item">
+                                <span><?= htmlspecialchars($item['descricao']) ?></span>
+                                <strong style="color: #ff4444;">R$ <?= number_format($item['valor'], 2, ',', '.') ?></strong>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     </div>
-
     <?php if ($conviteChat): ?>
         <div class="chat-alert" onclick="abrirModalChat(<?php echo $conviteChat['id']; ?>)">
             <i class="fas fa-headset"></i> Suporte Online Solicitado
@@ -583,7 +628,6 @@ function atualizarSaudacao() {
     else if (hora < 18) texto = "🌤️ Boa tarde!";
     else texto = "🌙 Boa noite!";
     
-    // Mostra data simplificada
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const dataStr = agora.toLocaleDateString('pt-BR', options);
     
@@ -591,50 +635,6 @@ function atualizarSaudacao() {
 }
 atualizarSaudacao();
 setInterval(atualizarSaudacao, 60000);
-
-// CONFIGURAÇÃO DO GRÁFICO (Chart.js)
-const ctx = document.getElementById('homeChart').getContext('2d');
-// Pega cor do texto baseada no tema, verificando a classe no BODY
-const isLight = document.body.classList.contains('light-mode');
-const textColor = isLight ? '#333' : '#ccc';
-
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: <?= json_encode($labelsChart) ?>,
-        datasets: [
-            {
-                label: 'Receitas (Baixadas)',
-                data: <?= json_encode($dataReceita) ?>,
-                backgroundColor: '#00C851',
-                borderRadius: 4
-            },
-            {
-                label: 'Despesas (Baixadas)',
-                data: <?= json_encode($dataDespesa) ?>,
-                backgroundColor: '#ff4444',
-                borderRadius: 4
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { labels: { color: textColor } }
-        },
-        scales: {
-            y: { 
-                ticks: { color: textColor },
-                grid: { color: 'rgba(128,128,128,0.2)' }
-            },
-            x: { 
-                ticks: { color: textColor },
-                grid: { display: false } 
-            }
-        }
-    }
-});
 
 // LÓGICA DO CHAT (MANTIDA)
 let currentChatId = null;

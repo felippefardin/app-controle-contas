@@ -1,7 +1,8 @@
 /* ===============================
-   VARIÁVEIS PADRÃO (DARK)
+   VARIÁVEIS PADRÃO (DARK MODE DEFAULT)
 ================================ */
-body.dark-mode {
+:root {
+    /* Define o Dark como padrão na raiz */
     --bg-body: #121212;
     --bg-header: #1a1a1a;
     --bg-card: #1f1f1f;
@@ -16,7 +17,7 @@ body.dark-mode {
 }
 
 /* ===============================
-   LIGHT MODE
+   LIGHT MODE (Sobrescreve o padrão)
 ================================ */
 body.light-mode {
     --bg-body: #ffffff;
@@ -49,9 +50,7 @@ body {
     transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* ===============================
-   HEADER
-================================ */
+/* O restante do CSS (HEADER, BOTÕES, MAIN) permanece igual ao seu arquivo original... */
 .header-controls {
     position: fixed;
     top: 0;
@@ -60,137 +59,25 @@ body {
     background-color: var(--bg-header);
     box-shadow: var(--shadow);
     padding: 14px 28px;
-
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 14px;
 }
-
-.header-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* ===============================
-   BOTÕES
-================================ */
-.header-controls .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: bold;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-}
-
-/* Fixos */
+/* ... (Mantenha o resto dos estilos de botões e acessibilidade aqui) */
+.header-group { display: flex; align-items: center; gap: 10px; }
+.header-controls .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; font-size: 14px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; text-decoration: none; }
 .btn-home { background-color: #28a745 !important; color: #fff; }
 .btn-exit { background-color: #dc3545 !important; color: #fff; }
-
-/* Tema */
-.btn-theme {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-}
-
-#themeToggle {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-}
-
-body.light-mode #themeToggle {
-    background: var(--highlight-color);
-    color: #fff;
-}
-
-/* ===============================
-   MAIN
-================================ */
-main {
-    padding-top: 90px;
-    padding-bottom: 60px;
-    max-width: 1320px;
-    margin: auto;
-}
-
-/* ===============================
-   RESPONSIVO
-================================ */
-@media (max-width: 768px) {
-    .header-controls {
-        flex-direction: column;
-        text-align: center;
-    }
-}
-/* =========================================
-   BOTÕES DE ACESSIBILIDADE – FONTE
-   A+, A-, RESET
-========================================= */
-
-/* Estilo base */
-.btn-font-access {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 42px;
-    height: 42px;
-    padding: 0 14px;
-
-    font-size: 14px;
-    font-weight: bold;
-    border-radius: 6px;
-
-    cursor: pointer;
-    border: 1px solid var(--border-color);
-
-    background: transparent;
-    color: var(--text-primary);
-
-    transition: 
-        background-color 0.25s ease,
-        color 0.25s ease,
-        transform 0.2s ease;
-}
-
-/* ===============================
-   DARK MODE → AZUL
-================================ */
-body:not(.light-mode) .btn-font-access {
-    background-color: #00bfff;
-    color: #121212;
-    border-color: #00bfff;
-}
-
-/* ===============================
-   LIGHT MODE → PRETO
-================================ */
-body.light-mode .btn-font-access {
-    background-color: transparent;
-    color: #000;
-    border-color: #000;
-}
-
-/* Hover */
-.btn-font-access:hover {
-    transform: scale(1.08);
-    opacity harmonic;
-}
-
-/* Active (clique) */
-.btn-font-access:active {
-    transform: scale(0.95);
-}
-
-/* Ícone dentro do botão */
-.btn-font-access i {
-    font-size: 14px;
-}
-
+.btn-theme { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
+#themeToggle { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); }
+body.light-mode #themeToggle { background: var(--highlight-color); color: #fff; }
+main { padding-top: 90px; padding-bottom: 60px; max-width: 1320px; margin: auto; }
+@media (max-width: 768px) { .header-controls { flex-direction: column; text-align: center; } }
+/* Estilos btn-font-access... */
+.btn-font-access { display: inline-flex; align-items: center; justify-content: center; min-width: 42px; height: 42px; padding: 0 14px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease; }
+body:not(.light-mode) .btn-font-access { background-color: #00bfff; color: #121212; border-color: #00bfff; }
+body.light-mode .btn-font-access { background-color: transparent; color: #000; border-color: #000; }
+.btn-font-access:hover { transform: scale(1.08); }
+.btn-font-access:active { transform: scale(0.95); }
+.btn-font-access i { font-size: 14px; }

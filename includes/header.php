@@ -2,10 +2,20 @@
 require_once __DIR__ . '/session_init.php';
 
 // ===============================
-// TEMA GLOBAL (PERSISTENTE)
+// TEMA GLOBAL (PERSISTENTE COM COOKIES)
 // ===============================
-$temaAtual = $_SESSION['tema_preferencia'] ?? 'dark';
-$classeBody = ($temaAtual === 'light') ? 'light-mode' : 'dark-mode';
+// 1. Tenta pegar da Sessão
+// 2. Se não tiver sessão, tenta pegar do Cookie
+// 3. Se não tiver nenhum, assume 'dark' (padrão)
+$temaAtual = $_SESSION['tema_preferencia'] ?? $_COOKIE['tema_preferencia'] ?? 'dark';
+
+// Garante que o padrão é dark se vier algo estranho
+if ($temaAtual !== 'light' && $temaAtual !== 'dark') {
+    $temaAtual = 'dark';
+}
+
+// Aplica a classe apenas se for light, pois o CSS padrão já é dark
+$classeBody = ($temaAtual === 'light') ? 'light-mode' : ''; 
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -30,7 +40,7 @@ $classeBody = ($temaAtual === 'light') ? 'light-mode' : 'dark-mode';
 </div>
 
     <div class="header-group">
-        <?php if (basename($_SERVER['PHP_SELF']) === 'home.php'): ?>
+        <?php if (basename($_SERVER['PHP_SELF']) === 'home.php' || true): // "|| true" para mostrar sempre se quiser ?>
             <button id="themeToggle" class="btn" onclick="toggleTheme()">
                 <i class="fas <?= $temaAtual === 'light' ? 'fa-moon' : 'fa-sun' ?>"></i>
             </button>
@@ -48,28 +58,40 @@ $classeBody = ($temaAtual === 'light') ? 'light-mode' : 'dark-mode';
 
 <script>
 // ===============================
-// TOGGLE DE TEMA (SEM BUG)
+// TOGGLE DE TEMA (PERSISTENTE)
 // ===============================
 function toggleTheme() {
     const body = document.body;
     const icon = document.querySelector('#themeToggle i');
 
+    // Alterna a classe visualmente
     body.classList.toggle('light-mode');
-    body.classList.toggle('dark-mode');
-
+    
+    // Verifica qual estado ficou ativo
     const isLight = body.classList.contains('light-mode');
+    const novoTema = isLight ? 'light' : 'dark';
 
+    // Atualiza ícone
     if (icon) {
+        // Se for light, mostra lua (para ir pro dark). Se for dark, mostra sol (para ir pro light)
+        // Ajuste conforme sua preferência de ícone
         icon.className = 'fas ' + (isLight ? 'fa-moon' : 'fa-sun');
     }
 
+    // 1. SALVA NO COOKIE DO NAVEGADOR (Validade de 1 ano)
+    const d = new Date();
+    d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = "tema_preferencia=" + novoTema + ";" + expires + ";path=/";
+
+    // 2. SALVA NO BACKEND (SESSÃO + BANCO)
     const formData = new FormData();
-    formData.append('tema', isLight ? 'light' : 'dark');
+    formData.append('tema', novoTema);
 
     fetch('../actions/salvar_tema.php', {
         method: 'POST',
         body: formData
-    });
+    }).catch(err => console.error("Erro ao salvar tema:", err));
 }
 
 // ===============================

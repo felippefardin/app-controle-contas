@@ -13,17 +13,27 @@ if (!isset($_SESSION['usuario_id'])) {
 $tema = $_POST['tema'] ?? 'dark';
 if (!in_array($tema, ['dark', 'light'])) $tema = 'dark';
 
-$conn = getTenantConnection(); // Ou getMasterConnection dependendo de onde está a tabela usuarios
-// Fallback se não conseguir conexão tenant, tenta master se usuários forem centralizados
+// 1. Salva na Sessão PHP
+$_SESSION['tema_preferencia'] = $tema;
+
+// 2. Salva no Cookie via PHP (Backup caso o JS falhe ou para sincronia)
+// Validade de 30 dias (86400 * 30)
+setcookie('tema_preferencia', $tema, time() + (86400 * 30), "/"); 
+
+// 3. Salva no Banco de Dados
+$conn = getTenantConnection(); 
 if (!$conn) $conn = getMasterConnection();
 
-$stmt = $conn->prepare("UPDATE usuarios SET tema_preferencia = ? WHERE id = ?");
-$stmt->bind_param("si", $tema, $_SESSION['usuario_id']);
-
-if ($stmt->execute()) {
-    $_SESSION['tema_preferencia'] = $tema; // Atualiza sessão
-    echo json_encode(['status' => 'success']);
+if ($conn) {
+    $stmt = $conn->prepare("UPDATE usuarios SET tema_preferencia = ? WHERE id = ?");
+    $stmt->bind_param("si", $tema, $_SESSION['usuario_id']);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error', 'msg' => 'Erro BD']);
+    }
 } else {
-    echo json_encode(['status' => 'error']);
+    echo json_encode(['status' => 'success', 'msg' => 'Salvo apenas sessão/cookie']);
 }
 ?>
