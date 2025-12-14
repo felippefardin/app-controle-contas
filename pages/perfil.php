@@ -1,4 +1,5 @@
 <?php
+// pages/perfil.php
 require_once '../includes/session_init.php';
 require_once '../database.php';
 require_once '../includes/utils.php'; 
@@ -23,9 +24,6 @@ $exibir_botao_suporte_inicial = false;
 
 $connMasterPerfil = getMasterConnection();
 if ($connMasterPerfil && !$connMasterPerfil->connect_error) {
-    
-    // 1. Busca o ID do Tenant e o Plano REAL (plano_atual)
-    // Usamos 'plano_atual' para coincidir com a lógica de minha_assinatura.php
     $sqlT = "SELECT id, plano_atual FROM tenants WHERE admin_email = ? LIMIT 1";
     $stmtT = $connMasterPerfil->prepare($sqlT);
     
@@ -35,34 +33,23 @@ if ($connMasterPerfil && !$connMasterPerfil->connect_error) {
         $stmtT->bind_result($t_id, $t_plano);
         
         if ($stmtT->fetch()) {
-            $stmtT->close(); // Libera para a próxima consulta
-            
-            // Normaliza o texto (remove espaços e põe minusculo)
+            $stmtT->close(); 
             $t_plano_sanitizado = trim(strtolower($t_plano ?? ''));
             
-            // Verifica se é exatamente 'essencial'
             if ($t_plano_sanitizado === 'essencial') {
-                
-                // 2. Verifica se JÁ EXISTE uma solicitação para este tenant
-                // Se existir, o botão NÃO deve aparecer
                 $sqlCheck = "SELECT id FROM solicitacoes_suporte_inicial WHERE tenant_id = ? LIMIT 1";
-                
                 try {
                     $stmtCheck = $connMasterPerfil->prepare($sqlCheck);
                     if ($stmtCheck) {
                         $stmtCheck->bind_param("i", $t_id);
                         $stmtCheck->execute();
                         $stmtCheck->store_result();
-                        
-                        // Se num_rows for 0, significa que NUNCA solicitou -> Exibe botão
                         if ($stmtCheck->num_rows === 0) {
                             $exibir_botao_suporte_inicial = true;
                         }
                         $stmtCheck->close();
                     }
-                } catch (Exception $e) {
-                    // Falha silenciosa para não quebrar a página
-                }
+                } catch (Exception $e) { }
             }
         } else {
             $stmtT->close();
@@ -78,20 +65,21 @@ $perfil_texto = ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $niv
 
 // Inicializa variáveis
 $nome = '';
-$cpf = '';
+$documento = ''; // Alterado de $cpf para $documento
 $telefone = '';
 $email = '';
 $codigo_indicacao = ''; 
 $foto_atual = 'default-profile.png';
 
 // 2. Busca dados atuais do usuário no Banco do Tenant
-$stmt = $conn->prepare("SELECT nome, cpf, telefone, email, foto FROM usuarios WHERE id = ?");
+// CORREÇÃO: Busca 'documento' em vez de 'cpf' para alinhar com o registro
+$stmt = $conn->prepare("SELECT nome, documento, telefone, email, foto FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 if ($stmt->execute()) {
-    $stmt->bind_result($nome, $cpf, $telefone, $email_db_tenant, $foto_db);
+    $stmt->bind_result($nome, $documento, $telefone, $email_db_tenant, $foto_db);
     if ($stmt->fetch()) {
         $nome = $nome;
-        $cpf = $cpf;
+        $documento = $documento;
         $telefone = $telefone;
         $email = $email_db_tenant;
         if (!empty($foto_db)) {
@@ -127,10 +115,9 @@ if (isset($_GET['erro'])) {
 
 // 3. Processa o formulário de atualização de perfil
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Ignora se for exclusão ou o botão de suporte (que tem action própria, mas prevenimos)
     if (!isset($_POST['excluir_conta']) && !isset($_POST['acao_suporte_inicial'])) {
         $nome_novo = trim($_POST['nome'] ?? '');
-        $cpf_novo = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? ''); 
+        $documento_novo = preg_replace('/[^0-9]/', '', $_POST['documento'] ?? ''); // Alterado para documento
         $telefone_novo = trim($_POST['telefone'] ?? '');
         $email_novo = trim($_POST['email'] ?? '');
         $senha_nova = trim($_POST['senha'] ?? '');
@@ -169,14 +156,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($stmt_check->num_rows > 0) $erro = "Este e-mail já está em uso.";
                 else {
+                    // CORREÇÃO: Atualiza a coluna 'documento' em vez de 'cpf'
                     $senha_hash = null;
                     if (!empty($senha_nova)) {
                         $senha_hash = password_hash($senha_nova, PASSWORD_DEFAULT);
-                        $stmt_update = $conn->prepare("UPDATE usuarios SET nome=?, cpf=?, telefone=?, email=?, senha=?, foto=? WHERE id=?");
-                        $stmt_update->bind_param("ssssssi", $nome_novo, $cpf_novo, $telefone_novo, $email_novo, $senha_hash, $novoNomeFoto, $id_usuario);
+                        $stmt_update = $conn->prepare("UPDATE usuarios SET nome=?, documento=?, telefone=?, email=?, senha=?, foto=? WHERE id=?");
+                        $stmt_update->bind_param("ssssssi", $nome_novo, $documento_novo, $telefone_novo, $email_novo, $senha_hash, $novoNomeFoto, $id_usuario);
                     } else {
-                        $stmt_update = $conn->prepare("UPDATE usuarios SET nome=?, cpf=?, telefone=?, email=?, foto=? WHERE id=?");
-                        $stmt_update->bind_param("sssssi", $nome_novo, $cpf_novo, $telefone_novo, $email_novo, $novoNomeFoto, $id_usuario);
+                        $stmt_update = $conn->prepare("UPDATE usuarios SET nome=?, documento=?, telefone=?, email=?, foto=? WHERE id=?");
+                        $stmt_update->bind_param("sssssi", $nome_novo, $documento_novo, $telefone_novo, $email_novo, $novoNomeFoto, $id_usuario);
                     }
 
                     if ($stmt_update->execute()) {
@@ -185,14 +173,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         try {
                             $connMaster = getMasterConnection();
                             if ($connMaster && !$connMaster->connect_error) {
+                                // CORREÇÃO: Sincroniza documento e telefone no master também
                                 if ($senha_hash) {
-                                    $sqlM = "UPDATE usuarios SET nome=?, email=?, senha=? WHERE email=?";
+                                    $sqlM = "UPDATE usuarios SET nome=?, email=?, senha=?, documento=?, telefone=? WHERE email=?";
                                     $stmtM = $connMaster->prepare($sqlM);
-                                    $stmtM->bind_param("ssss", $nome_novo, $email_novo, $senha_hash, $email_atual_sessao);
+                                    $stmtM->bind_param("ssssss", $nome_novo, $email_novo, $senha_hash, $documento_novo, $telefone_novo, $email_atual_sessao);
                                 } else {
-                                    $sqlM = "UPDATE usuarios SET nome=?, email=? WHERE email=?";
+                                    $sqlM = "UPDATE usuarios SET nome=?, email=?, documento=?, telefone=? WHERE email=?";
                                     $stmtM = $connMaster->prepare($sqlM);
-                                    $stmtM->bind_param("sss", $nome_novo, $email_novo, $email_atual_sessao);
+                                    $stmtM->bind_param("sssss", $nome_novo, $email_novo, $documento_novo, $telefone_novo, $email_atual_sessao);
                                 }
                                 $stmtM->execute();
                                 $stmtM->close();
@@ -456,8 +445,8 @@ display_flash_message();
         </div>
 
         <div class="form-group">
-            <label>CPF:</label>
-            <input type="text" name="cpf" id="cpf" class="form-control" value="<?= htmlspecialchars($cpf ?? '') ?>">
+            <label>Documento (CPF ou CNPJ):</label>
+            <input type="text" name="documento" id="documento" class="form-control" value="<?= htmlspecialchars($documento ?? '') ?>">
         </div>
 
         <div class="form-group">
@@ -529,7 +518,27 @@ display_flash_message();
     }
 
     $(document).ready(function(){
-        $('#cpf').mask('000.000.000-00', {reverse: true});
+        // Máscara dinâmica para CPF ou CNPJ
+        var options = {
+            onKeyPress: function (cpf, ev, el, op) {
+                var masks = ['000.000.000-000', '00.000.000/0000-00'];
+                $('.doc-mask').mask((cpf.length > 14) ? masks[1] : masks[0], op);
+            }
+        }
+        
+        // Aplica lógica de máscara ao campo documento
+        $('#documento').on('input', function(){
+            var v = $(this).val().replace(/\D/g, '');
+            if (v.length > 11) {
+                $(this).mask('00.000.000/0000-00');
+            } else {
+                $(this).mask('000.000.000-009');
+            }
+        });
+        
+        // Dispara o input inicial para formatar o valor que veio do banco
+        $('#documento').trigger('input');
+
         $('#telefone').mask('(00) 00000-0000');
     });
 
