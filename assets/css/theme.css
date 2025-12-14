@@ -2,7 +2,7 @@
    DARK MODE (PADRÃO)
 ================================ */
 :root {
-    --bg-body: #121212;  /* Fundo Escuro solicitado */
+    --bg-body: #121212;
     --bg-header: #1a1a1a;
     --bg-card: #1f1f1f;
 
@@ -19,11 +19,11 @@
    LIGHT MODE
 ================================ */
 body.light-mode {
-    --bg-body: #ffffff;  /* Fundo Branco solicitado (substituindo o cinza #f4f6f8) */
+    --bg-body: #ffffff;
     --bg-header: #ffffff;
     --bg-card: #ffffff;
 
-    --text-primary: #000000; /* Ajustado para preto absoluto (000) conforme referência */
+    --text-primary: #000000;
     --text-secondary: #555555;
 
     --border-color: #dddddd;
@@ -33,18 +33,139 @@ body.light-mode {
 }
 
 /* ===============================
-   PERFORMANCE VISUAL
+   BASE
 ================================ */
 * {
     box-sizing: border-box;
 }
 
+body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--bg-body);
+    color: var(--text-primary);
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.header-controls {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1001;
+    background-color: var(--bg-header);
+    box-shadow: var(--shadow);
+    padding: 14px 28px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+}
+
+.header-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ===============================
+   BOTÕES PADRÃO
+================================ */
+.header-controls .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    color: #fff;
+}
+
+.header-controls .btn:hover {
+    opacity: 1;
+}
+
+.header-controls .btn:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* ===============================
+   CORES FIXAS (OBRIGATÓRIO)
+================================ */
+.btn-home {
+    background-color: #28a745 !important;
+}
+
+.btn-exit {
+    background-color: #dc3545 !important;
+}
+
+/* ===============================
+   BOTÕES DE ACESSIBILIDADE
+================================ */
+.btn-theme {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-theme:hover {
+    background: rgba(128,128,128,0.15);
+}
+
+/* ===============================
+   TOGGLE TEMA
+================================ */
+#themeToggle {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+body.light-mode #themeToggle {
+    background: var(--highlight-color);
+    color: #fff;
+}
+
+/* ===============================
+   MAIN
+================================ */
+main {
+    padding-top: 90px;
+    padding-bottom: 60px;
+    max-width: 1320px;
+    margin: auto;
+}
+
+/* ===============================
+   RESPONSIVO
+================================ */
+@media (max-width: 768px) {
+    .header-controls {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* ===============================
+   PERFORMANCE VISUAL
+================================ */
 body,
 .header-controls,
 .card-link,
 .kpi-card,
 .chart-section,
 .modal-content {
-    transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
-    will-change: background-color, color;
+    transition: background-color 0.25s ease,
+                color 0.25s ease,
+                box-shadow 0.25s ease;
 }
