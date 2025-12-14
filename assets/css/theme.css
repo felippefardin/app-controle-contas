@@ -2,7 +2,7 @@
    DARK MODE (PADRÃO)
 ================================ */
 :root {
-    --bg-body: #121212;
+    --bg-body: #121212;  /* Fundo Escuro solicitado */
     --bg-header: #1a1a1a;
     --bg-card: #1f1f1f;
 
@@ -19,14 +19,14 @@
    LIGHT MODE
 ================================ */
 body.light-mode {
-    --bg-body: #f4f6f8;
+    --bg-body: #ffffff;  /* Fundo Branco solicitado (substituindo o cinza #f4f6f8) */
     --bg-header: #ffffff;
     --bg-card: #ffffff;
 
-    --text-primary: #1a1a1a;
-    --text-secondary: #555;
+    --text-primary: #000000; /* Ajustado para preto absoluto (000) conforme referência */
+    --text-secondary: #555555;
 
-    --border-color: #ddd;
+    --border-color: #dddddd;
     --highlight-color: #007bff;
 
     --shadow: 0 4px 12px rgba(0,0,0,0.08);

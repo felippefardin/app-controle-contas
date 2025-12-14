@@ -17,6 +17,7 @@ if (isset($_SESSION['super_admin_original'])) {
     }
 }
 
+// Define o tema com base na sessão (padrão 'dark')
 $temaAtual  = $_SESSION['tema_preferencia'] ?? 'dark';
 $classeBody = ($temaAtual === 'light') ? 'light-mode' : '';
 ?>
@@ -179,8 +180,10 @@ main {
 
 <script>
 function toggleTheme() {
+    // 1. Alterna a classe visualmente para feedback instantâneo
     document.body.classList.toggle('light-mode');
 
+    // 2. Atualiza o ícone
     const isLight = document.body.classList.contains('light-mode');
     const icon = document.querySelector('#themeToggle i');
 
@@ -188,14 +191,22 @@ function toggleTheme() {
         icon.className = 'fas ' + (isLight ? 'fa-moon' : 'fa-sun');
     }
 
+    // 3. Prepara dados para salvar
     const formData = new FormData();
     formData.append('tema', isLight ? 'light' : 'dark');
 
-    fetch('../actions/salvar_tema.php', { method: 'POST', body: formData });
-
-    /* ⚡ Performance visual:
-       Atualiza gráficos e cores corretamente */
-    setTimeout(() => location.reload(), 120);
+    // 4. Salva no banco e SÓ DEPOIS recarrega a página
+    // Isso evita o reload antes da sessão ser atualizada (Race Condition)
+    fetch('../actions/salvar_tema.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Tema salvo:', data);
+            // Pequeno delay opcional para garantir a propagação da sessão, mas o .then já ajuda muito
+            setTimeout(() => location.reload(), 50); 
+        })
+        .catch(error => {
+            console.error('Erro ao salvar tema:', error);
+        });
 }
 </script>
 

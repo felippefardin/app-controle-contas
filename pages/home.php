@@ -225,6 +225,9 @@ if ($tenant_id && $connMaster) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+    body {
+        background-color: #121212
+    }
     /* CSS DO DASHBOARD ATIVO */
     .dashboard-kpi {
         display: grid;
@@ -235,7 +238,7 @@ if ($tenant_id && $connMaster) {
     .kpi-card {
         padding: 20px;
         border-radius: 12px;
-        /* Usa variável ou cor fixa com fallback */
+        /* Usa variáveis do theme.css */
         background: var(--bg-card, #1e1e1e); 
         color: var(--text-primary, #fff);
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
@@ -556,8 +559,9 @@ setInterval(atualizarSaudacao, 60000);
 
 // CONFIGURAÇÃO DO GRÁFICO (Chart.js)
 const ctx = document.getElementById('homeChart').getContext('2d');
-// Pega cor do texto baseada no tema (hack simples via JS)
-const textColor = document.body.classList.contains('light-mode') ? '#333' : '#ccc';
+// Pega cor do texto baseada no tema, verificando a classe no BODY
+const isLight = document.body.classList.contains('light-mode');
+const textColor = isLight ? '#333' : '#ccc';
 
 new Chart(ctx, {
     type: 'bar',
