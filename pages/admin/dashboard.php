@@ -143,10 +143,17 @@ $res_suporte_inicial = $master_conn->query($sql_suporte_inicial);
     <div class="topbar">
         <div class="topbar-title">App Control <span style="color:#fff; font-weight:300; display:inline;">Master</span></div>
         <div class="topbar-actions">
-            <span><?= htmlspecialchars($admin['email'] ?? 'Admin') ?></span>
-            <a href="redefinir_senha.php"><i class="fas fa-key"></i> <span style="display:none;">Senha</span></a>
-            <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> <span style="display:none;">Sair</span></a>
-        </div>
+    <span><?= htmlspecialchars($admin['email'] ?? 'Admin') ?></span>
+    <a href="novo_admin.php" title="Adicionar Novo Super Admin" style="background-color: #28a745;">
+        <i class="fas fa-user-plus"></i> <span style="display:none;">Add Admin</span>
+    </a>
+    <a href="redefinir_senha.php" title="Alterar Minha Senha">
+        <i class="fas fa-key"></i> <span style="display:none;">Senha</span>
+    </a>
+    <a href="../logout.php" class="logout" title="Sair">
+        <i class="fas fa-sign-out-alt"></i> <span style="display:none;">Sair</span>
+    </a>
+</div>
     </div>
 
     <div class="container">
@@ -201,6 +208,7 @@ $res_suporte_inicial = $master_conn->query($sql_suporte_inicial);
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #333; padding-top: 30px; flex-wrap: wrap; gap: 10px;">
             <h2 style="margin: 0; border: none; padding: 0; color: #ff9f43;"><i class="fas fa-headset"></i> Fila de Suporte</h2>
             <div>
+                <a href="usuarios_sistema.php" class="btn-gerenciar" style="background: #007bff;"><i class="fas fa-users"></i> Todos Usuários</a>
                 <a href="cupom_desconto.php" class="btn-gerenciar" style="background: #d35400;"><i class="fas fa-ticket-alt"></i> Cupons</a>
                 <a href="email_marketing.php" class="btn-gerenciar" style="background: #8e44ad;"><i class="fas fa-bullhorn"></i> Email Marketing</a>
                 <a href="chamados_resolvidos.php" class="btn-gerenciar" style="background: #2ecc71;"><i class="fas fa-archive"></i> Ver Arquivo</a>

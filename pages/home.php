@@ -1,10 +1,10 @@
 <?php
 // ----------------------------------------------
-// home.php (COMPACTO / AJUSTADO)
+// home.php (DASHBOARD ATIVO / AJUSTADO)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
-require_once '../includes/utils.php'; // Importante para o flash message
+require_once '../includes/utils.php';
 
 // 🔒 Usuário precisa estar logado
 if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
@@ -71,9 +71,70 @@ function temPermissao($arquivo_chave, $permissoes_array, $perfil_atual) {
     }
     return in_array($arquivo_chave, $permissoes_array);
 }
+
+// ==========================================================================
+// 📊 LÓGICA DO DASHBOARD (NOVA)
+// ==========================================================================
+$mesAtual = date('Y-m');
+$hoje = date('Y-m-d');
+
+// 1. Totais Rápidos (KPIs)
+$sqlResumo = "
+    SELECT 
+        (SELECT COALESCE(SUM(valor), 0) FROM contas_receber WHERE usuario_id = ? AND status = 'pendente' AND DATE_FORMAT(data_vencimento, '%Y-%m') = ?) as receber_mes,
+        (SELECT COALESCE(SUM(valor), 0) FROM contas_pagar WHERE usuario_id = ? AND status = 'pendente' AND DATE_FORMAT(data_vencimento, '%Y-%m') = ?) as pagar_mes,
+        (SELECT COALESCE(SUM(valor), 0) FROM contas_pagar WHERE usuario_id = ? AND status = 'pendente' AND data_vencimento = ?) as pagar_hoje
+";
+$stmtDash = $conn->prepare($sqlResumo);
+$stmtDash->bind_param("isisis", $usuario_id, $mesAtual, $usuario_id, $mesAtual, $usuario_id, $hoje);
+$stmtDash->execute();
+$dashData = $stmtDash->get_result()->fetch_assoc();
+$stmtDash->close();
+
+// 2. Saldo em Caixa (Estimado: Recebido + Caixa - Pago)
+$sqlSaldo = "
+    SELECT 
+    (COALESCE((SELECT SUM(valor) FROM contas_receber WHERE usuario_id = ? AND status = 'baixada'),0) + 
+     COALESCE((SELECT SUM(valor) FROM caixa_diario WHERE usuario_id = ?),0)) 
+    - 
+    COALESCE((SELECT SUM(valor) FROM contas_pagar WHERE usuario_id = ? AND status = 'baixada'),0) 
+    as saldo_real
+";
+$stmtSaldo = $conn->prepare($sqlSaldo);
+$stmtSaldo->bind_param("iii", $usuario_id, $usuario_id, $usuario_id);
+$stmtSaldo->execute();
+$saldoCaixa = $stmtSaldo->get_result()->fetch_assoc()['saldo_real'] ?? 0;
+$stmtSaldo->close();
+
+// 3. Verifica se é Usuário Novo (Para Onboarding)
+$novoUsuario = false;
+$checkNew = $conn->query("SELECT id FROM contas_bancarias WHERE id_usuario = $usuario_id LIMIT 1");
+if ($checkNew && $checkNew->num_rows == 0) {
+    $novoUsuario = true;
+}
+
+// 4. Dados para o Gráfico (Últimos 6 meses)
+$labelsChart = [];
+$dataReceita = [];
+$dataDespesa = [];
+
+for ($i = 5; $i >= 0; $i--) {
+    $m = date('Y-m', strtotime("-$i month"));
+    $labelsChart[] = date('M', strtotime($m . '-01'));
+    
+    // Simplificado para performance: Busca por data de baixa
+    $qChart = "SELECT 
+        (SELECT COALESCE(SUM(valor),0) FROM contas_receber WHERE usuario_id=$usuario_id AND status='baixada' AND DATE_FORMAT(data_baixa, '%Y-%m')='$m') as rec,
+        (SELECT COALESCE(SUM(valor),0) FROM contas_pagar WHERE usuario_id=$usuario_id AND status='baixada' AND DATE_FORMAT(data_baixa, '%Y-%m')='$m') as desp
+    ";
+    $rChart = $conn->query($qChart)->fetch_assoc();
+    $dataReceita[] = $rChart['rec'];
+    $dataDespesa[] = $rChart['desp'];
+}
 // ==========================================================================
 
-// 📌 Conexão Master
+
+// 📌 Conexão Master e Assinatura
 $connMaster = getMasterConnection();
 $status_assinatura = 'ok';
 
@@ -131,7 +192,6 @@ include('../includes/header.php');
 // --- LÓGICA DE PROMOÇÃO ESPECIAL (GIFT) ---
 $promo_modal = null;
 if ($tenant_id && $connMaster) {
-    // Busca promoção ativa e não visualizada
     $sqlPromo = "
         SELECT tp.id, c.descricao, c.valor, c.tipo_desconto 
         FROM tenant_promocoes tp
@@ -142,7 +202,6 @@ if ($tenant_id && $connMaster) {
     $stmtP = $connMaster->prepare($sqlPromo);
     if ($stmtP) {
         $tenant_id_numeric = $_SESSION['tenant_id_master'] ?? null;
-
         if (!$tenant_id_numeric) {
             $t_uuid = $_SESSION['tenant_id'];
             $qT = $connMaster->query("SELECT id FROM tenants WHERE tenant_id = '$t_uuid' LIMIT 1");
@@ -150,7 +209,6 @@ if ($tenant_id && $connMaster) {
                 $tenant_id_numeric = $rowT['id'];
             }
         }
-
         if ($tenant_id_numeric) {
             $stmtP->bind_param("i", $tenant_id_numeric);
             $stmtP->execute();
@@ -159,146 +217,178 @@ if ($tenant_id && $connMaster) {
         }
         $stmtP->close();
     }
-    
     $connMaster->close();
 }
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    /* REFORÇANDO O TEMA DARK */
-    body {
-        background-color: #121212 !important;
-        color: #eee !important;
+    /* CSS DO DASHBOARD ATIVO */
+    .dashboard-kpi {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
     }
-    a { text-decoration: none !important; }
+    .kpi-card {
+        padding: 20px;
+        border-radius: 12px;
+        /* Usa variável ou cor fixa com fallback */
+        background: var(--bg-card, #1e1e1e); 
+        color: var(--text-primary, #fff);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        border-left: 5px solid #00bfff;
+        transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-5px); }
+    .kpi-title { font-size: 0.9rem; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; }
+    .kpi-value { font-size: 1.8rem; font-weight: bold; }
+    
+    .text-danger-custom { color: #ff4444 !important; }
+    .text-success-custom { color: #00C851 !important; }
 
+    .chart-section {
+        background: var(--bg-card, #1e1e1e);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .chart-section h5 { color: var(--text-primary, #eee); margin-bottom: 15px; }
+
+    /* Onboarding */
+    .onboarding-card {
+        background: linear-gradient(135deg, #00bfff 0%, #0066cc 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        text-align: center;
+        animation: slideDown 0.8s ease;
+    }
+    .onboarding-steps { display: flex; justify-content: center; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+    .step-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-weight: bold; transition: 0.3s; font-size: 0.9rem; }
+    .step-btn:hover { background: white; color: #0066cc; transform: scale(1.05); }
+    @keyframes slideDown { from {opacity:0; transform:translateY(-20px);} to {opacity:1; transform:translateY(0);} }
+
+    /* Estilos Antigos Mantidos (Ajustados para usar variáveis se disponíveis) */
     .home-container {
         max-width: 1000px;
         margin: auto;
-        padding: 10px; /* Reduzido de 20px */
+        padding: 10px;
         animation: fadeIn 0.8s ease;
     }
-    h1 { 
-        text-align: center; 
-        color: #00bfff; 
-        margin-bottom: 2px; 
-        font-size: 1.5rem; /* Fonte menor */
-    }
-    h3 { 
-        text-align: center; 
-        color: #ccc; 
-        font-weight: 400; 
-        margin-bottom: 10px; /* Reduzido de 20px */
-        font-size: 1rem; /* Fonte menor */
-    }
-    .saudacao { 
-        text-align: center; 
-        margin-bottom: 15px; 
-        color: #ddd; 
-        font-size: 0.9rem; /* Fonte menor */
-    }
+    h1 { text-align: center; color: var(--highlight-color, #00bfff); margin-bottom: 2px; font-size: 1.5rem; }
+    h3 { text-align: center; color: var(--text-secondary, #ccc); font-weight: 400; margin-bottom: 10px; font-size: 1rem; }
+    .saudacao { text-align: center; margin-bottom: 15px; color: var(--text-secondary, #ddd); font-size: 0.9rem; }
+    
     .section-title {
         width: 100%;
-        color: #00bfff;
+        color: var(--highlight-color, #00bfff);
         font-weight: bold;
-        margin-top: 15px; /* Reduzido de 30px */
-        margin-bottom: 8px; /* Reduzido de 10px */
+        margin-top: 15px; margin-bottom: 8px;
         border-bottom: 1px solid #333;
         padding-bottom: 2px;
-        font-size: 0.95rem; /* Fonte menor */
+        font-size: 0.95rem;
     }
     .dashboard {
         display: grid;
-        /* AJUSTADO: minmax reduzido para 125px para caber mais itens lado a lado no mobile */
         grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
-        gap: 10px; /* Reduzido de 18px */
-        margin-bottom: 15px; /* Reduzido de 30px */
+        gap: 10px; margin-bottom: 15px;
     }
     .card-link {
-        background: #1e1e1e;
-        padding: 12px 5px; /* AJUSTADO: Reduzido de 25px 15px */
+        background: var(--bg-card, #1e1e1e);
+        padding: 12px 5px;
         text-align: center;
         border-radius: 8px;
         text-decoration: none;
-        color: #fff;
+        color: var(--text-primary, #fff);
         transition: 0.3s;
         box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 6px; /* Reduzido de 10px */
-        font-size: 0.85rem; /* Fonte do texto menor */
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 6px; font-size: 0.85rem;
     }
-    a.card-link { color: #fff !important; text-decoration: none; }
-
-    .card-link i { 
-        font-size: 1.4rem; /* AJUSTADO: Reduzido de 2rem */
-        margin-bottom: 2px; 
-        color: #00bfff; 
-    }
+    a.card-link { color: var(--text-primary, #fff) !important; text-decoration: none; }
+    .card-link i { font-size: 1.4rem; margin-bottom: 2px; color: var(--highlight-color, #00bfff); }
     .card-link:hover {
-        background: #00bfff;
+        background: var(--highlight-color, #00bfff);
         color: #121212 !important;
         transform: translateY(-3px);
-        box-shadow: 0 4px 10px rgba(0,191,255,0.4);
     }
     .card-link:hover i { color: #121212; }
     
-    .alert-estoque {
-        background: #dc3545;
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-        color: #fff;
-        font-size: 0.9rem;
-    }
-    .chat-alert {
-        background-color: #ff4444;
-        color: white;
-        padding: 10px; /* Reduzido */
-        text-align: center;
-        font-weight: bold;
-        cursor: pointer;
-        margin-bottom: 15px;
-        border-radius: 5px;
-        animation: pulse 2s infinite;
-        display: block;
-        border: 2px solid #fff;
-        text-decoration: none;
-        font-size: 0.9rem;
-    }
-    .chat-alert:hover { color: #fff; text-decoration: none; }
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
-    }
-    /* CSS DO MODAL CUSTOMIZADO */
+    .alert-estoque { background: #dc3545; padding: 10px; border-radius: 8px; margin-bottom: 15px; color: #fff; font-size: 0.9rem; }
+    .chat-alert { background-color: #ff4444; color: white; padding: 10px; text-align: center; font-weight: bold; cursor: pointer; margin-bottom: 15px; border-radius: 5px; animation: pulse 2s infinite; display: block; border: 2px solid #fff; text-decoration: none; font-size: 0.9rem; }
+    
+    /* Modal e Toast (Mantidos) */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
-    .custom-modal-content { background-color: #0000; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: #333; }
-    .custom-modal-header h5 { margin: 0; font-size: 1.5rem; }
-    .custom-modal-body { margin: 20px 0; line-height: 1.6; font-size: 1rem; }
-    .custom-modal-footer { text-align: right; }
-    .btn-modal { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
-    .btn-cancel { background: #ccc; color: #333; margin-right: 10px; }
-    .btn-accept { background: #28a745; color: #fff; }
+    .custom-modal-content { background-color: var(--bg-card, #1f1f1f); margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: var(--text-primary, #333); }
     #toast-lembrete { visibility: hidden; min-width: 300px; background-color: #00bfff; color: #121212; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999; right: 30px; bottom: 30px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
     #toast-lembrete.show { visibility: visible; opacity: 1; bottom: 50px; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 
-<?php 
-// EXIBE O FLASH MESSAGE (Login sucesso, etc)
-display_flash_message(); 
-?>
+<?php display_flash_message(); ?>
 
 <div class="home-container">
     <h1>App Controle</h1>
     <h3><?= htmlspecialchars($nome_usuario) ?> — <?= htmlspecialchars($perfil) ?></h3>
     <p class="saudacao" id="saudacao"></p>
+
+    <?php if ($novoUsuario): ?>
+    <div class="onboarding-card">
+        <h4>🚀 Bem-vindo ao seu Controle Financeiro!</h4>
+        <p style="margin-bottom:0">Para começar, configure o básico do seu sistema:</p>
+        <div class="onboarding-steps">
+            <a href="banco_cadastro.php" class="step-btn">1. Cadastrar Banco</a>
+            <a href="cadastrar_pessoa_fornecedor.php" class="step-btn">2. Add Cliente/Fornecedor</a>
+            <a href="contas_receber.php" class="step-btn">3. Lançar 1ª Receita</a>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="dashboard-kpi">
+        <div class="kpi-card" style="border-left-color: #00C851;">
+            <div class="kpi-title">Saldo em Caixa</div>
+            <div class="kpi-value <?= $saldoCaixa >= 0 ? 'text-success-custom' : 'text-danger-custom' ?>">
+                R$ <?= number_format($saldoCaixa, 2, ',', '.') ?>
+            </div>
+            <small style="opacity:0.7">Disponível agora</small>
+        </div>
+
+        <div class="kpi-card" style="border-left-color: #ff4444;">
+            <div class="kpi-title">A Pagar Hoje</div>
+            <div class="kpi-value text-danger-custom">
+                R$ <?= number_format($dashData['pagar_hoje'] ?? 0, 2, ',', '.') ?>
+            </div>
+            <small style="opacity:0.7">Vence hoje (<?= date('d/m') ?>)</small>
+        </div>
+
+        <div class="kpi-card" style="border-left-color: #33b5e5;">
+            <div class="kpi-title">Receita (Mês)</div>
+            <div class="kpi-value">
+                R$ <?= number_format($dashData['receber_mes'] ?? 0, 2, ',', '.') ?>
+            </div>
+            <small style="opacity:0.7">Pendentes em <?= date('M') ?></small>
+        </div>
+
+        <div class="kpi-card" style="border-left-color: #ffbb33;">
+            <div class="kpi-title">Despesa (Mês)</div>
+            <div class="kpi-value">
+                R$ <?= number_format($dashData['pagar_mes'] ?? 0, 2, ',', '.') ?>
+            </div>
+            <small style="opacity:0.7">Pendentes em <?= date('M') ?></small>
+        </div>
+    </div>
+
+    <div class="chart-section">
+        <h5><i class="fas fa-chart-line"></i> Fluxo de Caixa (Últimos 6 meses)</h5>
+        <div style="height: 250px; width: 100%;">
+            <canvas id="homeChart"></canvas>
+        </div>
+    </div>
 
     <?php if ($conviteChat): ?>
         <div class="chat-alert" onclick="abrirModalChat(<?php echo $conviteChat['id']; ?>)">
@@ -446,24 +536,68 @@ display_flash_message();
 <?php endif; ?>
 
 <script>
+// SAUDAÇÃO INTELIGENTE
 function atualizarSaudacao() {
     const agora = new Date();
     const hora = agora.getHours();
-    const minutos = String(agora.getMinutes()).padStart(2, '0');
-    const dia = String(agora.getDate()).padStart(2, '0');
-    const mes = String(agora.getMonth() + 1).padStart(2, '0');
-    const ano = agora.getFullYear();
     let texto = "Bem-vindo(a)!";
     if (hora < 12) texto = "☀️ Bom dia!";
     else if (hora < 18) texto = "🌤️ Boa tarde!";
     else texto = "🌙 Boa noite!";
-    const dataFormatada = `${dia}/${mes}/${ano}`;
-    const horaFormatada = `${hora}:${minutos}`;
-    document.getElementById("saudacao").innerHTML = `${texto} <span style="font-size: 0.9em; color: #aaa;">(${horaFormatada})</span>`;
+    
+    // Mostra data simplificada
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dataStr = agora.toLocaleDateString('pt-BR', options);
+    
+    document.getElementById("saudacao").innerHTML = `<strong>${texto}</strong><br><span style="font-size: 0.85em; opacity: 0.8;">${dataStr}</span>`;
 }
 atualizarSaudacao();
 setInterval(atualizarSaudacao, 60000);
 
+// CONFIGURAÇÃO DO GRÁFICO (Chart.js)
+const ctx = document.getElementById('homeChart').getContext('2d');
+// Pega cor do texto baseada no tema (hack simples via JS)
+const textColor = document.body.classList.contains('light-mode') ? '#333' : '#ccc';
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: <?= json_encode($labelsChart) ?>,
+        datasets: [
+            {
+                label: 'Receitas (Baixadas)',
+                data: <?= json_encode($dataReceita) ?>,
+                backgroundColor: '#00C851',
+                borderRadius: 4
+            },
+            {
+                label: 'Despesas (Baixadas)',
+                data: <?= json_encode($dataDespesa) ?>,
+                backgroundColor: '#ff4444',
+                borderRadius: 4
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: textColor } }
+        },
+        scales: {
+            y: { 
+                ticks: { color: textColor },
+                grid: { color: 'rgba(128,128,128,0.2)' }
+            },
+            x: { 
+                ticks: { color: textColor },
+                grid: { display: false } 
+            }
+        }
+    }
+});
+
+// LÓGICA DO CHAT (MANTIDA)
 let currentChatId = null;
 function abrirModalChat(chatId) {
     currentChatId = chatId;

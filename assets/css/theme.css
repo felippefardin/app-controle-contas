@@ -1,0 +1,57 @@
+/* ARQUIVO: assets/css/theme.css (ou adicione ao style.css) */
+
+:root {
+    /* Variáveis Padrão (Dark - Mantendo sua identidade atual) */
+    --bg-body: #121212;
+    --bg-card: #1e1e1e;
+    --bg-header: #1f1f1f;
+    --text-primary: #eee;
+    --text-secondary: #ccc;
+    --border-color: #333;
+    --highlight-color: #00bfff;
+    --card-shadow: rgba(0,0,0,0.4);
+    --input-bg: #2a2a2a;
+}
+
+/* Classe para o Tema Claro (Light Mode) */
+body.light-mode {
+    --bg-body: #f4f6f9;
+    --bg-card: #ffffff;
+    --bg-header: #ffffff;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
+    --highlight-color: #0099cc; /* Um azul um pouco mais escuro para contraste */
+    --card-shadow: rgba(0,0,0,0.1);
+    --input-bg: #ffffff;
+}
+
+/* Aplicação das variáveis */
+body {
+    background-color: var(--bg-body) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.card-link, .summary-card, .chart-container, .table-container, .navbar {
+    background: var(--bg-card) !important;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px var(--card-shadow);
+}
+
+h1, h2, h3, h4, h5, .section-title {
+    color: var(--text-primary) !important;
+}
+
+.card-link:hover {
+    background: var(--highlight-color) !important;
+    color: #fff !important;
+}
+
+/* Ajustes Específicos para inputs no modo claro */
+input, select, textarea {
+    background-color: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}

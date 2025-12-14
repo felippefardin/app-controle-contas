@@ -41,6 +41,11 @@ if (isset($_SESSION['super_admin_original']) && is_array($_SESSION['super_admin_
     ?>
 <?php endif; ?>
 
+<?php
+$temaAtual = $_SESSION['tema_preferencia'] ?? 'dark';
+$classeBody = ($temaAtual === 'light') ? 'light-mode' : '';
+?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -242,7 +247,11 @@ main {
             <button type="button" class="btn btn-header" data-bs-toggle="modal" data-bs-target="#modalFeedbackHeader" title="Deixe seu feedback" style="background-color: #ffc107; color: #000;">
                 <i class="fa-solid fa-comment-dots"></i> Feedback
             </button>
+            <button id="themeToggle" class="btn btn-sm btn-outline-secondary me-2" onclick="toggleTheme()">
+    <i class="fas <?= ($temaAtual === 'light') ? 'fa-moon' : 'fa-sun' ?>"></i>
+</button>
         <?php endif; ?>
+        
 
         <a href="../pages/home.php" class="btn btn-home btn-header" title="Página Inicial"><i class="fas fa-home"></i>Home</a>
         <a href="../pages/logout.php" class="btn btn-exit btn-header" title="Sair do sistema"><i class="fas fa-sign-out-alt"></i>Sair</a>
@@ -372,7 +381,36 @@ if (basename($_SERVER['PHP_SELF']) === 'home.php'):
             btnEnviar.disabled = false;
             btnEnviar.innerText = textoOriginal;
         });
+    }    
+    // Aplica o tema antes mesmo de carregar todo o HTML
+    const savedTheme = '<?= $temaAtual ?>';
+    if(savedTheme === 'light') document.body.classList.add('light-mode');
+
+function toggleTheme() {
+    const body = document.body;
+    const isLight = body.classList.toggle('light-mode');
+    const icon = document.querySelector('#themeToggle i');
+    
+    // Troca ícone
+    if (isLight) {
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+    } else {
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
     }
+
+    // Salva no Backend via AJAX
+    const formData = new FormData();
+    formData.append('tema', isLight ? 'light' : 'dark');
+
+    fetch('../actions/salvar_tema.php', {
+        method: 'POST',
+        body: formData
+    }).then(r => r.json()).then(data => {
+        console.log('Tema salvo:', data);
+    });
+}
 </script>
 <?php endif; ?>
 
