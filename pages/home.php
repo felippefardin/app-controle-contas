@@ -1,6 +1,6 @@
 <?php
 // ----------------------------------------------
-// home.php (DASHBOARD ATIVO / AJUSTADO)
+// home.php (DASHBOARD FULL WIDTH + CORES BOTÕES)
 // ----------------------------------------------
 require_once '../includes/session_init.php';
 require_once '../database.php';
@@ -225,10 +225,52 @@ if ($tenant_id && $connMaster) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    body {
-        background-color: #121212
+    /* =========================================
+       1. AJUSTES PARA TELA CHEIA (FULL WIDTH)
+    ========================================= */
+    main {
+        max-width: 100% !important; /* Força a largura total do container main */
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        margin: 0 !important;
     }
-    /* CSS DO DASHBOARD ATIVO */
+
+    body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        margin: 0;
+        background-color: var(--bg-body); /* Usa variável do tema */
+        font-family: Arial, sans-serif;
+        overflow-x: hidden;
+    }
+
+    /* Container da home ocupa 100% */
+    .home-container {
+        max-width: 100%; 
+        width: 100%;
+        margin: 0;
+        padding: 10px;
+        animation: fadeIn 0.8s ease;
+    }
+
+    /* =========================================
+       2. CORES DOS BOTÕES DO HEADER
+    ========================================= */
+    .btn-home { 
+        background-color: #28a745 !important; /* Verde */
+        border-color: #28a745 !important;
+        color: #fff !important;
+    }
+    .btn-exit { 
+        background-color: #dc3545 !important; /* Vermelho */
+        border-color: #dc3545 !important;
+        color: #fff !important;
+    }
+
+    /* =========================================
+       ELEMENTOS DA DASHBOARD
+    ========================================= */
     .dashboard-kpi {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -238,7 +280,6 @@ if ($tenant_id && $connMaster) {
     .kpi-card {
         padding: 20px;
         border-radius: 12px;
-        /* Usa variáveis do theme.css */
         background: var(--bg-card, #1e1e1e); 
         color: var(--text-primary, #fff);
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
@@ -276,13 +317,7 @@ if ($tenant_id && $connMaster) {
     .step-btn:hover { background: white; color: #0066cc; transform: scale(1.05); }
     @keyframes slideDown { from {opacity:0; transform:translateY(-20px);} to {opacity:1; transform:translateY(0);} }
 
-    /* Estilos Antigos Mantidos (Ajustados para usar variáveis se disponíveis) */
-    .home-container {
-        max-width: 1000px;
-        margin: auto;
-        padding: 10px;
-        animation: fadeIn 0.8s ease;
-    }
+    /* Estilos de Texto e Layout */
     h1 { text-align: center; color: var(--highlight-color, #00bfff); margin-bottom: 2px; font-size: 1.5rem; }
     h3 { text-align: center; color: var(--text-secondary, #ccc); font-weight: 400; margin-bottom: 10px; font-size: 1rem; }
     .saudacao { text-align: center; margin-bottom: 15px; color: var(--text-secondary, #ddd); font-size: 0.9rem; }
@@ -325,7 +360,7 @@ if ($tenant_id && $connMaster) {
     .alert-estoque { background: #dc3545; padding: 10px; border-radius: 8px; margin-bottom: 15px; color: #fff; font-size: 0.9rem; }
     .chat-alert { background-color: #ff4444; color: white; padding: 10px; text-align: center; font-weight: bold; cursor: pointer; margin-bottom: 15px; border-radius: 5px; animation: pulse 2s infinite; display: block; border: 2px solid #fff; text-decoration: none; font-size: 0.9rem; }
     
-    /* Modal e Toast (Mantidos) */
+    /* Modal e Toast */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
     .custom-modal-content { background-color: var(--bg-card, #1f1f1f); margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; color: var(--text-primary, #333); }
     #toast-lembrete { visibility: hidden; min-width: 300px; background-color: #00bfff; color: #121212; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999; right: 30px; bottom: 30px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
