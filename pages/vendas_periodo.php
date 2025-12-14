@@ -96,7 +96,7 @@ display_flash_message();
             color: #eee; 
             font-family: Arial, sans-serif; 
             margin: 0; 
-            padding: 20px; 
+             
         }
         
         /* CONTAINER FULL DESKTOP */

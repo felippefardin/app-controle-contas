@@ -59,7 +59,7 @@ $result = $conn->query($sql);
   <style>
     /* === GERAL === */
     * { box-sizing: border-box; }
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; min-height: 100vh; }
+    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; min-height: 100vh; }
     
     /* === CONTAINER RESPONSIVO (FULL DESKTOP) === */
     .main-container {

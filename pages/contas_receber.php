@@ -65,7 +65,7 @@ $result = $conn->query($sql);
   <style>
     /* === CONFIGURAÇÕES GERAIS === */
     * { box-sizing: border-box; }
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; }
     
     /* Container Principal para Full Desktop */
     .main-container {

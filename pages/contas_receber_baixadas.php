@@ -50,7 +50,7 @@ $result = $conn->query($sql);
         color: #eee; 
         font-family: Arial, sans-serif; 
         margin: 0; 
-        padding: 20px; 
+       
     }
 
     /* === CONTAINER PRINCIPAL (FULL DESKTOP) === */
