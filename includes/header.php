@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . '/session_init.php';
 
-// Tema salvo na sessão
-$temaAtual  = $_SESSION['tema_preferencia'] ?? 'dark';
-$classeBody = ($temaAtual === 'light') ? 'light-mode' : '';
+// ===============================
+// TEMA GLOBAL (PERSISTENTE)
+// ===============================
+$temaAtual = $_SESSION['tema_preferencia'] ?? 'dark';
+$classeBody = ($temaAtual === 'light') ? 'light-mode' : 'dark-mode';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -19,13 +21,13 @@ $classeBody = ($temaAtual === 'light') ? 'light-mode' : '';
 <body class="<?= $classeBody ?>">
 
 <header class="header-controls">
-    <div class="header-group">
-        <button class="btn btn-theme" onclick="adjustFontSize(-1)">A-</button>
-        <button class="btn btn-theme" onclick="adjustFontSize(1)">A+</button>
-        <button class="btn btn-theme" onclick="resetFontSize()">
-            <i class="fas fa-sync-alt"></i>
-        </button>
-    </div>
+   <div class="header-group">
+    <button class="btn btn-font-access" onclick="adjustFontSize(-1)">A-</button>
+    <button class="btn btn-font-access" onclick="adjustFontSize(1)">A+</button>
+    <button class="btn btn-font-access" onclick="resetFontSize()">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+</div>
 
     <div class="header-group">
         <?php if (basename($_SERVER['PHP_SELF']) === 'home.php'): ?>
@@ -45,11 +47,17 @@ $classeBody = ($temaAtual === 'light') ? 'light-mode' : '';
 </header>
 
 <script>
+// ===============================
+// TOGGLE DE TEMA (SEM BUG)
+// ===============================
 function toggleTheme() {
-    document.body.classList.toggle('light-mode');
-
-    const isLight = document.body.classList.contains('light-mode');
+    const body = document.body;
     const icon = document.querySelector('#themeToggle i');
+
+    body.classList.toggle('light-mode');
+    body.classList.toggle('dark-mode');
+
+    const isLight = body.classList.contains('light-mode');
 
     if (icon) {
         icon.className = 'fas ' + (isLight ? 'fa-moon' : 'fa-sun');
@@ -61,12 +69,12 @@ function toggleTheme() {
     fetch('../actions/salvar_tema.php', {
         method: 'POST',
         body: formData
-    }).then(() => {
-        setTimeout(() => location.reload(), 50);
     });
 }
 
-// Acessibilidade – Fonte
+// ===============================
+// ACESSIBILIDADE – FONTE
+// ===============================
 function adjustFontSize(amount) {
     const els = [document.documentElement, document.body];
     els.forEach(el => {

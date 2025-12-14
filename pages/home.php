@@ -240,7 +240,7 @@ if ($tenant_id && $connMaster) {
         flex-direction: column;
         min-height: 100vh;
         margin: 0;
-        background-color: var(--bg-body); /* Usa variável do tema */
+        background-color: var(--bg-body); 
         font-family: Arial, sans-serif;
         overflow-x: hidden;
     }
