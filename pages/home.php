@@ -350,7 +350,7 @@ if ($tenant_id && $connMaster) {
     <?php endif; ?>
 
     <div class="dashboard-kpi">
-        <div class="kpi-card" style="border-left-color: #00C851;">
+        <div class="kpi-card" style="border-left-color: #00C851;"> 
             <div class="kpi-title">Saldo em Caixa</div>
             <div class="kpi-value <?= $saldoCaixa >= 0 ? 'text-success-custom' : 'text-danger-custom' ?>">
                 R$ <?= number_format($saldoCaixa, 2, ',', '.') ?>

@@ -1,82 +1,50 @@
-/* ARQUIVO: assets/css/theme.css */
-
+/* ===============================
+   DARK MODE (PADRÃO)
+================================ */
 :root {
-    /* --- DARK MODE (Padrão) --- */
     --bg-body: #121212;
-    --bg-card: #1e1e1e;        /* Containers, Tabelas, Forms */
-    --bg-header: #1f1f1f;      /* Menu Superior */
-    --bg-input: #2a2a2a;       /* Campos de texto */
-    --bg-hover: #2a2a2a;       /* Hover em tabelas */
-    
-    --text-primary: #eeeeee;   /* Texto principal */
-    --text-secondary: #cccccc; /* Texto secundário */
-    
-    --border-color: #333333;   /* Bordas */
-    --card-shadow: rgba(0, 0, 0, 0.4);
-    
-    --highlight-color: #00bfff; /* Cor de destaque (links, ícones) */
-    --btn-primary-bg: #0af;
-    --btn-primary-hover: #08c;
-    
-    --success-bg: #28a745;
-    --error-bg: #dc3545;
+    --bg-header: #1a1a1a;
+    --bg-card: #1f1f1f;
+
+    --text-primary: #eaeaea;
+    --text-secondary: #b5b5b5;
+
+    --border-color: #2f2f2f;
+    --highlight-color: #00bfff;
+
+    --shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 
-/* --- LIGHT MODE (Ativado via classe .light-mode no body) --- */
+/* ===============================
+   LIGHT MODE
+================================ */
 body.light-mode {
-    --bg-body: #f4f6f9;        /* Cinza bem claro para o fundo */
-    --bg-card: #ffffff;        /* Branco para cartões */
-    --bg-header: #ffffff;      /* Header branco */
-    --bg-input: #f8f9fa;       /* Input cinza gelo */
-    --bg-hover: #e9ecef;       /* Hover bem suave */
-    
-    --text-primary: #333333;   /* Texto escuro */
-    --text-secondary: #666666;
-    
-    --border-color: #dee2e6;   /* Bordas suaves */
-    --card-shadow: rgba(0, 0, 0, 0.1);
-    
-    --highlight-color: #007bff; /* Azul padrão bootstrap */
-    --btn-primary-bg: #007bff;
-    --btn-primary-hover: #0056b3;
-    
-    --success-bg: #28a745;
-    --error-bg: #dc3545;
+    --bg-body: #f4f6f8;
+    --bg-header: #ffffff;
+    --bg-card: #ffffff;
+
+    --text-primary: #1a1a1a;
+    --text-secondary: #555;
+
+    --border-color: #ddd;
+    --highlight-color: #007bff;
+
+    --shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* APLICAÇÃO GLOBAL AUTOMÁTICA */
-body {
-    background-color: var(--bg-body) !important;
-    color: var(--text-primary) !important;
-    transition: background-color 0.3s ease, color 0.3s ease;
+/* ===============================
+   PERFORMANCE VISUAL
+================================ */
+* {
+    box-sizing: border-box;
 }
 
-/* Força componentes comuns a usarem as variáveis */
-.card-link, 
-.summary-card, 
-.chart-container, 
-.table-container,
-.custom-modal-content,
-.modal-content,
-.container,
-form,
-table {
-    background-color: var(--bg-card) !important;
-    color: var(--text-primary) !important;
-    border-color: var(--border-color) !important;
-}
-
-h1, h2, h3, h4, h5, .section-title, label {
-    color: var(--text-primary) !important;
-}
-
-a {
-    color: var(--highlight-color);
-}
-
-/* Inputs em qualquer lugar */
-input, select, textarea {
-    background-color: var(--bg-input) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border-color) !important;
+body,
+.header-controls,
+.card-link,
+.kpi-card,
+.chart-section,
+.modal-content {
+    transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    will-change: background-color, color;
 }
