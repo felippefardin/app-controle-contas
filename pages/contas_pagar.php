@@ -179,6 +179,7 @@ $result = $conn->query($sql);
         .modal-content { width: 95%; margin: 10px; max-height: 90vh; overflow-y: auto; }
     }
   </style>
+  
 </head>
 <body>
 
