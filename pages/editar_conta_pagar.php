@@ -36,15 +36,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $id_pessoa_fornecedor = !empty($_POST['id_pessoa_fornecedor']) ? (int)$_POST['id_pessoa_fornecedor'] : null;
     
-    // Tratamento de Dados seguro com utils.php
+    // Tratamento de Dados
+    $numero = trim($_POST['numero'] ?? ''); // Novo campo
     $data_vencimento = data_para_iso($_POST['data_vencimento']);
     $valor = brl_to_float($_POST['valor']); // Usa a função segura global
 
     $id_categoria = (int)$_POST['id_categoria'];
     $descricao = trim($_POST['descricao'] ?? '');
 
+    // SQL Atualizado com o campo 'numero'
     $sql = "UPDATE contas_pagar SET 
                 id_pessoa_fornecedor = ?, 
+                numero = ?,
                 data_vencimento = ?, 
                 valor = ?, 
                 id_categoria = ?, 
@@ -52,8 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id = ? AND usuario_id = ?";
             
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("isdisii", 
+    // Tipos: i (int), s (string), s (string-data), d (double), i (int), s (string), i (int), i (int)
+    $stmt->bind_param("issdisii", 
         $id_pessoa_fornecedor, 
+        $numero,
         $data_vencimento, 
         $valor, 
         $id_categoria, 
@@ -138,31 +143,37 @@ $fornecedores_result = $conn->query("SELECT id, nome FROM pessoas_fornecedores W
                         ?>
                     </select>
                 </div>
-                
+
+                <div class="form-group col-md-6">
+                    <label for="numero">Número do Documento</label>
+                    <input type="text" class="form-control" id="numero" name="numero" 
+                           value="<?= htmlspecialchars($conta['numero'] ?? '') ?>" placeholder="Ex: 12345">
+                </div>
+            </div>
+            
+            <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="valor">Valor (R$)</label>
                     <input type="text" class="form-control" id="valor" name="valor" 
                            value="<?= number_format($conta['valor'], 2, ',', '.') ?>" required 
                            onkeyup="formatarMoeda(this)">
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="descricao">Descrição / Observação</label>
-                <input type="text" class="form-control" id="descricao" name="descricao" value="<?= htmlspecialchars($conta['descricao'] ?? '') ?>">
-            </div>
 
-            <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="data_vencimento">Data de Vencimento</label>
                     <input type="date" class="form-control" id="data_vencimento" name="data_vencimento" value="<?= htmlspecialchars($conta['data_vencimento']) ?>" required>
                 </div>
+            </div>
+            
+            <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="id_categoria">Categoria</label>
                     <select class="form-control" id="id_categoria" name="id_categoria" required>
                         <option value="">Selecione...</option>
                         <?php 
                         if ($categorias_result) {
+                            // Reinicia o ponteiro do resultado se necessário ou busca novamente se a lógica acima consumiu
+                            $categorias_result->data_seek(0); 
                             while($cat = $categorias_result->fetch_assoc()): 
                                 $selected = ($cat['id'] == $conta['id_categoria']) ? 'selected' : '';
                         ?>
@@ -174,6 +185,11 @@ $fornecedores_result = $conn->query("SELECT id, nome FROM pessoas_fornecedores W
                         }
                         ?>
                     </select>
+                </div>
+
+                <div class="form-group col-md-6">
+                    <label for="descricao">Descrição / Observação</label>
+                    <input type="text" class="form-control" id="descricao" name="descricao" value="<?= htmlspecialchars($conta['descricao'] ?? '') ?>">
                 </div>
             </div>
 

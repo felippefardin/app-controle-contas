@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Função local (ou poderia usar a do utils se existisse)
+    // Função local
     function formatarMoedaLocal($valor) {
         if (empty($valor)) return 0;
         $valor = str_replace('.', '', $valor);
@@ -33,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return floatval($valor);
     }
 
+    // --- CAPTURA DE DADOS (AGORA COM CÓDIGO/SKU) ---
+    $codigo             = trim($_POST['codigo'] ?? ''); // <--- CAMPO NOVO
     $nome               = trim($_POST['nome'] ?? '');
     $descricao          = trim($_POST['descricao'] ?? '');
     $quantidade         = intval($_POST['quantidade_estoque'] ?? 0);
@@ -50,13 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
+        // Query atualizada para incluir a coluna 'codigo'
         $query = "INSERT INTO produtos 
-            (nome, descricao, quantidade_estoque, quantidade_minima, preco_compra, preco_venda, ncm, cfop, id_usuario)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            (codigo, nome, descricao, quantidade_estoque, quantidade_minima, preco_compra, preco_venda, ncm, cfop, id_usuario)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($query);
+        
+        // Bind atualizado: 's' extra no início para o código
         $stmt->bind_param(
-            "ssiiddssi",
+            "sssiiddssi",
+            $codigo,
             $nome,
             $descricao,
             $quantidade,
