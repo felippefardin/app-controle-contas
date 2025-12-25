@@ -74,6 +74,8 @@ $meses_pt = [
     'Jul' => 'Jul', 'Aug' => 'Ago', 'Sep' => 'Set', 'Oct' => 'Out', 'Nov' => 'Nov', 'Dec' => 'Dez'
 ];
 $nome_mes_atual = $meses_pt[date('M')];
+$mesAtual = date('Y-m');
+$hoje = date('Y-m-d');
 
 // 1. Totais Rápidos (KPIs)
 $sqlResumo = "
@@ -208,24 +210,36 @@ if ($tenant_id && $connMaster) {
 
 <style>
     /* =========================================
-       NOVOS ESTILOS PARA INTUIÇÃO E LIMPEZA
+       AJUSTES DE LAYOUT E TEMA DINÂMICO
     ========================================= */
+    
+    /* Corrige o problema de conteúdo cortado pelo header fixo */
     main {
         max-width: 100% !important;
-        padding: 0 !important; /* Controle total do layout aqui */
         margin: 0 !important;
+        /* Padding top deve ser suficiente para o header fixed. 
+           O header.php geralmente define padding-top no main, 
+           então removemos o 'padding: 0 !important' que causava o erro. 
+           Se necessário, reforçamos: */
+        padding-top: 90px !important; 
+        padding-left: 20px;
+        padding-right: 20px;
+        padding-bottom: 20px;
     }
 
+    /* Remove cor fixa para permitir variáveis do tema */
     body {
-        background-color: #121212; 
+        background-color: var(--bg-body) !important; 
+        color: var(--text-primary) !important;
         font-family: 'Segoe UI', Arial, sans-serif;
         overflow-x: hidden;
+        transition: background-color 0.3s, color 0.3s;
     }
 
     .home-container {
-        max-width: 1200px; /* Limite para não esticar demais em telas grandes */
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 0;
         animation: fadeIn 0.8s ease;
     }
 
@@ -236,10 +250,11 @@ if ($tenant_id && $connMaster) {
         align-items: center;
         margin-bottom: 25px;
         padding-bottom: 15px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid var(--border-color); /* Uso de variável */
     }
-    .user-info h2 { font-size: 1.5rem; color: #fff; margin: 0; }
-    .user-info p { color: #aaa; margin: 0; font-size: 0.9rem; }
+    .user-info h2 { font-size: 1.5rem; color: var(--text-primary); margin: 0; }
+    .user-info p { color: var(--text-secondary); margin: 0; font-size: 0.9rem; }
+    .date-info { color: var(--text-secondary) !important; font-size: 0.9rem; }
     
     /* Ações Rápidas (Quick Actions) */
     .quick-actions {
@@ -263,7 +278,7 @@ if ($tenant_id && $connMaster) {
         justify-content: center;
         gap: 8px;
         border: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        box-shadow: var(--shadow); /* Uso de variável */
     }
     .btn-quick i { font-size: 1.5rem; margin-bottom: 5px; }
     .btn-quick:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); opacity: 0.95; }
@@ -282,30 +297,31 @@ if ($tenant_id && $connMaster) {
     .kpi-card {
         padding: 20px;
         border-radius: 16px;
-        background: #1e1e1e;
-        color: #fff;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        background: var(--bg-card); /* Variável de tema */
+        color: var(--text-primary); /* Variável de tema */
+        box-shadow: var(--shadow);
         border-left: 5px solid transparent;
         display: flex;
         align-items: center;
         justify-content: space-between;
         transition: transform 0.2s;
     }
-    .kpi-card:hover { transform: translateY(-3px); background: #252525; }
+    .kpi-card:hover { transform: translateY(-3px); opacity: 0.9; }
     .kpi-content { display: flex; flex-direction: column; }
-    .kpi-title { font-size: 0.85rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .kpi-title { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
     .kpi-value { font-size: 1.6rem; font-weight: 700; }
     .kpi-icon { font-size: 2.2rem; opacity: 0.2; }
 
     /* Listas de Hoje */
     .today-section { margin-bottom: 30px; }
     .today-card {
-        background: #1e1e1e;
+        background: var(--bg-card); /* Variável */
         border-radius: 16px;
         overflow: hidden;
         height: 100%;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        border: 1px solid rgba(255,255,255,0.05);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
     }
     .today-header {
         padding: 15px 20px;
@@ -313,32 +329,33 @@ if ($tenant_id && $connMaster) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: rgba(255,255,255,0.03);
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        background: rgba(128, 128, 128, 0.05); /* Leve transparência neutra */
+        border-bottom: 1px solid var(--border-color);
     }
     .today-list-container { max-height: 300px; overflow-y: auto; }
     .today-item {
         padding: 15px 20px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
         transition: background 0.2s;
+        color: var(--text-primary);
     }
-    .today-item:hover { background: rgba(255,255,255,0.02); }
+    .today-item:hover { background: rgba(128, 128, 128, 0.05); }
     .today-item:last-child { border-bottom: none; }
     
     /* Menu Grid (App Style) */
     .section-title {
         font-size: 1.1rem;
-        color: #00bfff;
+        color: var(--highlight-color);
         margin-bottom: 15px;
         font-weight: 600;
         display: flex;
         align-items: center;
         gap: 10px;
     }
-    .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(0, 191, 255, 0.2); }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--highlight-color); opacity: 0.2; }
     
     .menu-grid {
         display: grid;
@@ -347,33 +364,34 @@ if ($tenant_id && $connMaster) {
         margin-bottom: 40px;
     }
     .menu-item {
-        background: #252525;
+        background: var(--bg-card); /* Variável */
         padding: 15px 10px;
         border-radius: 12px;
         text-align: center;
         text-decoration: none;
-        color: #e0e0e0;
+        color: var(--text-secondary);
         transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 10px;
         border: 1px solid transparent;
+        box-shadow: var(--shadow);
     }
-    .menu-item i { font-size: 1.6rem; color: #00bfff; transition: transform 0.3s; }
+    .menu-item i { font-size: 1.6rem; color: var(--highlight-color); transition: transform 0.3s; }
     .menu-item span { font-size: 0.85rem; font-weight: 500; line-height: 1.2; }
     .menu-item:hover {
-        background: #333;
-        border-color: #00bfff;
+        background: var(--bg-card); /* Mantém bg, mas adiciona borda */
+        border-color: var(--highlight-color);
         transform: translateY(-5px);
-        color: #fff;
+        color: var(--text-primary);
     }
     .menu-item:hover i { transform: scale(1.1); }
 
     /* Utilitários */
     .text-success-custom { color: #00E676 !important; }
     .text-danger-custom { color: #FF5252 !important; }
-    .empty-msg { padding: 30px; text-align: center; color: #666; font-style: italic; }
+    .empty-msg { padding: 30px; text-align: center; color: var(--text-secondary); font-style: italic; }
 
     /* Alertas */
     .alert-estoque { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff8b94; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
@@ -394,10 +412,10 @@ if ($tenant_id && $connMaster) {
     
     /* Modais */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
-    .custom-modal-content { background-color: #1f1f1f; margin: 15% auto; padding: 25px; border: 1px solid #333; width: 90%; max-width: 500px; border-radius: 16px; color: #eee; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .custom-modal-content { background-color: var(--bg-card); color: var(--text-primary); margin: 15% auto; padding: 25px; border: 1px solid var(--border-color); width: 90%; max-width: 500px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .btn-modal { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin: 5px; }
     .btn-cancel { background: #444; color: #fff; }
-    .btn-accept { background: #00bfff; color: #121212; }
+    .btn-accept { background: var(--highlight-color); color: #fff; }
 </style>
 
 <?php display_flash_message(); ?>
@@ -409,7 +427,7 @@ if ($tenant_id && $connMaster) {
             <h2 id="saudacao">Bem-vindo(a)</h2>
             <p><?= htmlspecialchars($nome_usuario) ?> • <?= ucfirst(htmlspecialchars($perfil)) ?></p>
         </div>
-        <div class="date-info" style="color: #666; font-size: 0.9rem;">
+        <div class="date-info">
             <?= date('d/m/Y') ?>
         </div>
     </div>
@@ -656,7 +674,7 @@ if ($tenant_id && $connMaster) {
 
 <div id="modalChatInvite" class="custom-modal">
   <div class="custom-modal-content">
-    <div style="font-size:3rem; color:#00bfff; margin-bottom:10px;"><i class="fas fa-comments"></i></div>
+    <div style="font-size:3rem; color: var(--highlight-color); margin-bottom:10px;"><i class="fas fa-comments"></i></div>
     <h5>Convite de Suporte Online</h5>
     <p>Nossa equipe está disponível agora para te ajudar.</p>
     <div style="margin-top:20px;">
@@ -668,7 +686,7 @@ if ($tenant_id && $connMaster) {
 
 <?php if ($popupLembrete): ?>
     <div id="toast-lembrete" onclick="window.location.href='lembrete.php'" 
-         style="position: fixed; bottom: 30px; right: 30px; background: #00bfff; color: #121212; padding: 15px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 9999; animation: slideUp 0.5s ease;">
+         style="position: fixed; bottom: 30px; right: 30px; background: var(--highlight-color); color: #fff; padding: 15px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 9999; animation: slideUp 0.5s ease;">
         <i class="fas fa-bell"></i> Você tem lembretes para hoje!
     </div>
 <?php endif; ?>
@@ -716,8 +734,8 @@ document.getElementById('btnAceitarChat').addEventListener('click', function() {
         <div style="font-size: 3rem; color: #e67e22; margin-bottom: 10px;">
             <i class="fas fa-gift"></i>
         </div>
-        <h2 style="color: #fff;">Presente para você!</h2>
-        <p style="font-size: 1.1rem; color: #ccc; margin: 15px 0;">
+        <h2 style="color: var(--text-primary);">Presente para você!</h2>
+        <p style="font-size: 1.1rem; color: var(--text-secondary); margin: 15px 0;">
             <strong style="color: #e67e22; font-size: 1.2rem;">
                 <?= htmlspecialchars($promo_modal['descricao']) ?>
             </strong>

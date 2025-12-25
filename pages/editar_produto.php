@@ -86,16 +86,18 @@ display_flash_message();
                 <input type="hidden" name="id" value="<?= htmlspecialchars($produto['id']) ?>">
                 
                 <div class="form-row">
-                    <div class="form-group col-md-6">
-                        <label for="nome">Nome do Produto</label>
+                    <div class="form-group col-md-3">
+                        <label for="codigo">Código/SKU</label>
+                        <input type="text" class="form-control" name="codigo" value="<?= htmlspecialchars($produto['codigo'] ?? '') ?>">
+                    </div>
+
+                    <div class="form-group col-md-5"> <label for="nome">Nome do Produto</label>
                         <input type="text" class="form-control" name="nome" value="<?= htmlspecialchars($produto['nome']) ?>" required>
                     </div>
-                    <div class="form-group col-md-3">
-                        <label for="quantidade_estoque">Qtd. em Estoque</label>
+                    <div class="form-group col-md-2"> <label for="quantidade_estoque">Qtd. em Estoque</label>
                         <input type="number" class="form-control" name="quantidade_estoque" value="<?= htmlspecialchars($produto['quantidade_estoque']) ?>" required>
                     </div>
-                    <div class="form-group col-md-3">
-                        <label for="quantidade_minima">Qtd. Mínima</label>
+                    <div class="form-group col-md-2"> <label for="quantidade_minima">Qtd. Mínima</label>
                         <input type="number" class="form-control" name="quantidade_minima" value="<?= htmlspecialchars($produto['quantidade_minima']) ?>" required>
                     </div>
                 </div>

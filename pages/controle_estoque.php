@@ -90,18 +90,20 @@ display_flash_message();
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
                 <div class="form-row">
-                    <div class="form-group col-md-6">
-                        <label for="nome">Nome do Produto</label>
+                    <div class="form-group col-md-3">
+                        <label for="codigo">Código/SKU</label>
+                        <input type="text" class="form-control" name="codigo" placeholder="Cód. Opcional">
+                    </div>
+
+                    <div class="form-group col-md-5"> <label for="nome">Nome do Produto</label>
                         <input type="text" class="form-control" name="nome" required>
                     </div>
 
-                    <div class="form-group col-md-3">
-                        <label for="quantidade_estoque">Quantidade em Estoque</label>
+                    <div class="form-group col-md-2"> <label for="quantidade_estoque">Qtd. Atual</label>
                         <input type="number" class="form-control" name="quantidade_estoque" value="0" required>
                     </div>
 
-                    <div class="form-group col-md-3">
-                        <label for="quantidade_minima">Quantidade Mínima</label>
+                    <div class="form-group col-md-2"> <label for="quantidade_minima">Qtd. Mínima</label>
                         <input type="number" class="form-control" name="quantidade_minima" value="0" required>
                     </div>
                 </div>
@@ -152,6 +154,7 @@ display_flash_message();
         <table class="table table-bordered">
             <thead>
             <tr>
+                <th style="width: 10%;">Cód.</th>
                 <th>Nome</th>
                 <th>Estoque</th>
                 <th>Preço de Venda</th>
@@ -164,6 +167,8 @@ display_flash_message();
             <tbody>
             <?php while ($produto = $result->fetch_assoc()): ?>
                 <tr class="<?= ($produto['quantidade_estoque'] <= $produto['quantidade_minima'] && $produto['quantidade_minima'] > 0) ? 'table-danger' : '' ?>">
+                    <td><?= htmlspecialchars($produto['codigo'] ?? '-') ?></td>
+                    
                     <td><?= htmlspecialchars($produto['nome']) ?></td>
                     <td><?= htmlspecialchars($produto['quantidade_estoque']) ?></td>
                     <td>R$ <?= number_format($produto['preco_venda'], 2, ',', '.') ?></td>

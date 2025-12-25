@@ -26,6 +26,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $id_usuario = $_SESSION['usuario_id'];
     $id = intval($_POST['id']);
+    
+    // ADICIONADO: Captura do código
+    $codigo = !empty($_POST['codigo']) ? $_POST['codigo'] : null;
+    
     $nome = $_POST['nome'];
     $descricao = $_POST['descricao'] ?? '';
     $quantidade_estoque = intval($_POST['quantidade_estoque']);
@@ -38,17 +42,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ncm = $_POST['ncm'] ?? null;
     $cfop = $_POST['cfop'] ?? null;
 
+    // ADICIONADO: codigo = ? no SQL
     $sql = "UPDATE produtos 
-            SET nome = ?, descricao = ?, quantidade_estoque = ?, quantidade_minima = ?, 
+            SET codigo = ?, nome = ?, descricao = ?, quantidade_estoque = ?, quantidade_minima = ?, 
                 preco_compra = ?, preco_venda = ?, ncm = ?, cfop = ?
             WHERE id = ? AND id_usuario = ?";
 
     $stmt = $conn->prepare($sql);
 
     if ($stmt) {
+        // ADICIONADO: 's' no bind e $codigo nas variáveis
         $stmt->bind_param(
-            "ssiiddssii",
-            $nome, $descricao,
+            "sssiiddssii",
+            $codigo, $nome, $descricao,
             $quantidade_estoque, $quantidade_minima,
             $preco_compra, $preco_venda,
             $ncm, $cfop,
