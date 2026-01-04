@@ -180,8 +180,6 @@ try {
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
-include('../includes/header.php');
-
 // [MANTIDO] Promoção (Gift)
 $promo_modal = null;
 if ($tenant_id && $connMaster) {
@@ -204,6 +202,9 @@ if ($tenant_id && $connMaster) {
     }
     $connMaster->close();
 }
+
+// INCLUI O CABEÇALHO PADRÃO DO SISTEMA
+include('../includes/header.php');
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -213,34 +214,30 @@ if ($tenant_id && $connMaster) {
        AJUSTES DE LAYOUT E TEMA DINÂMICO
     ========================================= */
     
-    /* Corrige o problema de conteúdo cortado pelo header fixo */
+    /* Ajuste crítico para Header Fixo:
+       Garante que o conteúdo não fique escondido atrás do menu superior.
+    */
     main {
         max-width: 100% !important;
         margin: 0 !important;
-        /* Padding top deve ser suficiente para o header fixed. 
-           O header.php geralmente define padding-top no main, 
-           então removemos o 'padding: 0 !important' que causava o erro. 
-           Se necessário, reforçamos: */
         padding-top: 90px !important; 
         padding-left: 20px;
         padding-right: 20px;
         padding-bottom: 20px;
     }
 
-    /* Remove cor fixa para permitir variáveis do tema */
     body {
-        background-color: var(--bg-body) !important; 
-        color: var(--text-primary) !important;
+        background-color: var(--bg-body, #f4f6f9) !important; 
+        color: var(--text-primary, #333) !important;
         font-family: 'Segoe UI', Arial, sans-serif;
         overflow-x: hidden;
-        transition: background-color 0.3s, color 0.3s;
     }
 
     .home-container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 0;
-        animation: fadeIn 0.8s ease;
+        animation: fadeIn 0.6s ease;
     }
 
     /* Cabeçalho Home */
@@ -250,11 +247,11 @@ if ($tenant_id && $connMaster) {
         align-items: center;
         margin-bottom: 25px;
         padding-bottom: 15px;
-        border-bottom: 1px solid var(--border-color); /* Uso de variável */
+        border-bottom: 1px solid var(--border-color, #ddd);
     }
-    .user-info h2 { font-size: 1.5rem; color: var(--text-primary); margin: 0; }
-    .user-info p { color: var(--text-secondary); margin: 0; font-size: 0.9rem; }
-    .date-info { color: var(--text-secondary) !important; font-size: 0.9rem; }
+    .user-info h2 { font-size: 1.5rem; color: var(--text-primary, #333); margin: 0; font-weight: 700; }
+    .user-info p { color: var(--text-secondary, #666); margin: 0; font-size: 0.95rem; }
+    .date-info { color: var(--text-secondary, #666) !important; font-size: 0.9rem; font-weight: 500; }
     
     /* Ações Rápidas (Quick Actions) */
     .quick-actions {
@@ -278,10 +275,10 @@ if ($tenant_id && $connMaster) {
         justify-content: center;
         gap: 8px;
         border: none;
-        box-shadow: var(--shadow); /* Uso de variável */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    .btn-quick i { font-size: 1.5rem; margin-bottom: 5px; }
-    .btn-quick:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); opacity: 0.95; }
+    .btn-quick i { font-size: 1.6rem; margin-bottom: 2px; }
+    .btn-quick:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.15); opacity: 0.95; }
     
     .btn-quick.receita { background: linear-gradient(135deg, #00b09b, #96c93d); color: white; }
     .btn-quick.despesa { background: linear-gradient(135deg, #ff5f6d, #ffc371); color: white; }
@@ -297,31 +294,34 @@ if ($tenant_id && $connMaster) {
     .kpi-card {
         padding: 20px;
         border-radius: 16px;
-        background: var(--bg-card); /* Variável de tema */
-        color: var(--text-primary); /* Variável de tema */
-        box-shadow: var(--shadow);
+        background: var(--bg-card, #fff);
+        color: var(--text-primary, #333);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color, #eaeaea);
         border-left: 5px solid transparent;
         display: flex;
         align-items: center;
         justify-content: space-between;
         transition: transform 0.2s;
+        position: relative;
+        overflow: hidden;
     }
-    .kpi-card:hover { transform: translateY(-3px); opacity: 0.9; }
-    .kpi-content { display: flex; flex-direction: column; }
-    .kpi-title { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .kpi-card:hover { transform: translateY(-3px); }
+    .kpi-content { display: flex; flex-direction: column; z-index: 2; }
+    .kpi-title { font-size: 0.85rem; color: var(--text-secondary, #777); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; font-weight: 600; }
     .kpi-value { font-size: 1.6rem; font-weight: 700; }
-    .kpi-icon { font-size: 2.2rem; opacity: 0.2; }
+    .kpi-icon { font-size: 2.5rem; opacity: 0.15; position: absolute; right: 15px; bottom: 10px; z-index: 1; }
 
     /* Listas de Hoje */
     .today-section { margin-bottom: 30px; }
     .today-card {
-        background: var(--bg-card); /* Variável */
+        background: var(--bg-card, #fff);
         border-radius: 16px;
         overflow: hidden;
         height: 100%;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color, #eaeaea);
+        color: var(--text-primary, #333);
     }
     .today-header {
         padding: 15px 20px;
@@ -329,18 +329,18 @@ if ($tenant_id && $connMaster) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: rgba(128, 128, 128, 0.05); /* Leve transparência neutra */
-        border-bottom: 1px solid var(--border-color);
+        background: rgba(128, 128, 128, 0.03);
+        border-bottom: 1px solid var(--border-color, #eaeaea);
     }
     .today-list-container { max-height: 300px; overflow-y: auto; }
     .today-item {
         padding: 15px 20px;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color, #eaeaea);
         display: flex;
         justify-content: space-between;
         align-items: center;
         transition: background 0.2s;
-        color: var(--text-primary);
+        color: var(--text-primary, #333);
     }
     .today-item:hover { background: rgba(128, 128, 128, 0.05); }
     .today-item:last-child { border-bottom: none; }
@@ -348,14 +348,14 @@ if ($tenant_id && $connMaster) {
     /* Menu Grid (App Style) */
     .section-title {
         font-size: 1.1rem;
-        color: var(--highlight-color);
+        color: var(--highlight-color, #0d6efd);
         margin-bottom: 15px;
         font-weight: 600;
         display: flex;
         align-items: center;
         gap: 10px;
     }
-    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--highlight-color); opacity: 0.2; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--highlight-color, #0d6efd); opacity: 0.2; }
     
     .menu-grid {
         display: grid;
@@ -364,37 +364,38 @@ if ($tenant_id && $connMaster) {
         margin-bottom: 40px;
     }
     .menu-item {
-        background: var(--bg-card); /* Variável */
+        background: var(--bg-card, #fff);
         padding: 15px 10px;
         border-radius: 12px;
         text-align: center;
         text-decoration: none;
-        color: var(--text-secondary);
+        color: var(--text-secondary, #555);
         transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 10px;
         border: 1px solid transparent;
-        box-shadow: var(--shadow);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .menu-item i { font-size: 1.6rem; color: var(--highlight-color); transition: transform 0.3s; }
+    .menu-item i { font-size: 1.6rem; color: var(--highlight-color, #0d6efd); transition: transform 0.3s; }
     .menu-item span { font-size: 0.85rem; font-weight: 500; line-height: 1.2; }
     .menu-item:hover {
-        background: var(--bg-card); /* Mantém bg, mas adiciona borda */
-        border-color: var(--highlight-color);
+        background: var(--bg-card, #fff);
+        border-color: var(--highlight-color, #0d6efd);
         transform: translateY(-5px);
-        color: var(--text-primary);
+        color: var(--text-primary, #333);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     .menu-item:hover i { transform: scale(1.1); }
 
     /* Utilitários */
     .text-success-custom { color: #00E676 !important; }
     .text-danger-custom { color: #FF5252 !important; }
-    .empty-msg { padding: 30px; text-align: center; color: var(--text-secondary); font-style: italic; }
+    .empty-msg { padding: 30px; text-align: center; color: var(--text-secondary, #888); font-style: italic; }
 
     /* Alertas */
-    .alert-estoque { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #ff8b94; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+    .alert-estoque { background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; color: #d63384; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
     .chat-alert { background: linear-gradient(45deg, #ff4444, #ff8888); color: white; padding: 12px; text-align: center; font-weight: bold; cursor: pointer; border-radius: 50px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(255, 68, 68, 0.4); animation: pulse 2s infinite; text-decoration: none; display: block; }
 
     /* Responsividade */
@@ -410,12 +411,12 @@ if ($tenant_id && $connMaster) {
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* Modais */
+    /* Modais Customizados */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
-    .custom-modal-content { background-color: var(--bg-card); color: var(--text-primary); margin: 15% auto; padding: 25px; border: 1px solid var(--border-color); width: 90%; max-width: 500px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .custom-modal-content { background-color: var(--bg-card, #fff); color: var(--text-primary, #333); margin: 15% auto; padding: 25px; border: 1px solid var(--border-color, #444); width: 90%; max-width: 500px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .btn-modal { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin: 5px; }
-    .btn-cancel { background: #444; color: #fff; }
-    .btn-accept { background: var(--highlight-color); color: #fff; }
+    .btn-cancel { background: #6c757d; color: #fff; }
+    .btn-accept { background: var(--highlight-color, #0d6efd); color: #fff; }
 </style>
 
 <?php display_flash_message(); ?>
@@ -428,7 +429,7 @@ if ($tenant_id && $connMaster) {
             <p><?= htmlspecialchars($nome_usuario) ?> • <?= ucfirst(htmlspecialchars($perfil)) ?></p>
         </div>
         <div class="date-info">
-            <?= date('d/m/Y') ?>
+            <i class="far fa-calendar-alt"></i> <?= date('d/m/Y') ?>
         </div>
     </div>
 
@@ -596,7 +597,7 @@ if ($tenant_id && $connMaster) {
                 <a class="menu-item" href="lancamento_caixa.php"><i class="fas fa-exchange-alt"></i><span>Caixa</span></a>
             <?php endif; ?>
             <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="vendas_periodo.php"><i class="fas fa-chart-line"></i><span>Vendas</span></a>
+                <a class="menu-item" href="vendas_periodo.php"><i class="fas fa-chart-line"></i><span>Rel. Vendas</span></a>
             <?php endif; ?>
         </div>
     <?php endif; ?>
@@ -674,7 +675,7 @@ if ($tenant_id && $connMaster) {
 
 <div id="modalChatInvite" class="custom-modal">
   <div class="custom-modal-content">
-    <div style="font-size:3rem; color: var(--highlight-color); margin-bottom:10px;"><i class="fas fa-comments"></i></div>
+    <div style="font-size:3rem; color: var(--highlight-color, #0d6efd); margin-bottom:10px;"><i class="fas fa-comments"></i></div>
     <h5>Convite de Suporte Online</h5>
     <p>Nossa equipe está disponível agora para te ajudar.</p>
     <div style="margin-top:20px;">
@@ -686,7 +687,7 @@ if ($tenant_id && $connMaster) {
 
 <?php if ($popupLembrete): ?>
     <div id="toast-lembrete" onclick="window.location.href='lembrete.php'" 
-         style="position: fixed; bottom: 30px; right: 30px; background: var(--highlight-color); color: #fff; padding: 15px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 9999; animation: slideUp 0.5s ease;">
+         style="position: fixed; bottom: 30px; right: 30px; background: var(--highlight-color, #0d6efd); color: #fff; padding: 15px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 9999; animation: slideUp 0.5s ease;">
         <i class="fas fa-bell"></i> Você tem lembretes para hoje!
     </div>
 <?php endif; ?>
@@ -701,7 +702,8 @@ function atualizarSaudacao() {
     else if (hora >= 12 && hora < 18) texto = "Boa tarde";
     else texto = "Boa noite";
     
-    document.getElementById("saudacao").innerText = `${texto},`;
+    const el = document.getElementById("saudacao");
+    if(el) el.innerText = `${texto},`;
 }
 atualizarSaudacao();
 
@@ -711,21 +713,25 @@ function abrirModalChat(chatId) {
     currentChatId = chatId;
     document.getElementById('modalChatInvite').style.display = 'block';
 }
-document.getElementById('btnAceitarChat').addEventListener('click', function() {
-    if(!currentChatId) return;
-    const formData = new FormData();
-    formData.append('action', 'aceitar_convite');
-    formData.append('chat_id', currentChatId);
-    fetch('../actions/chat_api.php', { method: 'POST', body: formData })
-    .then(response => response.json())
-    .then(data => {
-        if(data.status === 'success') {
-            window.location.href = 'chat_suporte_online.php?chat_id=' + currentChatId;
-        } else {
-            alert('Erro ao iniciar o chat.');
-        }
+
+const btnAceitarChat = document.getElementById('btnAceitarChat');
+if(btnAceitarChat) {
+    btnAceitarChat.addEventListener('click', function() {
+        if(!currentChatId) return;
+        const formData = new FormData();
+        formData.append('action', 'aceitar_convite');
+        formData.append('chat_id', currentChatId);
+        fetch('../actions/chat_api.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                window.location.href = 'chat_suporte_online.php?chat_id=' + currentChatId;
+            } else {
+                alert('Erro ao iniciar o chat.');
+            }
+        });
     });
-});
+}
 </script>
 
 <?php if ($promo_modal): ?>
@@ -734,8 +740,8 @@ document.getElementById('btnAceitarChat').addEventListener('click', function() {
         <div style="font-size: 3rem; color: #e67e22; margin-bottom: 10px;">
             <i class="fas fa-gift"></i>
         </div>
-        <h2 style="color: var(--text-primary);">Presente para você!</h2>
-        <p style="font-size: 1.1rem; color: var(--text-secondary); margin: 15px 0;">
+        <h2 style="color: var(--text-primary, #333);">Presente para você!</h2>
+        <p style="font-size: 1.1rem; color: var(--text-secondary, #666); margin: 15px 0;">
             <strong style="color: #e67e22; font-size: 1.2rem;">
                 <?= htmlspecialchars($promo_modal['descricao']) ?>
             </strong>

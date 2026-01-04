@@ -65,14 +65,13 @@ $perfil_texto = ($nivel_acesso === 'admin' || $nivel_acesso === 'master' || $niv
 
 // Inicializa variáveis
 $nome = '';
-$documento = ''; // Alterado de $cpf para $documento
+$documento = '';
 $telefone = '';
 $email = '';
 $codigo_indicacao = ''; 
 $foto_atual = 'default-profile.png';
 
 // 2. Busca dados atuais do usuário no Banco do Tenant
-// CORREÇÃO: Busca 'documento' em vez de 'cpf' para alinhar com o registro
 $stmt = $conn->prepare("SELECT nome, documento, telefone, email, foto FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 if ($stmt->execute()) {
@@ -117,7 +116,7 @@ if (isset($_GET['erro'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['excluir_conta']) && !isset($_POST['acao_suporte_inicial'])) {
         $nome_novo = trim($_POST['nome'] ?? '');
-        $documento_novo = preg_replace('/[^0-9]/', '', $_POST['documento'] ?? ''); // Alterado para documento
+        $documento_novo = preg_replace('/[^0-9]/', '', $_POST['documento'] ?? '');
         $telefone_novo = trim($_POST['telefone'] ?? '');
         $email_novo = trim($_POST['email'] ?? '');
         $senha_nova = trim($_POST['senha'] ?? '');
@@ -156,7 +155,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($stmt_check->num_rows > 0) $erro = "Este e-mail já está em uso.";
                 else {
-                    // CORREÇÃO: Atualiza a coluna 'documento' em vez de 'cpf'
                     $senha_hash = null;
                     if (!empty($senha_nova)) {
                         $senha_hash = password_hash($senha_nova, PASSWORD_DEFAULT);
@@ -173,7 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         try {
                             $connMaster = getMasterConnection();
                             if ($connMaster && !$connMaster->connect_error) {
-                                // CORREÇÃO: Sincroniza documento e telefone no master também
                                 if ($senha_hash) {
                                     $sqlM = "UPDATE usuarios SET nome=?, email=?, senha=?, documento=?, telefone=? WHERE email=?";
                                     $stmtM = $connMaster->prepare($sqlM);
@@ -215,7 +212,7 @@ display_flash_message();
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Meu Perfil</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Meu Perfil</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -224,17 +221,21 @@ display_flash_message();
             background-color: #121212;
             color: #eee;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
         }
 
         .page-container {
-            max-width: 650px;
+            width: 100%;
+            max-width: 800px; /* Aumentado para melhor visualização em desktop */
             margin: 40px auto;
             background: #1e1e1e;
-            padding: 35px;
+            padding: 40px;
             border-radius: 12px;
             color: #fff;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             border: 1px solid #333;
+            box-sizing: border-box; /* Garante que padding não estoure a largura */
         }
 
         .page-container h2 {
@@ -256,12 +257,13 @@ display_flash_message();
             position: relative;
         }
         .profile-photo {
-            width: 130px;
-            height: 130px;
+            width: 140px;
+            height: 140px;
             border-radius: 50%;
             object-fit: cover;
             border: 3px solid #00bfff;
             box-shadow: 0 0 15px rgba(0, 191, 255, 0.4);
+            transition: all 0.3s ease;
         }
         .profile-badge {
             margin-top: 10px;
@@ -317,7 +319,7 @@ display_flash_message();
             justify-content: space-between;
             margin-top: 30px;
             gap: 15px;
-            flex-wrap: wrap;
+            flex-wrap: wrap; /* Permite quebrar linha em telas menores */
         }
 
         .btn-custom {
@@ -334,6 +336,7 @@ display_flash_message();
             align-items: center;
             justify-content: center;
             gap: 8px;
+            white-space: nowrap; /* Evita quebra de texto dentro do botão */
         }
 
         .btn-submit {
@@ -341,6 +344,7 @@ display_flash_message();
             color: #fff;
             flex-grow: 1;
             box-shadow: 0 4px 10px rgba(0, 191, 255, 0.2);
+            min-width: 200px;
         }
         .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 191, 255, 0.4); }
 
@@ -348,25 +352,28 @@ display_flash_message();
             background: transparent;
             border: 1px solid #dc3545;
             color: #ff6b6b;
+            min-width: 140px;
         }
         .btn-danger-custom:hover { background: rgba(220, 53, 69, 0.1); color: #ff4d4d; }
 
         .btn-secondary {
             background-color: #2c3e50;
             color: #fff;
-            width: 94%;
+            width: 100%; /* Full width para uniformidade */
             margin-top: 15px;
+            box-sizing: border-box;
         }
         .btn-secondary:hover { background-color: #34495e; }
 
         .btn-suporte {
             background: linear-gradient(135deg, #6610f2, #520dc2);
             color: #fff;
-            /* width: 100%; */
+            width: 100%;
             margin-top: 10px;
             padding: 15px;
             font-size: 1.1rem;
             box-shadow: 0 4px 15px rgba(102, 16, 242, 0.3);
+            box-sizing: border-box;
         }
         .btn-suporte:hover {
             transform: translateY(-2px);
@@ -376,10 +383,12 @@ display_flash_message();
         /* Input Group para Copiar */
         .input-group {
             display: flex;
+            width: 100%;
         }
         .input-group .form-control {
             border-top-right-radius: 0;
             border-bottom-right-radius: 0;
+            flex: 1; /* Ocupa espaço disponível */
         }
         .btn-outline-secondary {
             background-color: transparent;
@@ -391,6 +400,8 @@ display_flash_message();
             padding: 0 15px;
             cursor: pointer;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
         }
         .btn-outline-secondary:hover {
             background-color: rgba(0, 191, 255, 0.1);
@@ -400,6 +411,52 @@ display_flash_message();
         .text-center { text-align: center; }
         .mb-3 { margin-bottom: 1rem; }
         .text-muted { color: #aaa; font-size: 0.85rem; display: block; margin-top: 5px; }
+
+        /* ================= RESPONSIVIDADE ================= */
+
+        /* Tablets (até 992px) */
+        @media (max-width: 992px) {
+            .page-container {
+                width: 90%;
+                margin: 30px auto;
+                padding: 30px;
+            }
+        }
+
+        /* Mobile (até 768px) */
+        @media (max-width: 768px) {
+            .page-container {
+                width: 95%;
+                margin: 15px auto; /* Menos margem no topo */
+                padding: 20px; /* Padding interno menor */
+            }
+
+            .page-container h2 {
+                font-size: 1.4rem;
+            }
+
+            .profile-photo {
+                width: 110px; /* Foto um pouco menor */
+                height: 110px;
+            }
+
+            /* Botões empilhados em coluna */
+            .btn-area {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn-custom, 
+            .btn-submit, 
+            .btn-danger-custom {
+                width: 100%; /* Botões full width no mobile */
+            }
+
+            .btn-secondary,
+            .btn-suporte {
+                width: 100%;
+            }
+        }
 
     </style>
 </head>
@@ -438,7 +495,7 @@ display_flash_message();
             <div class="input-group">
                 <input type="text" class="form-control text-center fw-bold text-primary" id="codigo_indicacao" value="<?= htmlspecialchars($codigo_indicacao ?: 'Não disponível') ?>" readonly>
                 <button class="btn-outline-secondary" type="button" onclick="copiarCodigo()">
-                    <i class="fa-regular fa-copy"></i> Copiar
+                    <i class="fa-regular fa-copy"></i>&nbsp;Copiar
                 </button>
             </div>
             <small class="text-muted">Compartilhe este código para indicar amigos.</small>

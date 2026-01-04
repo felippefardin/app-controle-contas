@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   status VARCHAR(20) NOT NULL DEFAULT 'ativo',
   nivel_acesso VARCHAR(20) DEFAULT 'padrao',
   tenant_id VARCHAR(32) DEFAULT NULL,
+  tema_preferencia VARCHAR(10) DEFAULT 'dark',
   -- Correção: Definição da coluna adicionada corretamente
   tipo_cancelamento ENUM('desativar', 'excluir') DEFAULT NULL,
   -- Correção: Sintaxe da coluna gerada consertada
@@ -353,4 +354,4 @@ CREATE TABLE `empresa_config` (
   `ultimo_numero_nfce` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `cnpj` (`cnpj`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
