@@ -291,6 +291,117 @@ require_once 'includes/session_init.php';
             .hero-bg-shape { display: none; }
             .pricing-card.featured { transform: scale(1); margin-top: 20px; margin-bottom: 20px;}
         }
+
+        /* --- DARK MODE CSS --- */
+        body.dark-mode {
+            --bg-light: #121212;
+            --text-dark: #f1f1f1;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+        
+        /* Overrides (Sobrescritas com !important para vencer o Bootstrap) */
+        body.dark-mode .navbar {
+            background-color: #1f1f1f !important;
+            border-bottom: 1px solid #333;
+        }
+        body.dark-mode .navbar-brand, 
+        body.dark-mode .nav-link {
+            color: #e0e0e0 !important;
+        }
+        body.dark-mode .nav-link:hover {
+            color: var(--primary-color) !important;
+        }
+        
+        body.dark-mode .hero-section {
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%) !important;
+        }
+        
+        body.dark-mode .hero-bg-shape {
+            background: linear-gradient(45deg, rgba(13, 110, 253, 0.2), rgba(13, 110, 253, 0.1));
+        }
+
+        body.dark-mode .hero-title, 
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 {
+            color: #ffffff !important;
+        }
+        
+        body.dark-mode p, 
+        body.dark-mode .text-muted, 
+        body.dark-mode small {
+            color: #b0b3b8 !important;
+        }
+
+        body.dark-mode .feature-card, 
+        body.dark-mode .pricing-card {
+            background-color: #1f1f1f !important;
+            border-color: #333 !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        body.dark-mode .pricing-card.featured {
+            background: linear-gradient(to bottom, #2c2c2c, #1f1f1f) !important;
+            border-color: var(--primary-color) !important;
+        }
+        
+        /* Seções com fundo específico */
+        body.dark-mode #funcionalidades,
+        body.dark-mode #recursos-detalhados,
+        body.dark-mode #faq,
+        body.dark-mode .bg-white {
+            background-color: #121212 !important;
+        }
+        
+        body.dark-mode #pfpj, 
+        body.dark-mode #feedbacks,
+        body.dark-mode .bg-light {
+            background-color: #181818 !important;
+        }
+
+        /* Acordeão FAQ */
+        body.dark-mode .accordion-item {
+            background-color: #1f1f1f;
+            border-color: #333;
+            color: #fff;
+        }
+        body.dark-mode .accordion-button {
+            background-color: #1f1f1f;
+            color: #fff;
+        }
+        body.dark-mode .accordion-button:not(.collapsed) {
+            background-color: #2c2c2c;
+            color: var(--primary-color);
+        }
+
+        /* Modal */
+        body.dark-mode .modal-content {
+            background-color: #1f1f1f;
+            border: 1px solid #444;
+            color: #fff;
+        }
+        body.dark-mode .modal-header, 
+        body.dark-mode .modal-footer {
+            background-color: #1f1f1f;
+            border-color: #333;
+        }
+        body.dark-mode .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+        
+        /* Hover Effects */
+        body.dark-mode .hover-effect:hover {
+            background-color: #262626 !important;
+        }
+        
+        /* Containers de imagem */
+        body.dark-mode .img-container-3d {
+            background-color: #2c2c2c !important;
+            border-color: #444;
+        }
+        
+        body.dark-mode .pricing-price small {
+            color: #aaa !important;
+        }
     </style>
 </head>
 <body>
@@ -306,6 +417,11 @@ require_once 'includes/session_init.php';
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item me-2">
+    <button id="darkModeToggle" class="btn btn-link nav-link text-dark" style="font-size: 1.2rem;">
+        <i class="bi bi-moon-stars-fill"></i>
+    </button>
+</li>
                     <li class="nav-item"><a class="nav-link" href="#funcionalidades">Por que nós?</a></li>
                     <li class="nav-item"><a class="nav-link" href="#planos">Parceria</a></li>
                     <li class="nav-item ms-lg-3">
@@ -1041,6 +1157,43 @@ require_once 'includes/session_init.php';
     <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
     <script>
         new window.VLibras.Widget('https://vlibras.gov.br/app');
+
+        // Lógica do Dark Mode
+        const toggleBtn = document.getElementById('darkModeToggle');
+        const themeIcon = toggleBtn.querySelector('i');
+        const body = document.body;
+
+        // Verifica preferência salva
+        const savedTheme = localStorage.getItem('theme');
+        
+        if (savedTheme === 'dark') {
+            body.classList.add('dark-mode');
+            themeIcon.classList.remove('bi-moon-stars-fill');
+            themeIcon.classList.add('bi-sun-fill');
+            toggleBtn.classList.remove('text-dark');
+            toggleBtn.classList.add('text-light');
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            
+            const isDark = body.classList.contains('dark-mode');
+            
+            // Troca ícone
+            if (isDark) {
+                themeIcon.classList.remove('bi-moon-stars-fill');
+                themeIcon.classList.add('bi-sun-fill');
+                toggleBtn.classList.remove('text-dark');
+                toggleBtn.classList.add('text-light');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeIcon.classList.remove('bi-sun-fill');
+                themeIcon.classList.add('bi-moon-stars-fill');
+                toggleBtn.classList.remove('text-light');
+                toggleBtn.classList.add('text-dark');
+                localStorage.setItem('theme', 'light');
+            }
+        });
     </script>
     <script id="chatway" async="true" src="https://cdn.chatway.app/widget.js?id=UZngkYYwWRrZ"></script>
 </body>
