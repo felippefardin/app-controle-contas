@@ -218,7 +218,8 @@ if ($tenant_id && $connMaster) {
         padding-top: 90px !important; 
         padding-left: 20px;
         padding-right: 20px;
-        padding-bottom: 20px;
+        /* AJUSTE AQUI: Aumentado para 100px para o footer não encavalar nos ícones */
+        padding-bottom: 100px !important; 
     }
 
     body {
@@ -782,3 +783,7 @@ function fecharGift(promoId) {
 <?php endif; ?>
 
 <?php include('../includes/mensagem_home_display.php'); ?>
+
+<div style="height: 50px;"></div>
+
+<?php include('../includes/footer.php'); ?>
