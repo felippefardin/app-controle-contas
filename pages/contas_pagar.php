@@ -303,12 +303,19 @@ $result = $conn->query($sql);
         <input type="text" name="descricao" placeholder="Descrição" required>
         <input type="text" name="valor" placeholder="Valor (Ex: 1.200,00)" required>
         <input type="date" name="data_vencimento" required>
-        <select name="id_categoria" required>
-            <option value="">Categoria...</option>
-            <?php foreach ($categorias_despesa as $cat): ?>
-                <option value="<?= $cat['id'] ?>"><?= $cat['nome'] ?></option>
-            <?php endforeach; ?>
-        </select>
+        
+        <div style="display:flex; gap: 5px; align-items: center;">
+            <select name="id_categoria" id="select_categoria_pagar" required style="flex: 1; margin-bottom:0;">
+                <option value="">Categoria...</option>
+                <?php foreach ($categorias_despesa as $cat): ?>
+                    <option value="<?= $cat['id'] ?>"><?= $cat['nome'] ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" class="btn btn-add" style="padding: 10px 12px;" onclick="document.getElementById('modalNovaCategoria').style.display='flex'">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
         <button type="submit" class="btn btn-add">Salvar</button>
     </form>
   </div>
@@ -401,7 +408,8 @@ $result = $conn->query($sql);
     </div>
 </div>
 
-<div id="modalNovoFornecedor" class="modal" style="z-index: 1050;"> <div class="modal-content">
+<div id="modalNovoFornecedor" class="modal" style="z-index: 1050;"> 
+  <div class="modal-content">
     <span class="close-btn" onclick="document.getElementById('modalNovoFornecedor').style.display='none'">&times;</span>
     <h3>Novo Fornecedor</h3>
     <form id="form-novo-fornecedor" style="display:flex; flex-direction:column; gap:10px;">
@@ -424,6 +432,20 @@ $result = $conn->query($sql);
         <input type="email" name="email" placeholder="email@exemplo.com">
         
         <button type="submit" class="btn btn-add" style="width:100%; margin-top:10px;">Cadastrar</button>
+    </form>
+  </div>
+</div>
+
+<div id="modalNovaCategoria" class="modal" style="z-index: 1060;">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('modalNovaCategoria').style.display='none'">&times;</span>
+    <h3>Nova Categoria (Despesa)</h3>
+    <form id="form-nova-categoria" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+        <input type="hidden" name="tipo" value="despesa"> 
+        <label>Nome da Categoria:</label>
+        <input type="text" name="nome" required placeholder="Ex: Escritório, Transporte...">
+        <button type="submit" class="btn btn-add" style="width:100%; margin-top:10px;">Salvar Categoria</button>
     </form>
   </div>
 </div>
@@ -496,6 +518,38 @@ $('#form-novo-fornecedor').on('submit', function(e) {
         },
         error: function() {
             showFlash('Erro ao cadastrar fornecedor.', 'danger');
+        }
+    });
+});
+
+// AJAX Salvar Nova Categoria (Despesa)
+$('#form-nova-categoria').on('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append('ajax', 'true'); // Sinaliza que é AJAX
+
+    $.ajax({
+        url: '../actions/salvar_categoria.php', 
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(resp) {
+            if(resp.status === 'success' || resp.id) {
+                // Adiciona a nova opção no Select
+                let novaOpcao = new Option(formData.get('nome'), resp.id, true, true);
+                $('#select_categoria_pagar').append(novaOpcao).trigger('change');
+
+                document.getElementById('modalNovaCategoria').style.display='none';
+                document.getElementById('form-nova-categoria').reset();
+                showFlash('Categoria criada com sucesso!', 'success');
+            } else {
+                showFlash(resp.message || 'Erro ao criar categoria.', 'danger');
+            }
+        },
+        error: function() {
+            showFlash('Erro na comunicação com o servidor.', 'danger');
         }
     });
 });

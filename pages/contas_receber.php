@@ -335,12 +335,19 @@ $result = $conn->query($sql);
         <input type="text" name="descricao" placeholder="Descrição" required>
         <input type="text" name="valor" placeholder="Valor (Ex: 1.000,00)" required>
         <input type="date" name="data_vencimento" required>
-        <select name="id_categoria" required>
-            <option value="">Categoria...</option>
-            <?php foreach ($categorias_receita as $cat): ?>
-                <option value="<?= $cat['id'] ?>"><?= $cat['nome'] ?></option>
-            <?php endforeach; ?>
-        </select>
+        
+        <div style="display:flex; gap: 5px; align-items: center;">
+            <select name="id_categoria" id="select_categoria_receber" required style="flex: 1; margin-bottom:0;">
+                <option value="">Categoria...</option>
+                <?php foreach ($categorias_receita as $cat): ?>
+                    <option value="<?= $cat['id'] ?>"><?= $cat['nome'] ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" class="btn btn-add" style="padding: 10px 12px;" onclick="document.getElementById('modalNovaCategoria').style.display='flex'">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
         <button type="submit" class="btn btn-add">Salvar</button>
     </form>
   </div>
@@ -463,6 +470,20 @@ $result = $conn->query($sql);
   </div>
 </div>
 
+<div id="modalNovaCategoria" class="modal" style="z-index: 1060;">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('modalNovaCategoria').style.display='none'">&times;</span>
+    <h3>Nova Categoria (Receita)</h3>
+    <form id="form-nova-categoria" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+        <input type="hidden" name="tipo" value="receita">
+        <label>Nome da Categoria:</label>
+        <input type="text" name="nome" required placeholder="Ex: Vendas, Serviços...">
+        <button type="submit" class="btn btn-add" style="width:100%; margin-top:10px;">Salvar Categoria</button>
+    </form>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 // Função Display Flash simplificada para JS
@@ -539,6 +560,38 @@ $('#form-nova-pessoa').on('submit', function(e) {
     });
 });
 
+// AJAX Salvar Nova Categoria (Receita)
+$('#form-nova-categoria').on('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append('ajax', 'true');
+
+    $.ajax({
+        url: '../actions/salvar_categoria.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(resp) {
+            if(resp.status === 'success' || resp.id) {
+                // Adiciona a nova opção no Select de receber
+                let novaOpcao = new Option(formData.get('nome'), resp.id, true, true);
+                $('#select_categoria_receber').append(novaOpcao).trigger('change');
+
+                document.getElementById('modalNovaCategoria').style.display='none';
+                document.getElementById('form-nova-categoria').reset();
+                showFlash('Categoria criada com sucesso!', 'success');
+            } else {
+                showFlash(resp.message || 'Erro ao criar categoria.', 'danger');
+            }
+        },
+        error: function() {
+            showFlash('Erro na comunicação com o servidor.', 'danger');
+        }
+    });
+});
+
 window.onclick = e => { if(e.target.className === 'modal') e.target.style.display = 'none'; }
 
 // Lógica dos Checkboxes
@@ -579,7 +632,7 @@ function submitBulk() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             ids: ids,
-            tipo: 'receber', // CORRIGIDO: Agora envia 'receber' corretamente
+            tipo: 'receber', 
             acao: 'baixar',
             data_baixa: data_baixa,
             forma_pagamento: forma
