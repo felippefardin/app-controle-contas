@@ -12,6 +12,14 @@ try {
     if (!isset($_SESSION['usuario_logado'])) {
         throw new Exception('Sessão expirada. Faça login novamente.');
     }
+    
+    // --- CÓDIGO NOVO: BLOQUEIO DO PLANO BÁSICO ---
+    // Isso garante que NINGUÉM no plano básico (nem admin) consiga finalizar uma venda.
+    $plano = $_SESSION['plano'] ?? 'basico';
+    if ($plano === 'basico') {
+        throw new Exception('Seu plano atual (Básico) não permite registrar vendas. Faça um upgrade para continuar.');
+    }
+    // ------------------------------------------------
 
     $conn = getTenantConnection();
     if ($conn === null) {
@@ -128,9 +136,6 @@ try {
         $data_vencimento = date('Y-m-d', strtotime('+30 days'));
     }
 
-    // ⚠️ CORREÇÃO APLICADA: Removidos 'id_venda' e 'baixado_por' do INSERT
-    // Verifica se seu banco usa 'id_pessoa_fornecedor' ou 'responsavel'. 
-    // O padrão mais recente do seu código indica 'id_pessoa_fornecedor'.
     $stmt_fin = $conn->prepare("INSERT INTO contas_receber (usuario_id, id_pessoa_fornecedor, id_categoria, descricao, valor, data_vencimento, status, data_baixa, forma_pagamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     if (!$stmt_fin) {

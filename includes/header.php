@@ -39,13 +39,18 @@ $classeBody = ($temaAtual === 'light') ? 'light-mode' : '';
     </button>
 </div>
 
-    <div class="header-group">
-        <?php if (basename($_SERVER['PHP_SELF']) === 'home.php' || true): // "|| true" para mostrar sempre se quiser ?>
+   <div class="header-group">
+        <?php if (basename($_SERVER['PHP_SELF']) === 'home.php' || true): ?>
             <button id="themeToggle" class="btn" onclick="toggleTheme()">
                 <i class="fas <?= $temaAtual === 'light' ? 'fa-moon' : 'fa-sun' ?>"></i>
             </button>
         <?php endif; ?>
 
+        <?php if (isset($_SESSION['super_admin_original'])): ?>
+            <a href="../actions/retornar_super_admin.php" class="btn" style="background-color: #ff9800; color: white; margin-right: 10px;">
+                <i class="fas fa-user-shield"></i> Voltar Admin
+            </a>
+        <?php endif; ?>
         <a href="../pages/home.php" class="btn btn-home">
             <i class="fas fa-home"></i> Home
         </a>

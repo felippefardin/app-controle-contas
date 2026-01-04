@@ -761,7 +761,7 @@ require_once 'includes/session_init.php';
             
             <div class="row g-4 justify-content-center">
                 
-                <div class="col-lg-4 col-md-6">
+               <div class="col-lg-4 col-md-6">
                     <div class="pricing-card">
                         <div class="text-center mb-3">
                             <span class="trial-badge">Start</span>
@@ -774,9 +774,13 @@ require_once 'includes/session_init.php';
                                 <strong>Para quem está começando</strong>
                             </li>
                             <li class="mb-2 ms-4 text-muted small"><i class="bi bi-dot"></i> Até 3 Usuários</li>
-                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Organização Essencial</li>
+                            <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Apenas Contas a Pagar/Receber</li>
                             <hr>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Controle de Vencimentos</li>
+                            <li class="mb-2 text-muted" style="opacity: 0.7;">
+                                <i class="bi bi-x-circle-fill text-danger me-2"></i> 
+                                <span style="text-decoration: line-through;">Frente de Caixa (PDV)</span>
+                            </li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte Parceiro</li>
                         </ul>
                         <button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold" onclick="abrirModalPlano('basico')">
@@ -946,13 +950,15 @@ require_once 'includes/session_init.php';
                 titulo: 'Plano Básico',
                 preco: 'R$ 19,00<small class="fs-6 text-muted">/mês</small>',
                 badge: '15 Dias Grátis',
-                desc: 'Ideal para quem busca organização inicial e descomplicada.',
+                desc: 'Foco total no controle de contas a pagar e receber (Sem Vendas).',
                 features: [
                     'Até 3 Usuários',
-                    'Gestão de Contas Essencial',
+                    'Gestão de Contas (Pagar/Receber)',
                     'Controle de Vencimentos',
                     'Suporte Parceiro por E-mail',
-                    'Acesso via Celular e PC'
+                    'Acesso via Celular e PC',
+                    // Item visual para destacar a restrição no modal
+                    '<span class="text-danger fw-bold"><i class="bi bi-x-circle"></i> Não inclui Módulo de Vendas (PDV)</span>'
                 ]
             },
             'plus': {
@@ -966,6 +972,7 @@ require_once 'includes/session_init.php';
                     'Relatórios de Crescimento',
                     'Exportação (Excel/PDF)',
                     'Suporte Prioritário',
+                    'Acesso ao PDV',
                     'Controle de Vencimentos',
                     'Gestão de Anexos',
                     '01 chamada grátis de consultoria via chat online',

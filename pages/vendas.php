@@ -1,5 +1,6 @@
 <?php
 require_once '../includes/session_init.php';
+require_once '../includes/check_plan.php';
 require_once '../database.php';
 require_once '../includes/utils.php'; // Importa utils para o Flash Message e CSS
 

@@ -34,6 +34,9 @@ $tenant_id     = $_SESSION['tenant_id'];
 $nome_usuario  = $_SESSION['nome'];
 $perfil        = $_SESSION['nivel_acesso']; 
 
+// 🆕 CAPTURA O PLANO ATUAL PARA CONTROLE DE EXIBIÇÃO
+$planoAtual = $_SESSION['plano'] ?? 'basico';
+
 // 📌 Conexão do tenant
 $conn = getTenantConnection();
 if (!$conn) {
@@ -394,11 +397,12 @@ if ($tenant_id && $connMaster) {
 
     <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil) || temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
     <div class="quick-actions">
-        <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
+        <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil) && $planoAtual !== 'basico'): ?>
             <a href="vendas.php" class="btn-quick venda">
                 <i class="fas fa-cash-register"></i> <span>PDV / Vender</span>
             </a>
         <?php endif; ?>
+        
         <?php if (temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
             <a href="contas_receber.php" class="btn-quick receita">
                 <i class="fas fa-plus-circle"></i> <span>Nova Receita</span>
@@ -588,7 +592,8 @@ if ($tenant_id && $connMaster) {
                 <?php if (temPermissao('lancamento_caixa.php', $permissoes_usuario, $perfil)): ?>
                     <a class="menu-item" href="lancamento_caixa.php"><i class="fas fa-exchange-alt"></i><span>Caixa</span></a>
                 <?php endif; ?>
-                <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil)): ?>
+                
+                <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil) && $planoAtual !== 'basico'): ?>
                     <a class="menu-item" href="vendas_periodo.php"><i class="fas fa-chart-line"></i><span>Rel. Vendas</span></a>
                 <?php endif; ?>
             </div>
@@ -601,9 +606,11 @@ if ($tenant_id && $connMaster) {
                 <?php if (temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
                     <a class="menu-item" href="controle_estoque.php"><i class="fas fa-boxes-stacked"></i><span>Estoque</span></a>
                 <?php endif; ?>
-                <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
+                
+                <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil) && $planoAtual !== 'basico'): ?>
                     <a class="menu-item" href="vendas.php"><i class="fas fa-cash-register"></i><span>PDV</span></a>
                 <?php endif; ?>
+                
                 <?php if (temPermissao('compras.php', $permissoes_usuario, $perfil)): ?>
                     <a class="menu-item" href="compras.php"><i class="fas fa-shopping-bag"></i><span>Compras</span></a>
                 <?php endif; ?>

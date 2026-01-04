@@ -18,21 +18,22 @@ $paginasBasico = [
     'logout.php',
     'login.php',
     'index.php',
-    'editar_conta_pagar.php',   // Necessário para editar
-    'editar_conta_receber.php', // Necessário para editar
-    'add_conta_pagar.php',      // Ações
+    'editar_conta_pagar.php',
+    'editar_conta_receber.php',
+    'add_conta_pagar.php',
     'add_conta_receber.php',
     'baixar_conta.php',
-    // [CORREÇÃO LOOP] Adicionadas páginas de assinatura e pagamento para evitar bloqueio
     'assinar.php',
     'checkout_plano.php',
     'webhook_mercadopago.php'
+    // NÃO ADICIONE vendas.php aqui!
 ];
 
 if ($planoAtual === 'basico') {
+    // Note que aqui NÃO verificamos se é admin ou proprietário.
+    // Assim, o bloqueio vale para TODOS.
     if (!in_array($paginaAtual, $paginasBasico)) {
-        // Se tentar acessar relatórios, vendas, estoque, etc...
-        $_SESSION['msg_erro'] = "Seu plano Básico não permite acesso a esta funcionalidade.";
+        $_SESSION['msg_erro'] = "Seu plano Básico não permite acesso a esta funcionalidade (PDV/Vendas).";
         header("Location: home.php");
         exit;
     }
