@@ -28,9 +28,10 @@ if ($conn->connect_error) {
 }
 
 // 3. Busca Tenants Ativos
+// CORREÇÃO APLICADA: Alterado 'plano' para 'plano_atual' conforme o schema.sql
 $sql = "SELECT id, nome_empresa, db_host, db_user, db_password, db_database 
         FROM tenants 
-        WHERE status_assinatura = 'ativo' AND plano = 'essencial'";
+        WHERE status_assinatura = 'ativo' AND plano_atual = 'essencial'";
 
 $result = $conn->query($sql);
 $total = $result->num_rows;

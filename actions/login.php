@@ -163,8 +163,8 @@ try {
     $_SESSION['acabou_de_logar'] = true;
     // ---------------------------------------------
 
-    // Define mensagem de boas-vindas
-    set_flash_message('success', "Bem-vindo de volta, {$userMaster['nome']}!");
+    // CORREÇÃO: Removido o set_flash_message para evitar duplicidade com o toast da home.php
+    // set_flash_message('success', "Bem-vindo de volta, {$userMaster['nome']}!");
 
     // Redireciona para a Home
     header("Location: ../pages/home.php");
