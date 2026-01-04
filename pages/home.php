@@ -180,6 +180,8 @@ try {
 $produtos_estoque_baixo = $_SESSION['produtos_estoque_baixo'] ?? [];
 unset($_SESSION['produtos_estoque_baixo']);
 
+include('../includes/header.php');
+
 // [MANTIDO] Promoção (Gift)
 $promo_modal = null;
 if ($tenant_id && $connMaster) {
@@ -202,9 +204,6 @@ if ($tenant_id && $connMaster) {
     }
     $connMaster->close();
 }
-
-// INCLUI O CABEÇALHO PADRÃO DO SISTEMA
-include('../includes/header.php');
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -213,10 +212,6 @@ include('../includes/header.php');
     /* =========================================
        AJUSTES DE LAYOUT E TEMA DINÂMICO
     ========================================= */
-    
-    /* Ajuste crítico para Header Fixo:
-       Garante que o conteúdo não fique escondido atrás do menu superior.
-    */
     main {
         max-width: 100% !important;
         margin: 0 !important;
@@ -254,57 +249,24 @@ include('../includes/header.php');
     .date-info { color: var(--text-secondary, #666) !important; font-size: 0.9rem; font-weight: 500; }
     
     /* Ações Rápidas (Quick Actions) */
-    .quick-actions {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-    }
+    .quick-actions { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
     .btn-quick {
-        flex: 1;
-        min-width: 140px;
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        text-decoration: none;
-        font-weight: bold;
-        transition: transform 0.2s, box-shadow 0.2s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        border: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        flex: 1; min-width: 140px; padding: 15px; border-radius: 12px; text-align: center; text-decoration: none;
+        font-weight: bold; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 8px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .btn-quick i { font-size: 1.6rem; margin-bottom: 2px; }
     .btn-quick:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.15); opacity: 0.95; }
-    
     .btn-quick.receita { background: linear-gradient(135deg, #00b09b, #96c93d); color: white; }
     .btn-quick.despesa { background: linear-gradient(135deg, #ff5f6d, #ffc371); color: white; }
     .btn-quick.venda   { background: linear-gradient(135deg, #36d1dc, #5b86e5); color: white; }
 
-    /* KPIs Melhorados */
-    .dashboard-kpi {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
-    }
+    /* KPIs */
+    .dashboard-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px; }
     .kpi-card {
-        padding: 20px;
-        border-radius: 16px;
-        background: var(--bg-card, #fff);
-        color: var(--text-primary, #333);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid var(--border-color, #eaeaea);
-        border-left: 5px solid transparent;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        transition: transform 0.2s;
-        position: relative;
-        overflow: hidden;
+        padding: 20px; border-radius: 16px; background: var(--bg-card, #fff); color: var(--text-primary, #333);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--border-color, #eaeaea); border-left: 5px solid transparent;
+        display: flex; align-items: center; justify-content: space-between; transition: transform 0.2s; position: relative; overflow: hidden;
     }
     .kpi-card:hover { transform: translateY(-3px); }
     .kpi-content { display: flex; flex-direction: column; z-index: 2; }
@@ -315,111 +277,107 @@ include('../includes/header.php');
     /* Listas de Hoje */
     .today-section { margin-bottom: 30px; }
     .today-card {
-        background: var(--bg-card, #fff);
-        border-radius: 16px;
-        overflow: hidden;
-        height: 100%;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        border: 1px solid var(--border-color, #eaeaea);
-        color: var(--text-primary, #333);
+        background: var(--bg-card, #fff); border-radius: 16px; overflow: hidden; height: 100%;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border-color, #eaeaea); color: var(--text-primary, #333);
     }
-    .today-header {
-        padding: 15px 20px;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(128, 128, 128, 0.03);
-        border-bottom: 1px solid var(--border-color, #eaeaea);
-    }
+    .today-header { padding: 15px 20px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: rgba(128, 128, 128, 0.03); border-bottom: 1px solid var(--border-color, #eaeaea); }
     .today-list-container { max-height: 300px; overflow-y: auto; }
-    .today-item {
-        padding: 15px 20px;
-        border-bottom: 1px solid var(--border-color, #eaeaea);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: background 0.2s;
-        color: var(--text-primary, #333);
-    }
+    .today-item { padding: 15px 20px; border-bottom: 1px solid var(--border-color, #eaeaea); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; color: var(--text-primary, #333); }
     .today-item:hover { background: rgba(128, 128, 128, 0.05); }
-    .today-item:last-child { border-bottom: none; }
+
+    /* =======================================================
+       NOVO SISTEMA DE ABAS (TABS)
+    ======================================================= */
+    .tabs-container {
+        margin-top: 40px;
+    }
     
-    /* Menu Grid (App Style) */
-    .section-title {
-        font-size: 1.1rem;
-        color: var(--highlight-color, #0d6efd);
-        margin-bottom: 15px;
+    .tabs-nav {
+        display: flex;
+        gap: 10px;
+        border-bottom: 1px solid var(--border-color, #ddd);
+        padding-bottom: 2px;
+        margin-bottom: 20px;
+        overflow-x: auto; /* Permite scroll lateral no mobile */
+        white-space: nowrap;
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: none;
+        padding: 12px 20px;
+        font-size: 1rem;
         font-weight: 600;
+        color: var(--text-secondary, #666);
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
-    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--highlight-color, #0d6efd); opacity: 0.2; }
-    
+
+    .tab-btn:hover {
+        color: var(--highlight-color, #0d6efd);
+        background-color: rgba(13, 110, 253, 0.05);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .tab-btn.active {
+        color: var(--highlight-color, #0d6efd);
+        border-bottom-color: var(--highlight-color, #0d6efd);
+    }
+
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.4s ease;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Estilo do Menu Grid dentro das abas */
     .menu-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         gap: 15px;
-        margin-bottom: 40px;
+        margin-bottom: 20px;
     }
     .menu-item {
-        background: var(--bg-card, #fff);
-        padding: 15px 10px;
-        border-radius: 12px;
-        text-align: center;
-        text-decoration: none;
-        color: var(--text-secondary, #555);
-        transition: all 0.3s ease;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid transparent;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        background: var(--bg-card, #fff); padding: 15px 10px; border-radius: 12px; text-align: center; text-decoration: none;
+        color: var(--text-secondary, #555); transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;
+        gap: 10px; border: 1px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     .menu-item i { font-size: 1.6rem; color: var(--highlight-color, #0d6efd); transition: transform 0.3s; }
     .menu-item span { font-size: 0.85rem; font-weight: 500; line-height: 1.2; }
     .menu-item:hover {
-        background: var(--bg-card, #fff);
-        border-color: var(--highlight-color, #0d6efd);
-        transform: translateY(-5px);
-        color: var(--text-primary, #333);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        background: var(--bg-card, #fff); border-color: var(--highlight-color, #0d6efd); transform: translateY(-5px);
+        color: var(--text-primary, #333); box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     .menu-item:hover i { transform: scale(1.1); }
 
-    /* Utilitários */
+    /* Utilitários e Modais */
     .text-success-custom { color: #00E676 !important; }
     .text-danger-custom { color: #FF5252 !important; }
     .empty-msg { padding: 30px; text-align: center; color: var(--text-secondary, #888); font-style: italic; }
-
-    /* Alertas */
     .alert-estoque { background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; color: #d63384; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
     .chat-alert { background: linear-gradient(45deg, #ff4444, #ff8888); color: white; padding: 12px; text-align: center; font-weight: bold; cursor: pointer; border-radius: 50px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(255, 68, 68, 0.4); animation: pulse 2s infinite; text-decoration: none; display: block; }
 
-    /* Responsividade */
-    @media (max-width: 768px) {
-        .home-header { flex-direction: column; text-align: center; gap: 10px; }
-        .quick-actions { gap: 10px; }
-        .btn-quick { min-width: 100px; padding: 12px; }
-        .dashboard-kpi { grid-template-columns: 1fr 1fr; gap: 10px; }
-        .kpi-card { padding: 15px; flex-direction: column; align-items: flex-start; gap: 10px; }
-        .kpi-icon { position: absolute; right: 15px; top: 15px; font-size: 1.8rem; }
-        .kpi-value { font-size: 1.3rem; }
-    }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     
-    /* Modais Customizados */
     .custom-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
     .custom-modal-content { background-color: var(--bg-card, #fff); color: var(--text-primary, #333); margin: 15% auto; padding: 25px; border: 1px solid var(--border-color, #444); width: 90%; max-width: 500px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .btn-modal { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin: 5px; }
     .btn-cancel { background: #6c757d; color: #fff; }
     .btn-accept { background: var(--highlight-color, #0d6efd); color: #fff; }
-</style>
 
-<?php display_flash_message(); ?>
+    @media (max-width: 768px) {
+        .home-header { flex-direction: column; text-align: center; gap: 10px; }
+        .dashboard-kpi { grid-template-columns: 1fr 1fr; gap: 10px; }
+    }
+</style>
 
 <div class="home-container">
 
@@ -437,22 +395,17 @@ include('../includes/header.php');
     <div class="quick-actions">
         <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
             <a href="vendas.php" class="btn-quick venda">
-                <i class="fas fa-cash-register"></i>
-                <span>PDV / Vender</span>
+                <i class="fas fa-cash-register"></i> <span>PDV / Vender</span>
             </a>
         <?php endif; ?>
-        
         <?php if (temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
             <a href="contas_receber.php" class="btn-quick receita">
-                <i class="fas fa-plus-circle"></i>
-                <span>Nova Receita</span>
+                <i class="fas fa-plus-circle"></i> <span>Nova Receita</span>
             </a>
         <?php endif; ?>
-
         <?php if (temPermissao('contas_pagar.php', $permissoes_usuario, $perfil)): ?>
             <a href="contas_pagar.php" class="btn-quick despesa">
-                <i class="fas fa-minus-circle"></i>
-                <span>Nova Despesa</span>
+                <i class="fas fa-minus-circle"></i> <span>Nova Despesa</span>
             </a>
         <?php endif; ?>
     </div>
@@ -461,7 +414,6 @@ include('../includes/header.php');
     <?php if ($novoUsuario): ?>
     <div style="background: linear-gradient(135deg, #00bfff, #0066cc); padding: 20px; border-radius: 12px; margin-bottom: 25px; color: white;">
         <h4>🚀 Primeiros Passos</h4>
-        <p>Configure o sistema para começar:</p>
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <a href="banco_cadastro.php" class="btn btn-sm btn-light text-primary">1. Bancos</a>
             <a href="cadastrar_pessoa_fornecedor.php" class="btn btn-sm btn-light text-primary">2. Clientes</a>
@@ -517,7 +469,6 @@ include('../includes/header.php');
             <i class="fas fa-headset"></i> Suporte Online Disponível - Clique para iniciar
         </a>
     <?php endif; ?>
-
     <?php if (!empty($produtos_estoque_baixo) && temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
         <div class="alert-estoque">
             <strong><i class="fas fa-exclamation-triangle"></i> Estoque Baixo:</strong>
@@ -550,7 +501,6 @@ include('../includes/header.php');
                 </div>
             </div>
         </div>
-
         <div class="col-md-6 mb-3">
             <div class="today-card">
                 <div class="today-header">
@@ -574,102 +524,133 @@ include('../includes/header.php');
     </div>
 
     <?php 
+    // VERIFICAÇÕES DE PERMISSÃO PARA OS GRUPOS
     $financeiro_items = ['contas_pagar.php', 'contas_pagar_baixadas.php', 'contas_receber.php', 'contas_receber_baixadas.php', 'lancamento_caixa.php', 'vendas_periodo.php'];
     $show_financeiro = false;
     foreach($financeiro_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_financeiro = true; }
-    ?>
-    <?php if($show_financeiro): ?>
-        <div class="section-title">Financeiro</div>
-        <div class="menu-grid">
-            <?php if (temPermissao('contas_pagar.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="contas_pagar.php"><i class="fas fa-file-invoice-dollar"></i><span>A Pagar</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('contas_pagar_baixadas.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="contas_pagar_baixadas.php"><i class="fas fa-check-double"></i><span>Pagas</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="contas_receber.php"><i class="fas fa-hand-holding-dollar"></i><span>A Receber</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('contas_receber_baixadas.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="contas_receber_baixadas.php"><i class="fas fa-clipboard-check"></i><span>Recebidas</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('lancamento_caixa.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="lancamento_caixa.php"><i class="fas fa-exchange-alt"></i><span>Caixa</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="vendas_periodo.php"><i class="fas fa-chart-line"></i><span>Rel. Vendas</span></a>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 
-    <?php 
     $estoque_items = ['controle_estoque.php', 'vendas.php', 'compras.php'];
     $show_estoque = false;
     foreach($estoque_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_estoque = true; }
-    ?>
-    <?php if($show_estoque): ?>
-        <div class="section-title">Comercial & Estoque</div>
-        <div class="menu-grid">
-            <?php if (temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="controle_estoque.php"><i class="fas fa-boxes-stacked"></i><span>Estoque</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="vendas.php"><i class="fas fa-cash-register"></i><span>PDV</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('compras.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="compras.php"><i class="fas fa-shopping-bag"></i><span>Compras</span></a>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 
-    <?php 
     $cadastro_items = ['cadastrar_pessoa_fornecedor.php', 'perfil.php', 'banco_cadastro.php', 'categorias.php'];
     $show_cadastro = false;
     foreach($cadastro_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_cadastro = true; }
-    ?>
-    <?php if($show_cadastro): ?>
-        <div class="section-title">Cadastros</div>
-        <div class="menu-grid">
-            <?php if (temPermissao('cadastrar_pessoa_fornecedor.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-address-book"></i><span>Pessoas</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('perfil.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="perfil.php"><i class="fas fa-user-circle"></i><span>Perfil</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('banco_cadastro.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i><span>Bancos</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('categorias.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="../pages/categorias.php"><i class="fas fa-tags"></i><span>Categorias</span></a>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 
-    <?php 
     $sistema_items = ['lembretes.php', 'relatorios.php', 'trocar_usuario.php', 'usuarios.php', 'configuracao_fiscal.php'];
     $show_sistema = false;
     foreach($sistema_items as $item) { if(temPermissao($item, $permissoes_usuario, $perfil)) $show_sistema = true; }
     ?>
-    <?php if($show_sistema): ?>
-        <div class="section-title">Sistema</div>
-        <div class="menu-grid">
-            <?php if (temPermissao('lembretes.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="lembrete.php"><i class="fas fa-sticky-note"></i><span>Lembretes</span></a>
+
+    <div class="tabs-container">
+        <div class="tabs-nav">
+            <?php if($show_financeiro): ?>
+                <button class="tab-btn active" onclick="openTab(event, 'tab-financeiro')">
+                    <i class="fas fa-coins"></i> Financeiro
+                </button>
             <?php endif; ?>
-            <?php if (temPermissao('relatorios.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="relatorios.php"><i class="fas fa-chart-pie"></i><span>Relatórios</span></a>
+            
+            <?php if($show_estoque): ?>
+                <button class="tab-btn" onclick="openTab(event, 'tab-comercial')">
+                    <i class="fas fa-box-open"></i> Comercial
+                </button>
             <?php endif; ?>
-            <?php if (temPermissao('trocar_usuario.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="selecionar_usuario.php"><i class="fas fa-users-cog"></i><span>Trocar User</span></a>
+            
+            <?php if($show_cadastro): ?>
+                <button class="tab-btn" onclick="openTab(event, 'tab-cadastros')">
+                    <i class="fas fa-folder-plus"></i> Cadastros
+                </button>
             <?php endif; ?>
-            <?php if (temPermissao('usuarios.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="usuarios.php"><i class="fas fa-users"></i><span>Gerir Equipe</span></a>
-            <?php endif; ?>
-            <?php if (temPermissao('configuracao_fiscal.php', $permissoes_usuario, $perfil)): ?>
-                <a class="menu-item" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i><span>Fiscal</span></a>
+            
+            <?php if($show_sistema): ?>
+                <button class="tab-btn" onclick="openTab(event, 'tab-sistema')">
+                    <i class="fas fa-cogs"></i> Sistema
+                </button>
             <?php endif; ?>
         </div>
-    <?php endif; ?>
+
+        <?php if($show_financeiro): ?>
+        <div id="tab-financeiro" class="tab-content active">
+            <div class="menu-grid">
+                <?php if (temPermissao('contas_pagar.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="contas_pagar.php"><i class="fas fa-file-invoice-dollar"></i><span>A Pagar</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('contas_pagar_baixadas.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="contas_pagar_baixadas.php"><i class="fas fa-check-double"></i><span>Pagas</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('contas_receber.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="contas_receber.php"><i class="fas fa-hand-holding-dollar"></i><span>A Receber</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('contas_receber_baixadas.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="contas_receber_baixadas.php"><i class="fas fa-clipboard-check"></i><span>Recebidas</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('lancamento_caixa.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="lancamento_caixa.php"><i class="fas fa-exchange-alt"></i><span>Caixa</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('vendas_periodo.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="vendas_periodo.php"><i class="fas fa-chart-line"></i><span>Rel. Vendas</span></a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if($show_estoque): ?>
+        <div id="tab-comercial" class="tab-content" style="display:none;">
+            <div class="menu-grid">
+                <?php if (temPermissao('controle_estoque.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="controle_estoque.php"><i class="fas fa-boxes-stacked"></i><span>Estoque</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('vendas.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="vendas.php"><i class="fas fa-cash-register"></i><span>PDV</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('compras.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="compras.php"><i class="fas fa-shopping-bag"></i><span>Compras</span></a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if($show_cadastro): ?>
+        <div id="tab-cadastros" class="tab-content" style="display:none;">
+            <div class="menu-grid">
+                <?php if (temPermissao('cadastrar_pessoa_fornecedor.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="../pages/cadastrar_pessoa_fornecedor.php"><i class="fas fa-address-book"></i><span>Pessoas</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('perfil.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="perfil.php"><i class="fas fa-user-circle"></i><span>Perfil</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('banco_cadastro.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="../pages/banco_cadastro.php"><i class="fas fa-university"></i><span>Bancos</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('categorias.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="../pages/categorias.php"><i class="fas fa-tags"></i><span>Categorias</span></a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if($show_sistema): ?>
+        <div id="tab-sistema" class="tab-content" style="display:none;">
+            <div class="menu-grid">
+                <?php if (temPermissao('lembretes.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="lembrete.php"><i class="fas fa-sticky-note"></i><span>Lembretes</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('relatorios.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="relatorios.php"><i class="fas fa-chart-pie"></i><span>Relatórios</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('trocar_usuario.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="selecionar_usuario.php"><i class="fas fa-users-cog"></i><span>Trocar User</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('usuarios.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="usuarios.php"><i class="fas fa-users"></i><span>Gerir Equipe</span></a>
+                <?php endif; ?>
+                <?php if (temPermissao('configuracao_fiscal.php', $permissoes_usuario, $perfil)): ?>
+                    <a class="menu-item" href="configuracao_fiscal.php"><i class="fas fa-file-invoice"></i><span>Fiscal</span></a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
 
 </div>
 
@@ -693,7 +674,44 @@ include('../includes/header.php');
 <?php endif; ?>
 
 <script>
-// SAUDAÇÃO INTELIGENTE
+// SCRIPT DE ABAS (TABS)
+function openTab(evt, tabName) {
+    var i, tabcontent, tablinks;
+
+    // Esconde todos os conteúdos
+    tabcontent = document.getElementsByClassName("tab-content");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+        tabcontent[i].classList.remove("active");
+    }
+
+    // Remove classe active de todos os botões
+    tablinks = document.getElementsByClassName("tab-btn");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].classList.remove("active");
+    }
+
+    // Mostra o atual e adiciona classe active
+    document.getElementById(tabName).style.display = "block";
+    // Pequeno delay para permitir animação se houver CSS transitions baseadas em classe
+    setTimeout(() => {
+        document.getElementById(tabName).classList.add("active");
+    }, 10);
+    
+    evt.currentTarget.classList.add("active");
+}
+
+// Inicia primeira aba visível se nenhuma estiver ativa (fallback)
+document.addEventListener("DOMContentLoaded", function() {
+    const activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) {
+        const firstTab = document.querySelector('.tab-content');
+        const firstBtn = document.querySelector('.tab-btn');
+        if(firstTab) firstTab.style.display = 'block';
+        if(firstBtn) firstBtn.classList.add('active');
+    }
+});
+
 function atualizarSaudacao() {
     const agora = new Date();
     const hora = agora.getHours();
@@ -707,7 +725,6 @@ function atualizarSaudacao() {
 }
 atualizarSaudacao();
 
-// Lógica de Chat
 let currentChatId = null;
 function abrirModalChat(chatId) {
     currentChatId = chatId;
@@ -765,4 +782,3 @@ function fecharGift(promoId) {
 <?php endif; ?>
 
 <?php include('../includes/mensagem_home_display.php'); ?>
-<?php include('../includes/footer.php'); ?>

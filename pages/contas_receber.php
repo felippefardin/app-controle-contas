@@ -63,11 +63,11 @@ $result = $conn->query($sql);
   <title>Contas a Receber</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    /* === CONFIGURAÇÕES GERAIS === */
+    /* === GERAL === */
     * { box-sizing: border-box; }
-    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; }
+    body { background-color: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; min-height: 100vh; }
     
-    /* Container Principal para Full Desktop */
+    /* === CONTAINER RESPONSIVO (FULL DESKTOP) === */
     .main-container {
         width: 100%;
         max-width: 1600px; /* Limite para telas ultrawide */
@@ -77,13 +77,10 @@ $result = $conn->query($sql);
 
     h2 { text-align: center; color: #00bfff; margin-bottom: 20px; }
     
-    /* === MODAL === */
+    /* === MODAL (Padronizado com Contas a Pagar) === */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 10px; }
-    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 100%; max-width: 500px; border: 1px solid #444; position: relative; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-    .modal-content form { text-align:left; }
+    .modal-content { background-color: #1f1f1f; padding: 25px; border-radius: 10px; width: 100%; max-width: 500px; border: 1px solid #444; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     .close-btn { position: absolute; top: 10px; right: 15px; font-size: 28px; cursor: pointer; color: #aaa; z-index: 10; }
-    .modal-content input, .modal-content select, .modal-content textarea { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-    label { display: block; margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
     
     /* === FORMULÁRIO DE BUSCA === */
     form.search-form { 
@@ -96,15 +93,16 @@ $result = $conn->query($sql);
         width: 100%; 
     }
     
-    /* Inputs do formulário responsivos */
-    form.search-form input, form.search-form select, form.search-form textarea { 
+    /* Inputs responsivos (Padronizado) */
+    input, select, textarea { 
         padding: 10px; 
         background: #333; 
         border: 1px solid #444; 
         color: #eee; 
         border-radius: 5px; 
-        flex: 1; /* Cresce para ocupar espaço disponível */
-        min-width: 150px; /* Largura mínima para não ficar muito pequeno */
+        font-size: 14px;
+        flex: 1; /* Cresce para ocupar espaço */
+        min-width: 150px;
     }
 
     /* === TABELA RESPONSIVA === */
@@ -121,7 +119,7 @@ $result = $conn->query($sql);
         width: 100%; 
         background-color: #1f1f1f; 
         border-collapse: collapse; 
-        min-width: 900px; /* Força largura mínima para garantir layout no scroll */
+        min-width: 900px; /* Força largura mínima */
     }
     
     th, td { 
@@ -133,7 +131,6 @@ $result = $conn->query($sql);
     
     th { background-color: #222; color: #00bfff; font-weight: bold; }
     tr:nth-child(even) { background-color: #2a2a2a; }
-    tr:hover { background-color: #333; }
     tr.vencido { background-color: rgba(220, 53, 69, 0.2) !important; }
 
     /* === BOTÕES === */
@@ -169,7 +166,7 @@ $result = $conn->query($sql);
     .btn-cobranca { background-color: #ffc107; color: #121212; }
     
     /* === AUTOCOMPLETE === */
-    .autocomplete-container { position: relative; margin-bottom: 10px; width: 100%; }
+    .autocomplete-container { position: relative; width: 100%; }
     .autocomplete-items { position: absolute; border: 1px solid #444; z-index: 99; top: 100%; left: 0; right: 0; background-color: #333; max-height: 150px; overflow-y: auto; text-align: left; }
     .autocomplete-items div { padding: 10px; cursor: pointer; border-bottom: 1px solid #444; }
     .autocomplete-items div:hover { background-color: #555; }
@@ -186,9 +183,6 @@ $result = $conn->query($sql);
         
         /* Modal ocupa mais espaço no mobile */
         .modal-content { width: 95%; margin: 10px auto; max-height: 90vh; overflow-y: auto; }
-        
-        /* Ajuste botões de ação para ficarem mais fáceis de tocar */
-        .btn-action { padding: 8px 12px; font-size: 14px; }
     }
   </style>
 </head>
@@ -236,7 +230,6 @@ $result = $conn->query($sql);
     <td style="text-align:center;">
         <input type="checkbox" class="check-item" value="<?= $row['id'] ?>" onclick="checkBtnState()">
     </td>
-    <td><?= htmlspecialchars($nome) ?></td>
                     <td><?= htmlspecialchars($nome) ?></td>
                     <td><?= htmlspecialchars($row['numero'] ?? '-') ?></td>
                     <td><?= htmlspecialchars($row['descricao'] ?? '') ?></td>
@@ -271,13 +264,16 @@ $result = $conn->query($sql);
         <p style="text-align:center; margin-top:20px; color: #aaa;">Nenhuma conta a receber encontrada.</p>
     <?php endif; ?>
 
-</div> <div id="cobrancaModal" class="modal">
+</div> 
+
+<div id="cobrancaModal" class="modal">
   <div class="modal-content">
     <span class="close-btn" onclick="document.getElementById('cobrancaModal').style.display='none'">&times;</span>
     <h3>Enviar Cobrança</h3>
-    <p id="txt-cobranca" style="color:#aaa; font-size:14px; margin-bottom:15px;"></p>
-    <form action="../actions/enviar_cobranca_action.php" method="POST" enctype="multipart/form-data">
+    <p id="txt-cobranca" style="color:#aaa; font-size:14px; margin-bottom:15px; text-align: center;"></p>
+    <form action="../actions/enviar_cobranca_action.php" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:10px;">
         <input type="hidden" name="id_conta" id="cobranca_id_conta">
+        
         <label>Chave Pix (Opcional):</label>
         <select name="chave_pix">
             <option value="">-- Não incluir Pix --</option>
@@ -285,11 +281,14 @@ $result = $conn->query($sql);
                 <option value="<?= htmlspecialchars($banco['chave_pix']) ?>"><?= htmlspecialchars($banco['nome_banco']) ?> - <?= htmlspecialchars($banco['chave_pix']) ?></option>
             <?php endforeach; ?>
         </select>
+        
         <label>Anexar Arquivo:</label>
         <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png">
+        
         <label>Mensagem:</label>
         <textarea name="mensagem" rows="3"></textarea>
-        <button type="submit" class="btn btn-cobranca" style="margin-top:10px; width:100%;">Enviar E-mail</button>
+        
+        <button type="submit" class="btn btn-cobranca" style="margin-top:10px;">Enviar E-mail</button>
     </form>
   </div>
 </div>
@@ -309,7 +308,7 @@ $result = $conn->query($sql);
             <option value="boleto">Boleto</option>
             <option value="transferencia">Transferência</option>
         </select>
-        <button onclick="submitBulk()" class="btn btn-baixar" style="margin-top:10px;">Confirmar Baixa em Massa</button>
+        <button onclick="submitBulk()" class="btn btn-receber" style="margin-top:10px;">Confirmar Baixa em Massa</button>
     </div>
   </div>
 </div>
@@ -318,10 +317,10 @@ $result = $conn->query($sql);
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Nova Receita</h3>
-    <form action="../actions/add_conta_receber.php" method="POST">
+    <form action="../actions/add_conta_receber.php" method="POST" style="display:flex; flex-direction:column; gap:10px;">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         
-        <div style="display:flex; gap: 5px; align-items: center; margin-bottom: 10px;">
+        <div style="display:flex; gap: 5px; align-items: center;">
             <div class="autocomplete-container" style="flex: 1; margin-bottom:0;">
                 <input type="text" id="pesquisar_pessoa" name="pessoa_nome" placeholder="Cliente/Pagador..." required style="width:100%;">
                 <div id="pessoa_list" class="autocomplete-items"></div>
@@ -342,7 +341,7 @@ $result = $conn->query($sql);
                 <option value="<?= $cat['id'] ?>"><?= $cat['nome'] ?></option>
             <?php endforeach; ?>
         </select>
-        <button type="submit" class="btn btn-add" style="width:100%">Salvar</button>
+        <button type="submit" class="btn btn-add">Salvar</button>
     </form>
   </div>
 </div>
@@ -351,8 +350,9 @@ $result = $conn->query($sql);
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Confirmar Recebimento</h3>
-    <p id="texto-receber" style="color:#aaa; margin-bottom:15px;"></p>
-    <form action="../actions/baixar_conta_receber.php" method="POST" enctype="multipart/form-data">
+    <p id="texto-receber" style="color:#aaa; margin-bottom:15px; text-align: center;"></p>
+    
+    <form action="../actions/baixar_conta_receber.php" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:10px;">
         <input type="hidden" name="id_conta" id="id_conta_receber">
         <label>Data do Recebimento:</label>
         <input type="date" name="data_baixa" value="<?= date('Y-m-d') ?>" required>
@@ -365,9 +365,9 @@ $result = $conn->query($sql);
             <option value="transferencia">Transferência</option>
             <option value="boleto">Boleto</option>
         </select>
-        <label>Comprovante:</label>
+        <label>Comprovante (Opcional):</label>
         <input type="file" name="comprovante" accept="image/*,.pdf">
-        <button type="submit" class="btn btn-receber" style="margin-top:10px; width:100%">Confirmar</button>
+        <button type="submit" class="btn btn-receber" style="margin-top:10px;">Confirmar</button>
     </form>
   </div>
 </div>
@@ -376,13 +376,13 @@ $result = $conn->query($sql);
   <div class="modal-content">
     <span class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     <h3>Repetir Conta</h3>
-    <form action="../actions/repetir_conta_receber.php" method="POST">
+    <form action="../actions/repetir_conta_receber.php" method="POST" style="display:flex; flex-direction:column; gap:10px;">
         <input type="hidden" name="conta_id" id="repetir_conta_id">
         <label>Quantas vezes?</label>
         <input type="number" name="repetir_vezes" required>
         <label>Intervalo (dias):</label>
         <input type="number" name="repetir_intervalo" value="30">
-        <button type="submit" class="btn btn-repetir" style="width:100%; margin-top:10px;">Repetir</button>
+        <button type="submit" class="btn btn-repetir" style="margin-top:10px;">Repetir</button>
     </form>
   </div>
 </div>
@@ -391,29 +391,29 @@ $result = $conn->query($sql);
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('exportModal').style.display='none'">&times;</span>
         <h3>Exportar Relatório</h3>
-        <form action="../actions/exportar_contas_receber.php" method="GET" target="_blank">
-            <label>Tipo:</label>
+        <form action="../actions/exportar_contas_receber.php" method="GET" target="_blank" style="display:flex; flex-direction:column; gap:10px;">
+            <label style="text-align:left; color:#ccc; font-size:12px;">Tipo:</label>
             <select name="status" required>
                 <option value="pendente">A Receber (Pendentes)</option>
                 <option value="baixada">Recebidas (Baixadas)</option>
             </select>
             <div style="display:flex; gap:10px;">
                 <div style="flex:1;">
-                    <label>De:</label>
-                    <input type="date" name="data_inicio" value="<?= date('Y-m-01') ?>" required>
+                    <label style="display:block; text-align:left; color:#ccc; font-size:12px;">De:</label>
+                    <input type="date" name="data_inicio" value="<?= date('Y-m-01') ?>" required style="width:100%;">
                 </div>
                 <div style="flex:1;">
-                    <label>Até:</label>
-                    <input type="date" name="data_fim" value="<?= date('Y-m-t') ?>" required>
+                    <label style="display:block; text-align:left; color:#ccc; font-size:12px;">Até:</label>
+                    <input type="date" name="data_fim" value="<?= date('Y-m-t') ?>" required style="width:100%;">
                 </div>
             </div>
-            <label>Formato:</label>
+            <label style="text-align:left; color:#ccc; font-size:12px;">Formato:</label>
             <select name="formato" required>
                 <option value="excel">Excel (.xlsx)</option>
                 <option value="pdf">PDF (.pdf)</option>
                 <option value="csv">CSV (.csv)</option>
             </select>
-            <button type="submit" class="btn btn-export" style="margin-top:10px; width:100%">Baixar</button>
+            <button type="submit" class="btn btn-export" style="margin-top:10px;">Baixar Arquivo</button>
         </form>
     </div>
 </div>
@@ -579,7 +579,7 @@ function submitBulk() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             ids: ids,
-            tipo: 'pagar', // Mude para 'receber' na pagina de contas_receber
+            tipo: 'receber', // CORRIGIDO: Agora envia 'receber' corretamente
             acao: 'baixar',
             data_baixa: data_baixa,
             forma_pagamento: forma
