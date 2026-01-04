@@ -789,6 +789,37 @@ function fecharGift(promoId) {
 </script>
 <?php endif; ?>
 
+<?php if (isset($_SESSION['acabou_de_logar']) && $_SESSION['acabou_de_logar'] === true): ?>
+    <div id="toast-welcome" style="position: fixed; top: 20px; right: 20px; z-index: 11000; background: linear-gradient(135deg, #0d6efd, #0099ff); color: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(13, 110, 253, 0.3); animation: slideInToast 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 15px; min-width: 320px; border: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-size: 2rem; width: 50px; height: 50px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-smile-wink"></i>
+        </div>
+        <div>
+            <h5 style="margin: 0; font-weight: 700; font-size: 1.1rem;">Bem-vindo(a), <?= htmlspecialchars(explode(' ', $nome_usuario)[0]) ?>!</h5>
+            <p style="margin: 2px 0 0 0; font-size: 0.9rem; opacity: 0.9;">Estamos felizes em vê-lo novamente.</p>
+        </div>
+        <button onclick="fecharToast()" style="background:none; border:none; color:white; margin-left:auto; cursor:pointer; font-size:1.2rem; opacity:0.8;">&times;</button>
+    </div>
+    <script>
+        function fecharToast() {
+            const t = document.getElementById('toast-welcome');
+            if(t) {
+                t.style.transition = 'all 0.5s ease';
+                t.style.opacity = '0';
+                t.style.transform = 'translateX(100%)';
+                setTimeout(() => t.remove(), 500);
+            }
+        }
+        setTimeout(fecharToast, 5000);
+    </script>
+    <style>
+        @keyframes slideInToast {
+            0% { opacity: 0; transform: translateX(100px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+<?php endif; ?>
+
 <?php include('../includes/mensagem_home_display.php'); ?>
 
 <div style="height: 50px;"></div>
