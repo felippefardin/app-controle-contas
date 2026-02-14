@@ -158,20 +158,13 @@ try {
     $_SESSION['nivel_acesso']      = $nivelAcessoTenant;
     $_SESSION['usuario_logado']    = true;
 
-    // --- GATILHO IMPORTANTE PARA MENSAGEM HOME ---
-    // Isso garante que a contagem de visualização só ocorra 1 vez por login realizado
     $_SESSION['acabou_de_logar'] = true;
-    // ---------------------------------------------
 
-    // CORREÇÃO: Removido o set_flash_message para evitar duplicidade com o toast da home.php
-    // set_flash_message('success', "Bem-vindo de volta, {$userMaster['nome']}!");
-
-    // Redireciona para a Home
     header("Location: ../pages/home.php");
     exit;
 
 } catch (Exception $e) {
-    // Em caso de erro de servidor, também preserva o e-mail
+    
     error_log("Erro Login: " . $e->getMessage());
     redirect_with_error("Erro interno no servidor. Tente novamente mais tarde.", $email);
 }

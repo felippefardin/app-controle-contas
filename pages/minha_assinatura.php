@@ -31,6 +31,7 @@ $is_trial = false;
 $dias_restantes_teste = 0;
 $dias_ate_renovacao = 0;
 $tipo_cancelamento = null;
+$valor_fatura_total = 0.00;
 
 // Variáveis de Preço e Desconto
 $preco_plano_base = 0.00;
