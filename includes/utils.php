@@ -41,6 +41,31 @@ function set_flash_message($tipo, $mensagem) {
 /*
  * Exibe a mensagem CENTRALIZADA E CHAMATIVA
  */
+
+function calcularMediaMensalHistorica($conn, $usuarioId) {
+    // Média de entradas (Receber Baixado + Caixa Diário)
+    $sqlEntradas = "SELECT SUM(valor) / 6 as media FROM (
+                        SELECT valor FROM contas_receber WHERE usuario_id = $usuarioId AND status = 'baixada' 
+                        AND data_baixa >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                        UNION ALL
+                        SELECT valor FROM caixa_diario WHERE usuario_id = $usuarioId 
+                        AND data >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                    ) as total";
+    
+    // Média de saídas (Pagar Baixado)
+    $sqlSaidas = "SELECT SUM(valor) / 6 as media FROM contas_pagar 
+                  WHERE usuario_id = $usuarioId AND status = 'baixada' 
+                  AND data_baixa >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)";
+
+    $resE = $conn->query($sqlEntradas)->fetch_assoc();
+    $resS = $conn->query($sqlSaidas)->fetch_assoc();
+
+    return [
+        'entradas' => $resE['media'] ?? 0,
+        'saidas' => $resS['media'] ?? 0
+    ];
+}
+
 function display_flash_message() {
     if (session_status() === PHP_SESSION_NONE) session_start();
 
