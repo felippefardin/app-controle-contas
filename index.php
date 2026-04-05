@@ -893,10 +893,10 @@ require_once 'includes/session_init.php';
                             <li class="mb-3 ms-4 text-muted small"><i class="bi bi-dot"></i> Apenas Contas a Pagar/Receber</li>
                             <hr>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Controle de Vencimentos</li>
-                            <li class="mb-2 text-muted" style="opacity: 0.7;">
+                            <!-- <li class="mb-2 text-muted" style="opacity: 0.7;">
                                 <i class="bi bi-x-circle-fill text-danger me-2"></i> 
                                 <span style="text-decoration: line-through;">Frente de Caixa (PDV)</span>
-                            </li>
+                            </li> -->
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Suporte Parceiro</li>
                         </ul>
                         <button type="button" class="btn btn-outline-primary rounded-pill w-100 py-2 fw-bold" onclick="abrirModalPlano('basico')">

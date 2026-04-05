@@ -15,11 +15,18 @@ $mp_access_token = ($modo === 'producao') ? $_ENV['MP_ACCESS_TOKEN_PRODUCAO'] : 
 $input = file_get_contents("php://input");
 $data = json_decode($input, true);
 
-// Log para debug
-$log_entry = date('Y-m-d H:i:s') . " - TIPO: " . ($data['type'] ?? 'desconhecido') . " - ID: " . ($data['data']['id'] ?? 'n/a') . PHP_EOL;
+// Captura o TIPO (Pode vir em 'type' ou 'action')
+$tipoNotificacao = $data['type'] ?? $data['action'] ?? 'desconhecido';
+
+// Captura o ID do recurso (Pode vir em 'data.id' ou no 'id' principal)
+$idRecurso = $data['data']['id'] ?? $data['id'] ?? 'n/a';
+
+// Log para debug aprimorado
+$log_entry = date('Y-m-d H:i:s') . " - TIPO: " . $tipoNotificacao . " - ID: " . $idRecurso . PHP_EOL;
 file_put_contents(__DIR__ . "/../logs/webhook_assinatura.log", $log_entry, FILE_APPEND);
 
-if (!$data || !isset($data['type'])) {
+// Se não houver dados válidos, apenas responde 200 para o Mercado Pago
+if (!$data || $tipoNotificacao === 'desconhecido' || $idRecurso === 'n/a') {
     http_response_code(200); 
     exit;
 }
@@ -29,106 +36,95 @@ $conn = getMasterConnection();
 // ==============================================================================
 // CASO 1: ATUALIZAÇÃO DE ASSINATURA (Ativa/Suspende o Tenant)
 // ==============================================================================
-if ($data['type'] === 'subscription_preapproval' || $data['type'] === 'updated') {
-    $subscriptionId = $data['data']['id'] ?? $data['id'] ?? null;
+if (in_array($tipoNotificacao, ['subscription_preapproval', 'subscription_preapproval.updated'])) {
+    $url = "https://api.mercadopago.com/preapproval/" . $idRecurso;
     
-    if ($subscriptionId) {
-        $url = "https://api.mercadopago.com/preapproval/" . $subscriptionId;
-        
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $mp_access_token]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $mp_access_token]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-        if ($httpCode == 200) {
-            $subData = json_decode($response, true);
-            $statusMp = $subData['status']; 
-            $tenant_ref = $subData['external_reference']; // Tenant ID
+    if ($httpCode == 200) {
+        $subData = json_decode($response, true);
+        $statusMp = $subData['status']; 
+        $tenant_ref = $subData['external_reference']; // ID do Tenant
 
-            $statusSistema = 'inativo';
-            if ($statusMp === 'authorized') $statusSistema = 'ativo';
-            elseif ($statusMp === 'pending') $statusSistema = 'pendente';
-            elseif ($statusMp === 'cancelled') $statusSistema = 'cancelado';
+        $statusSistema = ($statusMp === 'authorized') ? 'ativo' : (($statusMp === 'pending') ? 'pendente' : 'cancelado');
 
-            // Atualiza status do Tenant
-            $stmt = $conn->prepare("UPDATE tenants SET status_assinatura = ?, id_assinatura_mp = ? WHERE tenant_id = ?");
-            $stmt->bind_param("sss", $statusSistema, $subscriptionId, $tenant_ref);
-            $stmt->execute();
-            $stmt->close();
-        }
+        $stmt = $conn->prepare("UPDATE tenants SET status_assinatura = ?, id_assinatura_mp = ? WHERE tenant_id = ?");
+        $stmt->bind_param("sss", $statusSistema, $idRecurso, $tenant_ref);
+        $stmt->execute();
+        $stmt->close();
     }
 }
 
 // ==============================================================================
-// CASO 2: PAGAMENTO RECEBIDO (Gera o Financeiro no Dashboard)
+// CASO 2: PAGAMENTO RECEBIDO (Gera Financeiro e Baixa Automática no Tenant)
 // ==============================================================================
-if ($data['type'] === 'payment') {
-    $paymentId = $data['data']['id'] ?? $data['id'] ?? null;
+if (in_array($tipoNotificacao, ['payment', 'payment.created', 'payment.updated'])) {
+    $url = "https://api.mercadopago.com/v1/payments/" . $idRecurso;
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $mp_access_token]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    if ($paymentId) {
-        $url = "https://api.mercadopago.com/v1/payments/" . $paymentId;
+    if ($httpCode == 200) {
+        $payData = json_decode($response, true);
         
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $mp_access_token]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        // Esperado no external_reference: "TENANT_ID|ID_CONTA"
+        $ref_parts = explode('|', ($payData['external_reference'] ?? ''));
+        $tenant_id = $ref_parts[0] ?? null;
+        $id_conta_tenant = $ref_parts[1] ?? null;
 
-        if ($httpCode == 200) {
-            $payData = json_decode($response, true);
+        $status_mp = $payData['status'];
+        $valor = $payData['transaction_amount'];
+        $forma_pagamento = $payData['payment_type_id'];
+        $data_pagamento = date('Y-m-d', strtotime($payData['date_approved'] ?? 'now'));
+        $data_vencimento = date('Y-m-d', strtotime($payData['date_created']));
+
+        $status_db = ($status_mp === 'approved') ? 'pago' : (($status_mp === 'cancelled' || $status_mp === 'rejected') ? 'cancelado' : 'pendente');
+
+        // A. Registro no Banco MASTER (Dashboard da aplicação)
+        $check = $conn->prepare("SELECT id FROM faturas_assinatura WHERE transacao_id = ?");
+        $check->bind_param("s", $idRecurso);
+        $check->execute();
+        $check->store_result();
+
+        if ($check->num_rows == 0) {
+            $ins = $conn->prepare("INSERT INTO faturas_assinatura (tenant_id, valor, data_vencimento, data_pagamento, status, forma_pagamento, transacao_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $ins->bind_param("sdsssss", $tenant_id, $valor, $data_vencimento, $data_pagamento, $status_db, $forma_pagamento, $idRecurso);
+            $ins->execute();
+            $ins->close();
+        }
+        $check->close();
+
+        // B. Baixa Automática no Banco do TENANT (Financeiro do Cliente)
+        if ($status_mp === 'approved' && $tenant_id && $id_conta_tenant) {
+            $stmtT = $conn->prepare("SELECT db_host, db_database, db_user, db_password FROM tenants WHERE tenant_id = ?");
+            $stmtT->bind_param("s", $tenant_id);
+            $stmtT->execute();
+            $resT = $stmtT->get_result()->fetch_assoc();
             
-            // Dados para inserir no banco
-            $tenant_id = $payData['external_reference']; // Tenant ID enviado no checkout
-            $valor = $payData['transaction_amount'];
-            $status_mp = $payData['status']; // approved, pending, rejected
-            $forma_pagamento = $payData['payment_type_id']; // credit_card, ticket, etc
-            $data_pagamento = date('Y-m-d', strtotime($payData['date_approved'] ?? 'now'));
-            $data_vencimento = date('Y-m-d', strtotime($payData['date_created'])); // Data que gerou a cobrança
-
-            // Mapear status do MP para o Banco
-            $status_db = 'pendente';
-            if ($status_mp === 'approved') {
-                $status_db = 'pago';
-            } elseif ($status_mp === 'cancelled' || $status_mp === 'rejected') {
-                $status_db = 'cancelado';
-            }
-
-            // Verifica se essa transação já existe para não duplicar
-            $check = $conn->prepare("SELECT id FROM faturas_assinatura WHERE transacao_id = ?");
-            $check->bind_param("s", $paymentId);
-            $check->execute();
-            $check->store_result();
-
-            if ($check->num_rows == 0) {
-                // INSERE NA TABELA QUE ALIMENTA O DASHBOARD
-                $ins = $conn->prepare("
-                    INSERT INTO faturas_assinatura 
-                    (tenant_id, valor, data_vencimento, data_pagamento, status, forma_pagamento, transacao_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-                
-                // Se não estiver pago, data_pagamento pode ser null, mas aqui simplificamos
-                $ins->bind_param("sdsssss", 
-                    $tenant_id, 
-                    $valor, 
-                    $data_vencimento, 
-                    $data_pagamento, 
-                    $status_db, 
-                    $forma_pagamento, 
-                    $paymentId
-                );
-                
-                if ($ins->execute()) {
-                    file_put_contents(__DIR__ . "/../logs/webhook_assinatura.log", "SUCESSO FINANCEIRO: Pagamento $paymentId gravado para tenant $tenant_id" . PHP_EOL, FILE_APPEND);
-                } else {
-                    file_put_contents(__DIR__ . "/../logs/webhook_assinatura.log", "ERRO SQL: " . $conn->error . PHP_EOL, FILE_APPEND);
+            if ($resT) {
+                // Conexão dinâmica com o banco de dados do tenant
+                $tenantConn = new mysqli($resT['db_host'], $resT['db_user'], $resT['db_password'], $resT['db_database']);
+                if (!$tenantConn->connect_error) {
+                    $obs = "Baixa automática via Mercado Pago (Transação: $idRecurso)";
+                    // Atualiza a tabela contas_receber no banco do cliente
+                    $updateSql = "UPDATE contas_receber SET status='baixada', data_baixa=?, forma_pagamento=?, observacao=? WHERE id=?";
+                    $stmtU = $tenantConn->prepare($updateSql);
+                    $stmtU->bind_param("sssi", $data_pagamento, $forma_pagamento, $obs, $id_conta_tenant);
+                    $stmtU->execute();
+                    $stmtU->close();
+                    $tenantConn->close();
                 }
-                $ins->close();
             }
-            $check->close();
+            $stmtT->close();
         }
     }
 }
