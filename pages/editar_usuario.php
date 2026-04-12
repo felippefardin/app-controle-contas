@@ -1,13 +1,13 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../database.php';
-require_once '../includes/utils.php'; // Importa Utils
+require_once '../includes/utils.php'; 
 
-// Verifica Permissão
-$nivel = $_SESSION['nivel_acesso'] ?? 'padrao';
+// Verifica Permissão do logado
+$nivel_logado = $_SESSION['nivel_acesso'] ?? 'padrao';
 $id_logado = $_SESSION['usuario_id'];
 
-if ($nivel !== 'admin' && $nivel !== 'master' && $nivel !== 'proprietario') {
+if ($nivel_logado !== 'admin' && $nivel_logado !== 'master' && $nivel_logado !== 'proprietario') {
     if (isset($_GET['id']) && $_GET['id'] != $id_logado) {
         set_flash_message('danger', 'Acesso negado.');
         header('Location: usuarios.php');
@@ -24,6 +24,7 @@ if (!$id_usuario) {
     exit;
 }
 
+// Busca dados do usuário e suas permissões atuais
 $stmt = $conn->prepare("SELECT * FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id_usuario);
 $stmt->execute();
@@ -36,9 +37,51 @@ if (!$user) {
     exit;
 }
 
-include('../includes/header.php');
+// Decodifica as permissões atuais do usuário (armazenadas em JSON no banco)
+$permissoes_atuais = json_decode($user['permissoes'] ?? '[]', true);
 
-// EXIBE O POP-UP
+// --- BUSCA O PLANO ATUAL PARA EXIBIR AS OPÇÕES CORRETAS ---
+$connMaster = getMasterConnection();
+$plano_tenant = 'basico';
+if ($connMaster && isset($_SESSION['tenant_id'])) {
+    $tenant = getTenantById($_SESSION['tenant_id'], $connMaster);
+    if ($tenant) {
+        $plano_tenant = $tenant['plano_atual'] ?? 'basico';
+    }
+    $connMaster->close();
+}
+
+// Definição dos itens (Mesma lógica do add_usuario.php)
+$itens_basicos = [
+    'contas_pagar.php' => 'Contas a Pagar',
+    'contas_pagar_baixadas.php' => 'Contas Pagas',
+    'contas_receber.php' => 'Contas a Receber',
+    'contas_receber_baixadas.php' => 'Contas Recebidas',
+    'lembretes.php' => 'Lembretes',
+    'perfil.php' => 'Perfil',
+    'trocar_usuario.php' => 'Trocar Usuário',
+    'usuarios.php' => 'Gestão de Usuários'
+];
+
+$itens_avancados = [
+    'lancamento_caixa.php' => 'Fluxo de Caixa',
+    'vendas_periodo.php' => 'Vendas e Comissão',
+    'controle_estoque.php' => 'Estoque',
+    'vendas.php' => 'Caixa de Vendas',
+    'compras.php' => 'Compras',
+    'cadastrar_pessoa_fornecedor.php' => 'Clientes e Fornecedores',
+    'banco_cadastro.php' => 'Contas Bancárias',
+    'categorias.php' => 'Categorias',
+    'relatorios.php' => 'Relatórios',
+    'configuracao_fiscal.php' => 'Configuração Fiscal'
+];
+
+$opcoes_para_exibir = $itens_basicos;
+if ($plano_tenant === 'plus' || $plano_tenant === 'essencial') {
+    $opcoes_para_exibir = array_merge($itens_basicos, $itens_avancados);
+}
+
+include('../includes/header.php');
 display_flash_message();
 ?>
 
@@ -52,27 +95,25 @@ display_flash_message();
     
     <style>
         body { background-color: #121212; color: #eee; font-family: 'Segoe UI', sans-serif; }
-        .page-container { max-width: 600px; margin: 40px auto; background: #1e1e1e; padding: 35px; border-radius: 12px; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #333; }
-        .page-container h2 { color: #00bfff; border-bottom: 1px solid #00bfff; padding-bottom: 15px; margin-bottom: 30px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        .page-container { max-width: 800px; margin: 40px auto; background: #1e1e1e; padding: 35px; border-radius: 12px; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #333; }
+        .page-container h2 { color: #ffc107; border-bottom: 1px solid #ffc107; padding-bottom: 15px; margin-bottom: 30px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #ccc; }
-        .input-wrapper { position: relative; }
-        .form-control, select { width: 100%; padding: 12px; padding-right: 40px; border-radius: 6px; border: 1px solid #444; background: #252525; color: #fff; font-size: 1rem; box-sizing: border-box; transition: all 0.3s ease-in-out; }
-        .form-control:focus, select:focus { outline: none; border-color: #00bfff; background-color: #2a2a2a; box-shadow: 0 0 15px rgba(0, 191, 255, 0.8); }
-        .toggle-password { position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #aaa; cursor: pointer; transition: color 0.3s; z-index: 10; }
-        .toggle-password:hover { color: #00bfff; }
+        .form-control, select { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #252525; color: #fff; box-sizing: border-box; }
+        .permissoes-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; background: #252525; padding: 15px; border-radius: 6px; border: 1px solid #444; }
+        .check-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+        .check-item input { accent-color: #00bfff; width: 16px; height: 16px; }
         .btn-area { display: flex; justify-content: space-between; margin-top: 30px; gap: 15px; }
-        .btn-custom { padding: 12px 24px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; font-size: 1rem; text-decoration: none; text-align: center; transition: transform 0.2s; }
+        .btn-custom { padding: 12px 24px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; text-decoration: none; text-align: center; }
         .btn-back { background: #444; color: #ddd; }
         .btn-submit { background: linear-gradient(135deg, #ffc107, #e0a800); color: #000; flex-grow: 1; }
+        @media (max-width: 600px) { .permissoes-container { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div class="page-container">
-    <h2 style="color: #ffc107; border-color: #ffc107;">
-        <i class="fa-solid fa-user-pen"></i> Editar Usuário
-    </h2>
+    <h2><i class="fa-solid fa-user-pen"></i> Editar Usuário</h2>
 
     <form action="../actions/editar_usuario.php" method="POST">
         <input type="hidden" name="id" value="<?= $user['id'] ?>">
@@ -88,69 +129,51 @@ display_flash_message();
         </div>
 
         <div class="form-group">
-            <label>CPF:</label>
-            <input type="text" name="cpf" id="cpf" class="form-control" value="<?= htmlspecialchars($user['cpf'] ?? '') ?>">
+            <label>Nível de Acesso:</label>
+            <select name="nivel" id="nivel_acesso" class="form-control" onchange="togglePermissoes()">
+                <option value="padrao" <?= ($user['nivel_acesso'] === 'padrao') ? 'selected' : '' ?>>Padrão (Selecionar Permissões)</option>
+                <option value="admin" <?= ($user['nivel_acesso'] === 'admin') ? 'selected' : '' ?>>Administrador (Acesso Total)</option>
+            </select>
         </div>
 
-        <div class="form-group">
-            <label>Nível de Acesso:</label>
-            <select name="nivel" class="form-control">
-                <option value="padrao" <?= ($user['nivel_acesso'] ?? $user['perfil']) === 'padrao' ? 'selected' : '' ?>>Padrão (Acesso Restrito)</option>
-                <option value="admin" <?= ($user['nivel_acesso'] ?? $user['perfil']) === 'admin' ? 'selected' : '' ?>>Administrador (Acesso Total)</option>
-            </select>
+        <div class="form-group" id="area_permissoes">
+            <label>Permissões de Acesso:</label>
+            <div class="permissoes-container">
+                <?php foreach ($opcoes_para_exibir as $arquivo => $label): ?>
+                    <label class="check-item">
+                        <input type="checkbox" name="permissoes[]" value="<?= $arquivo ?>" 
+                            <?= in_array($arquivo, $permissoes_atuais) ? 'checked' : '' ?>>
+                        <?= $label ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <small style="color: #aaa; margin-top: 5px; display:block;">Gerencie o que este usuário visualiza na Home.</small>
         </div>
 
         <div class="form-group">
             <label>Nova Senha (Opcional):</label>
-            <div class="input-wrapper">
-                <input type="password" name="senha" id="senha" class="form-control" placeholder="Deixe em branco para manter a atual">
-                <i class="fa-solid fa-eye toggle-password" onclick="togglePass('senha', this)"></i>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Confirmar Nova Senha:</label>
-            <div class="input-wrapper">
-                <input type="password" name="senha_confirmar" id="senha_confirmar" class="form-control" placeholder="Repita se for alterar">
-                <i class="fa-solid fa-eye toggle-password" onclick="togglePass('senha_confirmar', this)"></i>
-            </div>
+            <input type="password" name="senha" class="form-control" placeholder="Deixe em branco para manter">
         </div>
 
         <div class="btn-area">
-            <a href="usuarios.php" class="btn-custom btn-back">
-                <i class="fa-solid fa-arrow-left"></i> Cancelar
-            </a>
-            <button type="submit" class="btn-custom btn-submit">
-                <i class="fa-solid fa-save"></i> Atualizar Dados
-            </button>
+            <a href="usuarios.php" class="btn-custom btn-back">Voltar</a>
+            <button type="submit" class="btn-custom btn-submit">Atualizar Usuário</button>
         </div>
-
     </form>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
-    $(document).ready(function(){ $('#cpf').mask('000.000.000-00'); });
-
-    function togglePass(fieldId, icon) {
-        const input = document.getElementById(fieldId);
-        if (input.type === "password") {
-            input.type = "text";
-            icon.classList.remove("fa-eye");
-            icon.classList.add("fa-eye-slash");
-        } else {
-            input.type = "password";
-            icon.classList.remove("fa-eye-slash");
-            icon.classList.add("fa-eye");
-        }
+    function togglePermissoes() {
+        var nivel = document.getElementById('nivel_acesso').value;
+        var area = document.getElementById('area_permissoes');
+        area.style.display = (nivel === 'admin') ? 'none' : 'block';
     }
+    togglePermissoes();
 </script>
 
 </body>
 </html>
-
-<?php
+<?php 
 $conn->close();
 include('../includes/footer.php'); 
 ?>
